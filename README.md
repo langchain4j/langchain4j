@@ -129,26 +129,26 @@ Please note that the library is in active development and:
 - API might change at any moment. At this point we prioritize good design in the future over backward compatibility now. We hope for your understanding.
 - We need your input! Please let us know what features you need and your concerns about current implementation.
 
-## Current capabilities: TODO
-- [AI Services](TODO)
+## Current capabilities:
+- [AI Services](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
 - Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
-- [Memory for Chats](TODO)
-- [Chat with Documents](TODO)
+- [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatMemoryExamples.java)
+- [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
 - Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
-- [In-memory embedding store](TODO) (for prototyping and testing)
-- [Structured outputs](TODO)
-- [Prompt templates](TODO)
-- [Structured prompt templates](TODO)
-- [Streaming of LLM responses](TODO)
-- [Loading text and PDF documents from file system and via URL](TODO)
-- [Splitting documents into segments](TODO):
+- [In-memory embedding store](https://github.com/ai-for-java/embeddings4j) (for prototyping and testing)
+- [Structured outputs](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
+- [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/PromptTemplateExamples.java)
+- [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/StructuredPromptTemplateExamples.java)
+- [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/StreamingExamples.java)
+- [Loading text and PDF documents from file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
+- [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java):
   - by paragraph
   - by sentence
   - by character count
-- [Token count estimation](TODO) (so that you can predict how much you will pay)
+- Token count estimation (so that you can predict how much you will pay)
 
 ## Coming soon:
 - [OpenAI's Functions](https://openai.com/blog/function-calling-and-other-api-updates)
@@ -165,7 +165,7 @@ Please note that the library is in active development and:
     - etc
 - Long-term memory for chatbots and agents
 
-**Please [let us know what features you need](TODO).**
+**Please [let us know what features you need](https://github.com/langchain4j/langchain4j/issues/new)!**
 
 ## Start using
 
