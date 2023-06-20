@@ -1,8 +1,8 @@
 # LangChain4j: Supercharge your Java application with the power of AI
 
-Want to integrate various AI tools and services into your Java application?
+Do you want to integrate various AI tools and services into your Java application?
 
-Heard about [LangChain](https://github.com/hwchase17/langchain) and want to use it with Java?
+Did you hear about [LangChain](https://github.com/hwchase17/langchain) and want to try it in Java?
 
 This library might be what you need.
 
@@ -74,7 +74,7 @@ interface Translator {
 
 Translator translator = AiServices.create(Translator.class, model);
 
-String translation = translator.translate("Hello, how are you?", "italian");
+String translation = translator.translate("Hello, how are you?", "Italian");
 // Ciao, come stai?
 ```
 
@@ -91,9 +91,9 @@ achieved thanks to:
     - **Ingesting your own data** (documentation, codebase, etc.), so that LLM can act and answer based on your data
     - **Chains**, so that you don't need to write lots of boilerplate code for common use-cases
     - **Structured outputs**, so that you can receive responses from LLM as Java objects
-    - **Autonomous agents**, so that you can delegate tasks (defined on-the-fly) to LLM, and it will do it's best to
+    - **Autonomous agents**, so that you can delegate tasks (defined on the fly) to LLM, and it will do its best to
       complete them
-    - **"AI Services"**, so that you can declaratively define complex AI behaviour behind a simple API
+    - **"AI Services"**, so that you can declaratively define complex AI behavior behind a simple API
     - **Auto-moderation**, so that you can be sure that all inputs and outputs to/from LLM are not harmful
 
 ## Use cases
@@ -102,20 +102,20 @@ Here are a couple of examples:
 - You want to implement a custom AI-powered chatbot that has access to your data and behaves the way you want it:
   - Customer support chatbot that can:
     - politely answer customer questions
-    - take / change / cancel orders
+    - take /change/cancel orders
   - Educational assistant that can:
     - Teach various subjects
     - Explain unclear parts
-    - Assess user's understanding / knowledge
-- You want to process a lot of unstructured data (files, web pages, etc) and extract structured information form them.
+    - Assess user's understanding/knowledge
+- You want to process a lot of unstructured data (files, web pages, etc) and extract structured information from them.
 For example:
   - extract insights from customer reviews
   - extract insights from customer support chat history
-  - extract insights from websites of your competitors
+  - extract insights from the websites of your competitors
   - extract insights from CVs of job applicants
 - You want to generate information, for example:
   - Emails tailored for each of your customers
-  - Content for your app / website:
+  - Content for your app/website:
     - Blog posts
     - Stories
 - You want to transform information, for example:
@@ -126,8 +126,8 @@ For example:
 ## Disclaimer
 Please note that the library is in active development and:
 - Many features are still missing. We are working hard on implementing them ASAP.
-- API might change at any moment. At this point we prioritize good design in the future over backward compatibility now. We hope for your understanding.
-- We need your input! Please let us know what features you need and your concerns about current implementation.
+- API might change at any moment. At this point, we prioritize good design in the future over backward compatibility now. We hope for your understanding.
+- We need your input! Please let us know what features you need and your concerns about the current implementation.
 
 ## Current capabilities:
 - [AI Services](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
@@ -143,7 +143,7 @@ Please note that the library is in active development and:
 - [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/PromptTemplateExamples.java)
 - [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/StructuredPromptTemplateExamples.java)
 - [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/StreamingExamples.java)
-- [Loading text and PDF documents from file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
+- [Loading text and PDF documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
 - [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java):
   - by paragraph
   - by sentence
@@ -156,7 +156,7 @@ Please note that the library is in active development and:
 - Integration with more LLM providers (commercial and open)
 - Integrations with more embedding stores (commercial and open)
 - Support for more document types
-- Automatic moderation of inputs and outputs to / from LLM
+- Automatic moderation of inputs and outputs to/from LLM
 - Autonomous agents that can use tools:
     - Searching the internet for up-to-date information
     - Sending E-mails and messages
@@ -196,7 +196,7 @@ Please help us make this open-source library better by contributing.
 ## Best practices
 
 We highly recommend
-viewing [this amazing 90-minute tutorial](https://www.deeplearning.ai/short-courses/chatgpt-prompt-engineering-for-developers/)
+watching [this amazing 90-minute tutorial](https://www.deeplearning.ai/short-courses/chatgpt-prompt-engineering-for-developers/)
 on prompt engineering best practices, presented by Andrew Ng (DeepLearning.AI) and Isa Fulford (OpenAI).
 This course will teach you how to use LLMs efficiently and achieve the best possible results. Good investment of your
 time!
@@ -210,5 +210,5 @@ Here are some best practices for using LLMs:
 - Provide examples. Sometimes it is best to show LLM a few examples of what you want instead of trying to explain it.
 - Ask LLM to provide structured output (JSON, XML, etc). This way you can parse response more easily and distinguish
   different parts of it.
-- Use unusual delimiters, such as \```triple backticks``` and \<<<triple angle brackets\>>> to help the LLM distinguish
+- Use unusual delimiters, such as \```triple backticks``` to help the LLM distinguish
   data or input from instructions.
