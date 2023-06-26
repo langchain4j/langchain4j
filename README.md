@@ -135,6 +135,8 @@ Please note that the library is in active development and:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
+- Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
+  - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
 - [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatMemoryExamples.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
 - Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
