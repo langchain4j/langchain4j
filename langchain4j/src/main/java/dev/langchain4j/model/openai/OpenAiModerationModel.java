@@ -91,4 +91,8 @@ public class OpenAiModerationModel implements ModerationModel {
     public Result<Moderation> moderate(DocumentSegment documentSegment) {
         return moderate(documentSegment.text());
     }
+
+    public static OpenAiModerationModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
 }

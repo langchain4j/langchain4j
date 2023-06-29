@@ -24,39 +24,55 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static java.util.Collections.singletonMap;
 
-public class AiServiceBuilder<T> {
+public class AiServices<T> {
 
     private final Class<T> aiServiceClass;
     private ChatLanguageModel chatLanguageModel;
     private ChatMemory chatMemory;
     private ModerationModel moderationModel;
 
-    private AiServiceBuilder(Class<T> aiServiceClass) {
+    private AiServices(Class<T> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
     }
 
-    public static <T> AiServiceBuilder<T> forClass(Class<T> aiServiceClass) {
-        return new AiServiceBuilder<>(aiServiceClass);
+    public static <T> T create(Class<T> aiService, ChatLanguageModel chatLanguageModel) {
+        return builder(aiService)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
     }
 
-    public AiServiceBuilder<T> chatLanguageModel(ChatLanguageModel chatLanguageModel) {
+    public static <T> AiServices<T> builder(Class<T> aiService) {
+        return new AiServices<>(aiService);
+    }
+
+    public AiServices<T> chatLanguageModel(ChatLanguageModel chatLanguageModel) {
         this.chatLanguageModel = chatLanguageModel;
         return this;
     }
 
-    public AiServiceBuilder<T> chatMemory(ChatMemory chatMemory) {
+    public AiServices<T> chatMemory(ChatMemory chatMemory) {
         this.chatMemory = chatMemory;
         return this;
     }
 
-    public AiServiceBuilder<T> moderationModel(ModerationModel moderationModel) {
+    public AiServices<T> moderationModel(ModerationModel moderationModel) {
         this.moderationModel = moderationModel;
         return this;
     }
 
     public T build() {
 
-        // TODO validate all builder fields
+        if (chatLanguageModel == null) {
+            throw illegalConfiguration("chatLanguageModel is mandatory");
+        }
+
+        for (Method method : aiServiceClass.getMethods()) {
+            if (method.isAnnotationPresent(Moderate.class) && moderationModel == null) {
+                throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
+                        "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
+            }
+        }
+
         Object proxyInstance = Proxy.newProxyInstance(
                 aiServiceClass.getClassLoader(),
                 new Class<?>[]{aiServiceClass},
@@ -69,30 +85,57 @@ public class AiServiceBuilder<T> {
 
                         validateParameters(method);
 
-                        List<ChatMessage> messages = prepareMessages(method, args);
-
-                        Future<Result<Moderation>> moderationFuture = null;
-                        if (method.isAnnotationPresent(Moderate.class)) {
-                            // TODO validate that moderation model is set
-                            moderationFuture = executor.submit(() -> moderationModel.moderate(messages));
-                        }
-
-                        List<ChatMessage> messagesToSend = new ArrayList<>(messages);
+                        Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
+                        ChatMessage userMessage = prepareUserMessage(method, args);
 
                         if (chatMemory != null) {
-                            // TODO make sure only one system message is stored.
-                            // TODO Which one exactly if there are many methods with @SystemMessage?
-                            // TODO Swap system message each time?
-                            messagesToSend.forEach(chatMemory::add);
-                            messagesToSend = chatMemory.messages();
+                            systemMessage.ifPresent(it -> {
+                                boolean shouldAddSystemMessage = true;
+                                List<ChatMessage> messages = chatMemory.messages();
+                                for (int i = messages.size() - 1; i >= 0; i--) {
+                                    if (messages.get(i) instanceof dev.langchain4j.data.message.SystemMessage) {
+                                        if (messages.get(i).equals(it)) {
+                                            shouldAddSystemMessage = false;
+                                        }
+                                        break;
+                                    }
+                                }
+                                if (shouldAddSystemMessage) {
+                                    chatMemory.add(it);
+                                }
+                            });
+
+                            chatMemory.add(userMessage);
                         }
 
-                        Result<AiMessage> result = chatLanguageModel.sendMessages(messagesToSend);
+                        List<ChatMessage> messages;
+                        if (chatMemory != null) {
+                            messages = chatMemory.messages();
+                        } else {
+                            messages = new ArrayList<>();
+                            systemMessage.ifPresent(messages::add);
+                            messages.add(userMessage);
+                        }
+
+                        Future<Result<Moderation>> moderationFuture = triggerModerationIfNeeded(method, messages);
+                        Result<AiMessage> result = chatLanguageModel.sendMessages(messages);
+                        verifyModerationIfNeeded(moderationFuture);
 
                         if (chatMemory != null) {
                             chatMemory.add(result.get());
                         }
 
+                        return ServiceOutputParser.parse(result, method.getReturnType());
+                    }
+
+                    private Future<Result<Moderation>> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
+                        if (method.isAnnotationPresent(Moderate.class)) {
+                            return executor.submit(() -> moderationModel.moderate(messages));
+                        }
+                        return null;
+                    }
+
+                    private void verifyModerationIfNeeded(Future<Result<Moderation>> moderationFuture) {
                         if (moderationFuture != null) {
                             try {
                                 Moderation moderation = moderationFuture.get().get();
@@ -103,30 +146,35 @@ public class AiServiceBuilder<T> {
                                 throw new RuntimeException(e);
                             }
                         }
-
-                        return ServiceOutputParser.parse(result, method.getReturnType());
                     }
                 });
 
         return (T) proxyInstance;
     }
 
-    private static List<ChatMessage> prepareMessages(Method method, Object[] args) {
-        Parameter[] parameters = method.getParameters();
+    private Optional<ChatMessage> prepareSystemMessage(Method method, Object[] args) {
 
+        Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
-        List<ChatMessage> messages = new ArrayList<>();
+        if (method.isAnnotationPresent(SystemMessage.class)) {
+            SystemMessage annotation = method.getAnnotation(SystemMessage.class);
 
-        SystemMessage systemMessage = method.getAnnotation(SystemMessage.class);
-        if (systemMessage != null) {
-            String systemMessageTemplate = String.join("\n", systemMessage.value());
+            String systemMessageTemplate = String.join("\n", annotation.value());
             if (systemMessageTemplate.isEmpty()) {
                 throw illegalConfiguration("@SystemMessage's template cannot be empty");
             }
+
             Prompt prompt = PromptTemplate.from(systemMessageTemplate).apply(variables);
-            messages.add(prompt.toSystemMessage());
+            return Optional.of(prompt.toSystemMessage());
         }
+
+        return Optional.empty();
+    }
+
+    private static ChatMessage prepareUserMessage(Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
         String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
 
@@ -136,45 +184,34 @@ public class AiServiceBuilder<T> {
 
             if (userMessageTemplate.contains("{{it}}")) {
                 if (parameters.length != 1) {
-                    throw illegalConfiguration("{{it}} placeholder can be used only with a single parameter method"); // TODO message
+                    throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
+                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
                 }
 
                 variables = singletonMap("it", toString(args[0]));
             }
 
             Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            messages.add(prompt.toUserMessage());
+            return prompt.toUserMessage();
         }
 
         for (int i = 0; i < parameters.length; i++) {
-            Parameter parameter = parameters[i];
-            UserMessage parameterAsUserMessage = parameter.getAnnotation(UserMessage.class);
-            if (parameterAsUserMessage != null) {
-                if (parameters[i].getType().isAnnotationPresent(StructuredPrompt.class)) {
-                    Prompt prompt = StructuredPromptProcessor.toPrompt(args[i]);
-                    messages.add(userMessage(prompt.text() + outputFormatInstructions));
-                } else {
-                    String userMessagePrompt = toString(args[i]) + outputFormatInstructions;
-                    messages.add(userMessage(userMessagePrompt));
-                }
+            if (parameters[i].isAnnotationPresent(UserMessage.class)) {
+                return userMessage(toString(args[i]) + outputFormatInstructions);
             }
         }
-        // TODO do not allow multiple @UserMessage in one method
 
-        if (messages.isEmpty() || !(messages.get(messages.size() - 1) instanceof dev.langchain4j.data.message.UserMessage)) {
-            if (args.length == 1) {
-                Object argument = args[0];
-                if (argument.getClass() == String.class) {
-                    messages.add(userMessage(toString(argument) + outputFormatInstructions));
-                } else if (parameters[0].getType().isAnnotationPresent(StructuredPrompt.class)) {
-                    Prompt prompt = StructuredPromptProcessor.toPrompt(argument);
-                    messages.add(userMessage(prompt.text() + outputFormatInstructions));
-                }
-            } else {
-                // TODO throw?
-            }
+        if (args == null || args.length == 0) {
+            throw illegalConfiguration("Method should have at least one argument");
         }
-        return messages;
+
+        if (args.length == 1) {
+            return userMessage(toString(args[0]) + outputFormatInstructions);
+        }
+
+        throw illegalConfiguration("For methods with multiple arguments, each argument must be annotated with either @V or @UserMessage. " +
+                "Please ensure all arguments in multi-argument methods have one of these annotations.");
+
     }
 
     private static void validateParameters(Method method) {
@@ -208,6 +245,8 @@ public class AiServiceBuilder<T> {
     private static Object toString(Object arg) {
         if (arg.getClass().isArray()) {
             return arrayToString(arg);
+        } else if (arg.getClass().isAnnotationPresent(StructuredPrompt.class)) {
+            return StructuredPromptProcessor.toPrompt(arg).text();
         } else {
             return arg.toString();
         }

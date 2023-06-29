@@ -86,4 +86,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     public int estimateTokenCount(DocumentSegment documentSegment) {
         return estimateTokenCount(documentSegment.text());
     }
+
+    public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
 }

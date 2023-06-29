@@ -20,12 +20,12 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     private final Optional<SystemMessage> maybeSystemMessage;
     private final LinkedList<ChatMessage> previousMessages;
-    private final Integer capacityInMessages;
+    private final Integer capacity;
 
     private MessageWindowChatMemory(Builder builder) {
         this.maybeSystemMessage = builder.maybeSystemMessage;
         this.previousMessages = builder.previousMessages;
-        this.capacityInMessages = builder.capacityInMessages;
+        this.capacity = builder.capacity;
         ensureCapacity();
     }
 
@@ -51,7 +51,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private void ensureCapacity() {
         var currentNumberOfMessagesInHistory = getCurrentNumberOfMessages();
 
-        while (currentNumberOfMessagesInHistory > capacityInMessages) {
+        while (currentNumberOfMessagesInHistory > capacity) {
 
             ChatMessage oldestMessage = previousMessages.removeFirst();
 
@@ -72,7 +72,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     public static class Builder {
 
         private Optional<SystemMessage> maybeSystemMessage = Optional.empty();
-        private Integer capacityInMessages;
+        private Integer capacity;
         private LinkedList<ChatMessage> previousMessages = new LinkedList<>();
 
         public Builder systemMessage(SystemMessage systemMessage) {
@@ -90,7 +90,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         }
 
         public Builder capacityInMessages(Integer capacityInMessages) {
-            this.capacityInMessages = capacityInMessages;
+            this.capacity = capacityInMessages;
             return this;
         }
 
@@ -110,5 +110,9 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public static MessageWindowChatMemory withCapacity(int n) {
+        return builder().capacityInMessages(n).build();
     }
 }

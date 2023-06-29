@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -10,6 +11,7 @@ import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.Builder;
 import lombok.ToString;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
@@ -22,20 +24,21 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.service.AiServiceBuilderTest.Sentiment.POSITIVE;
+import static dev.langchain4j.service.AiServicesTest.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServiceBuilderTest {
+public class AiServicesTest {
 
     @Spy
-    ChatLanguageModel chatModel = OpenAiChatModel.builder()
+    ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .temperature(0.0)
             .logRequests(true)
@@ -43,9 +46,21 @@ public class AiServiceBuilderTest {
             .build();
 
     @Spy
+    ChatMemory chatMemory = MessageWindowChatMemory.builder()
+            .capacityInMessages(10)
+            .build();
+
+    @Spy
     ModerationModel moderationModel = OpenAiModerationModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .build();
+
+    @AfterEach
+    void afterEach() {
+        verifyNoMoreInteractions(chatLanguageModel);
+        verifyNoMoreInteractions(chatMemory);
+        verifyNoMoreInteractions(moderationModel);
+    }
 
 
     interface Humorist {
@@ -57,16 +72,14 @@ public class AiServiceBuilderTest {
     @Test
     void test_simple_instruction_with_single_argument() {
 
-        Humorist humorist = AiServiceBuilder.forClass(Humorist.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        Humorist humorist = AiServices.create(Humorist.class, chatLanguageModel);
 
         String joke = humorist.joke("AI");
 
         assertThat(joke).isNotBlank();
         System.out.println(joke);
 
-        verify(chatModel).sendMessages(singletonList(userMessage("Tell me a joke about AI")));
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage("Tell me a joke about AI")));
     }
 
 
@@ -85,9 +98,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_extract_date() {
 
-        DateTimeExtractor dateTimeExtractor = AiServiceBuilder.forClass(DateTimeExtractor.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatLanguageModel);
 
         String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
 
@@ -95,7 +106,7 @@ public class AiServiceBuilderTest {
 
         assertThat(date).isEqualTo(LocalDate.of(1968, JULY, 4));
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
                         "You must answer strictly in the following format: 2023-12-31")));
     }
@@ -103,9 +114,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_extract_time() {
 
-        DateTimeExtractor dateTimeExtractor = AiServiceBuilder.forClass(DateTimeExtractor.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatLanguageModel);
 
         String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
 
@@ -113,7 +122,7 @@ public class AiServiceBuilderTest {
 
         assertThat(time).isEqualTo(LocalTime.of(23, 45, 0));
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
                         "You must answer strictly in the following format: 23:59:59")));
     }
@@ -121,9 +130,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_extract_date_time() {
 
-        DateTimeExtractor dateTimeExtractor = AiServiceBuilder.forClass(DateTimeExtractor.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        DateTimeExtractor dateTimeExtractor = AiServices.create(DateTimeExtractor.class, chatLanguageModel);
 
         String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
 
@@ -131,7 +138,7 @@ public class AiServiceBuilderTest {
 
         assertThat(dateTime).isEqualTo(LocalDateTime.of(1968, JULY, 4, 23, 45, 0));
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
                         "You must answer strictly in the following format: 2023-12-31T23:59:59")));
     }
@@ -150,9 +157,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_extract_enum() {
 
-        SentimentAnalyzer sentimentAnalyzer = AiServiceBuilder.forClass(SentimentAnalyzer.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, chatLanguageModel);
 
         String customerReview = "This LaptopPro X15 is wicked fast and that 4K screen is a dream.";
 
@@ -160,7 +165,7 @@ public class AiServiceBuilderTest {
 
         assertThat(sentiment).isEqualTo(POSITIVE);
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Analyze sentiment of " + customerReview + "\n" +
                         "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")));
     }
@@ -175,16 +180,14 @@ public class AiServiceBuilderTest {
 
     interface PersonExtractor {
 
-        @UserMessage("Extract information about person from {{it}}")
+        @UserMessage("Extract information about a person from {{it}}")
         Person extractPersonFrom(String text);
     }
 
     @Test
     void test_extract_custom_POJO() {
 
-        PersonExtractor personExtractor = AiServiceBuilder.forClass(PersonExtractor.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatLanguageModel);
 
         String text = "In 1968, amidst the fading echoes of Independence Day, "
                 + "a child named John arrived under the calm evening sky. "
@@ -196,8 +199,8 @@ public class AiServiceBuilderTest {
         assertThat(person.lastName).isEqualTo("Doe");
         assertThat(person.birthDate).isEqualTo(LocalDate.of(1968, JULY, 4));
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
-                "Extract information about person from " + text + "\n" +
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
+                "Extract information about a person from " + text + "\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
@@ -222,14 +225,15 @@ public class AiServiceBuilderTest {
         Recipe createRecipeFrom(String... ingredients);
 
         Recipe createRecipeFrom(CreateRecipePrompt prompt);
+
+        @SystemMessage("You are very {{character}} chef")
+        Recipe createRecipeFrom(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
     }
 
     @Test
     void test_create_recipe_from_list_of_ingredients() {
 
-        Chef chef = AiServiceBuilder.forClass(Chef.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFrom("cucumber", "tomato", "feta", "onion", "olives");
 
@@ -239,7 +243,7 @@ public class AiServiceBuilderTest {
         assertThat(recipe.preparationTimeMinutes).isPositive();
         System.out.println(recipe);
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
@@ -261,9 +265,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_create_recipe_using_structured_prompt() {
 
-        Chef chef = AiServiceBuilder.forClass(Chef.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         CreateRecipePrompt prompt = CreateRecipePrompt
                 .builder()
@@ -279,7 +281,7 @@ public class AiServiceBuilderTest {
         assertThat(recipe.preparationTimeMinutes).isPositive();
         System.out.println(recipe);
 
-        verify(chatModel).sendMessages(singletonList(userMessage(
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
                         "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
@@ -289,6 +291,36 @@ public class AiServiceBuilderTest {
                         "}")));
     }
 
+    @Test
+    void test_create_recipe_using_structured_prompt_and_system_message() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        CreateRecipePrompt prompt = CreateRecipePrompt
+                .builder()
+                .dish("salad")
+                .ingredients(Arrays.asList("cucumber", "tomato", "feta", "onion", "olives"))
+                .build();
+
+        Recipe recipe = chef.createRecipeFrom(prompt, "funny");
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+        System.out.println(recipe);
+
+        verify(chatLanguageModel).sendMessages(asList(
+                systemMessage("You are very funny chef"),
+                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "}")
+        ));
+    }
 
     interface ProfessionalChef {
 
@@ -299,9 +331,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_with_system_message() {
 
-        ProfessionalChef chef = AiServiceBuilder.forClass(ProfessionalChef.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        ProfessionalChef chef = AiServices.create(ProfessionalChef.class, chatLanguageModel);
 
         String question = "How long should I grill chicken?";
 
@@ -310,7 +340,7 @@ public class AiServiceBuilderTest {
         assertThat(answer).isNotBlank();
         System.out.println(answer);
 
-        verify(chatModel).sendMessages(asList(
+        verify(chatLanguageModel).sendMessages(asList(
                 systemMessage("You are a professional chef. You are friendly, polite and concise."),
                 userMessage(question)
         ));
@@ -327,9 +357,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_with_system_and_user_messages() {
 
-        Translator translator = AiServiceBuilder.forClass(Translator.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        Translator translator = AiServices.create(Translator.class, chatLanguageModel);
 
         String text = "Hello, how are you?";
 
@@ -337,7 +365,7 @@ public class AiServiceBuilderTest {
 
         assertThat(translation).isEqualTo("Hallo, wie geht es dir?");
 
-        verify(chatModel).sendMessages(asList(
+        verify(chatLanguageModel).sendMessages(asList(
                 systemMessage("You are a professional translator into german"),
                 userMessage("Translate the following text: Hello, how are you?")
         ));
@@ -352,9 +380,7 @@ public class AiServiceBuilderTest {
     @Test
     void test_with_system_message_and_user_message_as_argument() {
 
-        Summarizer summarizer = AiServiceBuilder.forClass(Summarizer.class)
-                .chatLanguageModel(chatModel)
-                .build();
+        Summarizer summarizer = AiServices.create(Summarizer.class, chatLanguageModel);
 
         String text = "AI, or artificial intelligence, is a branch of computer science that aims to create " +
                 "machines that mimic human intelligence. This can range from simple tasks such as recognizing " +
@@ -365,108 +391,169 @@ public class AiServiceBuilderTest {
         assertThat(bulletPoints).hasSize(3);
         System.out.println(bulletPoints);
 
-        verify(chatModel).sendMessages(asList(
+        verify(chatLanguageModel).sendMessages(asList(
                 systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
                 userMessage(text + "\nYou must put every item on a separate line.")
         ));
     }
 
 
-    interface Chat {
+    interface ChatWithModeration {
 
         @Moderate
         String chat(String message);
     }
 
     @Test
-    void should_throw_when_text_is_flagged() { // TODO measure performance
+    void should_throw_when_text_is_flagged() {
 
-        Chat chat = AiServiceBuilder.forClass(Chat.class)
-                .chatLanguageModel(chatModel)
+        ChatWithModeration chatWithModeration = AiServices.builder(ChatWithModeration.class)
+                .chatLanguageModel(chatLanguageModel)
                 .moderationModel(moderationModel)
                 .build();
 
-        assertThatThrownBy(() -> chat.chat("I will kill them!"))
-                .isExactlyInstanceOf(ModerationException.class)
-                .hasMessage("Text \"I will kill them!\" violates content policy");
+        String message = "I WILL KILL YOU!!!";
 
-        verify(moderationModel).moderate(asList(userMessage("I will kill them!")));
+        assertThatThrownBy(() -> chatWithModeration.chat(message))
+                .isExactlyInstanceOf(ModerationException.class)
+                .hasMessage("Text \"" + message + "\" violates content policy");
+
+        verify(chatLanguageModel).sendMessages(asList(userMessage(message)));
+        verify(moderationModel).moderate(asList(userMessage(message)));
     }
 
     @Test
     void should_not_throw_when_text_is_not_flagged() {
 
-        Chat chat = AiServiceBuilder.forClass(Chat.class)
-                .chatLanguageModel(chatModel)
+        ChatWithModeration chatWithModeration = AiServices.builder(ChatWithModeration.class)
+                .chatLanguageModel(chatLanguageModel)
                 .moderationModel(moderationModel)
                 .build();
 
-        String response = chat.chat("I will hug them!");
+        String message = "I will hug them!";
+
+        String response = chatWithModeration.chat(message);
 
         assertThat(response).isNotBlank();
+
+        verify(chatLanguageModel).sendMessages(asList(userMessage(message)));
+        verify(moderationModel).moderate(asList(userMessage(message)));
     }
+
 
     interface ChatWithHistory {
 
-        // no annotations, single argument -> argument becomes a user message
-        // multiple arguments -> ALL arguments should be annotated either @V or @UserMessage (can be only one)
-        // multiple methods with @SystemMessage? if method with different system message is invoked, new system message will be put to the end of the memory
-        // TODO test every use case here in this list!!!
-        // TODO simplify for users with "-parameters"
+        String chatWithoutSystemMessage(String userMessage);
 
+        @SystemMessage("You are helpful assistant")
+        String chatWithSystemMessage(String userMessage);
 
-        String chat(String message);
-        // [user] {{message}}
-
-        String chat(Object structuredPrompt);
-        // [user] {{structuredPrompt}}
-
-        @UserMessage("Tell me a joke about {{it}}")
-        String joke(String topic);
-        // [user] Tell me a joke about {{topic}}
-
-        @UserMessage("Tell me a joke about {{topic}}")
-        String joke2(@V("topic") String topic);
-        // [user] Tell me a joke about {{topic}}
-
-        @SystemMessage("Translate each message from user into Italian")
-        String translate(String text);
-        // [system] Translate each message from user into Italian
-        // [user] {{text}}
-
-        @SystemMessage("Translate each message from user into {{language}}")
-        String translate2(@UserMessage String text, @V("language") String language);
-        // [system] Translate each message from user into {{language}}
-        // [user] {{text}}
-
-        @SystemMessage("You are a professional translator")
-        @UserMessage("Translate into {{language}}: {{text}}")
-        String translate3(@V("text") String text, @V("language") String language);
-        // [system] You are a professional translator
-        // [user] Translate into {{language}}: {{text}}
-
-        @SystemMessage("You are a professional assistant")
-        String assist(Object structuredPrompt);
-        // [system] You are a professional assistant
-        // [user] {{structuredPrompt}}
+        @SystemMessage("You are funny assistant")
+        String chatWithAnotherSystemMessage(String userMessage);
     }
 
     @Test
     void should_keep_chat_history() {
 
-        ChatWithHistory chatWithHistory = AiServiceBuilder.forClass(ChatWithHistory.class)
-                .chatLanguageModel(chatModel)
-                .chatMemory(MessageWindowChatMemory.builder()
-                        .capacityInMessages(10)
-//                        .systemMessage("") // TODO needed??? will be default in case method doesnt have one?
-                        .build())
+        ChatWithHistory chatWithHistory = AiServices.builder(ChatWithHistory.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
                 .build();
 
-        chatWithHistory.chat("Hello, my name is Klaus.");
+        String firstUserMessage = "Hello, my name is Klaus";
+        String firstAiMessage = chatWithHistory.chatWithoutSystemMessage(firstUserMessage);
 
-        String answer = chatWithHistory.chat("What is my name?");
+        verify(chatMemory).add(userMessage(firstUserMessage));
+        verify(chatLanguageModel).sendMessages(asList(userMessage(firstUserMessage)));
+        verify(chatMemory).add(aiMessage(firstAiMessage));
 
-        assertThat(answer).contains("Klaus");
+        String secondUserMessage = "What is my name?";
+        String secondAiMessage = chatWithHistory.chatWithoutSystemMessage(secondUserMessage);
+        assertThat(secondAiMessage).contains("Klaus");
+
+        verify(chatMemory).add(userMessage(secondUserMessage));
+        verify(chatLanguageModel).sendMessages(asList(
+                userMessage(firstUserMessage),
+                aiMessage(firstAiMessage),
+                userMessage(secondUserMessage)
+        ));
+        verify(chatMemory).add(aiMessage(secondAiMessage));
+        verify(chatMemory, times(2)).messages();
+    }
+
+    @Test
+    void should_keep_chat_history_and_not_duplicate_system_message() {
+
+        ChatWithHistory chatWithHistory = AiServices.builder(ChatWithHistory.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .build();
+
+        String systemMessage = "You are helpful assistant";
+        String firstUserMessage = "Hello, my name is Klaus";
+        String firstAiMessage = chatWithHistory.chatWithSystemMessage(firstUserMessage);
+
+        verify(chatMemory).add(systemMessage(systemMessage));
+        verify(chatMemory).add(userMessage(firstUserMessage));
+        verify(chatLanguageModel).sendMessages(asList(
+                systemMessage(systemMessage),
+                userMessage(firstUserMessage)
+        ));
+        verify(chatMemory).add(aiMessage(firstAiMessage));
+
+        String secondUserMessage = "What is my name?";
+        String secondAiMessage = chatWithHistory.chatWithSystemMessage(secondUserMessage);
+        assertThat(secondAiMessage).contains("Klaus");
+
+        verify(chatMemory).add(userMessage(secondUserMessage));
+        verify(chatLanguageModel).sendMessages(asList(
+                systemMessage(systemMessage),
+                userMessage(firstUserMessage),
+                aiMessage(firstAiMessage),
+
+                userMessage(secondUserMessage)
+        ));
+        verify(chatMemory).add(aiMessage(secondAiMessage));
+        verify(chatMemory, times(4)).messages();
+    }
+
+    @Test
+    void should_keep_chat_history_and_add_new_system_message() {
+
+        ChatWithHistory chatWithHistory = AiServices.builder(ChatWithHistory.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .build();
+
+        String firstSystemMessage = "You are helpful assistant";
+        String firstUserMessage = "Hello, my name is Klaus";
+        String firstAiMessage = chatWithHistory.chatWithSystemMessage(firstUserMessage);
+
+        verify(chatMemory).add(systemMessage(firstSystemMessage));
+        verify(chatMemory).add(userMessage(firstUserMessage));
+        verify(chatLanguageModel).sendMessages(asList(
+                systemMessage(firstSystemMessage),
+                userMessage(firstUserMessage)
+        ));
+        verify(chatMemory).add(aiMessage(firstAiMessage));
+
+        String secondSystemMessage = "You are funny assistant";
+        String secondUserMessage = "What is my name?";
+        String secondAiMessage = chatWithHistory.chatWithAnotherSystemMessage(secondUserMessage);
+        assertThat(secondAiMessage).contains("Klaus");
+
+        verify(chatMemory).add(systemMessage(secondSystemMessage));
+        verify(chatMemory).add(userMessage(secondUserMessage));
+        verify(chatLanguageModel).sendMessages(asList(
+                systemMessage(firstSystemMessage),
+                userMessage(firstUserMessage),
+                aiMessage(firstAiMessage),
+
+                systemMessage(secondSystemMessage),
+                userMessage(secondUserMessage)
+        ));
+        verify(chatMemory).add(aiMessage(secondAiMessage));
+        verify(chatMemory, times(4)).messages();
     }
 
     private static List<ChatMessage> asList(ChatMessage... messages) {

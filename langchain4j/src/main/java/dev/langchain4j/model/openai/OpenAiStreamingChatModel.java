@@ -120,4 +120,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     public int estimateTokenCount(DocumentSegment documentSegment) {
         return estimateTokenCount(documentSegment.text());
     }
+
+    public static OpenAiStreamingChatModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
 }

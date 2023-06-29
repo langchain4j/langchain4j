@@ -118,4 +118,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     public int estimateTokenCount(DocumentSegment documentSegment) {
         return estimateTokenCount(documentSegment.text());
     }
+
+    public static OpenAiChatModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
 }

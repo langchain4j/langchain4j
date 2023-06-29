@@ -81,4 +81,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     public int estimateTokenCount(DocumentSegment documentSegment) {
         return estimateTokenCount(documentSegment.text());
     }
+
+    public static OpenAiLanguageModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
 }

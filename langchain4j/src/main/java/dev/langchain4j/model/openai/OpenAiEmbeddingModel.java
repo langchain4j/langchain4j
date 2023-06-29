@@ -93,4 +93,8 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         }
         return tokenCount;
     }
+
+    public static OpenAiEmbeddingModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
 }
