@@ -20,8 +20,8 @@ public class PromptTemplate {
         this.mustache = MUSTACHE_FACTORY.compile(new StringReader(template), "template");
     }
 
-    public Prompt apply(String name, Object value) {
-        return apply(singletonMap(name, value));
+    public Prompt apply(Object value) {
+        return apply(singletonMap("it", value));
     }
 
     public Prompt apply(Map<String, Object> variables) {

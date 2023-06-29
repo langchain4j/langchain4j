@@ -33,4 +33,8 @@ public class Result<T> {
                 " result = " + result +
                 " }";
     }
+
+    public static <T> Result<T> from(T result) {
+        return new Result<>(result);
+    }
 }

@@ -19,6 +19,6 @@ public class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public String formatInstructions() {
-        return "one of: " + Arrays.toString(enumClass.getEnumConstants());
+        return "one of " + Arrays.toString(enumClass.getEnumConstants());
     }
 }

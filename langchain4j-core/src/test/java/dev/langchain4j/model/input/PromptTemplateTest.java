@@ -12,9 +12,9 @@ class PromptTemplateTest {
     @Test
     void should_create_prompt_from_template_with_single_variable() {
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{name}}.");
+        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}}.");
 
-        Prompt prompt = promptTemplate.apply("name", "Klaus");
+        Prompt prompt = promptTemplate.apply("Klaus");
 
         assertThat(prompt.text()).isEqualTo("My name is Klaus.");
     }

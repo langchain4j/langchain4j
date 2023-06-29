@@ -5,6 +5,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Result;
 
+import java.util.List;
+
 public interface ModerationModel {
 
     Result<Moderation> moderate(String text);
@@ -13,7 +15,9 @@ public interface ModerationModel {
 
     Result<Moderation> moderate(Object structuredPrompt);
 
-    Result<Moderation> moderate(ChatMessage chatMessage);
+    Result<Moderation> moderate(ChatMessage message);
+
+    Result<Moderation> moderate(List<ChatMessage> messages);
 
     Result<Moderation> moderate(DocumentSegment documentSegment);
 }

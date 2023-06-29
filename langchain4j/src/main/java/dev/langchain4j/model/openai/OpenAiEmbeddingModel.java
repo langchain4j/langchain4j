@@ -41,7 +41,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     @Override
     public Result<Embedding> embed(String text) {
         Result<List<Embedding>> result = embedTexts(singletonList(text));
-        return new Result<>(result.get().get(0));
+        return Result.from(result.get().get(0));
     }
 
     @Override
@@ -72,7 +72,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .collect(toList());
 
-        return new Result<>(embeddings);
+        return Result.from(embeddings);
     }
 
     @Override

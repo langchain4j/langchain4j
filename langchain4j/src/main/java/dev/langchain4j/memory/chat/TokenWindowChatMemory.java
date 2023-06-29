@@ -37,8 +37,8 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public void add(ChatMessage chatMessage) {
-        previousMessages.add(chatMessage);
+    public void add(ChatMessage message) {
+        previousMessages.add(message);
         ensureCapacity();
     }
 

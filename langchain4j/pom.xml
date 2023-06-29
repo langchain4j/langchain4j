@@ -61,7 +61,7 @@
         <dependency>
             <groupId>dev.ai4j</groupId>
             <artifactId>openai4j</artifactId>
-            <version>0.3.1</version>
+            <version>0.4.0</version>
         </dependency>
 
         <dependency>
@@ -119,6 +119,20 @@
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>5.4.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
+            <version>5.4.0</version>
             <scope>test</scope>
         </dependency>
 

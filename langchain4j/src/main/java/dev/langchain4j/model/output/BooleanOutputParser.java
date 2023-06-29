@@ -9,6 +9,6 @@ public class BooleanOutputParser implements OutputParser<Boolean> {
 
     @Override
     public String formatInstructions() {
-        return "one of: [true, false]";
+        return "one of [true, false]";
     }
 }

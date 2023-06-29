@@ -86,7 +86,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         AiMessage aiMessage = aiMessage(response.content());
 
-        return new Result<>(aiMessage);
+        return Result.from(aiMessage);
     }
 
     @Override

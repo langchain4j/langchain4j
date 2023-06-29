@@ -34,7 +34,7 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
     @Override
     public Result<Embedding> embed(String text) {
         Result<List<Embedding>> result = embedTexts(singletonList(text));
-        return new Result<>(result.get().get(0));
+        return Result.from(result.get().get(0));
     }
 
     @Override
@@ -62,6 +62,6 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
                 .map(Embedding::from)
                 .collect(toList());
 
-        return new Result<>(embeddings);
+        return Result.from(embeddings);
     }
 }

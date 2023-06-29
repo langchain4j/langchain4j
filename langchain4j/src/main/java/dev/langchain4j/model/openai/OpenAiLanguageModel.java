@@ -49,7 +49,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         CompletionResponse response = client.completion(request).execute();
 
-        return new Result<>(response.text());
+        return Result.from(response.text());
     }
 
     @Override

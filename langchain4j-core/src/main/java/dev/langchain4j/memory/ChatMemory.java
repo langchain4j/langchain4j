@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface ChatMemory {
 
-    void add(ChatMessage chatMessage);
+    void add(ChatMessage message);
 
     List<ChatMessage> messages();
 
