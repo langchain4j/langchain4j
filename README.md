@@ -9,28 +9,40 @@ This library might be what you need.
 ## Highlights
 You can declaratively define concise "AI Services" that are powered by LLMs:
 ```
-interface Comedian {
+interface Assistant {
 
-    String tellMeJoke();
-    String tellMeJokeAbout(String topic);
-    Funniness evaluate(String joke);
+    String chat(String userMessage);
 }
 
-enum Funniness {
-    VERY_FUNNY, FUNNY, MEH, NOT_FUNNY
+Assistant assistant = AiServices.create(Assistant.class, model);
+
+String answer = assistant.chat("Hello");
+
+// Hello! How can I assist you today?
+```
+
+You can use LLM as a classifier:
+```
+enum Sentiment {
+    POSITIVE, NEUTRAL, NEGATIVE;
+}
+        
+interface SentimentAnalyzer {
+
+    @UserMessage("Analyze sentiment of {{it}}")
+    Sentiment analyzeSentimentOf(String text);
+
+    @UserMessage("Does {{it}} have a positive sentiment?")
+    boolean isPositive(String text);
 }
 
+SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-Comedian comedian = AiServices.create(Comedian.class, model);
+Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
+// POSITIVE
 
-String joke = comedian.tellMeJoke();
-// Why couldn't the bicycle stand up by itself? Because it was two-tired!
-
-String anotherJoke = comedian.tellMeJokeAbout("tomato");
-// Why did the tomato turn red? Because it saw the salad dressing!
-
-Funniness funniness = comedian.evaluate(joke);
-// FUNNY
+boolean positive = sentimentAnalyzer.isPositive("It is bad!");
+// false
 ```
 
 You can easily extract structured information from unstructured data:
@@ -41,16 +53,14 @@ class Person {
     private String lastName;
     private LocalDate birthDate;
 
-    public String toString() {
-        ...
-    }
+    public String toString() {...}
 }
 
 interface PersonExtractor {
 
+    @UserMessage("Extract information about a person from {{it}}")
     Person extractPersonFrom(String text);
 }
-
 
 PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
 
@@ -62,7 +72,7 @@ Person person = extractor.extractPersonFrom(text);
 // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
 ```
 
-You can have more control over LLM:
+You can define more sophisticated prompt templates:
 ```
 interface Translator {
 
@@ -71,12 +81,13 @@ interface Translator {
     String translate(@V("text") String text, @V("language") String language);
 }
 
-
 Translator translator = AiServices.create(Translator.class, model);
 
 String translation = translator.translate("Hello, how are you?", "Italian");
 // Ciao, come stai?
 ```
+## Code examples
+Please see more examples of how LangChain4j can be used [here](https://github.com/langchain4j/langchain4j-examples/tree/main/src/main/java).
 
 ## Project goals
 The goal of this project is to simplify the integration of AI capabilities into your Java application. This can be
@@ -109,9 +120,8 @@ Here are a couple of examples:
     - Assess user's understanding/knowledge
 - You want to process a lot of unstructured data (files, web pages, etc) and extract structured information from them.
 For example:
-  - extract insights from customer reviews
-  - extract insights from customer support chat history
-  - extract insights from the websites of your competitors
+  - extract insights from customer reviews and support chat history
+  - extract interesting information from the websites of your competitors
   - extract insights from CVs of job applicants
 - You want to generate information, for example:
   - Emails tailored for each of your customers
@@ -177,14 +187,14 @@ Maven:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j</artifactId>
-  <version>0.5.0</version>
+  <version>0.6.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```
-implementation 'dev.langchain4j:langchain4j:0.5.0'
+implementation 'dev.langchain4j:langchain4j:0.6.0'
 ```
 
 ## Request features
