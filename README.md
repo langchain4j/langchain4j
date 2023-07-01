@@ -86,6 +86,10 @@ Translator translator = AiServices.create(Translator.class, model);
 String translation = translator.translate("Hello, how are you?", "Italian");
 // Ciao, come stai?
 ```
+
+You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
+See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithToolsExample.java).
+
 ## Code examples
 Please see more examples of how LangChain4j can be used [here](https://github.com/langchain4j/langchain4j-examples/tree/main/src/main/java).
 
@@ -140,7 +144,13 @@ Please note that the library is in active development and:
 - We need your input! Please let us know what features you need and your concerns about the current implementation.
 
 ## Current capabilities:
-- [AI Services](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
+- AI Services:
+    - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/SimpleServiceExample.java)
+    - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithMemoryExample.java)
+    - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithToolsExample.java)
+    - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithAutoModerationExample.java)
+    - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/OtherServiceExamples.java)
+    - (https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
 - Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
@@ -163,19 +173,12 @@ Please note that the library is in active development and:
 - Token count estimation (so that you can predict how much you will pay)
 
 ## Coming soon:
-- [OpenAI's Functions](https://openai.com/blog/function-calling-and-other-api-updates)
 - Extending "AI Service" features
 - Integration with more LLM providers (commercial and open)
 - Integrations with more embedding stores (commercial and open)
 - Support for more document types
-- Automatic moderation of inputs and outputs to/from LLM
-- Autonomous agents that can use tools:
-    - Searching the internet for up-to-date information
-    - Sending E-mails and messages
-    - Calling external APIs
-    - Calling internal functions
-    - etc
 - Long-term memory for chatbots and agents
+- Chain-of-Thought and Tree-of-Thought
 
 **Please [let us know what features you need](https://github.com/langchain4j/langchain4j/issues/new)!**
 
