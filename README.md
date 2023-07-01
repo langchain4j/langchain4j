@@ -8,7 +8,7 @@ This library might be what you need.
 
 ## Highlights
 You can declaratively define concise "AI Services" that are powered by LLMs:
-```
+```java
 interface Assistant {
 
     String chat(String userMessage);
@@ -22,7 +22,7 @@ String answer = assistant.chat("Hello");
 ```
 
 You can use LLM as a classifier:
-```
+```java
 enum Sentiment {
     POSITIVE, NEUTRAL, NEGATIVE;
 }
@@ -46,7 +46,7 @@ boolean positive = sentimentAnalyzer.isPositive("It is bad!");
 ```
 
 You can easily extract structured information from unstructured data:
-```
+```java
 class Person {
 
     private String firstName;
@@ -73,7 +73,7 @@ Person person = extractor.extractPersonFrom(text);
 ```
 
 You can define more sophisticated prompt templates:
-```
+```java
 interface Translator {
 
     @SystemMessage("You are a professional translator into {{language}}")
