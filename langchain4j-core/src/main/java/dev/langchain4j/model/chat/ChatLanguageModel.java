@@ -1,6 +1,7 @@
 package dev.langchain4j.model.chat;
 
 import dev.langchain4j.MightChangeInTheFuture;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.input.Prompt;
@@ -21,4 +22,6 @@ public interface ChatLanguageModel {
     Result<AiMessage> sendMessages(ChatMessage... messages);
 
     Result<AiMessage> sendMessages(List<ChatMessage> messages);
+
+    Result<AiMessage> sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications);
 }

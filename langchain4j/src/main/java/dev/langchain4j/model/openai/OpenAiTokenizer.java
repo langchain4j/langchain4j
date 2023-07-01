@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.model.openai.OpenAiConverters.roleFrom;
 
 public class OpenAiTokenizer implements Tokenizer {
 
@@ -30,7 +31,7 @@ public class OpenAiTokenizer implements Tokenizer {
     public int countTokens(ChatMessage message) {
         return extraTokensPerEachMessage()
                 + countTokens(message.text())
-                + countTokens(OpenAiConverters.roleOf(message).toString());
+                + countTokens(roleFrom(message).toString());
     }
 
     @Override

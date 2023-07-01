@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.document.DocumentSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -16,9 +17,10 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+import static dev.langchain4j.model.openai.OpenAiConverters.aiMessageFrom;
+import static dev.langchain4j.model.openai.OpenAiConverters.toFunctions;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
@@ -75,18 +77,22 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public Result<AiMessage> sendMessages(List<ChatMessage> messages) {
+        return sendMessages(messages, null);
+    }
+
+    @Override
+    public Result<AiMessage> sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
 
         ChatCompletionRequest request = ChatCompletionRequest.builder()
                 .model(modelName)
                 .messages(OpenAiConverters.toOpenAiMessages(messages))
+                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .build();
 
         ChatCompletionResponse response = client.chatCompletion(request).execute();
 
-        AiMessage aiMessage = aiMessage(response.content());
-
-        return Result.from(aiMessage);
+        return Result.from(aiMessageFrom(response));
     }
 
     @Override

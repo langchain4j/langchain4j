@@ -79,7 +79,7 @@ public class AiServicesTest {
         assertThat(joke).isNotBlank();
         System.out.println(joke);
 
-        verify(chatLanguageModel).sendMessages(singletonList(userMessage("Tell me a joke about AI")));
+        verify(chatLanguageModel).sendMessages(singletonList(userMessage("Tell me a joke about AI")), null);
     }
 
 
@@ -108,7 +108,7 @@ public class AiServicesTest {
 
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31")));
+                        "You must answer strictly in the following format: 2023-12-31")), null);
     }
 
     @Test
@@ -124,7 +124,7 @@ public class AiServicesTest {
 
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
-                        "You must answer strictly in the following format: 23:59:59")));
+                        "You must answer strictly in the following format: 23:59:59")), null);
     }
 
     @Test
@@ -140,7 +140,7 @@ public class AiServicesTest {
 
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31T23:59:59")));
+                        "You must answer strictly in the following format: 2023-12-31T23:59:59")), null);
     }
 
 
@@ -167,7 +167,7 @@ public class AiServicesTest {
 
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(
                 "Analyze sentiment of " + customerReview + "\n" +
-                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")));
+                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")), null);
     }
 
 
@@ -205,7 +205,7 @@ public class AiServicesTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "}")));
+                        "}")), null);
     }
 
 
@@ -250,7 +250,7 @@ public class AiServicesTest {
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
-                        "}")));
+                        "}")), null);
     }
 
 
@@ -288,7 +288,7 @@ public class AiServicesTest {
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
-                        "}")));
+                        "}")), null);
     }
 
     @Test
@@ -319,7 +319,7 @@ public class AiServicesTest {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
                         "}")
-        ));
+        ), null);
     }
 
     interface ProfessionalChef {
@@ -343,7 +343,7 @@ public class AiServicesTest {
         verify(chatLanguageModel).sendMessages(asList(
                 systemMessage("You are a professional chef. You are friendly, polite and concise."),
                 userMessage(question)
-        ));
+        ), null);
     }
 
 
@@ -368,7 +368,7 @@ public class AiServicesTest {
         verify(chatLanguageModel).sendMessages(asList(
                 systemMessage("You are a professional translator into german"),
                 userMessage("Translate the following text: Hello, how are you?")
-        ));
+        ), null);
     }
 
     interface Summarizer {
@@ -394,7 +394,7 @@ public class AiServicesTest {
         verify(chatLanguageModel).sendMessages(asList(
                 systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
                 userMessage(text + "\nYou must put every item on a separate line.")
-        ));
+        ), null);
     }
 
 
@@ -418,7 +418,7 @@ public class AiServicesTest {
                 .isExactlyInstanceOf(ModerationException.class)
                 .hasMessage("Text \"" + message + "\" violates content policy");
 
-        verify(chatLanguageModel).sendMessages(asList(userMessage(message)));
+        verify(chatLanguageModel).sendMessages(asList(userMessage(message)), null);
         verify(moderationModel).moderate(asList(userMessage(message)));
     }
 
@@ -436,7 +436,7 @@ public class AiServicesTest {
 
         assertThat(response).isNotBlank();
 
-        verify(chatLanguageModel).sendMessages(asList(userMessage(message)));
+        verify(chatLanguageModel).sendMessages(asList(userMessage(message)), null);
         verify(moderationModel).moderate(asList(userMessage(message)));
     }
 
@@ -464,7 +464,7 @@ public class AiServicesTest {
         String firstAiMessage = chatWithHistory.chatWithoutSystemMessage(firstUserMessage);
 
         verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatLanguageModel).sendMessages(asList(userMessage(firstUserMessage)));
+        verify(chatLanguageModel).sendMessages(asList(userMessage(firstUserMessage)), null);
         verify(chatMemory).add(aiMessage(firstAiMessage));
 
         String secondUserMessage = "What is my name?";
@@ -476,7 +476,7 @@ public class AiServicesTest {
                 userMessage(firstUserMessage),
                 aiMessage(firstAiMessage),
                 userMessage(secondUserMessage)
-        ));
+        ), null);
         verify(chatMemory).add(aiMessage(secondAiMessage));
         verify(chatMemory, times(2)).messages();
     }
@@ -498,7 +498,7 @@ public class AiServicesTest {
         verify(chatLanguageModel).sendMessages(asList(
                 systemMessage(systemMessage),
                 userMessage(firstUserMessage)
-        ));
+        ), null);
         verify(chatMemory).add(aiMessage(firstAiMessage));
 
         String secondUserMessage = "What is my name?";
@@ -512,7 +512,7 @@ public class AiServicesTest {
                 aiMessage(firstAiMessage),
 
                 userMessage(secondUserMessage)
-        ));
+        ), null);
         verify(chatMemory).add(aiMessage(secondAiMessage));
         verify(chatMemory, times(4)).messages();
     }
@@ -534,7 +534,7 @@ public class AiServicesTest {
         verify(chatLanguageModel).sendMessages(asList(
                 systemMessage(firstSystemMessage),
                 userMessage(firstUserMessage)
-        ));
+        ), null);
         verify(chatMemory).add(aiMessage(firstAiMessage));
 
         String secondSystemMessage = "You are funny assistant";
@@ -551,7 +551,7 @@ public class AiServicesTest {
 
                 systemMessage(secondSystemMessage),
                 userMessage(secondUserMessage)
-        ));
+        ), null);
         verify(chatMemory).add(aiMessage(secondAiMessage));
         verify(chatMemory, times(4)).messages();
     }

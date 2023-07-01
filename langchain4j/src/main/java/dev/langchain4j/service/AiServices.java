@@ -1,7 +1,12 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
@@ -11,6 +16,8 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -22,6 +29,7 @@ import java.util.concurrent.Future;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
+import static dev.langchain4j.service.ToolSpecifications.toolSpecificationFrom;
 import static java.util.Collections.singletonMap;
 
 public class AiServices<T> {
@@ -30,6 +38,8 @@ public class AiServices<T> {
     private ChatLanguageModel chatLanguageModel;
     private ChatMemory chatMemory;
     private ModerationModel moderationModel;
+    private List<ToolSpecification> toolSpecifications;
+    private Map<String, ToolExecutor> toolExecutors;
 
     private AiServices(Class<T> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
@@ -60,6 +70,23 @@ public class AiServices<T> {
         return this;
     }
 
+    public AiServices<T> tools(Object... objectsWithTools) {
+        toolSpecifications = new ArrayList<>();
+        toolExecutors = new HashMap<>();
+
+        for (Object objectWithTool : objectsWithTools) {
+            for (Method method : objectWithTool.getClass().getMethods()) {
+                if (method.isAnnotationPresent(Tool.class)) {
+                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
+                    toolSpecifications.add(toolSpecification);
+                    toolExecutors.put(toolSpecification.name(), new ToolExecutor(objectWithTool, method));
+                }
+            }
+        }
+
+        return this;
+    }
+
     public T build() {
 
         if (chatLanguageModel == null) {
@@ -73,11 +100,16 @@ public class AiServices<T> {
             }
         }
 
+        if (toolSpecifications != null && chatMemory == null) {
+            throw illegalConfiguration("Please set up chatMemory in order to use tools");
+        }
+
         Object proxyInstance = Proxy.newProxyInstance(
                 aiServiceClass.getClassLoader(),
                 new Class<?>[]{aiServiceClass},
                 new InvocationHandler() {
 
+                    private final Logger log = LoggerFactory.getLogger(aiServiceClass);
                     private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
@@ -89,22 +121,7 @@ public class AiServices<T> {
                         ChatMessage userMessage = prepareUserMessage(method, args);
 
                         if (chatMemory != null) {
-                            systemMessage.ifPresent(it -> {
-                                boolean shouldAddSystemMessage = true;
-                                List<ChatMessage> messages = chatMemory.messages();
-                                for (int i = messages.size() - 1; i >= 0; i--) {
-                                    if (messages.get(i) instanceof dev.langchain4j.data.message.SystemMessage) {
-                                        if (messages.get(i).equals(it)) {
-                                            shouldAddSystemMessage = false;
-                                        }
-                                        break;
-                                    }
-                                }
-                                if (shouldAddSystemMessage) {
-                                    chatMemory.add(it);
-                                }
-                            });
-
+                            systemMessage.ifPresent(this::addIfNeeded);
                             chatMemory.add(userMessage);
                         }
 
@@ -118,11 +135,36 @@ public class AiServices<T> {
                         }
 
                         Future<Result<Moderation>> moderationFuture = triggerModerationIfNeeded(method, messages);
-                        Result<AiMessage> result = chatLanguageModel.sendMessages(messages);
+
+                        Result<AiMessage> result = chatLanguageModel.sendMessages(messages, toolSpecifications);
+
                         verifyModerationIfNeeded(moderationFuture);
 
-                        if (chatMemory != null) {
-                            chatMemory.add(result.get());
+                        ToolExecutionRequest toolExecutionRequest;
+                        while (true) { // TODO limit number of cycles
+
+                            AiMessage aiMessage = result.get();
+
+                            if (chatMemory != null) {
+                                chatMemory.add(aiMessage);
+                            }
+
+                            toolExecutionRequest = aiMessage.toolExecutionRequest();
+                            if (toolExecutionRequest == null) {
+                                break;
+                            }
+
+                            ToolExecutor toolExecutor = toolExecutors.get(toolExecutionRequest.name());
+
+                            log.debug("About to execute {}", toolExecutionRequest);
+                            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest.argumentsAsMap());
+                            log.debug("Tool execution result: {}", toolExecutionResult);
+
+                            ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
+
+                            chatMemory.add(toolExecutionResultMessage);
+
+                            result = chatLanguageModel.sendMessages(chatMemory.messages());
                         }
 
                         return ServiceOutputParser.parse(result, method.getReturnType());
@@ -147,6 +189,22 @@ public class AiServices<T> {
                             }
                         }
                     }
+
+                    private void addIfNeeded(ChatMessage systemMessage) {
+                        boolean shouldAddSystemMessage = true;
+                        List<ChatMessage> messages = chatMemory.messages();
+                        for (int i = messages.size() - 1; i >= 0; i--) {
+                            if (messages.get(i) instanceof dev.langchain4j.data.message.SystemMessage) {
+                                if (messages.get(i).equals(systemMessage)) {
+                                    shouldAddSystemMessage = false;
+                                }
+                                break;
+                            }
+                        }
+                        if (shouldAddSystemMessage) {
+                            chatMemory.add(systemMessage);
+                        }
+                    }
                 });
 
         return (T) proxyInstance;
@@ -157,8 +215,8 @@ public class AiServices<T> {
         Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
-        if (method.isAnnotationPresent(SystemMessage.class)) {
-            SystemMessage annotation = method.getAnnotation(SystemMessage.class);
+        SystemMessage annotation = method.getAnnotation(SystemMessage.class);
+        if (annotation != null) {
 
             String systemMessageTemplate = String.join("\n", annotation.value());
             if (systemMessageTemplate.isEmpty()) {
