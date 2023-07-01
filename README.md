@@ -150,7 +150,6 @@ Please note that the library is in active development and:
     - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithToolsExample.java)
     - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithAutoModerationExample.java)
     - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/OtherServiceExamples.java)
-    - (https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
 - Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
