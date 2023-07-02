@@ -6,6 +6,14 @@ Did you hear about [LangChain](https://github.com/hwchase17/langchain) and want 
 
 This library might be what you need.
 
+## News
+02.07.2023:
+- [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
+- Added support for HuggingFace models
+
+01.07.2023:
+- [Added support for OpenAI functions](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+
 ## Highlights
 You can declaratively define concise "AI Services" that are powered by LLMs:
 ```java
@@ -88,7 +96,7 @@ String translation = translator.translate("Hello, how are you?", "Italian");
 ```
 
 You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
-See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithToolsExample.java).
+See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java).
 
 ## Code examples
 Please see more examples of how LangChain4j can be used [here](https://github.com/langchain4j/langchain4j-examples/tree/main/src/main/java).
@@ -145,27 +153,29 @@ Please note that the library is in active development and:
 
 ## Current capabilities:
 - AI Services:
-    - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/SimpleServiceExample.java)
-    - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithMemoryExample.java)
-    - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithToolsExample.java)
-    - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ServiceWithAutoModerationExample.java)
-    - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/OtherServiceExamples.java)
+    - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/SimpleServiceExample.java)
+    - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
+    - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+    - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
+    - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
-    - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming)
+    - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming + functions)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
 - Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
+  - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
+  - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
   - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
-- [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatMemoryExamples.java)
-- [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
+- [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
+- [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 - Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
 - [In-memory embedding store](https://github.com/ai-for-java/embeddings4j) (for prototyping and testing)
-- [Structured outputs](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/AiServicesExamples.java)
-- [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/PromptTemplateExamples.java)
-- [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/StructuredPromptTemplateExamples.java)
-- [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/StreamingExamples.java)
-- [Loading text and PDF documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java)
-- [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/src/main/java/ChatWithDocumentsExamples.java):
+- [Structured outputs](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
+- [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/PromptTemplateExamples.java)
+- [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StructuredPromptTemplateExamples.java)
+- [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StreamingExamples.java)
+- [Loading text and PDF documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+- [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java):
   - by paragraph
   - by sentence
   - by character count
