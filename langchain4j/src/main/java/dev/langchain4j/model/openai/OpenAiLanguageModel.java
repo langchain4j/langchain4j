@@ -39,11 +39,11 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public Result<String> process(String prompt) {
+    public Result<String> process(String text) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
-                .prompt(prompt)
+                .prompt(text)
                 .temperature(temperature)
                 .build();
 

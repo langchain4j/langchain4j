@@ -16,6 +16,7 @@ import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 class HuggingFaceClient {
 
     private final HuggingFaceApi huggingFaceApi;
+    private final String modelId;
 
     HuggingFaceClient(String apiKey, String modelId, Duration timeout) {
 
@@ -32,17 +33,46 @@ class HuggingFaceClient {
                 .create();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("https://api-inference.huggingface.co/pipeline/feature-extraction/" + modelId + "/")
+                .baseUrl("https://api-inference.huggingface.co")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
 
         this.huggingFaceApi = retrofit.create(HuggingFaceApi.class);
+        this.modelId = modelId;
+    }
+
+    TextGenerationResponse chat(TextGenerationRequest request) {
+        return generate(request);
+    }
+
+    TextGenerationResponse generate(TextGenerationRequest request) {
+        try {
+            retrofit2.Response<List<TextGenerationResponse>> retrofitResponse
+                    = huggingFaceApi.generate(request, modelId).execute();
+
+            if (retrofitResponse.isSuccessful()) {
+                return toOneResponse(retrofitResponse);
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static TextGenerationResponse toOneResponse(Response<List<TextGenerationResponse>> retrofitResponse) {
+        List<TextGenerationResponse> responses = retrofitResponse.body();
+        if (responses != null && responses.size() == 1) {
+            return responses.get(0);
+        } else {
+            throw new RuntimeException("Expected only one generated_text, but was: " + (responses == null ? 0 : responses.size()));
+        }
     }
 
     List<float[]> embed(EmbeddingRequest request) {
         try {
-            Response<List<float[]>> retrofitResponse = huggingFaceApi.embed(request).execute();
+            retrofit2.Response<List<float[]>> retrofitResponse = huggingFaceApi.embed(request, modelId).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
