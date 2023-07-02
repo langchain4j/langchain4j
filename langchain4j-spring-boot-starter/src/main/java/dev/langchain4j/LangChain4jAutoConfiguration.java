@@ -4,7 +4,9 @@ import dev.langchain4j.LangChain4jProperties.HuggingFace;
 import dev.langchain4j.LangChain4jProperties.OpenAi;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.huggingface.HuggingFaceChatModel;
 import dev.langchain4j.model.huggingface.HuggingFaceEmbeddingModel;
+import dev.langchain4j.model.huggingface.HuggingFaceLanguageModel;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -26,7 +28,6 @@ public class LangChain4jAutoConfiguration {
     @Bean
     @Lazy
     ChatLanguageModel chatLanguageModel(LangChain4jProperties properties) {
-        // TODO add HF
         switch (properties.getChatModel().getProvider()) {
             case OPEN_AI:
                 OpenAi openAi = properties.getChatModel().getOpenAi();
@@ -38,8 +39,17 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
-//            case HUGGING_FACE:
-//                break;
+            case HUGGING_FACE:
+                HuggingFace huggingFace = properties.getChatModel().getHuggingFace();
+                return HuggingFaceChatModel.builder()
+                        .accessToken(huggingFace.getAccessToken())
+                        .modelId(huggingFace.getModelId())
+                        .timeout(huggingFace.getTimeout())
+                        .temperature(huggingFace.getTemperature())
+                        .maxNewTokens(huggingFace.getMaxNewTokens())
+                        .returnFullText(huggingFace.getReturnFullText())
+                        .waitForModel(huggingFace.getWaitForModel())
+                        .build();
             default:
                 throw new IllegalConfigurationException("Unsupported chat model provider: " + properties.getChatModel().getProvider());
         }
@@ -49,7 +59,6 @@ public class LangChain4jAutoConfiguration {
     @Lazy
     LanguageModel languageModel(LangChain4jProperties properties) {
         switch (properties.getLanguageModel().getProvider()) {
-
             case OPEN_AI:
                 OpenAi openAi = properties.getLanguageModel().getOpenAi();
                 return OpenAiLanguageModel.builder()
@@ -60,11 +69,19 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
-//            case HUGGING_FACE:
-//                break;
+            case HUGGING_FACE:
+                HuggingFace huggingFace = properties.getLanguageModel().getHuggingFace();
+                return HuggingFaceLanguageModel.builder()
+                        .accessToken(huggingFace.getAccessToken())
+                        .modelId(huggingFace.getModelId())
+                        .timeout(huggingFace.getTimeout())
+                        .temperature(huggingFace.getTemperature())
+                        .maxNewTokens(huggingFace.getMaxNewTokens())
+                        .returnFullText(huggingFace.getReturnFullText())
+                        .waitForModel(huggingFace.getWaitForModel())
+                        .build();
             default:
                 throw new IllegalConfigurationException("Unsupported language model provider: " + properties.getLanguageModel().getProvider());
-
         }
     }
 

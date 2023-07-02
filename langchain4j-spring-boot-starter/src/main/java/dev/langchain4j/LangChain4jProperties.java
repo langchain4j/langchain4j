@@ -48,6 +48,7 @@ public class LangChain4jProperties {
 
         private ModelProvider provider;
         private OpenAi openAi;
+        private HuggingFace huggingFace;
 
         public ModelProvider getProvider() {
             return provider;
@@ -63,6 +64,14 @@ public class LangChain4jProperties {
 
         public void setOpenAi(OpenAi openAi) {
             this.openAi = openAi;
+        }
+
+        public HuggingFace getHuggingFace() {
+            return huggingFace;
+        }
+
+        public void setHuggingFace(HuggingFace huggingFace) {
+            this.huggingFace = huggingFace;
         }
     }
 
@@ -70,6 +79,7 @@ public class LangChain4jProperties {
 
         private ModelProvider provider;
         private OpenAi openAi;
+        private HuggingFace huggingFace;
 
         public ModelProvider getProvider() {
             return provider;
@@ -85,6 +95,14 @@ public class LangChain4jProperties {
 
         public void setOpenAi(OpenAi openAi) {
             this.openAi = openAi;
+        }
+
+        public HuggingFace getHuggingFace() {
+            return huggingFace;
+        }
+
+        public void setHuggingFace(HuggingFace huggingFace) {
+            this.huggingFace = huggingFace;
         }
     }
 
@@ -207,8 +225,11 @@ public class LangChain4jProperties {
 
         private String accessToken;
         private String modelId;
-        private Boolean waitForModel;
         private Duration timeout;
+        private Double temperature;
+        private Integer maxNewTokens;
+        private Boolean returnFullText;
+        private Boolean waitForModel;
 
         public String getAccessToken() {
             return accessToken;
@@ -226,20 +247,44 @@ public class LangChain4jProperties {
             this.modelId = modelId;
         }
 
-        public Boolean getWaitForModel() {
-            return waitForModel;
-        }
-
-        public void setWaitForModel(Boolean waitForModel) {
-            this.waitForModel = waitForModel;
-        }
-
         public Duration getTimeout() {
             return timeout;
         }
 
         public void setTimeout(Duration timeout) {
             this.timeout = timeout;
+        }
+
+        public Double getTemperature() {
+            return temperature;
+        }
+
+        public void setTemperature(Double temperature) {
+            this.temperature = temperature;
+        }
+
+        public Integer getMaxNewTokens() {
+            return maxNewTokens;
+        }
+
+        public void setMaxNewTokens(Integer maxNewTokens) {
+            this.maxNewTokens = maxNewTokens;
+        }
+
+        public Boolean getReturnFullText() {
+            return returnFullText;
+        }
+
+        public void setReturnFullText(Boolean returnFullText) {
+            this.returnFullText = returnFullText;
+        }
+
+        public Boolean getWaitForModel() {
+            return waitForModel;
+        }
+
+        public void setWaitForModel(Boolean waitForModel) {
+            this.waitForModel = waitForModel;
         }
     }
 }
