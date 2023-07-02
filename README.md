@@ -189,14 +189,14 @@ Maven:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j</artifactId>
-  <version>0.7.0</version>
+  <version>0.8.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```
-implementation 'dev.langchain4j:langchain4j:0.7.0'
+implementation 'dev.langchain4j:langchain4j:0.8.0'
 ```
 
 ## Request features
