@@ -9,7 +9,7 @@
     <version>0.7.0</version>
     <packaging>jar</packaging>
 
-    <name>Spring Boot Starter for LangChain4j</name>
+    <name>langchain4j-spring-boot-starter</name>
     <description>Spring Boot Starter for LangChain4j</description>
     <url>https://github.com/langchain4j/langchain4j</url>
 
@@ -84,6 +84,12 @@
 
     <build>
         <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+            </plugin>
 
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
