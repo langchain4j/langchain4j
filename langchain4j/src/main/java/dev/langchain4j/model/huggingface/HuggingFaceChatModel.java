@@ -12,6 +12,7 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
@@ -109,7 +110,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     public static final class Builder {
 
         private String accessToken;
-        private String modelId = "tiiuae/falcon-7b-instruct"; // TODO constant
+        private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
         private Duration timeout = Duration.ofSeconds(60);
         private Double temperature;
         private Integer maxNewTokens;
@@ -122,7 +123,9 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         }
 
         public Builder modelId(String modelId) {
-            this.modelId = modelId;
+            if (modelId != null) {
+                this.modelId = modelId;
+            }
             return this;
         }
 

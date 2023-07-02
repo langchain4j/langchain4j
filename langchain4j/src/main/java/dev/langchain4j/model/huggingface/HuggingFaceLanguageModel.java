@@ -6,6 +6,7 @@ import dev.langchain4j.model.output.Result;
 
 import java.time.Duration;
 
+import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 
 public class HuggingFaceLanguageModel implements LanguageModel {
@@ -80,7 +81,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     public static final class Builder {
 
         private String accessToken;
-        private String modelId = "tiiuae/falcon-7b-instruct"; // TODO constant
+        private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
         private Duration timeout = Duration.ofSeconds(60);
         private Double temperature;
         private Integer maxNewTokens;
@@ -93,7 +94,9 @@ public class HuggingFaceLanguageModel implements LanguageModel {
         }
 
         public Builder modelId(String modelId) {
-            this.modelId = modelId;
+            if (modelId != null) {
+                this.modelId = modelId;
+            }
             return this;
         }
 
