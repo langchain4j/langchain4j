@@ -9,6 +9,8 @@ class EmbeddingRequest {
 
     EmbeddingRequest(List<String> inputs, boolean waitForModel) {
         this.inputs = inputs;
-        this.options = new Options(waitForModel);
+        this.options = Options.builder()
+                .waitForModel(waitForModel)
+                .build();
     }
 }

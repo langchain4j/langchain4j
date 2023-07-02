@@ -38,18 +38,18 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     @Override
-    public void process(String prompt, StreamingResultHandler handler) {
+    public void process(String text, StreamingResultHandler handler) {
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
-                .prompt(prompt)
+                .prompt(text)
                 .temperature(temperature)
                 .build();
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    String text = partialResponse.text();
-                    if (text != null) {
-                        handler.onPartialResult(text);
+                    String partialResponseText = partialResponse.text();
+                    if (partialResponseText != null) {
+                        handler.onPartialResult(partialResponseText);
                     }
                 })
                 .onComplete(handler::onComplete)
