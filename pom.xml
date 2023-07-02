@@ -13,6 +13,7 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
         <module>langchain4j-pinecone</module>
+        <module>langchain4j-spring-boot-starter</module>
     </modules>
 
 </project>
