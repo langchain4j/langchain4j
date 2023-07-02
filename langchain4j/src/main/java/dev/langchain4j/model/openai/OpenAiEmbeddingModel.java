@@ -26,13 +26,19 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     private final OpenAiTokenizer tokenizer;
 
     @Builder
-    public OpenAiEmbeddingModel(String apiKey, String modelName, Duration timeout) {
+    public OpenAiEmbeddingModel(String apiKey,
+                                String modelName,
+                                Duration timeout,
+                                Boolean logRequests,
+                                Boolean logResponses) {
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
                 .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.modelName = modelName == null ? TEXT_EMBEDDING_ADA_002 : modelName;
         this.tokenizer = new OpenAiTokenizer(this.modelName);

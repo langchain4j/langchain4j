@@ -11,7 +11,7 @@
 
     <name>langchain4j-pinecone</name>
     <description>langchain4j integration with Pinecone</description>
-    <url>https://github.com/langchain4j/langchain4j-pinecone</url>
+    <url>https://github.com/langchain4j/langchain4j</url>
 
     <licenses>
         <license>
@@ -23,9 +23,9 @@
     </licenses>
 
     <scm>
-        <url>https://github.com/langchain4j/langchain4j-pinecone</url>
-        <connection>scm:git:git://github.com/langchain4j/langchain4j-pinecone.git</connection>
-        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j-pinecone.git</developerConnection>
+        <url>https://github.com/langchain4j/langchain4j</url>
+        <connection>scm:git:git://github.com/langchain4j/langchain4j.git</connection>
+        <developerConnection>scm:git:git@github.com:langchain4j/langchain4j.git</developerConnection>
     </scm>
 
     <developers>

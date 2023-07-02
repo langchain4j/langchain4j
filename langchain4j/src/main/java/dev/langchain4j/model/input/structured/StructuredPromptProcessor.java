@@ -14,9 +14,9 @@ public class StructuredPromptProcessor {
     public static Prompt toPrompt(Object structuredPrompt) {
         validate(structuredPrompt);
 
-        StructuredPrompt structuredPromptAnnotation = structuredPrompt.getClass().getAnnotation(StructuredPrompt.class);
+        StructuredPrompt annotation = structuredPrompt.getClass().getAnnotation(StructuredPrompt.class);
 
-        String promptTemplateString = String.join("\n", structuredPromptAnnotation.value());
+        String promptTemplateString = String.join(annotation.delimiter(), annotation.value());
         PromptTemplate promptTemplate = PromptTemplate.from(promptTemplateString);
 
         Map<String, Object> variables = extractVariables(structuredPrompt);

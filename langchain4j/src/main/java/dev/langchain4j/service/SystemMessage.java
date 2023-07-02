@@ -12,7 +12,9 @@ public @interface SystemMessage {
 
     /**
      * Prompt template can be defined in one line or multiple lines.
-     * If the template is defined in multiple lines, the lines will be joined with a newline ("\n") automatically.
+     * If the template is defined in multiple lines, the lines will be joined with a delimiter defined below.
      */
     String[] value();
+
+    String delimiter() default "\n";
 }

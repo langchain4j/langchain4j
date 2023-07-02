@@ -21,6 +21,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static dev.langchain4j.model.openai.OpenAiConverters.aiMessageFrom;
 import static dev.langchain4j.model.openai.OpenAiConverters.toFunctions;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
@@ -39,8 +40,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            String modelName,
                            Double temperature,
                            Duration timeout,
-                           boolean logRequests,
-                           boolean logResponses) {
+                           Boolean logRequests,
+                           Boolean logResponses) {
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
                 .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
@@ -50,7 +51,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? OpenAiModelName.GPT_3_5_TURBO : modelName;
+        this.modelName = modelName == null ? GPT_3_5_TURBO : modelName;
         this.temperature = temperature == null ? DEFAULT_TEMPERATURE : temperature;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }

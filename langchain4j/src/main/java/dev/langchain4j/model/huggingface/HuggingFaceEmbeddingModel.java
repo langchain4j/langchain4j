@@ -9,6 +9,7 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -24,10 +25,11 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
         if (accessToken == null || accessToken.trim().isEmpty()) {
             throw new IllegalArgumentException("HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
         }
-        if (modelId == null || modelId.trim().isEmpty()) {
-            throw new IllegalArgumentException("HuggingFace model id must be defined. For example: \"sentence-transformers/all-MiniLM-L6-v2\"");
-        }
-        this.client = new HuggingFaceClient(accessToken, modelId, timeout == null ? DEFAULT_TIMEOUT : timeout);
+        this.client = new HuggingFaceClient(
+                accessToken,
+                modelId == null ? SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2 : modelId,
+                timeout == null ? DEFAULT_TIMEOUT : timeout
+        );
         this.waitForModel = waitForModel == null ? true : waitForModel;
     }
 

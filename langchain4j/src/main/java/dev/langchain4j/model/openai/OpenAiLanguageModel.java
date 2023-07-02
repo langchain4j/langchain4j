@@ -13,6 +13,7 @@ import lombok.Builder;
 import java.time.Duration;
 
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 
 public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
@@ -25,15 +26,22 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     private final OpenAiTokenizer tokenizer;
 
     @Builder
-    public OpenAiLanguageModel(String apiKey, String modelName, Double temperature, Duration timeout) {
+    public OpenAiLanguageModel(String apiKey,
+                               String modelName,
+                               Double temperature,
+                               Duration timeout,
+                               Boolean logRequests,
+                               Boolean logResponses) {
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
                 .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? OpenAiModelName.TEXT_DAVINCI_003 : modelName;
+        this.modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
         this.temperature = temperature == null ? DEFAULT_TEMPERATURE : temperature;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }

@@ -34,12 +34,14 @@ public class ToolExecutor {
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {
-                log.error("Error while executing tool", e2);
-                return e2.getMessage();
+                Throwable cause = e2.getCause();
+                log.error("Error while executing tool", cause);
+                return cause.getMessage();
             }
         } catch (InvocationTargetException e) {
-            log.error("Error while executing tool", e);
-            return e.getMessage();
+            Throwable cause = e.getCause();
+            log.error("Error while executing tool", cause);
+            return cause.getMessage();
         }
     }
 

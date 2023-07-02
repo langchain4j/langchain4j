@@ -31,6 +31,7 @@ import static dev.langchain4j.service.IllegalConfigurationException.illegalConfi
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ToolSpecifications.toolSpecificationFrom;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.toList;
 
 public class AiServices<T> {
 
@@ -172,9 +173,19 @@ public class AiServices<T> {
 
                     private Future<Result<Moderation>> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
-                            return executor.submit(() -> moderationModel.moderate(messages));
+                            return executor.submit(() -> {
+                                List<ChatMessage> messagesToModerate = removeToolMessages(messages);
+                                return moderationModel.moderate(messagesToModerate);
+                            });
                         }
                         return null;
+                    }
+
+                    private List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
+                        return messages.stream()
+                                .filter(it -> !(it instanceof ToolExecutionResultMessage))
+                                .filter(it -> !(it instanceof AiMessage && ((AiMessage) it).toolExecutionRequest() != null))
+                                .collect(toList());
                     }
 
                     private void verifyModerationIfNeeded(Future<Result<Moderation>> moderationFuture) {
@@ -218,7 +229,7 @@ public class AiServices<T> {
         SystemMessage annotation = method.getAnnotation(SystemMessage.class);
         if (annotation != null) {
 
-            String systemMessageTemplate = String.join("\n", annotation.value());
+            String systemMessageTemplate = String.join(annotation.delimiter(), annotation.value());
             if (systemMessageTemplate.isEmpty()) {
                 throw illegalConfiguration("@SystemMessage's template cannot be empty");
             }
@@ -236,9 +247,9 @@ public class AiServices<T> {
 
         String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
 
-        UserMessage userMessage = method.getAnnotation(UserMessage.class);
-        if (userMessage != null) {
-            String userMessageTemplate = String.join("\n", userMessage.value()) + outputFormatInstructions;
+        UserMessage annotation = method.getAnnotation(UserMessage.class);
+        if (annotation != null) {
+            String userMessageTemplate = String.join(annotation.delimiter(), annotation.value()) + outputFormatInstructions;
 
             if (userMessageTemplate.contains("{{it}}")) {
                 if (parameters.length != 1) {

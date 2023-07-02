@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -27,15 +28,21 @@ public class OpenAiModerationModel implements ModerationModel {
     private final String modelName;
 
     @Builder
-    public OpenAiModerationModel(String apiKey, String modelName, Duration timeout) {
+    public OpenAiModerationModel(String apiKey,
+                                 String modelName,
+                                 Duration timeout,
+                                 Boolean logRequests,
+                                 Boolean logResponses) {
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
                 .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
                 .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
+        this.modelName = modelName == null ? TEXT_MODERATION_LATEST : modelName;
     }
 
     @Override
