@@ -14,7 +14,7 @@ class DocumentLoaderTest {
 
     @Test
     void should_load_text_document_from_file_system() {
-        DocumentLoader loader = DocumentLoader.from(Paths.get("langchain4j/src/test/resources/test-file-utf8.txt"), TEXT);
+        DocumentLoader loader = DocumentLoader.from(Paths.get("src/test/resources/test-file-utf8.txt"), TEXT);
 
 
         Document document = loader.load();
@@ -44,7 +44,7 @@ class DocumentLoaderTest {
 
     @Test
     void should_load_pdf_document_from_file_system() {
-        DocumentLoader loader = DocumentLoader.from(Paths.get("langchain4j/src/test/resources/test-file.pdf"), PDF);
+        DocumentLoader loader = DocumentLoader.from(Paths.get("src/test/resources/test-file.pdf"), PDF);
 
 
         Document document = loader.load();

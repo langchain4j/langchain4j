@@ -15,7 +15,7 @@ class TextDocumentParserTest {
     @Test
     void should_parse_with_utf8_charset_by_default() throws IOException {
 
-        FileSystemSource source = FileSystemSource.from(Paths.get("langchain4j/src/test/resources/test-file-utf8.txt"));
+        FileSystemSource source = FileSystemSource.from(Paths.get("src/test/resources/test-file-utf8.txt"));
         TextDocumentParser parser = new TextDocumentParser();
 
         Document document = parser.parse(source.inputStream());
@@ -26,7 +26,7 @@ class TextDocumentParserTest {
     @Test
     void should_parse_with_specified_charset() throws IOException {
 
-        FileSystemSource source = FileSystemSource.from(Paths.get("langchain4j/src/test/resources/test-file-iso-8859-1.txt"));
+        FileSystemSource source = FileSystemSource.from(Paths.get("src/test/resources/test-file-iso-8859-1.txt"));
         TextDocumentParser parser = new TextDocumentParser(ISO_8859_1);
 
         Document document = parser.parse(source.inputStream());
