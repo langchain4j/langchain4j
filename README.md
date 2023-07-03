@@ -99,7 +99,9 @@ You can provide tools that LLMs can use! Can be anything: retrieve information f
 See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java).
 
 ## Code examples
-Please see more examples of how LangChain4j can be used [here](https://github.com/langchain4j/langchain4j-examples/tree/main/src/main/java).
+Please see more examples of how LangChain4j can be used:
+- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
+- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## Project goals
 The goal of this project is to simplify the integration of AI capabilities into your Java application. This can be
