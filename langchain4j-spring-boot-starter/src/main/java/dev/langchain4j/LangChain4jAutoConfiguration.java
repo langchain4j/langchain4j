@@ -14,19 +14,21 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiLanguageModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.service.IllegalConfigurationException;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 
 import static dev.langchain4j.LangChain4jProperties.ModelProvider.OPEN_AI;
 
-@Configuration
+@AutoConfiguration
 @EnableConfigurationProperties(LangChain4jProperties.class)
 public class LangChain4jAutoConfiguration {
 
     @Bean
     @Lazy
+    @ConditionalOnMissingBean
     ChatLanguageModel chatLanguageModel(LangChain4jProperties properties) {
         switch (properties.getChatModel().getProvider()) {
             case OPEN_AI:
@@ -57,6 +59,7 @@ public class LangChain4jAutoConfiguration {
 
     @Bean
     @Lazy
+    @ConditionalOnMissingBean
     LanguageModel languageModel(LangChain4jProperties properties) {
         switch (properties.getLanguageModel().getProvider()) {
             case OPEN_AI:
@@ -87,6 +90,7 @@ public class LangChain4jAutoConfiguration {
 
     @Bean
     @Lazy
+    @ConditionalOnMissingBean
     EmbeddingModel embeddingModel(LangChain4jProperties properties) {
         switch (properties.getEmbeddingModel().getProvider()) {
             case OPEN_AI:
@@ -113,6 +117,7 @@ public class LangChain4jAutoConfiguration {
 
     @Bean
     @Lazy
+    @ConditionalOnMissingBean
     ModerationModel moderationModel(LangChain4jProperties properties) {
         if (properties.getModerationModel().getProvider() != OPEN_AI) {
             throw new IllegalConfigurationException("Unsupported moderation model provider: " + properties.getModerationModel().getProvider());
