@@ -7,11 +7,14 @@ Did you hear about [LangChain](https://github.com/hwchase17/langchain) and want 
 This library might be what you need.
 
 ## News
-02.07.2023:
+03.07.2023 (0.9.0):
+- Added support for Spring Boot 3
+
+02.07.2023 (0.8.0):
 - [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 - Added support for HuggingFace models
 
-01.07.2023:
+01.07.2023 (0.7.0):
 - [Added support for OpenAI functions](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
 
 ## Highlights
@@ -100,6 +103,10 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 ## Code examples
 Please see more examples of how LangChain4j can be used [here](https://github.com/langchain4j/langchain4j-examples/tree/main/src/main/java).
+
+## Compatibility
+- Java: 8 or higher
+- Spring Boot: 2 and 3
 
 ## Project goals
 The goal of this project is to simplify the integration of AI capabilities into your Java application. This can be
@@ -199,14 +206,14 @@ Maven:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j</artifactId>
-  <version>0.8.0</version>
+  <version>0.9.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```
-implementation 'dev.langchain4j:langchain4j:0.8.0'
+implementation 'dev.langchain4j:langchain4j:0.9.0'
 ```
 
 ## Request features
