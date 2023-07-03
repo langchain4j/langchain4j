@@ -88,6 +88,9 @@ class OpenAiConverters {
     }
 
     private static dev.ai4j.openai4j.chat.Parameters toOpenAiParameters(ToolParameters toolParameters) {
+        if (toolParameters == null) {
+            return dev.ai4j.openai4j.chat.Parameters.builder().build();
+        }
         return dev.ai4j.openai4j.chat.Parameters.builder()
                 .properties(toolParameters.properties())
                 .required(toolParameters.required())
