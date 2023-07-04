@@ -18,7 +18,7 @@ public class ParagraphSplitter implements DocumentSplitter {
             throw new IllegalArgumentException("Document text should not be null or empty");
         }
 
-        String[] paragraphs = text.split("\n\n");
+        String[] paragraphs = text.split("\\R\\R");
 
         return stream(paragraphs)
                 .map(paragraph -> DocumentSegment.from(paragraph.trim(), document.metadata()))
