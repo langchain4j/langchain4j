@@ -71,4 +71,9 @@ public class PineconeEmbeddingStore implements EmbeddingStore<DocumentSegment> {
     public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return implementation.findRelevant(referenceEmbedding, maxResults);
     }
+
+    @Override
+    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+        return implementation.findRelevant(referenceEmbedding, maxResults, minSimilarity);
+    }
 }

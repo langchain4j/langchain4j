@@ -122,6 +122,11 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
 
     @Override
     public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
+        return findRelevant(referenceEmbedding, maxResults, -1); // TODO check -1
+    }
+
+    @Override
+    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
 
         QueryVector queryVector = QueryVector
                 .newBuilder()
@@ -149,6 +154,7 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
             return emptyList();
         }
 
+        // TODO take minSimilarity into account
         Collection<Vector> matchedVectors = connection.getBlockingStub().fetch(FetchRequest.newBuilder()
                         .addAllIds(matchedVectorIds)
                         .setNamespace(nameSpace)
@@ -169,8 +175,8 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
         return new EmbeddingMatch<>(
                 vector.getId(),
                 Embedding.from(vector.getValuesList()),
-                createDocumentSegmentIfExists(documentSegmentTextValue)
-        );
+                createDocumentSegmentIfExists(documentSegmentTextValue),
+                null); // TODO
     }
 
     private static DocumentSegment createDocumentSegmentIfExists(Value documentSegmentTextValue) {

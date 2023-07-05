@@ -17,4 +17,6 @@ public interface EmbeddingStore<Embedded> {
     List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
 
     List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults);
+
+    List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity);
 }

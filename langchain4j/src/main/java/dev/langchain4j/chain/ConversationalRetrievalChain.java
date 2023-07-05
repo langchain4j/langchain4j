@@ -21,12 +21,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.joining;
 
 public class ConversationalRetrievalChain implements Chain<String, String> {
 
     private static final DocumentSplitter DEFAULT_DOCUMENT_SPLITTER = new ParagraphSplitter();
-    private static final InMemoryEmbeddingStore DEFAULT_EMBEDDING_STORE = new InMemoryEmbeddingStore(1536, 10000);
+    private static final EmbeddingStore<DocumentSegment> DEFAULT_EMBEDDING_STORE = new InMemoryEmbeddingStore();
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = new PromptTemplate("Answer the following question to the best of your ability: {{question}}\n\nBase your answer on the following information:\n{{information}}");
 
     private final DocumentLoader documentLoader;
@@ -71,7 +72,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("question", question);
-        variables.put("information", prepareInformation(relevantEmbeddings));
+        variables.put("information", format(relevantEmbeddings));
 
         Prompt prompt = promptTemplate.apply(variables);
 
@@ -80,10 +81,10 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         return result.get().text();
     }
 
-    private static String prepareInformation(List<EmbeddingMatch<DocumentSegment>> relevantEmbeddings) {
+    private static String format(List<EmbeddingMatch<DocumentSegment>> relevantEmbeddings) {
 
         String concatenatedEmbeddings = relevantEmbeddings.stream()
-                .map(match -> match.embedded().map(DocumentSegment::text).orElse(""))
+                .map(match -> ofNullable(match.embedded()).map(DocumentSegment::text).orElse(""))
                 .filter(it -> !it.isEmpty())
                 .map(it -> "..." + it + "...")
                 .collect(joining("\n\n"));
