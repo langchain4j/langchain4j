@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
 
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
