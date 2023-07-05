@@ -8,7 +8,7 @@ This library might be what you need.
 
 ## News
 05.07.2023:
-- Now you can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java). Relevant information will be automatically retrieved and incorporated into the prompt. This way, the LLM will have a context of the data and will answer based on it!
+- Now you can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java). Relevant information will be automatically retrieved and injected into the prompt. This way, the LLM will have a context of your data and will answer based on it!
 - The current date and time can now be automatically injected into the prompt using special `{{current_date}}`, `{{current_time}}` and `{{current_date_time}}` placeholders.
 
 03.07.2023:
@@ -112,7 +112,7 @@ Please see more examples of how LangChain4j can be used:
 
 ## Compatibility
 - Java: 8 or higher
-- Spring Boot: 2 and 3
+- Spring Boot: 2 or 3
 
 ## Project goals
 The goal of this project is to simplify the integration of AI capabilities into your Java application. This can be
