@@ -208,6 +208,20 @@
                 </executions>
             </plugin>
 
+            <plugin>
+                <!-- failsafe will be in charge of running the integration tests (everything that ends in IT) -->
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.1.2</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
@@ -239,7 +253,6 @@
                 </plugins>
             </build>
         </profile>
-
     </profiles>
 
 </project>

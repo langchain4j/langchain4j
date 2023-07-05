@@ -2,9 +2,7 @@ package dev.langchain4j.model.input;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
+import java.time.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,7 +13,7 @@ class PromptTemplateTest {
     @Test
     void should_create_prompt_from_template_with_single_variable() {
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}}.");
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}}.");
 
         Prompt prompt = promptTemplate.apply("Klaus");
 
@@ -25,7 +23,7 @@ class PromptTemplateTest {
     @Test
     void should_create_prompt_from_template_with_multiple_variables() {
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{name}} {{surname}}.");
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{name}} {{surname}}.");
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("name", "Klaus");
@@ -41,7 +39,7 @@ class PromptTemplateTest {
     @Test
     void should_provide_date_automatically() {
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and today is {{current_date}}");
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}} and today is {{current_date}}");
 
         Prompt prompt = promptTemplate.apply("Klaus");
 
@@ -51,20 +49,24 @@ class PromptTemplateTest {
     @Test
     void should_provide_time_automatically() {
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and now is {{current_time}}");
+        Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
+
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}} and now is {{current_time}}", clock);
 
         Prompt prompt = promptTemplate.apply("Klaus");
 
-        assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalTime.now());
+        assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalTime.now(clock));
     }
 
     @Test
     void should_provide_date_and_time_automatically() {
 
-        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and now is {{current_date_time}}");
+        Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
+
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}} and now is {{current_date_time}}", clock);
 
         Prompt prompt = promptTemplate.apply("Klaus");
 
-        assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalDateTime.now());
+        assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalDateTime.now(clock));
     }
 }

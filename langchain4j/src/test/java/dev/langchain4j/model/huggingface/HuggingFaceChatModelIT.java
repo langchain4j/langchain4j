@@ -12,7 +12,7 @@ import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FAL
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class HuggingFaceChatModelTest {
+class HuggingFaceChatModelIT {
 
     @Test
     public void testWhenNullAccessToken() {

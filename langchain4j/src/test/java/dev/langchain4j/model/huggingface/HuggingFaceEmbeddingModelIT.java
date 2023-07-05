@@ -10,7 +10,7 @@ import java.util.List;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class HuggingFaceEmbeddingModelTest {
+class HuggingFaceEmbeddingModelIT {
 
     HuggingFaceEmbeddingModel model = HuggingFaceEmbeddingModel.builder()
             .accessToken(System.getenv("HF_API_KEY"))
