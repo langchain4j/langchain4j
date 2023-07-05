@@ -13,7 +13,6 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiLanguageModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
-import dev.langchain4j.service.IllegalConfigurationException;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -21,6 +20,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 
 import static dev.langchain4j.LangChain4jProperties.ModelProvider.OPEN_AI;
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 @AutoConfiguration
 @EnableConfigurationProperties(LangChain4jProperties.class)
@@ -30,9 +31,19 @@ public class LangChain4jAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     ChatLanguageModel chatLanguageModel(LangChain4jProperties properties) {
+        if (properties.getChatModel() == null) {
+            throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model' properties, for example:\n"
+                    + "langchain4j.chat-model.provider = openai\n"
+                    + "langchain4j.chat-model.openai.api-key = sk-...\n");
+        }
+
         switch (properties.getChatModel().getProvider()) {
+
             case OPEN_AI:
                 OpenAi openAi = properties.getChatModel().getOpenAi();
+                if (openAi == null || isNullOrBlank(openAi.getApiKey())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.openai.api-key' property");
+                }
                 return OpenAiChatModel.builder()
                         .apiKey(openAi.getApiKey())
                         .modelName(openAi.getModelName())
@@ -41,8 +52,12 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
+
             case HUGGING_FACE:
                 HuggingFace huggingFace = properties.getChatModel().getHuggingFace();
+                if (huggingFace == null || isNullOrBlank(huggingFace.getAccessToken())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.huggingface.access-token' property");
+                }
                 return HuggingFaceChatModel.builder()
                         .accessToken(huggingFace.getAccessToken())
                         .modelId(huggingFace.getModelId())
@@ -52,8 +67,9 @@ public class LangChain4jAutoConfiguration {
                         .returnFullText(huggingFace.getReturnFullText())
                         .waitForModel(huggingFace.getWaitForModel())
                         .build();
+
             default:
-                throw new IllegalConfigurationException("Unsupported chat model provider: " + properties.getChatModel().getProvider());
+                throw illegalConfiguration("Unsupported chat model provider: %s", properties.getChatModel().getProvider());
         }
     }
 
@@ -61,9 +77,19 @@ public class LangChain4jAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     LanguageModel languageModel(LangChain4jProperties properties) {
+        if (properties.getLanguageModel() == null) {
+            throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model' properties, for example:\n"
+                    + "langchain4j.language-model.provider = openai\n"
+                    + "langchain4j.language-model.openai.api-key = sk-...\n");
+        }
+
         switch (properties.getLanguageModel().getProvider()) {
+
             case OPEN_AI:
                 OpenAi openAi = properties.getLanguageModel().getOpenAi();
+                if (openAi == null || isNullOrBlank(openAi.getApiKey())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model.openai.api-key' property");
+                }
                 return OpenAiLanguageModel.builder()
                         .apiKey(openAi.getApiKey())
                         .modelName(openAi.getModelName())
@@ -72,8 +98,12 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
+
             case HUGGING_FACE:
                 HuggingFace huggingFace = properties.getLanguageModel().getHuggingFace();
+                if (huggingFace == null || isNullOrBlank(huggingFace.getAccessToken())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model.huggingface.access-token' property");
+                }
                 return HuggingFaceLanguageModel.builder()
                         .accessToken(huggingFace.getAccessToken())
                         .modelId(huggingFace.getModelId())
@@ -83,8 +113,9 @@ public class LangChain4jAutoConfiguration {
                         .returnFullText(huggingFace.getReturnFullText())
                         .waitForModel(huggingFace.getWaitForModel())
                         .build();
+
             default:
-                throw new IllegalConfigurationException("Unsupported language model provider: " + properties.getLanguageModel().getProvider());
+                throw illegalConfiguration("Unsupported language model provider: %s", properties.getLanguageModel().getProvider());
         }
     }
 
@@ -92,9 +123,20 @@ public class LangChain4jAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     EmbeddingModel embeddingModel(LangChain4jProperties properties) {
+        if (properties.getEmbeddingModel() == null || properties.getEmbeddingModel().getProvider() == null) {
+            throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model' properties, for example:\n"
+                    + "langchain4j.embedding-model.provider = openai\n"
+                    + "langchain4j.embedding-model.openai.api-key = sk-...\n");
+        }
+
         switch (properties.getEmbeddingModel().getProvider()) {
+
             case OPEN_AI:
                 OpenAi openAi = properties.getEmbeddingModel().getOpenAi();
+                if (openAi == null || isNullOrBlank(openAi.getApiKey())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model.openai.api-key' property"); // TODO exception type
+                }
+
                 return OpenAiEmbeddingModel.builder()
                         .apiKey(openAi.getApiKey())
                         .modelName(openAi.getModelName())
@@ -102,8 +144,13 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
+
             case HUGGING_FACE:
                 HuggingFace huggingFace = properties.getEmbeddingModel().getHuggingFace();
+                if (huggingFace == null || isNullOrBlank(huggingFace.getAccessToken())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model.huggingface.access-token' property");
+                }
+
                 return HuggingFaceEmbeddingModel.builder()
                         .accessToken(huggingFace.getAccessToken())
                         .modelId(huggingFace.getModelId())
@@ -111,7 +158,7 @@ public class LangChain4jAutoConfiguration {
                         .timeout(huggingFace.getTimeout())
                         .build();
             default:
-                throw new IllegalConfigurationException("Unsupported embedding model provider: " + properties.getEmbeddingModel().getProvider());
+                throw illegalConfiguration("Unsupported embedding model provider: %s", properties.getEmbeddingModel().getProvider());
         }
     }
 
@@ -119,11 +166,21 @@ public class LangChain4jAutoConfiguration {
     @Lazy
     @ConditionalOnMissingBean
     ModerationModel moderationModel(LangChain4jProperties properties) {
+        if (properties.getModerationModel() == null) {
+            throw illegalConfiguration("\n\nPlease define 'langchain4j.moderation-model' properties, for example:\n"
+                    + "langchain4j.moderation-model.provider = openai\n"
+                    + "langchain4j.moderation-model.openai.api-key = sk-...\n");
+        }
+
         if (properties.getModerationModel().getProvider() != OPEN_AI) {
-            throw new IllegalConfigurationException("Unsupported moderation model provider: " + properties.getModerationModel().getProvider());
+            throw illegalConfiguration("Unsupported moderation model provider: %s", properties.getModerationModel().getProvider());
         }
 
         OpenAi openAi = properties.getModerationModel().getOpenAi();
+        if (openAi == null || isNullOrBlank(openAi.getApiKey())) {
+            throw illegalConfiguration("\n\nPlease define 'langchain4j.moderation-model.openai.api-key' property");
+        }
+
         return OpenAiModerationModel.builder()
                 .apiKey(openAi.getApiKey())
                 .modelName(openAi.getModelName())
