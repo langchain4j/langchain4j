@@ -1,25 +1,27 @@
 package dev.langchain4j.store.embedding;
 
-import dev.embeddings4j.DefaultEmbedding;
-import dev.embeddings4j.InMemoryVectorDatabase;
-import dev.embeddings4j.SearchNearestQuery;
-import dev.embeddings4j.SearchNearestResult;
-import dev.langchain4j.data.document.DocumentSegment;
 import dev.langchain4j.data.embedding.Embedding;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
-import static java.util.stream.Collectors.toList;
+import static java.util.Comparator.comparingDouble;
 
-public class InMemoryEmbeddingStore implements EmbeddingStore<DocumentSegment> {
+public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
 
-    private final InMemoryVectorDatabase db;
+    private static class Entry<Embedded> {
 
-    public InMemoryEmbeddingStore(int dimensions, int maxSize) {
-        this.db = new InMemoryVectorDatabase(dimensions, maxSize);
+        String id;
+        Embedding embedding;
+        Embedded embedded;
+
+        Entry(String id, Embedding embedding, Embedded embedded) {
+            this.id = id;
+            this.embedding = embedding;
+            this.embedded = embedded;
+        }
     }
+
+    private final List<Entry<Embedded>> entries = new ArrayList<>();
 
     @Override
     public String add(Embedding embedding) {
@@ -30,77 +32,87 @@ public class InMemoryEmbeddingStore implements EmbeddingStore<DocumentSegment> {
 
     @Override
     public void add(String id, Embedding embedding) {
-        db.insert(map(id, embedding));
+        add(id, embedding, null);
     }
 
     @Override
-    public String add(Embedding embedding, DocumentSegment documentSegment) {
+    public String add(Embedding embedding, Embedded embedded) {
         String id = generateRandomId();
-        db.insert(map(id, embedding, documentSegment));
+        add(id, embedding, embedded);
         return id;
+    }
+
+    private void add(String id, Embedding embedding, Embedded embedded) {
+        entries.add(new Entry<>(id, embedding, embedded));
     }
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<dev.embeddings4j.Embedding<String, String, Float>> embeddingList = embeddings.stream()
-                .map(embedding -> map(generateRandomId(), embedding))
-                .collect(toList());
-
-        try {
-            db.insertAll(embeddingList);
-
-            return embeddingList.stream()
-                    .map(dev.embeddings4j.Embedding::id)
-                    .collect(toList());
-
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        List<String> ids = new ArrayList<>();
+        for (Embedding embedding : embeddings) {
+            ids.add(add(embedding));
         }
+        return ids;
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<DocumentSegment> documentSegments) {
-        List<dev.embeddings4j.Embedding<String, String, Float>> embeddingList = new ArrayList<>();
+    public List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded) {
+        if (embeddings.size() != embedded.size()) {
+            throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
+        }
 
+        List<String> ids = new ArrayList<>();
         for (int i = 0; i < embeddings.size(); i++) {
-            embeddingList.add(map(generateRandomId(), embeddings.get(i), documentSegments.get(i)));
+            ids.add(add(embeddings.get(i), embedded.get(i)));
         }
-
-        try {
-            db.insertAll(embeddingList);
-
-            return embeddingList.stream()
-                    .map(dev.embeddings4j.Embedding::id)
-                    .collect(toList());
-
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        return ids;
     }
 
     @Override
-    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-        SearchNearestQuery<String, String, Float> searchNearestQuery =
-                new SearchNearestQuery<>(map(generateRandomId(), referenceEmbedding), maxResults);
-
-        List<SearchNearestResult<String, String, Float>> relevant = db.execute(searchNearestQuery);
-
-        return relevant.stream()
-                .map(SearchNearestResult::embedding)
-                .map(embedding -> new EmbeddingMatch<>(
-                        embedding.id(),
-                        Embedding.from(embedding.vector()),
-                        DocumentSegment.from(embedding.contents()))
-                )
-                .collect(toList());
+    public List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
+        return findRelevant(referenceEmbedding, maxResults, -1);
     }
 
-    private static DefaultEmbedding map(String id, Embedding embedding) {
-        return new DefaultEmbedding(id, embedding.vectorAsList());
+    @Override
+    public List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+
+        Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
+        PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
+
+        for (Entry<Embedded> entry : entries) {
+            double similarity = cosineSimilarity(entry.embedding, referenceEmbedding);
+            if (similarity >= minSimilarity) {
+                matches.add(new EmbeddingMatch<>(entry.id, entry.embedding, entry.embedded, similarity));
+                if (matches.size() > maxResults) {
+                    matches.poll();
+                }
+            }
+        }
+
+        List<EmbeddingMatch<Embedded>> result = new ArrayList<>(matches);
+        result.sort(comparingDouble(EmbeddingMatch::score));
+        return result;
     }
 
-    private static DefaultEmbedding map(String id, Embedding embedding, DocumentSegment documentSegment) {
-        return new DefaultEmbedding(id, documentSegment.text(), embedding.vectorAsList());
+    /**
+     * Calculates cosine similarity between two embeddings (vectors)
+     *
+     * @param first  embedding
+     * @param second embedding
+     * @return cosine similarity (from -1 to 1)
+     */
+    private static float cosineSimilarity(Embedding first, Embedding second) {
+        float dot = 0.0F;
+        float nru = 0.0F;
+        float nrv = 0.0F;
+
+        for (int i = 0; i < first.vector().length; ++i) {
+            dot += first.vector()[i] * second.vector()[i];
+            nru += first.vector()[i] * first.vector()[i];
+            nrv += second.vector()[i] * second.vector()[i];
+        }
+
+        return dot / (float) (Math.sqrt(nru) * Math.sqrt(nrv));
     }
 
     private static String generateRandomId() {

@@ -178,7 +178,7 @@ Please note that the library is in active development and:
 - [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 - Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
-- [In-memory embedding store](https://github.com/ai-for-java/embeddings4j) (for prototyping and testing)
+- In-memory embedding store (for prototyping and testing)
 - [Structured outputs](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/PromptTemplateExamples.java)
 - [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StructuredPromptTemplateExamples.java)

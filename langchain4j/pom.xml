@@ -65,12 +65,6 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.ai4j</groupId>
-            <artifactId>embeddings4j</artifactId>
-            <version>0.3.0</version>
-        </dependency>
-
-        <dependency>
             <groupId>com.knuddels</groupId>
             <artifactId>jtokkit</artifactId>
             <version>0.5.0</version>
