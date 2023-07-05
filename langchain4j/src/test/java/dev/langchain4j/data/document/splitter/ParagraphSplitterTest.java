@@ -17,19 +17,18 @@ class ParagraphSplitterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "test-file-with-paragraphs-cr.txt",
-            "test-file-with-paragraphs-crlf.txt",
-            "test-file-with-paragraphs-lf.txt"
+            "first\r\rsecond\r\rthird\r\rcr\r",
+            "first\n\nsecond\n\nthird\n\nlf\n",
+            "first\r\n\r\nsecond\r\n\r\nthird\r\n\r\ncrlf\r\n"
     })
-    void test_split_by_paragraph(String fileName) {
-        DocumentLoader loader = DocumentLoader.from(Paths.get("src/test/resources/" + fileName));
-        Document document = loader.load();
+    void test_split_by_paragraph(String text) {
+        Document document = Document.from(text);
 
         List<DocumentSegment> documentSegments = splitter.split(document);
 
-        assertEquals(3, documentSegments.size());
+        assertEquals(4, documentSegments.size());
         assertEquals("first", documentSegments.get(0).text());
         assertEquals("second", documentSegments.get(1).text());
         assertEquals("third", documentSegments.get(2).text());
     }
-}
+}
