@@ -16,7 +16,7 @@ import java.util.Optional;
 
 public class MessageWindowChatMemory implements ChatMemory {
 
-    private static final Logger log = LoggerFactory.getLogger(TokenWindowChatMemory.class);
+    private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
     private final Optional<SystemMessage> maybeSystemMessage;
     private final LinkedList<ChatMessage> previousMessages;
