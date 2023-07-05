@@ -27,7 +27,7 @@ import java.util.List;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.service.AiServicesTest.Sentiment.POSITIVE;
+import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServicesTest {
+public class AiServicesIT {
 
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()

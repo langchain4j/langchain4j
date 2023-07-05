@@ -28,7 +28,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
     private static final DocumentSplitter DEFAULT_DOCUMENT_SPLITTER = new ParagraphSplitter();
     private static final EmbeddingStore<DocumentSegment> DEFAULT_EMBEDDING_STORE = new InMemoryEmbeddingStore();
-    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = new PromptTemplate("Answer the following question to the best of your ability: {{question}}\n\nBase your answer on the following information:\n{{information}}");
+    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("Answer the following question to the best of your ability: {{question}}\n\nBase your answer on the following information:\n{{information}}");
 
     private final DocumentLoader documentLoader;
     private final DocumentSplitter documentSplitter;
