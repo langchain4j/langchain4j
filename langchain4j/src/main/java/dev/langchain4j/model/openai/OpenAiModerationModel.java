@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 
 public class OpenAiModerationModel implements ModerationModel {
 
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final OpenAiClient client;
     private final String modelName;

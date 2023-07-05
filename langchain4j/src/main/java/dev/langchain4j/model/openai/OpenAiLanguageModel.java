@@ -18,7 +18,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
     private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final OpenAiClient client;
     private final String modelName;

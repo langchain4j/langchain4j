@@ -82,7 +82,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         private String accessToken;
         private String modelId = TII_UAE_FALCON_7B_INSTRUCT;
-        private Duration timeout = Duration.ofSeconds(60);
+        private Duration timeout = Duration.ofSeconds(15);
         private Double temperature;
         private Integer maxNewTokens;
         private Boolean returnFullText = false;

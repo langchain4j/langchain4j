@@ -37,7 +37,7 @@ class HuggingFaceChatModelTest {
         HuggingFaceChatModel model = HuggingFaceChatModel.builder()
                 .accessToken(System.getenv("HF_API_KEY"))
                 .modelId(TII_UAE_FALCON_7B_INSTRUCT)
-                .timeout(Duration.ofSeconds(60))
+                .timeout(Duration.ofSeconds(15))
                 .temperature(0.7)
                 .maxNewTokens(20)
                 .waitForModel(true)

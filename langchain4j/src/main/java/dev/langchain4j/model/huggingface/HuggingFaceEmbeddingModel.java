@@ -15,7 +15,7 @@ import static java.util.stream.Collectors.toList;
 
 public class HuggingFaceEmbeddingModel implements EmbeddingModel {
 
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final HuggingFaceClient client;
     private final boolean waitForModel;
@@ -65,5 +65,9 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
                 .collect(toList());
 
         return Result.from(embeddings);
+    }
+
+    public static HuggingFaceEmbeddingModel withAccessToken(String accessToken) {
+        return builder().accessToken(accessToken).build();
     }
 }
