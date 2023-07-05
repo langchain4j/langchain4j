@@ -29,10 +29,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<DocumentSegment> {
                 + "<dependency>\n" +
                 "    <groupId>dev.langchain4j</groupId>\n" +
                 "    <artifactId>langchain4j-pinecone</artifactId>\n" +
-                "    <version>0.9.0</version>\n" +
+                "    <version>0.10.0</version>\n" +
                 "</dependency>\n\n"
                 + "Gradle:\n"
-                + "implementation 'dev.langchain4j:langchain4j-pinecone:0.9.0'\n";
+                + "implementation 'dev.langchain4j:langchain4j-pinecone:0.10.0'\n";
     }
 
     private static EmbeddingStore<DocumentSegment> loadDynamically(String implementationClassName, String apiKey, String environment, String projectName, String index, String nameSpace) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {

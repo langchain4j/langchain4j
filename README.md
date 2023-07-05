@@ -7,14 +7,18 @@ Did you hear about [LangChain](https://github.com/hwchase17/langchain) and want 
 This library might be what you need.
 
 ## News
-03.07.2023 (0.9.0):
+05.07.2023:
+- Now you can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java). Relevant information will be automatically retrieved and incorporated into the prompt. This way, the LLM will have a context of the data and will answer based on it!
+- Minor improvements
+
+03.07.2023:
 - Added support for Spring Boot 3
 
-02.07.2023 (0.8.0):
+02.07.2023:
 - [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 - Added support for HuggingFace models
 
-01.07.2023 (0.7.0):
+01.07.2023:
 - [Added support for OpenAI functions](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
 
 ## Highlights
@@ -208,14 +212,14 @@ Maven:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j</artifactId>
-  <version>0.9.0</version>
+  <version>0.10.0</version>
 </dependency>
 ```
 
 Gradle:
 
 ```
-implementation 'dev.langchain4j:langchain4j:0.9.0'
+implementation 'dev.langchain4j:langchain4j:0.10.0'
 ```
 
 ## Request features
