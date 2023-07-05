@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.document.DocumentSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -16,6 +17,7 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Result;
+import dev.langchain4j.retriever.Retriever;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,13 +29,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ToolSpecifications.toolSpecificationFrom;
 import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 public class AiServices<T> {
+
+    private final Logger log = LoggerFactory.getLogger(AiServices.class);
 
     private final Class<T> aiServiceClass;
     private ChatLanguageModel chatLanguageModel;
@@ -41,6 +46,7 @@ public class AiServices<T> {
     private ModerationModel moderationModel;
     private List<ToolSpecification> toolSpecifications;
     private Map<String, ToolExecutor> toolExecutors;
+    private Retriever<DocumentSegment> retriever;
 
     private AiServices(Class<T> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
@@ -88,6 +94,11 @@ public class AiServices<T> {
         return this;
     }
 
+    public AiServices<T> retriever(Retriever<DocumentSegment> retriever) {
+        this.retriever = retriever;
+        return this;
+    }
+
     public T build() {
 
         if (chatLanguageModel == null) {
@@ -110,7 +121,6 @@ public class AiServices<T> {
                 new Class<?>[]{aiServiceClass},
                 new InvocationHandler() {
 
-                    private final Logger log = LoggerFactory.getLogger(aiServiceClass);
                     private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
@@ -120,6 +130,24 @@ public class AiServices<T> {
 
                         Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
                         ChatMessage userMessage = prepareUserMessage(method, args);
+
+                        if (retriever != null) {
+                            List<DocumentSegment> relevant = retriever.findRelevant(userMessage.text());
+
+                            if (relevant == null || relevant.isEmpty()) {
+                                log.debug("No relevant information was found");
+                            } else {
+                                String relevantConcatenated = relevant.stream()
+                                        .map(DocumentSegment::text)
+                                        .collect(joining("\n\n"));
+
+                                log.debug("Retrieved relevant information:\n" + relevantConcatenated + "\n");
+
+                                userMessage = userMessage(userMessage.text()
+                                        + "\n\nHere is some information that might be useful for answering:\n\n"
+                                        + relevantConcatenated);
+                            }
+                        }
 
                         if (chatMemory != null) {
                             systemMessage.ifPresent(this::addIfNeeded);
