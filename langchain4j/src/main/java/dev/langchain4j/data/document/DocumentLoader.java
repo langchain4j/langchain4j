@@ -103,6 +103,6 @@ public class DocumentLoader {
             return DocumentType.PDF;
         }
 
-        throw new RuntimeException("Cannot automatically detect document type for: " + uri);
+        throw new RuntimeException("Cannot automatically detect the document type for '" + uri + "'. Please provide the document type explicitly.");
     }
 }
