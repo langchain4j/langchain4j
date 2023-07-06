@@ -138,7 +138,7 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 ## Getting started
 
-1. Import langchain4j as a dependency to your project:
+1. Add langchain4j dependency to your project:
     - Maven:
       ```
       <dependency>
@@ -159,7 +159,7 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     [How to gen an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
 
 
-3. Create a model and start interacting:
+3. Create an instance of a model and start interacting:
     ```java
     OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
     
