@@ -1,6 +1,6 @@
-# LangChain4j: Supercharge your Java application with the power of AI
+# LangChain for Java: Supercharge your Java application with the power of LLMs
 
-Do you want to integrate various AI tools and services into your Java application?
+Do you want to integrate various AI/LLM tools and capabilities into your Java application?
 
 Did you hear about [LangChain](https://github.com/hwchase17/langchain) and want to try it in Java?
 
