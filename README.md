@@ -1,47 +1,71 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
-Do you want to integrate various AI/LLM tools and capabilities into your Java application?
+## Project goals
 
-Did you hear about [LangChain](https://github.com/hwchase17/langchain) and want to try it in Java?
+The goal of this project is to simplify the integration of AI/LLM capabilities into your Java application.
 
-This library might be what you need.
+This can be achieved thanks to:
+
+- **A simple and coherent layer of abstractions**, designed to ensure that your code does not depend on concrete implementations such as LLM providers, embedding store providers, etc. This allows for easy swapping of components.
+- **Numerous implementations of the above-mentioned abstractions**, providing you with a variety of LLMs and embedding stores to choose from.
+- **Range of in-demand features on top of LLMs, such as:**
+    - The capability to **ingest your own data** (documentation, codebase, etc.), allowing the LLM to act and respond based on your data.
+    - **Autonomous agents** for delegating tasks (defined on the fly) to the LLM, which will strive to complete them.
+    - **Prompt templates** to help you achieve the highest possible quality of LLM responses.
+    - **Memory** to provide context to the LLM for your current and past conversations.
+    - **Structured outputs** for receiving responses from the LLM with a desired structure as Java POJOs.
+    - **"AI Services"** for declaratively defining complex AI behavior behind a simple API.
+    - **Chains** to reduce the need for extensive boilerplate code in common use-cases.
+    - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
 
 ## News
+
 05.07.2023:
-- Now you can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java). Relevant information will be automatically retrieved and injected into the prompt. This way, the LLM will have a context of your data and will answer based on it!
-- The current date and time can now be automatically injected into the prompt using special `{{current_date}}`, `{{current_time}}` and `{{current_date_time}}` placeholders.
+
+- Now you
+  can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java).
+  Relevant information will be automatically retrieved and injected into the prompt. This way, the LLM will have a
+  context of your data and will answer based on it!
+- The current date and time can now be automatically injected into the prompt using
+  special `{{current_date}}`, `{{current_time}}` and `{{current_date_time}}` placeholders.
 
 03.07.2023:
+
 - Added support for Spring Boot 3
 
 02.07.2023:
+
 - [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 - Added support for HuggingFace models
 
 01.07.2023:
+
 - [Added support for OpenAI functions](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
 
 ## Highlights
+
 You can declaratively define concise "AI Services" that are powered by LLMs:
+
 ```java
 interface Assistant {
 
     String chat(String userMessage);
 }
 
-Assistant assistant = AiServices.create(Assistant.class, model);
+    Assistant assistant = AiServices.create(Assistant.class, model);
 
-String answer = assistant.chat("Hello");
-
-// Hello! How can I assist you today?
+    String answer = assistant.chat("Hello");
+    
+    System.out.println(answer); // Hello! How can I assist you today?
 ```
 
 You can use LLM as a classifier:
+
 ```java
 enum Sentiment {
     POSITIVE, NEUTRAL, NEGATIVE;
 }
-        
+
 interface SentimentAnalyzer {
 
     @UserMessage("Analyze sentiment of {{it}}")
@@ -51,16 +75,17 @@ interface SentimentAnalyzer {
     boolean isPositive(String text);
 }
 
-SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
+    SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
-// POSITIVE
+    Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
+    // POSITIVE
 
-boolean positive = sentimentAnalyzer.isPositive("It is bad!");
-// false
+    boolean positive = sentimentAnalyzer.isPositive("It is bad!");
+    // false
 ```
 
 You can easily extract structured information from unstructured data:
+
 ```java
 class Person {
 
@@ -77,17 +102,18 @@ interface PersonExtractor {
     Person extractPersonFrom(String text);
 }
 
-PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
+    PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
 
-String text = "In 1968, amidst the fading echoes of Independence Day, "
-    + "a child named John arrived under the calm evening sky. "
-    + "This newborn, bearing the surname Doe, marked the start of a new journey.";
-    
-Person person = extractor.extractPersonFrom(text);
-// Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
+    String text = "In 1968, amidst the fading echoes of Independence Day, "
+            + "a child named John arrived under the calm evening sky. "
+            + "This newborn, bearing the surname Doe, marked the start of a new journey.";
+
+    Person person = extractor.extractPersonFrom(text);
+    // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
 ```
 
 You can define more sophisticated prompt templates using mustache syntax:
+
 ```java
 interface Translator {
 
@@ -96,75 +122,70 @@ interface Translator {
     String translate(@V("text") String text, @V("language") String language);
 }
 
-Translator translator = AiServices.create(Translator.class, model);
+    Translator translator = AiServices.create(Translator.class, model);
 
-String translation = translator.translate("Hello, how are you?", "Italian");
-// Ciao, come stai?
+    String translation = translator.translate("Hello, how are you?", "Italian");
+    // Ciao, come stai?
 ```
 
 You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
 See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java).
 
-## Code examples
-Please see more examples of how LangChain4j can be used:
-- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
-- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
-
 ## Compatibility
+
 - Java: 8 or higher
 - Spring Boot: 2 or 3
 
-## Project goals
-The goal of this project is to simplify the integration of AI capabilities into your Java application. This can be
-achieved thanks to:
+## Getting started
 
-- **Simple and coherent layer of abstractions**, so that your code does not depend on concrete implementations (LLM
-  providers, embedding store providers, etc) and you can swap them easily
-- **Numerous implementations of the above-mentioned interfaces**, so that you have freedom to choose
-- **Range of in-demand features on top of LLMs, such as:**
-    - **Prompt templates**, so that you can achieve the best possible quality of LLM responses
-    - **Memory**, so that LLM has a context of your current and previous conversations
-    - **Ingesting your own data** (documentation, codebase, etc.), so that LLM can act and answer based on your data
-    - **Chains**, so that you don't need to write lots of boilerplate code for common use-cases
-    - **Structured outputs**, so that you can receive responses from LLM as Java objects
-    - **Autonomous agents**, so that you can delegate tasks (defined on the fly) to LLM, and it will do its best to
-      complete them
-    - **"AI Services"**, so that you can declaratively define complex AI behavior behind a simple API
-    - **Auto-moderation**, so that you can be sure that all inputs and outputs to/from LLM are not harmful
+1. Import langchain4j as a dependency to your project:
+    - Maven:
+      ```
+      <dependency>
+          <groupId>dev.langchain4j</groupId>
+          <artifactId>langchain4j</artifactId>
+          <version>0.10.0</version>
+      </dependency>
+      ```
+    - Gradle:
+      ```
+      implementation 'dev.langchain4j:langchain4j:0.10.0'
+      ```
 
-## Use cases
-You might ask why would I need all of this?
-Here are a couple of examples:
-- You want to implement a custom AI-powered chatbot that has access to your data and behaves the way you want it:
-  - Customer support chatbot that can:
-    - politely answer customer questions
-    - take /change/cancel orders
-  - Educational assistant that can:
-    - Teach various subjects
-    - Explain unclear parts
-    - Assess user's understanding/knowledge
-- You want to process a lot of unstructured data (files, web pages, etc) and extract structured information from them.
-For example:
-  - extract insights from customer reviews and support chat history
-  - extract interesting information from the websites of your competitors
-  - extract insights from CVs of job applicants
-- You want to generate information, for example:
-  - Emails tailored for each of your customers
-  - Content for your app/website:
-    - Blog posts
-    - Stories
-- You want to transform information, for example:
-  - Summarize
-  - Proofread and rewrite
-  - Translate
+2. Import your OpenAI/HuggingFace API key:
+    ```java
+    String apiKey = System.getenv("OPENAI_API_KEY");
+    ```
+    [How to gen an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
+
+
+3. Create a model and start interacting:
+    ```java
+    OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
+    
+    AiMessage answer = model.sendUserMessage("Hello world!").get();
+    
+    System.out.println(answer.text()); // Hello! How can I assist you today?
+    ```
+
+## Code examples
+
+Please see more examples of how LangChain4j can be used:
+
+- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
+- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## Disclaimer
+
 Please note that the library is in active development and:
+
 - Many features are still missing. We are working hard on implementing them ASAP.
-- API might change at any moment. At this point, we prioritize good design in the future over backward compatibility now. We hope for your understanding.
+- API might change at any moment. At this point, we prioritize good design in the future over backward compatibility
+  now. We hope for your understanding.
 - We need your input! Please let us know what features you need and your concerns about the current implementation.
 
 ## Current capabilities:
+
 - AI Services:
     - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/SimpleServiceExample.java)
     - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
@@ -176,9 +197,9 @@ Please note that the library is in active development and:
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
 - Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
-  - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
-  - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
-  - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
+    - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
+    - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
+    - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
 - [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 - Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
@@ -189,12 +210,13 @@ Please note that the library is in active development and:
 - [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StreamingExamples.java)
 - [Loading text and PDF documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 - [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java):
-  - by paragraph
-  - by sentence
-  - by character count
+    - by paragraph
+    - by sentence
+    - by character count
 - Token count estimation (so that you can predict how much you will pay)
 
 ## Coming soon:
+
 - Extending "AI Service" features
 - Integration with more LLM providers (commercial and open)
 - Integrations with more embedding stores (commercial and open)
@@ -204,24 +226,6 @@ Please note that the library is in active development and:
 
 **Please [let us know what features you need](https://github.com/langchain4j/langchain4j/issues/new)!**
 
-## Start using
-
-Maven:
-
-```
-<dependency>
-  <groupId>dev.langchain4j</groupId>
-  <artifactId>langchain4j</artifactId>
-  <version>0.10.0</version>
-</dependency>
-```
-
-Gradle:
-
-```
-implementation 'dev.langchain4j:langchain4j:0.10.0'
-```
-
 ## Request features
 
 Please [let us know what features you need](https://github.com/ai-for-java/ai4j/issues/new).
@@ -229,6 +233,34 @@ Please [let us know what features you need](https://github.com/ai-for-java/ai4j/
 ## Contribute
 
 Please help us make this open-source library better by contributing.
+
+## Use cases
+
+You might ask why would I need all of this?
+Here are a couple of examples:
+
+- You want to implement a custom AI-powered chatbot that has access to your data and behaves the way you want it:
+    - Customer support chatbot that can:
+        - politely answer customer questions
+        - take /change/cancel orders
+    - Educational assistant that can:
+        - Teach various subjects
+        - Explain unclear parts
+        - Assess user's understanding/knowledge
+- You want to process a lot of unstructured data (files, web pages, etc) and extract structured information from them.
+  For example:
+    - extract insights from customer reviews and support chat history
+    - extract interesting information from the websites of your competitors
+    - extract insights from CVs of job applicants
+- You want to generate information, for example:
+    - Emails tailored for each of your customers
+    - Content for your app/website:
+        - Blog posts
+        - Stories
+- You want to transform information, for example:
+    - Summarize
+    - Proofread and rewrite
+    - Translate
 
 ## Best practices
 
@@ -249,3 +281,20 @@ Here are some best practices for using LLMs:
   different parts of it.
 - Use unusual delimiters, such as \```triple backticks``` to help the LLM distinguish
   data or input from instructions.
+
+## How to get an API key
+You will need an API key from OpenAI (paid) or HuggingFace (free) to use LLMs hosted by them.
+
+We recommend using OpenAI LLMs (`gpt-3.5-turbo` and `gpt-4`) as they are by far the most capable and are reasonably priced.
+
+It will cost approximately $0.01 to generate 10 pages (A4 format) of text with `gpt-3.5-turbo`. With `gpt-4`, the cost will be $0.30 to generate the same amount of text. However, for some use cases, this higher cost may be justified.
+
+[How to get OpenAI API key](https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/).
+
+For embeddings, we recommend using one of the models from the [HuggingFace MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
+You'll have to find the best one for your specific use case.
+
+Here's how to get a HuggingFace API key:
+- Create an account on https://huggingface.co
+- Go to https://huggingface.co/settings/tokens
+- Generate a new access token
