@@ -5,13 +5,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>dev.langchain4j</groupId>
-    <artifactId>langchain4j-parent</artifactId>
+    <artifactId>langchain4j-aggregator</artifactId>
     <version>0.11.0</version>
     <packaging>pom</packaging>
 
     <modules>
-        <module>langchain4j-core</module>
         <module>langchain4j</module>
+        <module>langchain4j-parent</module>
+        <module>langchain4j-core</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-spring-boot-starter</module>
     </modules>
