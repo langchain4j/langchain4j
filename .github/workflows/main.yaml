@@ -15,6 +15,20 @@ jobs:
       - name: Test
         run: mvn --batch-mode test
 
+  # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+        # Check we only rely on permissive licenses in the main parts of the library:
+      - name: License Compliance
+        run: mvn -P compliance -pl langchain4j,langchain4j-core,langchain4j-spring-boot-starter org.honton.chas:license-maven-plugin:compliance
+
 # TODO's
 #  - setup integration tests
 #     - these require an openAI (and hugging face, etc) token

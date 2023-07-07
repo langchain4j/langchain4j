@@ -253,6 +253,48 @@
                 </plugins>
             </build>
         </profile>
+
+        <profile>
+            <id>compliance</id>
+            <activation>
+                <property>
+                    <name>compliance</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.honton.chas</groupId>
+                        <artifactId>license-maven-plugin</artifactId>
+                        <version>0.0.3</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>compliance</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <scopes>compile,runtime,provided,test</scopes>
+                            <acceptableLicenses>
+                                <license>
+                                    <name>(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)</name>
+                                    <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
+                                </license>
+                                <license>
+                                    <name>(The MIT License|MIT License)</name>
+                                    <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
+                                </license>
+                                <license>
+                                    <name>Eclipse Public License v2.0</name>
+                                    <url>https?://www.eclipse.org/legal/epl-v20\.html</url>
+                                </license>
+                            </acceptableLicenses>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 
 </project>
