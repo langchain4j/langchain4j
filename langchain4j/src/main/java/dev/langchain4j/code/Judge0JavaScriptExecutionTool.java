@@ -8,6 +8,9 @@ import java.time.Duration;
 import static dev.langchain4j.code.JavaScriptCodeFixer.fixIfNoLogToConsole;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+/**
+ * A tool that executes JS code using the Judge0 service, hosted by Rapid API.
+ */
 public class Judge0JavaScriptExecutionTool {
 
     private static final int JAVASCRIPT = 93;
