@@ -19,28 +19,32 @@ This can be achieved thanks to:
     - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
 
 ## News
+11 July:
 
-05.07.2023:
+- Added ["Dynamic Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java):
+  Now, the LLM can generate code for tasks that require precise calculations, such as math and string manipulation. This will be dynamically executed in a style akin to GPT-4's code interpreter!
+  We use [Judge0, hosted by Rapid API](https://rapidapi.com/judge0-official/api/judge0-ce/pricing), for code execution. You can subscribe and receive 50 free executions per day.
 
-- Now you
-  can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java).
+5 July:
+
+- Now you can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java).
   Relevant information will be automatically retrieved and injected into the prompt. This way, the LLM will have a
   context of your data and will answer based on it!
 - The current date and time can now be automatically injected into the prompt using
   special `{{current_date}}`, `{{current_time}}` and `{{current_date_time}}` placeholders.
 
-03.07.2023:
+3 July:
 
 - Added support for Spring Boot 3
 
-02.07.2023:
+2 July:
 
 - [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 - Added support for HuggingFace models
 
-01.07.2023:
+1 July:
 
-- [Added support for OpenAI functions](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+- [Added "Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java) (support for OpenAI functions)
 
 ## Highlights
 
@@ -144,12 +148,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.10.0</version>
+          <version>0.11.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.10.0'
+      implementation 'dev.langchain4j:langchain4j:0.11.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
