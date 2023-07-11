@@ -18,5 +18,5 @@ public @interface Tool {
     /**
      * Description of the tool. LLM should understand what this tool is for and when it should be used.
      */
-    String value() default "";
+    String[] value() default "";
 }
