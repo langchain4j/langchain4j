@@ -26,12 +26,12 @@ public class Judge0JavaScriptExecutionTool {
     }
 
     /**
-     * Constructs a new instance of Judge0JavaScriptExecutionTool with the provided Judge0 API key and a flag
-     * to control whether to fix the code if needed.
+     * Constructs a new instance of Judge0JavaScriptExecutionTool with the provided Judge0 API key, a flag
+     * to control whether to fix the code (if needed), and a timeout.
      *
      * @param apiKey          The Judge0 API key. You can subscribe to the free plan (Basic) here: https://rapidapi.com/judge0-official/api/judge0-ce/pricing
-     * @param fixCodeIfNeeded There is no way to get result from Judge0 unless it is printed to the console.
-     *                        If result is not logged to the console in the provided JS code, attempt will be made to fix that.
+     * @param fixCodeIfNeeded Judge0 can return result of an execution if it was printed to the console.
+     *                        If provided JS code does not print result to the console, attempt will be made to fix that.
      * @param timeout         Timeout for calling Judge0.
      */
     public Judge0JavaScriptExecutionTool(String apiKey, boolean fixCodeIfNeeded, Duration timeout) {
@@ -39,7 +39,7 @@ public class Judge0JavaScriptExecutionTool {
         this.fixCodeIfNeeded = fixCodeIfNeeded;
     }
 
-    @Tool("MUST be used for accurate calculations: math, processing strings, etc")
+    @Tool("MUST be used for accurate calculations: math, sorting, filtering, aggregating, string processing, etc")
     public String executeJavaScriptCode(
             @P("JavaScript code to execute, result MUST be printed to console")
             String javaScriptCode
