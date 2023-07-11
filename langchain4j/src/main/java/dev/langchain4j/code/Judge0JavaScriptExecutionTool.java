@@ -6,7 +6,6 @@ import dev.langchain4j.agent.tool.Tool;
 import java.time.Duration;
 
 import static dev.langchain4j.code.JavaScriptCodeFixer.fixIfNoLogToConsole;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 public class Judge0JavaScriptExecutionTool {
 
@@ -36,9 +35,6 @@ public class Judge0JavaScriptExecutionTool {
      * @param timeout         Timeout for calling Judge0.
      */
     public Judge0JavaScriptExecutionTool(String apiKey, boolean fixCodeIfNeeded, Duration timeout) {
-        if (isNullOrBlank(apiKey)) {
-            throw new IllegalArgumentException("Please provide a valid Judge0 API key");
-        }
         this.engine = new Judge0JavaScriptEngine(apiKey, JAVASCRIPT, timeout);
         this.fixCodeIfNeeded = fixCodeIfNeeded;
     }
