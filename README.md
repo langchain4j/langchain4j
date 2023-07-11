@@ -1,3 +1,5 @@
+[![Project Map](https://sourcespy.com/shield.svg)](https://sourcespy.com/github/langchain4jlangchain4j/)
+
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
 ## Project goals
