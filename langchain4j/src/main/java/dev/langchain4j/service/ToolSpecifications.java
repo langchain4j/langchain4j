@@ -1,20 +1,16 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static java.util.Arrays.stream;
-import static java.util.stream.Collectors.toList;
 
 class ToolSpecifications {
 
@@ -26,7 +22,7 @@ class ToolSpecifications {
 
         ToolSpecification.Builder builder = ToolSpecification.builder()
                 .name(name)
-                .description(description);
+                .description(description); // TODO @Description ?
 
         for (Parameter parameter : method.getParameters()) {
             builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
@@ -35,19 +31,16 @@ class ToolSpecifications {
         return builder.build();
     }
 
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Parameter parameter) {
+    private static JsonSchemaProperty[] toJsonSchemaProperties(Parameter parameter) {
 
         Class<?> type = parameter.getType();
 
-        P annotation = parameter.getAnnotation(P.class);
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
-
         if (type == String.class) {
-            return removeNulls(STRING, description);
+            return new JsonSchemaProperty[]{STRING};
         }
 
         if (type == boolean.class || type == Boolean.class) {
-            return removeNulls(BOOLEAN, description);
+            return new JsonSchemaProperty[]{BOOLEAN};
         }
 
         // TODO put constraints on min and max?
@@ -64,25 +57,19 @@ class ToolSpecifications {
                 || type == double.class
                 || type == Double.class // TODO bigdecimal, etc
         ) {
-            return removeNulls(NUMBER, description);
+            return new JsonSchemaProperty[]{NUMBER};
         }
 
         if (type.isArray()
                 || type == List.class
                 || type == Set.class) { // TODO something else?
-            return removeNulls(ARRAY, description); // TODO provide type of array?
+            return new JsonSchemaProperty[]{ARRAY}; // TODO provide type of array?
         }
 
         if (type.isEnum()) {
-            return removeNulls(STRING, enums((Object[]) type.getEnumConstants()), description);
+            return new JsonSchemaProperty[]{STRING, enums((Object[]) type.getEnumConstants())};
         }
 
-        return removeNulls(OBJECT, description); // TODO provide internals
-    }
-
-    private static Iterable<JsonSchemaProperty> removeNulls(JsonSchemaProperty... properties) {
-        return stream(properties)
-                .filter(Objects::nonNull)
-                .collect(toList());
+        return new JsonSchemaProperty[]{OBJECT}; // TODO provide internals
     }
 }

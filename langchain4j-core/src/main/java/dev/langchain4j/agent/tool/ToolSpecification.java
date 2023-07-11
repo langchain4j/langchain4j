@@ -4,8 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static java.util.Arrays.asList;
-
 public class ToolSpecification {
 
     private final String name;
@@ -90,20 +88,12 @@ public class ToolSpecification {
         }
 
         public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
-            return addParameter(name, asList(jsonSchemaProperties));
-        }
-
-        public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
             addOptionalParameter(name, jsonSchemaProperties);
             this.parameters.required().add(name);
             return this;
         }
 
         public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
-            return addOptionalParameter(name, asList(jsonSchemaProperties));
-        }
-
-        public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
             if (this.parameters == null) {
                 this.parameters = ToolParameters.builder().build();
             }
