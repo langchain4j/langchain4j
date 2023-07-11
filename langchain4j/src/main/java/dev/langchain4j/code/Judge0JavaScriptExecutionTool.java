@@ -16,28 +16,27 @@ public class Judge0JavaScriptExecutionTool {
     private final boolean fixCodeIfNeeded;
 
     /**
-     * Constructs a new instance of Judge0JavaScriptExecutionTool with the provided Judge0 API key.
+     * Constructs a new instance with the provided Rapid API key.
      * The code fixing feature is enabled by default.
      * Default timeout is 10 seconds.
      *
-     * @param apiKey The Judge0 API key. You can subscribe to the free plan (Basic) here: https://rapidapi.com/judge0-official/api/judge0-ce/pricing
+     * @param apiKey The Rapid API key. You can subscribe to the free plan (Basic) here: https://rapidapi.com/judge0-official/api/judge0-ce/pricing
      */
     public Judge0JavaScriptExecutionTool(String apiKey) {
         this(apiKey, true, Duration.ofSeconds(10));
     }
 
     /**
-     * Constructs a new instance of Judge0JavaScriptExecutionTool with the provided Judge0 API key, a flag
-     * to control whether to fix the code (if needed), and a timeout.
+     * Constructs a new instance with the provided Rapid API key, a flag to control whether to fix the code, and a timeout.
      *
-     * @param apiKey          The Judge0 API key. You can subscribe to the free plan (Basic) here: https://rapidapi.com/judge0-official/api/judge0-ce/pricing
+     * @param apiKey          Rapid API key. You can subscribe to the free plan (Basic) here: https://rapidapi.com/judge0-official/api/judge0-ce/pricing
      * @param fixCodeIfNeeded Judge0 can return result of an execution if it was printed to the console.
-     *                        If provided JS code does not print result to the console, attempt will be made to fix that.
+     *                        If provided JS code does not print result to the console, attempt will be made to fix it.
      * @param timeout         Timeout for calling Judge0.
      */
     public Judge0JavaScriptExecutionTool(String apiKey, boolean fixCodeIfNeeded, Duration timeout) {
         if (isNullOrBlank(apiKey)) {
-            throw new IllegalArgumentException("Please provide a valid Judge0 API key");
+            throw new IllegalArgumentException("Please provide a valid Rapid API key");
         }
         this.engine = new Judge0JavaScriptEngine(apiKey, JAVASCRIPT, timeout);
         this.fixCodeIfNeeded = fixCodeIfNeeded;
