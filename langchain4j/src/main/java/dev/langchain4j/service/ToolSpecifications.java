@@ -10,19 +10,14 @@ import java.util.List;
 import java.util.Set;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 class ToolSpecifications {
 
     static ToolSpecification toolSpecificationFrom(Method method) {
-        Tool annotation = method.getAnnotation(Tool.class);
-
-        String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-        String description = String.join("\n", annotation.value());
-
+        Tool toolAnnotation = method.getAnnotation(Tool.class);
         ToolSpecification.Builder builder = ToolSpecification.builder()
-                .name(name)
-                .description(description); // TODO @Description ?
+                .name(toolAnnotation.name().isEmpty() ? method.getName() : toolAnnotation.name())
+                .description(toolAnnotation.value()); // TODO @Description ?
 
         for (Parameter parameter : method.getParameters()) {
             builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
