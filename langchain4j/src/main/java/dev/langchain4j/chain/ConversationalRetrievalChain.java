@@ -93,6 +93,6 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
             return "";
         }
 
-        return "Base your answer on the following information:\n" + concatenatedEmbeddings;
+        return concatenatedEmbeddings;
     }
 }
