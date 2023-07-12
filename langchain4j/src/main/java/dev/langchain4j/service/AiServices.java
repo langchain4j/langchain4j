@@ -275,6 +275,8 @@ public class AiServices<T> {
 
         String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
 
+        String userName = getUserName(parameters, args);
+
         UserMessage annotation = method.getAnnotation(UserMessage.class);
         if (annotation != null) {
             String userMessageTemplate = String.join(annotation.delimiter(), annotation.value()) + outputFormatInstructions;
@@ -289,12 +291,12 @@ public class AiServices<T> {
             }
 
             Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            return prompt.toUserMessage();
+            return userMessage(userName, prompt.text());
         }
 
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(UserMessage.class)) {
-                return userMessage(toString(args[i]) + outputFormatInstructions);
+                return userMessage(userName, toString(args[i]) + outputFormatInstructions);
             }
         }
 
@@ -303,12 +305,20 @@ public class AiServices<T> {
         }
 
         if (args.length == 1) {
-            return userMessage(toString(args[0]) + outputFormatInstructions);
+            return userMessage(userName, toString(args[0]) + outputFormatInstructions);
         }
 
-        throw illegalConfiguration("For methods with multiple arguments, each argument must be annotated with either @V or @UserMessage. " +
-                "Please ensure all arguments in multi-argument methods have one of these annotations.");
+        throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage or @UserName");
 
+    }
+
+    private static String getUserName(Parameter[] parameters, Object[] args) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(UserName.class)) {
+                return args[i].toString();
+            }
+        }
+        return null;
     }
 
     private static void validateParameters(Method method) {
