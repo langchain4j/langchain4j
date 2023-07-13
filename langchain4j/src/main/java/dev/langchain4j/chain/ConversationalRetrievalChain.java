@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
 /**
@@ -39,14 +41,16 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
                                         ChatMemory chatMemory,
                                         PromptTemplate promptTemplate,
                                         Retriever<TextSegment> retriever) {
-        this.chatLanguageModel = chatLanguageModel;
+        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withCapacity(10) : chatMemory;
         this.promptTemplate = promptTemplate == null ? DEFAULT_PROMPT_TEMPLATE : promptTemplate;
-        this.retriever = retriever;
+        this.retriever = ensureNotNull(retriever, "retriever");
     }
 
     @Override
     public String execute(String question) {
+
+        question = ensureNotBlank(question, "question");
 
         List<TextSegment> relevantSegments = retriever.findRelevant(question);
 
