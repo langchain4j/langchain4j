@@ -14,7 +14,7 @@ public class TextDocumentParser implements DocumentParser {
     private final Charset charset;
 
     public TextDocumentParser() {
-        this.charset = UTF_8;
+        this(UTF_8);
     }
 
     public TextDocumentParser(Charset charset) {
