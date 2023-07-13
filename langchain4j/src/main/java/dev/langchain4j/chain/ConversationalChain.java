@@ -10,6 +10,10 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 
+/**
+ * A chain for interacting with a specified ChatLanguageModel while maintaining a memory of the conversation.
+ * Includes a default ChatMemory (a message window with a capacity of 10), which can be overridden.
+ */
 public class ConversationalChain implements Chain<String, String> {
 
     private final ChatLanguageModel chatLanguageModel;
