@@ -4,7 +4,7 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.moderation.ModerationRequest;
 import dev.ai4j.openai4j.moderation.ModerationResponse;
 import dev.ai4j.openai4j.moderation.ModerationResult;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
@@ -95,8 +95,8 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Result<Moderation> moderate(DocumentSegment documentSegment) {
-        return moderate(documentSegment.text());
+    public Result<Moderation> moderate(TextSegment textSegment) {
+        return moderate(textSegment.text());
     }
 
     public static OpenAiModerationModel withApiKey(String apiKey) {

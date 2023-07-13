@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.embedding.Embedding;
 import lombok.Builder;
 
@@ -8,9 +8,9 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
-public class PineconeEmbeddingStore implements EmbeddingStore<DocumentSegment> {
+public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private final EmbeddingStore<DocumentSegment> implementation;
+    private final EmbeddingStore<TextSegment> implementation;
 
     @Builder
     public PineconeEmbeddingStore(String apiKey, String environment, String projectName, String index, String nameSpace) {
@@ -35,11 +35,11 @@ public class PineconeEmbeddingStore implements EmbeddingStore<DocumentSegment> {
                 + "implementation 'dev.langchain4j:langchain4j-pinecone:0.11.0'\n";
     }
 
-    private static EmbeddingStore<DocumentSegment> loadDynamically(String implementationClassName, String apiKey, String environment, String projectName, String index, String nameSpace) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    private static EmbeddingStore<TextSegment> loadDynamically(String implementationClassName, String apiKey, String environment, String projectName, String index, String nameSpace) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         Class<?> implementationClass = Class.forName(implementationClassName);
         Class<?>[] constructorParameterTypes = new Class<?>[]{String.class, String.class, String.class, String.class, String.class};
         Constructor<?> constructor = implementationClass.getConstructor(constructorParameterTypes);
-        return (EmbeddingStore<DocumentSegment>) constructor.newInstance(apiKey, environment, projectName, index, nameSpace);
+        return (EmbeddingStore<TextSegment>) constructor.newInstance(apiKey, environment, projectName, index, nameSpace);
     }
 
     @Override
@@ -53,8 +53,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<DocumentSegment> {
     }
 
     @Override
-    public String add(Embedding embedding, DocumentSegment documentSegment) {
-        return implementation.add(embedding, documentSegment);
+    public String add(Embedding embedding, TextSegment textSegment) {
+        return implementation.add(embedding, textSegment);
     }
 
     @Override
@@ -63,17 +63,17 @@ public class PineconeEmbeddingStore implements EmbeddingStore<DocumentSegment> {
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<DocumentSegment> documentSegments) {
-        return implementation.addAll(embeddings, documentSegments);
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
+        return implementation.addAll(embeddings, textSegments);
     }
 
     @Override
-    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return implementation.findRelevant(referenceEmbedding, maxResults);
     }
 
     @Override
-    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
         return implementation.findRelevant(referenceEmbedding, maxResults, minSimilarity);
     }
 }

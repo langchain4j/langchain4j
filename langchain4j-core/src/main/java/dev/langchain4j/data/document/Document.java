@@ -1,5 +1,7 @@
 package dev.langchain4j.data.document;
 
+import dev.langchain4j.data.segment.TextSegment;
+
 import java.util.Objects;
 
 public class Document {
@@ -20,8 +22,8 @@ public class Document {
         return metadata;
     }
 
-    public DocumentSegment toDocumentSegment() {
-        return DocumentSegment.from(text, metadata);
+    public TextSegment toTextSegment() {
+        return TextSegment.from(text, metadata);
     }
 
     @Override

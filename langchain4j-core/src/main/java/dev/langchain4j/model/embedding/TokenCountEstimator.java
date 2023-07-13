@@ -1,6 +1,6 @@
 package dev.langchain4j.model.embedding;
 
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 
 import java.util.List;
 
@@ -8,7 +8,7 @@ public interface TokenCountEstimator {
 
     int estimateTokenCount(String text);
 
-    int estimateTokenCount(DocumentSegment documentSegment);
+    int estimateTokenCount(TextSegment textSegment);
 
-    int estimateTokenCount(List<DocumentSegment> documentSegments);
+    int estimateTokenCount(List<TextSegment> textSegments);
 }

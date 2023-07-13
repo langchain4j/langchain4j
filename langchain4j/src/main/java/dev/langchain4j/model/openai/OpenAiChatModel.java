@@ -4,7 +4,7 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -141,8 +141,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCount(DocumentSegment documentSegment) {
-        return estimateTokenCount(documentSegment.text());
+    public int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiChatModel withApiKey(String apiKey) {

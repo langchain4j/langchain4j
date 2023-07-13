@@ -1,6 +1,6 @@
 package dev.langchain4j.model.language;
 
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 
 public interface TokenCountEstimator {
@@ -11,5 +11,5 @@ public interface TokenCountEstimator {
 
     int estimateTokenCount(Object structuredPrompt);
 
-    int estimateTokenCount(DocumentSegment documentSegment);
+    int estimateTokenCount(TextSegment textSegment);
 }

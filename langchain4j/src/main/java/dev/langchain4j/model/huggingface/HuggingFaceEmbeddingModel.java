@@ -1,6 +1,6 @@
 package dev.langchain4j.model.huggingface;
 
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Result;
@@ -40,15 +40,15 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public Result<Embedding> embed(DocumentSegment documentSegment) {
-        return embed(documentSegment.text());
+    public Result<Embedding> embed(TextSegment textSegment) {
+        return embed(textSegment.text());
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<DocumentSegment> documentSegments) {
+    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = documentSegments.stream()
-                .map(DocumentSegment::text)
+        List<String> texts = textSegments.stream()
+                .map(TextSegment::text)
                 .collect(toList());
 
         return embedTexts(texts);

@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.embedding.EmbeddingRequest;
 import dev.ai4j.openai4j.embedding.EmbeddingResponse;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
@@ -51,15 +51,15 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     @Override
-    public Result<Embedding> embed(DocumentSegment documentSegment) {
-        return embed(documentSegment.text());
+    public Result<Embedding> embed(TextSegment textSegment) {
+        return embed(textSegment.text());
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<DocumentSegment> documentSegments) {
+    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        List<String> texts = documentSegments.stream()
-                .map(DocumentSegment::text)
+        List<String> texts = textSegments.stream()
+                .map(TextSegment::text)
                 .collect(toList());
 
         return embedTexts(texts);
@@ -87,15 +87,15 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     @Override
-    public int estimateTokenCount(DocumentSegment documentSegment) {
-        return estimateTokenCount(documentSegment.text());
+    public int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
     }
 
     @Override
-    public int estimateTokenCount(List<DocumentSegment> documentSegments) {
+    public int estimateTokenCount(List<TextSegment> textSegments) {
         int tokenCount = 0;
-        for (DocumentSegment documentSegment : documentSegments) {
-            tokenCount += estimateTokenCount(documentSegment);
+        for (TextSegment textSegment : textSegments) {
+            tokenCount += estimateTokenCount(textSegment);
         }
         return tokenCount;
     }

@@ -2,8 +2,8 @@ package dev.langchain4j.store.embedding;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import dev.langchain4j.data.document.DocumentSegment;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import io.pinecone.PineconeClient;
 import io.pinecone.PineconeClientConfig;
 import io.pinecone.PineconeConnection;
@@ -19,10 +19,10 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegment> {
+public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
-    private static final String METADATA_DOCUMENT_SEGMENT_TEXT = "document_segment_text"; // do not change, will break backward compatibility!
+    private static final String METADATA_TEXT_SEGMENT = "text_segment"; // do not change, will break backward compatibility!
 
     private final PineconeConnection connection;
     private final String nameSpace;
@@ -57,9 +57,9 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
     }
 
     @Override
-    public String add(Embedding embedding, DocumentSegment documentSegment) {
+    public String add(Embedding embedding, TextSegment textSegment) {
         String id = generateRandomId(embedding);
-        addInternal(id, embedding, documentSegment);
+        addInternal(id, embedding, textSegment);
         return id;
     }
 
@@ -76,22 +76,22 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<DocumentSegment> documentSegments) {
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
 
         List<String> ids = embeddings.stream()
                 .map(PineconeEmbeddingStoreImpl::generateRandomId)
                 .collect(toList());
 
-        addAllInternal(ids, embeddings, documentSegments);
+        addAllInternal(ids, embeddings, textSegments);
 
         return ids;
     }
 
-    private void addInternal(String id, Embedding embedding, DocumentSegment documentSegment) {
-        addAllInternal(singletonList(id), singletonList(embedding), documentSegment == null ? null : singletonList(documentSegment));
+    private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
+        addAllInternal(singletonList(id), singletonList(embedding), textSegment == null ? null : singletonList(textSegment));
     }
 
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<DocumentSegment> documentSegments) {
+    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
 
         UpsertRequest.Builder upsertRequestBuilder = UpsertRequest.newBuilder()
                 .setNamespace(nameSpace);
@@ -100,11 +100,11 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
 
             String id = ids.get(i);
             Embedding embedding = embeddings.get(i);
-            DocumentSegment documentSegment = documentSegments.get(i);
+            TextSegment textSegment = textSegments.get(i);
 
             Struct vectorMetadata = Struct.newBuilder()
-                    .putFields(METADATA_DOCUMENT_SEGMENT_TEXT, Value.newBuilder()
-                            .setStringValue(documentSegment.text())
+                    .putFields(METADATA_TEXT_SEGMENT, Value.newBuilder()
+                            .setStringValue(textSegment.text())
                             .build())
                     .build();
 
@@ -121,12 +121,12 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
     }
 
     @Override
-    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return findRelevant(referenceEmbedding, maxResults, -1); // TODO check -1
     }
 
     @Override
-    public List<EmbeddingMatch<DocumentSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
 
         QueryVector queryVector = QueryVector
                 .newBuilder()
@@ -167,24 +167,24 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<DocumentSegmen
                 .collect(toList());
     }
 
-    private static EmbeddingMatch<DocumentSegment> toEmbeddingMatch(Vector vector) {
-        Value documentSegmentTextValue = vector.getMetadata()
+    private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector) {
+        Value textSegmentValue = vector.getMetadata()
                 .getFieldsMap()
-                .get(METADATA_DOCUMENT_SEGMENT_TEXT);
+                .get(METADATA_TEXT_SEGMENT);
 
         return new EmbeddingMatch<>(
                 vector.getId(),
                 Embedding.from(vector.getValuesList()),
-                createDocumentSegmentIfExists(documentSegmentTextValue),
+                createTextSegmentIfExists(textSegmentValue),
                 null); // TODO
     }
 
-    private static DocumentSegment createDocumentSegmentIfExists(Value documentSegmentTextValue) {
-        if (documentSegmentTextValue == null) {
+    private static TextSegment createTextSegmentIfExists(Value textSegmentValue) {
+        if (textSegmentValue == null) {
             return null;
         }
 
-        return DocumentSegment.from(documentSegmentTextValue.getStringValue());
+        return TextSegment.from(textSegmentValue.getStringValue());
     }
 
     private static String generateRandomId(Embedding embedding) {

@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
@@ -86,8 +86,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCount(DocumentSegment documentSegment) {
-        return estimateTokenCount(documentSegment.text());
+    public int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiLanguageModel withApiKey(String apiKey) {

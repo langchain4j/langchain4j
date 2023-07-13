@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.StreamingResultHandler;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -91,8 +91,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     @Override
-    public int estimateTokenCount(DocumentSegment documentSegment) {
-        return estimateTokenCount(documentSegment.text());
+    public int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {

@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -46,7 +46,7 @@ public class AiServices<T> {
     private ModerationModel moderationModel;
     private List<ToolSpecification> toolSpecifications;
     private Map<String, ToolExecutor> toolExecutors;
-    private Retriever<DocumentSegment> retriever;
+    private Retriever<TextSegment> retriever;
 
     private AiServices(Class<T> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
@@ -94,7 +94,7 @@ public class AiServices<T> {
         return this;
     }
 
-    public AiServices<T> retriever(Retriever<DocumentSegment> retriever) {
+    public AiServices<T> retriever(Retriever<TextSegment> retriever) {
         this.retriever = retriever;
         return this;
     }
@@ -132,13 +132,13 @@ public class AiServices<T> {
                         ChatMessage userMessage = prepareUserMessage(method, args);
 
                         if (retriever != null) {
-                            List<DocumentSegment> relevant = retriever.findRelevant(userMessage.text());
+                            List<TextSegment> relevant = retriever.findRelevant(userMessage.text());
 
                             if (relevant == null || relevant.isEmpty()) {
                                 log.debug("No relevant information was found");
                             } else {
                                 String relevantConcatenated = relevant.stream()
-                                        .map(DocumentSegment::text)
+                                        .map(TextSegment::text)
                                         .collect(joining("\n\n"));
 
                                 log.debug("Retrieved relevant information:\n" + relevantConcatenated + "\n");

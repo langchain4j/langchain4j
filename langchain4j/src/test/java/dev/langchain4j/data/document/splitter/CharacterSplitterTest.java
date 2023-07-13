@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.splitter;
 
-import dev.langchain4j.data.document.DocumentSegment;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -10,7 +10,7 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import java.util.List;
 
 import static dev.langchain4j.data.document.Document.document;
-import static dev.langchain4j.data.document.DocumentSegment.documentSegment;
+import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -20,13 +20,13 @@ class CharacterSplitterTest {
     void should_split_with_overlap() {
         DocumentSplitter splitter = new CharacterSplitter(4, 2);
 
-        List<DocumentSegment> segments = splitter.split(document("1234567890"));
+        List<TextSegment> segments = splitter.split(document("1234567890"));
 
         assertThat(segments).containsExactly(
-                documentSegment("1234"),
-                documentSegment("3456"),
-                documentSegment("5678"),
-                documentSegment("7890")
+                textSegment("1234"),
+                textSegment("3456"),
+                textSegment("5678"),
+                textSegment("7890")
         );
     }
 
@@ -34,12 +34,12 @@ class CharacterSplitterTest {
     void should_split_without_overlap() {
         DocumentSplitter splitter = new CharacterSplitter(4, 0);
 
-        List<DocumentSegment> segments = splitter.split(document("1234567890"));
+        List<TextSegment> segments = splitter.split(document("1234567890"));
 
         assertThat(segments).containsExactly(
-                documentSegment("1234"),
-                documentSegment("5678"),
-                documentSegment("90")
+                textSegment("1234"),
+                textSegment("5678"),
+                textSegment("90")
         );
     }
 
