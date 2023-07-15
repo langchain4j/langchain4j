@@ -44,7 +44,7 @@ public class AiMessage extends ChatMessage {
     }
 
     public static AiMessage from(String text) {
-        return new AiMessage(text, null);
+        return new AiMessage(text);
     }
 
     public static AiMessage from(ToolExecutionRequest toolExecutionRequest) {
