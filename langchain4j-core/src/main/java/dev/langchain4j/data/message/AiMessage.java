@@ -8,6 +8,10 @@ public class AiMessage extends ChatMessage {
 
     private final ToolExecutionRequest toolExecutionRequest;
 
+    public AiMessage(String text) {
+        this(text, null);
+    }
+
     public AiMessage(String text, ToolExecutionRequest toolExecutionRequest) {
         super(text);
         this.toolExecutionRequest = toolExecutionRequest;
@@ -40,7 +44,7 @@ public class AiMessage extends ChatMessage {
     }
 
     public static AiMessage from(String text) {
-        return new AiMessage(text, null);
+        return new AiMessage(text);
     }
 
     public static AiMessage from(ToolExecutionRequest toolExecutionRequest) {
