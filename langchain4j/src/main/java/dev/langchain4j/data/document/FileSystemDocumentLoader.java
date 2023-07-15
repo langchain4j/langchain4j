@@ -1,6 +1,5 @@
 package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.source.FileSystemSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +13,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.data.document.DocumentLoaderUtils.detectDocumentType;
 import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
+import static dev.langchain4j.data.document.source.FileSystemSource.from;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static java.nio.file.Files.isDirectory;
 import static java.nio.file.Files.isRegularFile;
@@ -24,6 +24,7 @@ public class FileSystemDocumentLoader {
 
     /**
      * Loads a document from the specified file, detecting document type automatically.
+     * Currently, .txt and .pdf files are supported.
      *
      * @param filePath path to the file
      * @return document
@@ -36,6 +37,7 @@ public class FileSystemDocumentLoader {
 
     /**
      * Loads a document from the specified file, detecting document type automatically.
+     * Currently, .txt and .pdf files are supported.
      *
      * @param filePath path to the file
      * @return document
@@ -59,7 +61,7 @@ public class FileSystemDocumentLoader {
             throw illegalArgument("%s is not a file", filePath);
         }
 
-        return DocumentLoaderUtils.load(FileSystemSource.from(filePath), parserFor(documentType));
+        return DocumentLoaderUtils.load(from(filePath), parserFor(documentType));
     }
 
     /**
@@ -77,6 +79,7 @@ public class FileSystemDocumentLoader {
     /**
      * Loads documents from the specified directory. Does not use recursion.
      * Detects document types automatically. Files with unsupported types are ignored.
+     * Currently, .txt and .pdf files are supported.
      *
      * @param directoryPath path to the directory with files
      * @return list of documents
@@ -89,7 +92,6 @@ public class FileSystemDocumentLoader {
 
         List<Document> documents = new ArrayList<>();
 
-        // TODO make it lazy
         try (Stream<Path> paths = Files.list(directoryPath)) {
             paths.filter(Files::isRegularFile)
                     .forEach(filePath -> {
@@ -110,6 +112,7 @@ public class FileSystemDocumentLoader {
     /**
      * Loads documents from the specified directory. Does not use recursion.
      * Detects document types automatically. Files with unsupported types are ignored.
+     * Currently, .txt and .pdf files are supported.
      *
      * @param directoryPath path to the directory with files
      * @return list of documents
