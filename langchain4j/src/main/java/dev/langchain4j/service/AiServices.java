@@ -4,7 +4,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -46,7 +46,7 @@ public class AiServices<T> {
     private ModerationModel moderationModel;
     private List<ToolSpecification> toolSpecifications;
     private Map<String, ToolExecutor> toolExecutors;
-    private Retriever<DocumentSegment> retriever;
+    private Retriever<TextSegment> retriever;
 
     private AiServices(Class<T> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
@@ -94,7 +94,7 @@ public class AiServices<T> {
         return this;
     }
 
-    public AiServices<T> retriever(Retriever<DocumentSegment> retriever) {
+    public AiServices<T> retriever(Retriever<TextSegment> retriever) {
         this.retriever = retriever;
         return this;
     }
@@ -136,13 +136,13 @@ public class AiServices<T> {
                         ChatMessage userMessage = prepareUserMessage(method, args);
 
                         if (retriever != null) {
-                            List<DocumentSegment> relevant = retriever.findRelevant(userMessage.text());
+                            List<TextSegment> relevant = retriever.findRelevant(userMessage.text());
 
                             if (relevant == null || relevant.isEmpty()) {
                                 log.debug("No relevant information was found");
                             } else {
                                 String relevantConcatenated = relevant.stream()
-                                        .map(DocumentSegment::text)
+                                        .map(TextSegment::text)
                                         .collect(joining("\n\n"));
 
                                 log.debug("Retrieved relevant information:\n" + relevantConcatenated + "\n");
@@ -279,6 +279,8 @@ public class AiServices<T> {
 
         String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
 
+        String userName = getUserName(parameters, args);
+
         UserMessage annotation = method.getAnnotation(UserMessage.class);
         if (annotation != null) {
             String userMessageTemplate = String.join(annotation.delimiter(), annotation.value()) + outputFormatInstructions;
@@ -293,12 +295,12 @@ public class AiServices<T> {
             }
 
             Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            return prompt.toUserMessage();
+            return userMessage(userName, prompt.text());
         }
 
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(UserMessage.class)) {
-                return userMessage(toString(args[i]) + outputFormatInstructions);
+                return userMessage(userName, toString(args[i]) + outputFormatInstructions);
             }
         }
 
@@ -307,12 +309,20 @@ public class AiServices<T> {
         }
 
         if (args.length == 1) {
-            return userMessage(toString(args[0]) + outputFormatInstructions);
+            return userMessage(userName, toString(args[0]) + outputFormatInstructions);
         }
 
-        throw illegalConfiguration("For methods with multiple arguments, each argument must be annotated with either @V or @UserMessage. " +
-                "Please ensure all arguments in multi-argument methods have one of these annotations.");
+        throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage or @UserName");
 
+    }
+
+    private static String getUserName(Parameter[] parameters, Object[] args) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(UserName.class)) {
+                return args[i].toString();
+            }
+        }
+        return null;
     }
 
     private static void validateParameters(Method method) {

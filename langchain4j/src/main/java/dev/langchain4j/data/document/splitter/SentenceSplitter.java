@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.document.DocumentSplitter;
 
 import java.text.BreakIterator;
@@ -14,7 +14,7 @@ import static java.util.stream.Collectors.toList;
 public class SentenceSplitter implements DocumentSplitter {
 
     @Override
-    public List<DocumentSegment> split(Document document) {
+    public List<TextSegment> split(Document document) {
         String text = document.text();
         if (text == null || text.isEmpty()) {
             throw new IllegalArgumentException("Document text should not be null or empty");
@@ -23,7 +23,7 @@ public class SentenceSplitter implements DocumentSplitter {
         List<String> sentences = splitIntoSentences(text);
 
         return sentences.stream()
-                .map(sentence -> DocumentSegment.from(sentence.trim(), document.metadata()))
+                .map(sentence -> TextSegment.from(sentence.trim(), document.metadata()))
                 .collect(toList());
     }
 

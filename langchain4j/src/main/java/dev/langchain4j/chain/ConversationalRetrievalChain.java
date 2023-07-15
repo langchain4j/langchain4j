@@ -1,98 +1,78 @@
 package dev.langchain4j.chain;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentLoader;
-import dev.langchain4j.data.document.DocumentSegment;
-import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.splitter.ParagraphSplitter;
-import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
-import dev.langchain4j.model.output.Result;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.InMemoryEmbeddingStore;
+import dev.langchain4j.retriever.Retriever;
 import lombok.Builder;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static java.util.Optional.ofNullable;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
+/**
+ * A chain for interacting with a specified ChatLanguageModel based on the information provided by a specified Retriever.
+ * Includes a default PromptTemplate, which can be overridden.
+ * Includes a default ChatMemory (a message window with a capacity of 10), which can be overridden.
+ */
 public class ConversationalRetrievalChain implements Chain<String, String> {
 
-    private static final DocumentSplitter DEFAULT_DOCUMENT_SPLITTER = new ParagraphSplitter();
-    private static final EmbeddingStore<DocumentSegment> DEFAULT_EMBEDDING_STORE = new InMemoryEmbeddingStore();
-    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("Answer the following question to the best of your ability: {{question}}\n\nBase your answer on the following information:\n{{information}}");
+    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
+            "Answer the following question to the best of your ability: {{question}}\n" +
+                    "\n" +
+                    "Base your answer on the following information:\n" +
+                    "{{information}}");
 
-    private final DocumentLoader documentLoader;
-    private final DocumentSplitter documentSplitter;
-    private final EmbeddingModel embeddingModel;
-    private final EmbeddingStore<DocumentSegment> embeddingStore;
-    private final Integer maxSegmentsToRetrieve;
-    private final PromptTemplate promptTemplate;
     private final ChatLanguageModel chatLanguageModel;
+    private final ChatMemory chatMemory;
+    private final PromptTemplate promptTemplate;
+    private final Retriever<TextSegment> retriever;
 
     @Builder
-    public ConversationalRetrievalChain(DocumentLoader documentLoader,
-                                        DocumentSplitter documentSplitter,
-                                        EmbeddingModel embeddingModel,
-                                        EmbeddingStore<DocumentSegment> embeddingStore,
-                                        Integer maxSegmentsToRetrieve,
+    public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
+                                        ChatMemory chatMemory,
                                         PromptTemplate promptTemplate,
-                                        ChatLanguageModel chatLanguageModel) {
-        this.documentLoader = documentLoader;
-        this.documentSplitter = documentSplitter == null ? DEFAULT_DOCUMENT_SPLITTER : documentSplitter;
-        this.embeddingModel = embeddingModel;
-        this.embeddingStore = embeddingStore == null ? DEFAULT_EMBEDDING_STORE : embeddingStore;
-        this.maxSegmentsToRetrieve = maxSegmentsToRetrieve == null ? 5 : maxSegmentsToRetrieve;
+                                        Retriever<TextSegment> retriever) {
+        this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
+        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withCapacity(10) : chatMemory;
         this.promptTemplate = promptTemplate == null ? DEFAULT_PROMPT_TEMPLATE : promptTemplate;
-        this.chatLanguageModel = chatLanguageModel;
-
-        init();
-    }
-
-    private void init() {
-        Document document = documentLoader.load();
-        List<DocumentSegment> documentSegments = documentSplitter.split(document);
-        List<Embedding> embeddings = embeddingModel.embedAll(documentSegments).get();
-        embeddingStore.addAll(embeddings, documentSegments);
+        this.retriever = ensureNotNull(retriever, "retriever");
     }
 
     @Override
     public String execute(String question) {
-        Embedding questionEmbedding = embeddingModel.embed(question).get();
 
-        List<EmbeddingMatch<DocumentSegment>> relevantEmbeddings = embeddingStore.findRelevant(questionEmbedding, maxSegmentsToRetrieve);
+        question = ensureNotBlank(question, "question");
+
+        List<TextSegment> relevantSegments = retriever.findRelevant(question);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("question", question);
-        variables.put("information", format(relevantEmbeddings));
+        variables.put("information", format(relevantSegments));
 
-        Prompt prompt = promptTemplate.apply(variables);
+        UserMessage userMessage = promptTemplate.apply(variables).toUserMessage();
 
-        Result<AiMessage> result = chatLanguageModel.sendUserMessage(prompt);
+        chatMemory.add(userMessage);
 
-        return result.get().text();
+        AiMessage answer = chatLanguageModel.sendMessages(chatMemory.messages()).get();
+
+        chatMemory.add(answer);
+
+        return answer.text();
     }
 
-    private static String format(List<EmbeddingMatch<DocumentSegment>> relevantEmbeddings) {
-
-        String concatenatedEmbeddings = relevantEmbeddings.stream()
-                .map(match -> ofNullable(match.embedded()).map(DocumentSegment::text).orElse(""))
-                .filter(it -> !it.isEmpty())
-                .map(it -> "..." + it + "...")
+    private static String format(List<TextSegment> relevantSegments) {
+        return relevantSegments.stream()
+                .map(TextSegment::text)
+                .map(segment -> "..." + segment + "...")
                 .collect(joining("\n\n"));
-
-        if (concatenatedEmbeddings.isEmpty()) {
-            return "";
-        }
-
-        return concatenatedEmbeddings;
     }
 }

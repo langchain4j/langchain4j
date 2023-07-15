@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.document.DocumentSplitter;
 
 import java.util.List;
@@ -18,7 +18,7 @@ public class RegexSplitter implements DocumentSplitter {
     }
 
     @Override
-    public List<DocumentSegment> split(Document document) {
+    public List<TextSegment> split(Document document) {
         String text = document.text();
         if (text == null || text.isEmpty()) {
             throw new IllegalArgumentException("Document text should not be null or empty");
@@ -27,7 +27,7 @@ public class RegexSplitter implements DocumentSplitter {
         String[] segments = text.split(regex);
 
         return stream(segments)
-                .map(segment -> DocumentSegment.from(segment, document.metadata()))
+                .map(segment -> TextSegment.from(segment, document.metadata()))
                 .collect(toList());
     }
 }

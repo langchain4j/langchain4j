@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.document.DocumentSplitter;
 
 import java.util.ArrayList;
@@ -18,7 +18,7 @@ public class CharacterSplitter implements DocumentSplitter {
     }
 
     @Override
-    public List<DocumentSegment> split(Document document) {
+    public List<TextSegment> split(Document document) {
         if (document.text() == null || document.text().isEmpty()) {
             throw new IllegalArgumentException("Document text should not be null or empty");
         }
@@ -30,14 +30,14 @@ public class CharacterSplitter implements DocumentSplitter {
             throw new IllegalArgumentException(String.format("Invalid segmentLength (%s) or segmentOverlap (%s)", segmentLength, segmentOverlap));
         }
 
-        List<DocumentSegment> segments = new ArrayList<>();
+        List<TextSegment> segments = new ArrayList<>();
         if (textLength <= segmentLength) {
-            segments.add(document.toDocumentSegment());
+            segments.add(document.toTextSegment());
         } else {
             for (int i = 0; i < textLength - segmentOverlap; i += segmentLength - segmentOverlap) {
                 int endIndex = Math.min(i + segmentLength, textLength);
                 String segment = text.substring(i, endIndex);
-                segments.add(DocumentSegment.from(segment, document.metadata()));
+                segments.add(TextSegment.from(segment, document.metadata()));
                 if (endIndex == textLength) {
                     break;
                 }

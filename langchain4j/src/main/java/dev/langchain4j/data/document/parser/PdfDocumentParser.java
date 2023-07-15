@@ -2,7 +2,6 @@ package dev.langchain4j.data.document.parser;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.Metadata;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
@@ -18,7 +17,7 @@ public class PdfDocumentParser implements DocumentParser {
             PDFTextStripper stripper = new PDFTextStripper();
             String content = stripper.getText(pdfDocument);
             pdfDocument.close();
-            return new Document(content, new Metadata());
+            return Document.from(content);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class TextDocumentParserTest {
 
     @Test
+        // TODO This test fails when running it directly in IDE, but works when running in maven
     void should_parse_with_utf8_charset_by_default() throws IOException {
 
         FileSystemSource source = FileSystemSource.from(Paths.get("src/test/resources/test-file-utf8.txt"));
@@ -24,6 +25,7 @@ class TextDocumentParserTest {
     }
 
     @Test
+        // TODO This test fails when running it directly in IDE, but works when running in maven
     void should_parse_with_specified_charset() throws IOException {
 
         FileSystemSource source = FileSystemSource.from(Paths.get("src/test/resources/test-file-iso-8859-1.txt"));

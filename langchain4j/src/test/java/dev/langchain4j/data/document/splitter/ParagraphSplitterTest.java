@@ -1,12 +1,10 @@
 package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentLoader;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,11 +22,11 @@ class ParagraphSplitterTest {
     void test_split_by_paragraph(String text) {
         Document document = Document.from(text);
 
-        List<DocumentSegment> documentSegments = splitter.split(document);
+        List<TextSegment> segments = splitter.split(document);
 
-        assertEquals(4, documentSegments.size());
-        assertEquals("first", documentSegments.get(0).text());
-        assertEquals("second", documentSegments.get(1).text());
-        assertEquals("third", documentSegments.get(2).text());
+        assertEquals(4, segments.size());
+        assertEquals("first", segments.get(0).text());
+        assertEquals("second", segments.get(1).text());
+        assertEquals("third", segments.get(2).text());
     }
 }

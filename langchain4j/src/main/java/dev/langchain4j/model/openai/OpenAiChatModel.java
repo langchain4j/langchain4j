@@ -4,7 +4,7 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -22,17 +22,18 @@ import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.t
 import static dev.langchain4j.model.openai.OpenAiConverters.aiMessageFrom;
 import static dev.langchain4j.model.openai.OpenAiConverters.toFunctions;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
-    private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
-
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
+    private final Integer maxRetries;
     private final OpenAiTokenizer tokenizer;
 
     @Builder
@@ -40,20 +41,38 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            String modelName,
                            Double temperature,
                            Duration timeout,
+                           Integer maxRetries,
                            Boolean logRequests,
                            Boolean logResponses) {
+
+        modelName = modelName == null ? GPT_3_5_TURBO : modelName;
+        temperature = temperature == null ? 0.7 : temperature;
+        timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
+        maxRetries = maxRetries == null ? 3 : maxRetries;
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
-                .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? GPT_3_5_TURBO : modelName;
-        this.temperature = temperature == null ? DEFAULT_TEMPERATURE : temperature;
+        this.modelName = modelName;
+        this.temperature = temperature;
+        this.maxRetries = maxRetries;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
+    }
+
+    private static Duration defaultTimeoutFor(String modelName) {
+        if (modelName.startsWith(GPT_3_5_TURBO)) {
+            return ofSeconds(7);
+        } else if (modelName.startsWith(GPT_4)) {
+            return ofSeconds(20);
+        }
+
+        return ofSeconds(10);
     }
 
     @Override
@@ -91,7 +110,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .temperature(temperature)
                 .build();
 
-        ChatCompletionResponse response = client.chatCompletion(request).execute();
+        ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
         return Result.from(aiMessageFrom(response));
     }
@@ -122,8 +141,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCount(DocumentSegment documentSegment) {
-        return estimateTokenCount(documentSegment.text());
+    public int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiChatModel withApiKey(String apiKey) {

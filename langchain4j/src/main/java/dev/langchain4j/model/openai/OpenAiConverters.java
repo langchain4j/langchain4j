@@ -4,10 +4,7 @@ import dev.ai4j.openai4j.chat.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.*;
 
 import java.util.Collection;
 import java.util.List;
@@ -36,6 +33,10 @@ class OpenAiConverters {
     }
 
     private static String nameFrom(ChatMessage message) {
+        if (message instanceof UserMessage) {
+            return ((UserMessage) message).name();
+        }
+
         if (message instanceof ToolExecutionResultMessage) {
             return ((ToolExecutionResultMessage) message).toolName();
         }

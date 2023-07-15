@@ -1,6 +1,6 @@
 package dev.langchain4j.model.moderation;
 
-import dev.langchain4j.data.document.DocumentSegment;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Result;
@@ -19,5 +19,5 @@ public interface ModerationModel {
 
     Result<Moderation> moderate(List<ChatMessage> messages);
 
-    Result<Moderation> moderate(DocumentSegment documentSegment);
+    Result<Moderation> moderate(TextSegment textSegment);
 }
