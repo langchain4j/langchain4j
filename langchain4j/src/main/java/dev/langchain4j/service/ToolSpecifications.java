@@ -7,6 +7,8 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -50,21 +52,19 @@ class ToolSpecifications {
             return removeNulls(BOOLEAN, description);
         }
 
+        if (type == byte.class || type == Byte.class
+                || type == short.class || type == Short.class
+                || type == int.class || type == Integer.class
+                || type == long.class || type == Long.class
+                || type == BigInteger.class) {
+            return removeNulls(INTEGER, description);
+        }
+
         // TODO put constraints on min and max?
-        if (type == byte.class
-                || type == Byte.class
-                || type == short.class
-                || type == Short.class
-                || type == int.class
-                || type == Integer.class
-                || type == long.class
-                || type == Long.class
-                || type == float.class
-                || type == Float.class
-                || type == double.class
-                || type == Double.class // TODO bigdecimal, etc
-        ) {
-            return removeNulls(NUMBER, description); // TODO test all types!
+        if (type == float.class || type == Float.class
+                || type == double.class || type == Double.class
+                || type == BigDecimal.class) {
+            return removeNulls(NUMBER, description);
         }
 
         if (type.isArray()
