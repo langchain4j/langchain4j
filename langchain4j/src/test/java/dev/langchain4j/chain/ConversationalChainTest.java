@@ -42,10 +42,10 @@ public class ConversationalChainTest {
 
         verify(chatMemory).add(userMessage(userMessage));
         verify(chatMemory).messages();
-        verify(chatMemory).add(aiMessage(aiMessage));
-        verifyNoMoreInteractions(chatMemory);
-
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(userMessage)));
+        verify(chatMemory).add(aiMessage(aiMessage));
+
+        verifyNoMoreInteractions(chatMemory);
         verifyNoMoreInteractions(chatLanguageModel);
     }
 
