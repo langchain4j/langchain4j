@@ -11,6 +11,15 @@ public class RetryUtils {
 
     private static final Logger log = LoggerFactory.getLogger(RetryUtils.class);
 
+    /**
+     * This method attempts to execute a given action up to a specified number of times.
+     * If the action fails on all attempts, it throws a RuntimeException.
+     *
+     * @param action      The action to be executed.
+     * @param maxAttempts The maximum number of attempts to execute the action.
+     * @return The result of the action if it is successful.
+     * @throws RuntimeException if the action fails on all attempts.
+     */
     public static <T> T withRetry(Callable<T> action, int maxAttempts) {
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
