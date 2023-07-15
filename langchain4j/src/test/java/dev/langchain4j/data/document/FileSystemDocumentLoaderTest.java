@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocument;
+import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocuments;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class FileSystemDocumentLoaderTest {
@@ -12,7 +14,7 @@ class FileSystemDocumentLoaderTest {
     @Test
     void should_load_text_document() {
 
-        Document document = FileSystemDocumentLoader.loadDocument("src/test/resources/test-file-utf8.txt");
+        Document document = loadDocument("src/test/resources/test-file-utf8.txt");
 
         assertThat(document.text()).isEqualTo("test\ncontent");
         Metadata metadata = document.metadata();
@@ -23,7 +25,7 @@ class FileSystemDocumentLoaderTest {
     @Test
     void should_load_pdf_document() {
 
-        Document document = FileSystemDocumentLoader.loadDocument("src/test/resources/test-file.pdf");
+        Document document = loadDocument("src/test/resources/test-file.pdf");
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test\ncontent");
         Metadata metadata = document.metadata();
@@ -34,7 +36,7 @@ class FileSystemDocumentLoaderTest {
     @Test
     void should_load_documents_ignoring_unsupported_document_types() {
 
-        List<Document> documents = FileSystemDocumentLoader.loadDocuments("src/test/resources");
+        List<Document> documents = loadDocuments("src/test/resources");
 
         assertThat(documents).hasSize(3);
     }
