@@ -186,7 +186,7 @@ Please note that the library is in active development and:
 - Many features are still missing. We are working hard on implementing them ASAP.
 - API might change at any moment. At this point, we prioritize good design in the future over backward compatibility
   now. We hope for your understanding.
-- We need your input! Please let us know what features you need and your concerns about the current implementation.
+- We need your input! Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need and your concerns about the current implementation.
 
 ## Current capabilities:
 
@@ -228,11 +228,9 @@ Please note that the library is in active development and:
 - Long-term memory for chatbots and agents
 - Chain-of-Thought and Tree-of-Thought
 
-**Please [let us know what features you need](https://github.com/langchain4j/langchain4j/issues/new)!**
-
 ## Request features
 
-Please [let us know what features you need](https://github.com/ai-for-java/ai4j/issues/new).
+Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need!
 
 ## Contribute
 
