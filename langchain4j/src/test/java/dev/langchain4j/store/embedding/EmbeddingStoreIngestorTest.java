@@ -1,4 +1,4 @@
-package dev.langchain4j.pipeline;
+package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
@@ -7,7 +7,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Result;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -16,10 +15,10 @@ import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.util.Arrays.asList;
 import static org.mockito.Mockito.*;
 
-class DocumentEmbeddingPipelineTest {
+class EmbeddingStoreIngestorTest {
 
     @Test
-    public void should_run_pipeline() {
+    public void should_split_documents_then_embed_them_and_store_in_embedding_store() {
 
         Document firstDocument = Document.from("First sentence.");
         Document secondDocument = Document.from("Second sentence. Third sentence.");
@@ -43,14 +42,14 @@ class DocumentEmbeddingPipelineTest {
 
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
-
-        DocumentEmbeddingPipeline.builder()
-                .addDocument(firstDocument)
-                .addDocument(secondDocument)
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .splitter(splitter)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
-                .run();
+                .build();
+
+
+        ingestor.ingest(documents);
 
 
         verify(splitter).split(documents);
