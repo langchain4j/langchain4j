@@ -67,4 +67,5 @@ public class ConversationalChainTest {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("userMessage cannot be null or blank");
     }
+
 }
