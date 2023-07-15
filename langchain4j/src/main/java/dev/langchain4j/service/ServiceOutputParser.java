@@ -8,6 +8,8 @@ import dev.langchain4j.model.output.structured.Description;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -24,6 +26,29 @@ public class ServiceOutputParser {
     static {
         OUTPUT_PARSERS.put(boolean.class, new BooleanOutputParser());
         OUTPUT_PARSERS.put(Boolean.class, new BooleanOutputParser());
+
+        OUTPUT_PARSERS.put(byte.class, new ByteOutputParser());
+        OUTPUT_PARSERS.put(Byte.class, new ByteOutputParser());
+
+        OUTPUT_PARSERS.put(short.class, new ShortOutputParser());
+        OUTPUT_PARSERS.put(Short.class, new ShortOutputParser());
+
+        OUTPUT_PARSERS.put(int.class, new IntOutputParser());
+        OUTPUT_PARSERS.put(Integer.class, new IntOutputParser());
+
+        OUTPUT_PARSERS.put(long.class, new LongOutputParser());
+        OUTPUT_PARSERS.put(Long.class, new LongOutputParser());
+
+        OUTPUT_PARSERS.put(BigInteger.class, new BigIntegerOutputParser());
+
+        OUTPUT_PARSERS.put(float.class, new FloatOutputParser());
+        OUTPUT_PARSERS.put(Float.class, new FloatOutputParser());
+
+        OUTPUT_PARSERS.put(double.class, new DoubleOutputParser());
+        OUTPUT_PARSERS.put(Double.class, new DoubleOutputParser());
+
+        OUTPUT_PARSERS.put(BigDecimal.class, new BigDecimalOutputParser());
+
         OUTPUT_PARSERS.put(Date.class, new DateOutputParser());
         OUTPUT_PARSERS.put(LocalDate.class, new LocalDateOutputParser());
         OUTPUT_PARSERS.put(LocalTime.class, new LocalTimeOutputParser());
