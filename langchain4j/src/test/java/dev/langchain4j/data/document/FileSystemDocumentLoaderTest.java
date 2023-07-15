@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class FileSystemDocumentLoaderTest {
 
     @Test
+        // TODO This test fails when running it directly in IDE, but works when running in maven
     void should_load_text_document() {
 
         Document document = loadDocument("src/test/resources/test-file-utf8.txt");
@@ -23,6 +24,7 @@ class FileSystemDocumentLoaderTest {
     }
 
     @Test
+        // TODO This test fails when running it directly in IDE, but works when running in maven
     void should_load_pdf_document() {
 
         Document document = loadDocument("src/test/resources/test-file.pdf");
@@ -34,6 +36,7 @@ class FileSystemDocumentLoaderTest {
     }
 
     @Test
+        // TODO This test fails when running it directly in IDE, but works when running in maven
     void should_load_documents_ignoring_unsupported_document_types() {
 
         List<Document> documents = loadDocuments("src/test/resources");

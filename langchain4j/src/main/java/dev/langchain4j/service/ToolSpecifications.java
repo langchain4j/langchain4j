@@ -64,7 +64,7 @@ class ToolSpecifications {
                 || type == double.class
                 || type == Double.class // TODO bigdecimal, etc
         ) {
-            return removeNulls(NUMBER, description);
+            return removeNulls(NUMBER, description); // TODO test all types!
         }
 
         if (type.isArray()
