@@ -7,6 +7,8 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Map;
 
 public class ToolExecutor {
@@ -60,10 +62,58 @@ public class ToolExecutor {
         for (int i = 0; i < parameters.length; i++) {
             String parameterName = parameters[i].getName();
             if (argumentsMap.containsKey(parameterName)) {
-                arguments[i] = argumentsMap.get(parameterName);
+                Object argument = argumentsMap.get(parameterName);
+                Class<?> parameterType = parameters[i].getType();
+
+                // Gson always parses numbers into the Double type. If the parameter type is not Double, a conversion attempt is made.
+                if (argument instanceof Double && !(parameterType == Double.class || parameterType == double.class)) {
+                    Double doubleValue = (Double) argument;
+
+                    if (parameterType == Float.class || parameterType == float.class) {
+                        if (doubleValue < -Float.MAX_VALUE || doubleValue > Float.MAX_VALUE) {
+                            throw new IllegalArgumentException("Double value " + doubleValue + " is out of range for the float type");
+                        }
+                        argument = doubleValue.floatValue();
+                    } else if (parameterType == BigDecimal.class) {
+                        argument = BigDecimal.valueOf(doubleValue);
+                    }
+
+                    // Allow conversion to integer types only if double value has no fractional part
+                    if (hasNoFractionalPart(doubleValue)) {
+                        if (parameterType == Integer.class || parameterType == int.class) {
+                            if (doubleValue < Integer.MIN_VALUE || doubleValue > Integer.MAX_VALUE) {
+                                throw new IllegalArgumentException("Double value " + doubleValue + " is out of range for the integer type");
+                            }
+                            argument = doubleValue.intValue();
+                        } else if (parameterType == Long.class || parameterType == long.class) {
+                            if (doubleValue < Long.MIN_VALUE || doubleValue > Long.MAX_VALUE) {
+                                throw new IllegalArgumentException("Double value " + doubleValue + " is out of range for the long type");
+                            }
+                            argument = doubleValue.longValue();
+                        } else if (parameterType == Short.class || parameterType == short.class) {
+                            if (doubleValue < Short.MIN_VALUE || doubleValue > Short.MAX_VALUE) {
+                                throw new IllegalArgumentException("Double value " + doubleValue + " is out of range for the short type");
+                            }
+                            argument = doubleValue.shortValue();
+                        } else if (parameterType == Byte.class || parameterType == byte.class) {
+                            if (doubleValue < Byte.MIN_VALUE || doubleValue > Byte.MAX_VALUE) {
+                                throw new IllegalArgumentException("Double value " + doubleValue + " is out of range for the byte type");
+                            }
+                            argument = doubleValue.byteValue();
+                        } else if (parameterType == BigInteger.class) {
+                            argument = BigDecimal.valueOf(doubleValue).toBigInteger();
+                        }
+                    }
+                }
+
+                arguments[i] = argument;
             }
         }
 
         return arguments;
+    }
+
+    private static boolean hasNoFractionalPart(Double doubleValue) {
+        return doubleValue.equals(Math.floor(doubleValue));
     }
 }
