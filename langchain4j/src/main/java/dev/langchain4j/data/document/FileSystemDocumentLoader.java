@@ -30,8 +30,8 @@ public class FileSystemDocumentLoader {
      * @throws IllegalArgumentException         if specified path is not a file
      * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
      */
-    public static Document load(Path filePath) {
-        return load(filePath, detectDocumentType(filePath.toString()));
+    public static Document loadDocument(Path filePath) {
+        return loadDocument(filePath, detectDocumentType(filePath.toString()));
     }
 
     /**
@@ -42,8 +42,8 @@ public class FileSystemDocumentLoader {
      * @throws IllegalArgumentException         if specified path is not a file
      * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
      */
-    public static Document load(String filePath) {
-        return load(Paths.get(filePath));
+    public static Document loadDocument(String filePath) {
+        return loadDocument(Paths.get(filePath));
     }
 
     /**
@@ -54,7 +54,7 @@ public class FileSystemDocumentLoader {
      * @return document
      * @throws IllegalArgumentException if specified path is not a file
      */
-    public static Document load(Path filePath, DocumentType documentType) {
+    public static Document loadDocument(Path filePath, DocumentType documentType) {
         if (!isRegularFile(filePath)) {
             throw illegalArgument("%s is not a file", filePath);
         }
@@ -70,19 +70,19 @@ public class FileSystemDocumentLoader {
      * @return document
      * @throws IllegalArgumentException if specified path is not a file
      */
-    public static Document load(String filePath, DocumentType documentType) {
-        return load(Paths.get(filePath), documentType);
+    public static Document loadDocument(String filePath, DocumentType documentType) {
+        return loadDocument(Paths.get(filePath), documentType);
     }
 
     /**
-     * Loads all documents from the specified directory. Does not use recursion.
+     * Loads documents from the specified directory. Does not use recursion.
      * Detects document types automatically. Files with unsupported types are ignored.
      *
      * @param directoryPath path to the directory with files
-     * @return documents
+     * @return list of documents
      * @throws IllegalArgumentException if specified path is not a directory
      */
-    public static Iterable<Document> loadAll(Path directoryPath) {
+    public static List<Document> loadDocuments(Path directoryPath) {
         if (!isDirectory(directoryPath)) {
             throw illegalArgument("%s is not a directory", directoryPath);
         }
@@ -94,7 +94,7 @@ public class FileSystemDocumentLoader {
             paths.filter(Files::isRegularFile)
                     .forEach(filePath -> {
                         try {
-                            Document document = load(filePath);
+                            Document document = loadDocument(filePath);
                             documents.add(document);
                         } catch (UnsupportedDocumentTypeException e) {
                             log.warn("Ignored unsupported document type", e);
@@ -108,14 +108,14 @@ public class FileSystemDocumentLoader {
     }
 
     /**
-     * Loads all documents from the specified directory. Does not use recursion.
+     * Loads documents from the specified directory. Does not use recursion.
      * Detects document types automatically. Files with unsupported types are ignored.
      *
      * @param directoryPath path to the directory with files
-     * @return documents
+     * @return list of documents
      * @throws IllegalArgumentException if specified path is not a directory
      */
-    public static Iterable<Document> loadAll(String directoryPath) {
-        return loadAll(Paths.get(directoryPath));
+    public static List<Document> loadDocuments(String directoryPath) {
+        return loadDocuments(Paths.get(directoryPath));
     }
 }
