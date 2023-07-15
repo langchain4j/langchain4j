@@ -19,6 +19,16 @@ This can be achieved thanks to:
     - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
 
 ## News
+
+15 July:
+- Added EmbeddingStoreIngestor
+- Redesigned document loaders (see FileSystemDocumentLoader)
+- Simplified ConversationalRetrievalChain
+- Renamed DocumentSegment into TextSegment
+- Added output parsers for numeric types
+- Added @UserName for AI Services
+- Fixed [23](https://github.com/langchain4j/langchain4j/issues/23) and [24](https://github.com/langchain4j/langchain4j/issues/24)
+
 11 July:
 
 - Added ["Dynamic Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java):
@@ -148,12 +158,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.12.0</version>
+          <version>0.13.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.12.0'
+      implementation 'dev.langchain4j:langchain4j:0.13.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
