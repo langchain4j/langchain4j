@@ -124,7 +124,11 @@ public class AiServices<T> {
                     private final ExecutorService executor = Executors.newCachedThreadPool();
 
                     @Override
-                    public Object invoke(Object proxy, Method method, Object[] args) {
+                    public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+
+                        if (method.getDeclaringClass() == Object.class) {
+                            return method.invoke(this, args);
+                        }
 
                         validateParameters(method);
 
