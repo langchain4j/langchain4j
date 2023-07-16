@@ -334,8 +334,9 @@ public class AiServices<T> {
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
             UserMessage userMessage = parameter.getAnnotation(UserMessage.class);
-            if (v == null && userMessage == null) {
-                throw illegalConfiguration("Parameter '%s' of method '%s' should be annotated either with @V or @UserMessage", parameter.getName(), method.getName());
+            UserName userName = parameter.getAnnotation(UserName.class);
+            if (v == null && userMessage == null && userName == null) {
+                throw illegalConfiguration("Parameter '%s' of method '%s' should be annotated either with @V or @UserMessage or @UserName", parameter.getName(), method.getName());
             }
         }
     }
