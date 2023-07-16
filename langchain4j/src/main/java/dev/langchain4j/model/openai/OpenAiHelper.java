@@ -6,19 +6,33 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
 import static dev.ai4j.openai4j.chat.Role.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
+import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-class OpenAiConverters {
+class OpenAiHelper {
+
+    static Duration defaultTimeoutFor(String modelName) {
+        if (modelName.startsWith(GPT_3_5_TURBO)) {
+            return ofSeconds(7);
+        } else if (modelName.startsWith(GPT_4)) {
+            return ofSeconds(20);
+        }
+
+        return ofSeconds(10);
+    }
 
     static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
-                .map(OpenAiConverters::toOpenAiMessage)
+                .map(OpenAiHelper::toOpenAiMessage)
                 .collect(toList());
     }
 
@@ -76,7 +90,7 @@ class OpenAiConverters {
         }
 
         return toolSpecifications.stream()
-                .map(OpenAiConverters::toFunction)
+                .map(OpenAiHelper::toFunction)
                 .collect(toList());
     }
 

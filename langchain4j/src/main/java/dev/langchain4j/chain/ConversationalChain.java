@@ -30,7 +30,7 @@ public class ConversationalChain implements Chain<String, String> {
 
         chatMemory.add(userMessage(ensureNotBlank(userMessage, "userMessage")));
 
-        AiMessage aiMessage = chatLanguageModel.sendMessages(chatMemory.messages()).get();
+        AiMessage aiMessage = chatLanguageModel.sendMessages(chatMemory.messages());
 
         chatMemory.add(aiMessage);
 

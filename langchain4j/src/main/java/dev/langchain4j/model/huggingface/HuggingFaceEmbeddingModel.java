@@ -1,9 +1,8 @@
 package dev.langchain4j.model.huggingface;
 
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -34,18 +33,18 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public Result<Embedding> embed(String text) {
-        Result<List<Embedding>> result = embedTexts(singletonList(text));
-        return Result.from(result.get().get(0));
+    public Embedding embed(String text) {
+        List<Embedding> embeddings = embedTexts(singletonList(text));
+        return embeddings.get(0);
     }
 
     @Override
-    public Result<Embedding> embed(TextSegment textSegment) {
+    public Embedding embed(TextSegment textSegment) {
         return embed(textSegment.text());
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public List<Embedding> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
@@ -54,17 +53,15 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
         return embedTexts(texts);
     }
 
-    private Result<List<Embedding>> embedTexts(List<String> texts) {
+    private List<Embedding> embedTexts(List<String> texts) {
 
         EmbeddingRequest request = new EmbeddingRequest(texts, waitForModel);
 
         List<float[]> response = client.embed(request);
 
-        List<Embedding> embeddings = response.stream()
+        return response.stream()
                 .map(Embedding::from)
                 .collect(toList());
-
-        return Result.from(embeddings);
     }
 
     public static HuggingFaceEmbeddingModel withAccessToken(String accessToken) {

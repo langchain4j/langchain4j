@@ -30,7 +30,7 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
     @Override
     public List<TextSegment> findRelevant(String text) {
 
-        Embedding embeddedText = embeddingModel.embed(text).get();
+        Embedding embeddedText = embeddingModel.embed(text);
 
         List<EmbeddingMatch<TextSegment>> relevant;
         if (minSimilarity == null) {

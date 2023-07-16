@@ -16,7 +16,6 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Result;
 import dev.langchain4j.retriever.Retriever;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -167,16 +166,14 @@ public class AiServices<T> {
                             messages.add(userMessage);
                         }
 
-                        Future<Result<Moderation>> moderationFuture = triggerModerationIfNeeded(method, messages);
+                        Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        Result<AiMessage> result = chatLanguageModel.sendMessages(messages, toolSpecifications);
+                        AiMessage aiMessage = chatLanguageModel.sendMessages(messages, toolSpecifications);
 
                         verifyModerationIfNeeded(moderationFuture);
 
                         ToolExecutionRequest toolExecutionRequest;
                         while (true) { // TODO limit number of cycles
-
-                            AiMessage aiMessage = result.get();
 
                             if (chatMemory != null) {
                                 chatMemory.add(aiMessage);
@@ -197,13 +194,13 @@ public class AiServices<T> {
 
                             chatMemory.add(toolExecutionResultMessage);
 
-                            result = chatLanguageModel.sendMessages(chatMemory.messages());
+                            aiMessage = chatLanguageModel.sendMessages(chatMemory.messages());
                         }
 
-                        return ServiceOutputParser.parse(result, method.getReturnType());
+                        return ServiceOutputParser.parse(aiMessage, method.getReturnType());
                     }
 
-                    private Future<Result<Moderation>> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
+                    private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
@@ -220,10 +217,10 @@ public class AiServices<T> {
                                 .collect(toList());
                     }
 
-                    private void verifyModerationIfNeeded(Future<Result<Moderation>> moderationFuture) {
+                    private void verifyModerationIfNeeded(Future<Moderation> moderationFuture) {
                         if (moderationFuture != null) {
                             try {
-                                Moderation moderation = moderationFuture.get().get();
+                                Moderation moderation = moderationFuture.get();
                                 if (moderation.flagged()) {
                                     throw new ModerationException(String.format("Text \"%s\" violates content policy", moderation.flaggedText()));
                                 }

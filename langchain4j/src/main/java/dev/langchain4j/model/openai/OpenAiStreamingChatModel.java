@@ -2,9 +2,9 @@ package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.StreamingResultHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
@@ -16,13 +16,12 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+import static dev.langchain4j.model.openai.OpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
-
-    private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final OpenAiClient client;
     private final String modelName;
@@ -36,17 +35,22 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Duration timeout,
                                     Boolean logRequests,
                                     Boolean logResponses) {
+
+        modelName = modelName == null ? GPT_3_5_TURBO : modelName;
+        temperature = temperature == null ? 0.7 : temperature;
+        timeout = timeout == null ? ofSeconds(5) : timeout;
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
-                .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? GPT_3_5_TURBO : modelName;
-        this.temperature = temperature == null ? DEFAULT_TEMPERATURE : temperature;
+        this.modelName = modelName;
+        this.temperature = temperature;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
 
@@ -61,13 +65,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
-    public void sendUserMessage(Prompt prompt, StreamingResultHandler handler) {
-        sendUserMessage(prompt.text(), handler);
-    }
-
-    @Override
     public void sendUserMessage(Object structuredPrompt, StreamingResultHandler handler) {
-        sendUserMessage(toPrompt(structuredPrompt), handler);
+        Prompt prompt = toPrompt(structuredPrompt);
+        sendUserMessage(prompt.toUserMessage(), handler);
     }
 
     @Override
@@ -75,7 +75,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = ChatCompletionRequest.builder()
                 .model(modelName)
-                .messages(OpenAiConverters.toOpenAiMessages(messages))
+                .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
                 .stream(true)
                 .build();

@@ -11,13 +11,10 @@ import java.util.List;
 public interface StreamingChatLanguageModel {
 
     @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
-    void sendUserMessage(String text, StreamingResultHandler handler);
+    void sendUserMessage(String userMessage, StreamingResultHandler handler);
 
     @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
     void sendUserMessage(UserMessage userMessage, StreamingResultHandler handler);
-
-    @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
-    void sendUserMessage(Prompt prompt, StreamingResultHandler handler);
 
     @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
     void sendUserMessage(Object structuredPrompt, StreamingResultHandler handler);

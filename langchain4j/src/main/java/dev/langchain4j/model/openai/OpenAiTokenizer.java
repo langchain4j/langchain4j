@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.model.openai.OpenAiConverters.roleFrom;
+import static dev.langchain4j.model.openai.OpenAiHelper.roleFrom;
 
 public class OpenAiTokenizer implements Tokenizer {
 

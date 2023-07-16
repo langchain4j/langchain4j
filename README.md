@@ -177,7 +177,7 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     ```java
     OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
     
-    AiMessage answer = model.sendUserMessage("Hello world!").get();
+    AiMessage answer = model.sendUserMessage("Hello world!");
     
     System.out.println(answer.text()); // Hello! How can I assist you today?
     ```
