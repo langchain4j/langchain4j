@@ -13,11 +13,9 @@ import java.time.Duration;
 
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
+import static java.time.Duration.ofSeconds;
 
 public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
-
-    private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final OpenAiClient client;
     private final String modelName;
@@ -31,17 +29,23 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         Duration timeout,
                                         Boolean logRequests,
                                         Boolean logResponses) {
+
+
+        modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
+        temperature = temperature == null ? 0.7 : temperature;
+        timeout = timeout == null ? ofSeconds(15) : timeout;
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
-                .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
-        this.temperature = temperature == null ? DEFAULT_TEMPERATURE : temperature;
+        this.modelName = modelName;
+        this.temperature = temperature;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
 

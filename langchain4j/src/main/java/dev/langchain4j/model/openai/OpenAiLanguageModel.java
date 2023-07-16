@@ -7,22 +7,21 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.time.Duration;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
+import static java.time.Duration.ofSeconds;
 
 public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
-
-    private static final double DEFAULT_TEMPERATURE = 0.7;
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
+    private final Integer maxRetries;
     private final OpenAiTokenizer tokenizer;
 
     @Builder
@@ -30,24 +29,32 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                                String modelName,
                                Double temperature,
                                Duration timeout,
+                               Integer maxRetries,
                                Boolean logRequests,
                                Boolean logResponses) {
+
+        modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
+        temperature = temperature == null ? 0.7 : temperature;
+        timeout = timeout == null ? ofSeconds(15) : timeout;
+        maxRetries = maxRetries == null ? 3 : maxRetries;
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
-                .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
-        this.temperature = temperature == null ? DEFAULT_TEMPERATURE : temperature;
+        this.modelName = modelName;
+        this.temperature = temperature;
+        this.maxRetries = maxRetries;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
 
     @Override
-    public Result<String> process(String text) {
+    public String process(String text) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
@@ -55,18 +62,18 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .temperature(temperature)
                 .build();
 
-        CompletionResponse response = client.completion(request).execute();
+        CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
-        return Result.from(response.text());
+        return response.text();
     }
 
     @Override
-    public Result<String> process(Prompt prompt) {
+    public String process(Prompt prompt) {
         return this.process(prompt.text());
     }
 
     @Override
-    public Result<String> process(Object structuredPrompt) {
+    public String process(Object structuredPrompt) {
         return process(toPrompt(structuredPrompt));
     }
 

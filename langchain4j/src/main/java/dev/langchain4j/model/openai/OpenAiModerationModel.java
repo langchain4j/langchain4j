@@ -4,89 +4,96 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.moderation.ModerationRequest;
 import dev.ai4j.openai4j.moderation.ModerationResponse;
 import dev.ai4j.openai4j.moderation.ModerationResult;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
+import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public class OpenAiModerationModel implements ModerationModel {
 
-    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
-
     private final OpenAiClient client;
     private final String modelName;
+    private final Integer maxRetries;
 
     @Builder
     public OpenAiModerationModel(String apiKey,
                                  String modelName,
                                  Duration timeout,
+                                 Integer maxRetries,
                                  Boolean logRequests,
                                  Boolean logResponses) {
+
+        modelName = modelName == null ? TEXT_MODERATION_LATEST : modelName;
+        timeout = timeout == null ? ofSeconds(15) : timeout;
+        maxRetries = maxRetries == null ? 3 : maxRetries;
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
-                .callTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .connectTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .readTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
-                .writeTimeout(timeout == null ? DEFAULT_TIMEOUT : timeout)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName == null ? TEXT_MODERATION_LATEST : modelName;
+        this.modelName = modelName;
+        this.maxRetries = maxRetries;
     }
 
     @Override
-    public Result<Moderation> moderate(String text) {
+    public Moderation moderate(String text) {
         return moderateInternal(singletonList(text));
     }
 
-    private Result<Moderation> moderateInternal(List<String> inputs) {
+    private Moderation moderateInternal(List<String> inputs) {
 
         ModerationRequest request = ModerationRequest.builder()
                 .model(modelName)
                 .input(inputs)
                 .build();
 
-        ModerationResponse response = client.moderation(request).execute();
+        ModerationResponse response = withRetry(() -> client.moderation(request).execute(), maxRetries);
 
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {
             if (moderationResult.isFlagged()) {
-                return Result.from(Moderation.flagged(inputs.get(i)));
+                return Moderation.flagged(inputs.get(i));
             }
             i++;
         }
 
-        return Result.from(Moderation.notFlagged());
+        return Moderation.notFlagged();
     }
 
     @Override
-    public Result<Moderation> moderate(Prompt prompt) {
+    public Moderation moderate(Prompt prompt) {
         return moderate(prompt.text());
     }
 
     @Override
-    public Result<Moderation> moderate(Object structuredPrompt) {
+    public Moderation moderate(Object structuredPrompt) {
         return moderate(toPrompt(structuredPrompt));
     }
 
     @Override
-    public Result<Moderation> moderate(ChatMessage message) {
+    public Moderation moderate(ChatMessage message) {
         return moderate(message.text());
     }
 
     @Override
-    public Result<Moderation> moderate(List<ChatMessage> messages) {
+    public Moderation moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
                 .map(ChatMessage::text)
                 .collect(toList());
@@ -95,7 +102,7 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Result<Moderation> moderate(TextSegment textSegment) {
+    public Moderation moderate(TextSegment textSegment) {
         return moderate(textSegment.text());
     }
 

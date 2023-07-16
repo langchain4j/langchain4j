@@ -3,15 +3,16 @@ package dev.langchain4j.model.huggingface;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.output.Result;
 
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static java.util.Arrays.asList;
@@ -51,32 +52,33 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Result<AiMessage> sendUserMessage(String text) {
-        return sendMessages(userMessage(text));
+    public AiMessage sendUserMessage(String userMessage) {
+        return sendUserMessage(userMessage(userMessage));
     }
 
     @Override
-    public Result<AiMessage> sendUserMessage(Prompt userMessage) {
-        return sendUserMessage(userMessage.text());
+    public AiMessage sendUserMessage(UserMessage userMessage) {
+        return sendMessages(userMessage);
     }
 
     @Override
-    public Result<AiMessage> sendUserMessage(Object structuredPrompt) {
-        return sendUserMessage(toPrompt(structuredPrompt));
+    public AiMessage sendUserMessage(Object structuredPrompt) {
+        Prompt prompt = toPrompt(structuredPrompt);
+        return sendUserMessage(prompt.toUserMessage());
     }
 
     @Override
-    public Result<AiMessage> sendMessages(ChatMessage... messages) {
+    public AiMessage sendMessages(ChatMessage... messages) {
         return sendMessages(asList(messages));
     }
 
     @Override
-    public Result<AiMessage> sendMessages(List<ChatMessage> messages) {
+    public AiMessage sendMessages(List<ChatMessage> messages) {
         return sendMessages(messages, null);
     }
 
     @Override
-    public Result<AiMessage> sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
 
         if (toolSpecifications != null && toolSpecifications.size() > 0) {
             throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
@@ -98,9 +100,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         TextGenerationResponse textGenerationResponse = client.chat(request);
 
-        AiMessage aiMessage = aiMessage(textGenerationResponse.generatedText());
-
-        return Result.from(aiMessage);
+        return aiMessage(textGenerationResponse.generatedText());
     }
 
     public static Builder builder() {
@@ -161,10 +161,14 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         }
 
         public HuggingFaceChatModel build() {
-            if (accessToken == null || accessToken.trim().isEmpty()) {
+            if (isNullOrBlank(accessToken)) {
                 throw new IllegalArgumentException("HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
             }
             return new HuggingFaceChatModel(this);
         }
+    }
+
+    public static HuggingFaceChatModel withAccessToken(String accessToken) {
+        return builder().accessToken(accessToken).build();
     }
 }

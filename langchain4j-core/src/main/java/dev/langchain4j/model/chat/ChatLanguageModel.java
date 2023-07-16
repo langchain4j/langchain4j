@@ -1,27 +1,38 @@
 package dev.langchain4j.model.chat;
 
-import dev.langchain4j.MightChangeInTheFuture;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.data.message.UserMessage;
 
 import java.util.List;
 
+/**
+ * Represents a LLM that has a chat interface.
+ */
 public interface ChatLanguageModel {
 
-    Result<AiMessage> sendUserMessage(String text);
+    /**
+     * Sends a message from a user to the LLM and returns response.
+     *
+     * @param userMessage User message as a String. Will be wrapped into {@link dev.langchain4j.data.message.UserMessage UserMessage} under the hood.
+     * @return {@link dev.langchain4j.data.message.AiMessage AiMessage}
+     */
+    AiMessage sendUserMessage(String userMessage);
 
-    @MightChangeInTheFuture("not sure this method is useful/needed")
-    Result<AiMessage> sendUserMessage(Prompt prompt);
+    AiMessage sendUserMessage(UserMessage userMessage);
 
-    @MightChangeInTheFuture("not sure this method is useful/needed")
-    Result<AiMessage> sendUserMessage(Object structuredPrompt);
+    /**
+     * Sends a structured prompt as a user message to the LLM and returns response.
+     *
+     * @param structuredPrompt object annotated with {@link dev.langchain4j.model.input.structured.StructuredPrompt @StructuredPrompt}
+     * @return {@link dev.langchain4j.data.message.AiMessage AiMessage}
+     */
+    AiMessage sendUserMessage(Object structuredPrompt);
 
-    Result<AiMessage> sendMessages(ChatMessage... messages);
+    AiMessage sendMessages(ChatMessage... messages);
 
-    Result<AiMessage> sendMessages(List<ChatMessage> messages);
+    AiMessage sendMessages(List<ChatMessage> messages);
 
-    Result<AiMessage> sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications);
+    AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications);
 }

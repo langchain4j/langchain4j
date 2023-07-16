@@ -2,7 +2,6 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.output.Result;
 
 import java.time.Duration;
 
@@ -44,7 +43,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     @Override
-    public Result<String> process(String text) {
+    public String process(String text) {
 
         TextGenerationRequest request = TextGenerationRequest.builder()
                 .inputs(text)
@@ -60,16 +59,16 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         TextGenerationResponse response = client.generate(request);
 
-        return Result.from(response.generatedText());
+        return response.generatedText();
     }
 
     @Override
-    public Result<String> process(Prompt prompt) {
+    public String process(Prompt prompt) {
         return this.process(prompt.text());
     }
 
     @Override
-    public Result<String> process(Object structuredPrompt) {
+    public String process(Object structuredPrompt) {
         return process(toPrompt(structuredPrompt));
     }
 
@@ -137,5 +136,9 @@ public class HuggingFaceLanguageModel implements LanguageModel {
             }
             return new HuggingFaceLanguageModel(this);
         }
+    }
+
+    public static HuggingFaceLanguageModel withAccessToken(String accessToken) {
+        return builder().accessToken(accessToken).build();
     }
 }

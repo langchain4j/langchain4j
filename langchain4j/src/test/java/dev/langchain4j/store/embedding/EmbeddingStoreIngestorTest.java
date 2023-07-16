@@ -6,7 +6,6 @@ import dev.langchain4j.data.document.splitter.SentenceSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Result;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -38,7 +37,7 @@ class EmbeddingStoreIngestorTest {
                 Embedding.from(new float[]{2}),
                 Embedding.from(new float[]{3})
         );
-        when(embeddingModel.embedAll(segments)).thenReturn(Result.from(embeddings));
+        when(embeddingModel.embedAll(segments)).thenReturn(embeddings);
 
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
