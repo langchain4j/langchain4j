@@ -46,8 +46,14 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
+        String url = OPENAI_URL;
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            url = OPENAI_DEMO_URL;
+        }
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
+                .url(url)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

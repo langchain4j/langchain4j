@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.openai.OpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -37,8 +38,14 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
+        String url = OPENAI_URL;
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            url = OPENAI_DEMO_URL;
+        }
+
         this.client = OpenAiClient.builder()
                 .apiKey(apiKey)
+                .url(url)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
