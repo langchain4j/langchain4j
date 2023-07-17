@@ -39,7 +39,7 @@ public class RetryUtils {
                     throw new RuntimeException(e); // makes no sense to retry
                 }
 
-                log.warn(format("Exception was thrown on attempt %s of %s", action, maxAttempts), e);
+                log.warn(format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
 
                 if (e.code() == HTTP_CODE_429_TOO_MANY_REQUESTS) {
                     try {
@@ -52,7 +52,7 @@ public class RetryUtils {
                 if (attempt == maxAttempts) {
                     throw new RuntimeException(e);
                 }
-                log.warn(format("Exception was thrown on attempt %s of %s", action, maxAttempts), e);
+                log.warn(format("Exception was thrown on attempt %s of %s", attempt, maxAttempts), e);
             }
         }
         throw new RuntimeException("Failed after " + maxAttempts + " attempts");
