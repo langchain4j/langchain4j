@@ -45,7 +45,7 @@ public class RetryUtils {
                     try {
                         // TODO make configurable or read from Retry-After
                         Thread.sleep(1000); // makes sense to retry after a bit of waiting
-                    } catch (InterruptedException ex) {
+                    } catch (InterruptedException ignored) {
                     }
                 }
             } catch (Exception e) {
