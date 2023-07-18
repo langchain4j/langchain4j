@@ -26,12 +26,20 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
+    private final Double topP;
+    private final Integer maxTokens;
+    private final Double presencePenalty;
+    private final Double frequencyPenalty;
     private final OpenAiTokenizer tokenizer;
 
     @Builder
     public OpenAiStreamingChatModel(String apiKey,
                                     String modelName,
                                     Double temperature,
+                                    Double topP,
+                                    Integer maxTokens,
+                                    Double presencePenalty,
+                                    Double frequencyPenalty,
                                     Duration timeout,
                                     Boolean logRequests,
                                     Boolean logResponses) {
@@ -51,6 +59,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .build();
         this.modelName = modelName;
         this.temperature = temperature;
+        this.topP = topP;
+        this.maxTokens = maxTokens;
+        this.presencePenalty = presencePenalty;
+        this.frequencyPenalty = frequencyPenalty;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
 
@@ -74,10 +86,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     public void sendMessages(List<ChatMessage> messages, StreamingResultHandler handler) {
 
         ChatCompletionRequest request = ChatCompletionRequest.builder()
+                .stream(true)
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
-                .stream(true)
+                .topP(topP)
+                .maxTokens(maxTokens)
+                .presencePenalty(presencePenalty)
+                .frequencyPenalty(frequencyPenalty)
                 .build();
 
         client.chatCompletion(request)
