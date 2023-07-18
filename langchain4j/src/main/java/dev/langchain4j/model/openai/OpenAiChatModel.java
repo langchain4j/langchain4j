@@ -29,6 +29,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
+    private final Double topP;
+    private final Integer maxTokens;
+    private final Double presencePenalty;
+    private final Double frequencyPenalty;
     private final Integer maxRetries;
     private final OpenAiTokenizer tokenizer;
 
@@ -36,6 +40,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     public OpenAiChatModel(String apiKey,
                            String modelName,
                            Double temperature,
+                           Double topP,
+                           Integer maxTokens,
+                           Double presencePenalty,
+                           Double frequencyPenalty,
                            Duration timeout,
                            Integer maxRetries,
                            Boolean logRequests,
@@ -63,6 +71,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .build();
         this.modelName = modelName;
         this.temperature = temperature;
+        this.topP = topP;
+        this.maxTokens = maxTokens;
+        this.presencePenalty = presencePenalty;
+        this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = maxRetries;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
@@ -101,6 +113,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .messages(toOpenAiMessages(messages))
                 .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
+                .topP(topP)
+                .maxTokens(maxTokens)
+                .presencePenalty(presencePenalty)
+                .frequencyPenalty(frequencyPenalty)
                 .build();
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
