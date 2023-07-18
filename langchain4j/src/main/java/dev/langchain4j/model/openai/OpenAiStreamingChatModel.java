@@ -21,7 +21,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
-public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class OpenAiStreamingChatModel implements StreamingChatLanguageModel<ChatCompletionRequest>, TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -72,8 +72,16 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void sendMessages(List<ChatMessage> messages, StreamingResultHandler handler) {
+        this.sendMessages(messages,null,handler);
+    }
 
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+    @Override
+    public void sendMessages(List<ChatMessage> messages, ChatCompletionRequest chatCompletionRequest, StreamingResultHandler handler) {
+        ChatCompletionRequest.Builder builder = ChatCompletionRequest.builder();
+        if(chatCompletionRequest != null){
+            builder.from(chatCompletionRequest);
+        }
+        ChatCompletionRequest request = builder
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)

@@ -8,7 +8,7 @@ import dev.langchain4j.model.input.Prompt;
 
 import java.util.List;
 
-public interface StreamingChatLanguageModel {
+public interface StreamingChatLanguageModel<Request> {
 
     @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
     void sendUserMessage(String userMessage, StreamingResultHandler handler);
@@ -21,4 +21,7 @@ public interface StreamingChatLanguageModel {
 
     @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
     void sendMessages(List<ChatMessage> messages, StreamingResultHandler handler);
+
+    @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
+    void sendMessages(List<ChatMessage> messages, Request request, StreamingResultHandler handler);
 }
