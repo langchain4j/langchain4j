@@ -22,6 +22,10 @@ public class Document {
         return metadata;
     }
 
+    public String metadata(String key) {
+        return metadata.get(key);
+    }
+
     public TextSegment toTextSegment() {
         Metadata copy = metadata.copy();
         copy.add("index", "0");

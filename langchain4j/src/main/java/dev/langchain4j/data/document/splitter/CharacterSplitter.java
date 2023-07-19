@@ -36,13 +36,18 @@ public class CharacterSplitter implements DocumentSplitter {
         if (textLength <= segmentLength) {
             segments.add(document.toTextSegment());
         } else {
-            for (int i = 0; i < textLength - segmentOverlap; i += segmentLength - segmentOverlap) {
-                int endIndex = Math.min(i + segmentLength, textLength);
-                String segment = text.substring(i, endIndex);
+            for (int startIndex = 0;
+                 startIndex < textLength - segmentOverlap;
+                 startIndex += segmentLength - segmentOverlap
+            ) {
+                int stopIndex = Math.min(startIndex + segmentLength, textLength);
+                String segment = text.substring(startIndex, stopIndex);
                 Metadata metadata = document.metadata().copy();
-                metadata.add("index", String.valueOf(segmentIndex++));
+                metadata.add("index", String.valueOf(segmentIndex++)); // TODO names
+                metadata.add("start_offset", String.valueOf(startIndex)); // TODO names
+                metadata.add("end_offset", String.valueOf(stopIndex)); // TODO names
                 segments.add(TextSegment.from(segment, metadata));
-                if (endIndex == textLength) {
+                if (stopIndex == textLength) {
                     break;
                 }
             }

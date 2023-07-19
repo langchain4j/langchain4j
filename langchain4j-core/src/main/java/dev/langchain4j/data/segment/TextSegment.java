@@ -28,6 +28,10 @@ public class TextSegment {
         return metadata;
     }
 
+    public String metadata(String key) {
+        return metadata.get(key);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
