@@ -28,6 +28,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
 
     @Builder
     public OpenAiEmbeddingModel(String apiKey,
+                                String url,
                                 String modelName,
                                 Duration timeout,
                                 Integer maxRetries,
@@ -38,7 +39,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        String url = OPENAI_URL;
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             url = OPENAI_DEMO_URL;
         }

@@ -23,7 +23,9 @@ public class Document {
     }
 
     public TextSegment toTextSegment() {
-        return TextSegment.from(text, metadata);
+        Metadata copy = metadata.copy();
+        copy.add("index", "0");
+        return TextSegment.from(text, copy);
     }
 
     @Override

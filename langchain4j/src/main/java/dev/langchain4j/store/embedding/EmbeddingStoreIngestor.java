@@ -4,6 +4,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 
 import java.util.List;
@@ -21,13 +22,16 @@ import static java.util.Collections.singletonList;
 public class EmbeddingStoreIngestor {
 
     private final DocumentSplitter splitter;
+    private final TextSegmentTransformer transformer;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
     public EmbeddingStoreIngestor(DocumentSplitter splitter,
+                                  TextSegmentTransformer transformer,
                                   EmbeddingModel embeddingModel,
                                   EmbeddingStore<TextSegment> embeddingStore) {
         this.splitter = ensureNotNull(splitter, "splitter");
+        this.transformer = transformer;
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
     }
@@ -42,6 +46,9 @@ public class EmbeddingStoreIngestor {
 
     public void ingest(List<Document> documents) {
         List<TextSegment> segments = splitter.split(documents);
+        if (transformer != null) {
+            segments = transformer.transform(segments);
+        }
         List<Embedding> embeddings = embeddingModel.embedAll(segments);
         embeddingStore.addAll(embeddings, segments);
     }
@@ -53,11 +60,17 @@ public class EmbeddingStoreIngestor {
     public static class Builder {
 
         private DocumentSplitter splitter;
+        private TextSegmentTransformer transformer;
         private EmbeddingModel embeddingModel;
         private EmbeddingStore<TextSegment> embeddingStore;
 
         public Builder splitter(DocumentSplitter splitter) {
             this.splitter = splitter;
+            return this;
+        }
+
+        public Builder transformer(TextSegmentTransformer transformer) {
+            this.transformer = transformer;
             return this;
         }
 
@@ -72,7 +85,7 @@ public class EmbeddingStoreIngestor {
         }
 
         public EmbeddingStoreIngestor build() {
-            return new EmbeddingStoreIngestor(splitter, embeddingModel, embeddingStore);
+            return new EmbeddingStoreIngestor(splitter, transformer, embeddingModel, embeddingStore);
         }
     }
 }

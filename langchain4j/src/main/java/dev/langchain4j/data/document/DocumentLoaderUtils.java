@@ -1,5 +1,6 @@
 package dev.langchain4j.data.document;
 
+import dev.langchain4j.data.document.parser.HtmlDocumentParser;
 import dev.langchain4j.data.document.parser.PdfDocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 
@@ -29,6 +30,12 @@ class DocumentLoaderUtils {
             return DocumentType.PDF;
         }
 
+        if (pathToFile.endsWith("html")
+                || pathToFile.endsWith("htm")
+                || pathToFile.endsWith("xhtml")) {
+            return DocumentType.HTML;
+        }
+
         throw new UnsupportedDocumentTypeException(pathToFile);
     }
 
@@ -38,6 +45,8 @@ class DocumentLoaderUtils {
                 return new TextDocumentParser();
             case PDF:
                 return new PdfDocumentParser();
+            case HTML:
+                return new HtmlDocumentParser();
             default:
                 throw new RuntimeException(String.format("Cannot find parser for document type '%s'", type));
         }

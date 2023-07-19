@@ -38,6 +38,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Builder
     public OpenAiChatModel(String apiKey,
+                           String url,
                            String modelName,
                            Double temperature,
                            Double topP,
@@ -54,7 +55,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        String url = OPENAI_URL;
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             url = OPENAI_DEMO_URL;
         }
