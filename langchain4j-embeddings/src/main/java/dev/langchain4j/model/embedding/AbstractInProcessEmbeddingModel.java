@@ -14,7 +14,10 @@ public abstract class AbstractInProcessEmbeddingModel implements EmbeddingModel 
     @Override
     public List<Embedding> embedAll(List<TextSegment> segments) {
         return segments.stream()
-                .map(segment -> Embedding.from(model().embed(segment.text())))
+                .map(segment -> {
+                    float[] vector = model().embed(segment.text());
+                    return Embedding.from(vector);
+                })
                 .collect(toList());
     }
 }

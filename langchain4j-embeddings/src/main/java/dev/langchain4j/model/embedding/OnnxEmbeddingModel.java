@@ -29,7 +29,7 @@ public class OnnxEmbeddingModel {
     public OnnxEmbeddingModel(String modelFilePath, String vocabularyFilePath) {
         try {
             this.environment = OrtEnvironment.getEnvironment();
-            this.session = environment.createSession(readModel(modelFilePath));
+            this.session = environment.createSession(loadModel(modelFilePath));
             this.vocabulary = DefaultVocabulary.builder()
                     .addFromTextFile(getClass().getResource(vocabularyFilePath))
                     .build();
@@ -40,16 +40,53 @@ public class OnnxEmbeddingModel {
     }
 
     public float[] embed(String text) {
-        try {
-            Map<String, OnnxTensor> inputs = toInputs(text);
-            Result result = session.run(inputs);
+        try (Result result = runModel(text)) {
             return toEmbedding(result);
         } catch (Exception e) {
             throw new RuntimeException(e);
+
         }
     }
 
-    private byte[] readModel(String modelFilePath) {
+    private Result runModel(String text) throws OrtException {
+
+        List<String> stringTokens = new ArrayList<>();
+        stringTokens.add("[CLS]");
+        stringTokens.addAll(tokenizer.tokenize(text));
+        stringTokens.add("[SEP]");
+
+        // TODO reusable buffers
+        long[] tokens = stringTokens.stream()
+                .mapToLong(vocabulary::getIndex)
+                .toArray();
+
+        long[] attentionMasks = new long[stringTokens.size()];
+        for (int i = 0; i < stringTokens.size(); i++) {
+            attentionMasks[i] = 1L;
+        }
+
+        long[] tokenTypeIds = new long[stringTokens.size()];
+        for (int i = 0; i < stringTokens.size(); i++) {
+            tokenTypeIds[i] = 0L;
+        }
+
+        long[] shape = {1, tokens.length};
+
+        try (
+                OnnxTensor tokensTensor = createTensor(environment, wrap(tokens), shape);
+                OnnxTensor attentionMasksTensor = createTensor(environment, wrap(attentionMasks), shape);
+                OnnxTensor tokenTypeIdsTensor = createTensor(environment, wrap(tokenTypeIds), shape)
+        ) {
+            Map<String, OnnxTensor> inputs = new HashMap<>();
+            inputs.put("input_ids", tokensTensor);
+            inputs.put("token_type_ids", tokenTypeIdsTensor);
+            inputs.put("attention_mask", attentionMasksTensor);
+
+            return session.run(inputs);
+        }
+    }
+
+    private byte[] loadModel(String modelFilePath) {
         try (
                 InputStream inputStream = getClass().getResourceAsStream(modelFilePath);
                 ByteArrayOutputStream buffer = new ByteArrayOutputStream()
@@ -66,40 +103,6 @@ public class OnnxEmbeddingModel {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private Map<String, OnnxTensor> toInputs(String text) throws Exception {
-
-        List<String> stringTokens = new ArrayList<>();
-        stringTokens.add("[CLS]");
-        stringTokens.addAll(tokenizer.tokenize(text));
-        stringTokens.add("[SEP]");
-
-        long[] tokens = stringTokens.stream()
-                .mapToLong(vocabulary::getIndex)
-                .toArray();
-
-        long[] attentionMasks = new long[stringTokens.size()];
-        for (int i = 0; i < stringTokens.size(); i++) {
-            attentionMasks[i] = 1L;
-        }
-
-        long[] tokenTypeIds = new long[stringTokens.size()];
-        for (int i = 0; i < stringTokens.size(); i++) {
-            tokenTypeIds[i] = 0L;
-        }
-
-        long[] shape = {1, tokens.length};
-        OnnxTensor tokensTensor = createTensor(environment, wrap(tokens), shape);
-        OnnxTensor attentionMasksTensor = createTensor(environment, wrap(attentionMasks), shape);
-        OnnxTensor tokenTypeIdsTensor = createTensor(environment, wrap(tokenTypeIds), shape);
-
-        Map<String, OnnxTensor> inputs = new HashMap<>();
-        inputs.put("input_ids", tokensTensor);
-        inputs.put("token_type_ids", tokenTypeIdsTensor);
-        inputs.put("attention_mask", attentionMasksTensor);
-
-        return inputs;
     }
 
     private static float[] toEmbedding(Result result) throws OrtException {
