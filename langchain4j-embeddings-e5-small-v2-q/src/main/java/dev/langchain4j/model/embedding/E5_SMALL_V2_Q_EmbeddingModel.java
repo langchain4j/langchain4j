@@ -1,9 +1,9 @@
 package dev.langchain4j.model.embedding;
 
-public class all_minilm_l6_v2_q_EmbeddingModel extends AbstractInProcessEmbeddingModel {
+public class E5_SMALL_V2_Q_EmbeddingModel extends AbstractInProcessEmbeddingModel {
 
     private static final OnnxEmbeddingModel model = new OnnxEmbeddingModel(
-            "/all-minilm-l6-v2-q.onnx",
+            "/e5-small-v2-q.onnx",
             "/vocab.txt"
     );
 

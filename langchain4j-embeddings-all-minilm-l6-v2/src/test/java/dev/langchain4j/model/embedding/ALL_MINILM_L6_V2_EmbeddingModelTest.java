@@ -5,12 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class e5_small_v2_q_EmbeddingModelTest {
+class ALL_MINILM_L6_V2_EmbeddingModelTest {
 
     @Test
     void should_embed() {
 
-        EmbeddingModel model = new e5_small_v2_q_EmbeddingModel();
+        EmbeddingModel model = new ALL_MINILM_L6_V2_EmbeddingModel();
 
         Embedding first = model.embed("hi");
         assertThat(first.vector()).hasSize(384);
@@ -18,6 +18,6 @@ class e5_small_v2_q_EmbeddingModelTest {
         Embedding second = model.embed("hello");
         assertThat(second.vector()).hasSize(384);
 
-        assertThat(Similarity.cosine(first.vector(), second.vector())).isGreaterThan(0.95);
+        assertThat(Similarity.cosine(first.vector(), second.vector())).isGreaterThan(0.8);
     }
 }

@@ -31,7 +31,7 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
 
     private static EmbeddingModel loadDynamically(InProcessEmbeddingModelType type) throws Exception {
         Class<?> implementationClass = Class.forName(
-                format("dev.langchain4j.model.embedding.%s_EmbeddingModel", type.name().toLowerCase()));
+                format("dev.langchain4j.model.embedding.%s_EmbeddingModel", type.name()));
         return (EmbeddingModel) implementationClass.getConstructor().newInstance();
     }
 

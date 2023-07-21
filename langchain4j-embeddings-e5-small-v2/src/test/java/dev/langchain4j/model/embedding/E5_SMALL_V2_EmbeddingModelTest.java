@@ -5,12 +5,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class e5_small_v2_EmbeddingModelTest {
+class E5_SMALL_V2_EmbeddingModelTest {
 
     @Test
     void should_embed() {
 
-        EmbeddingModel model = new e5_small_v2_EmbeddingModel();
+        EmbeddingModel model = new E5_SMALL_V2_EmbeddingModel();
 
         Embedding first = model.embed("hi");
         assertThat(first.vector()).hasSize(384);
