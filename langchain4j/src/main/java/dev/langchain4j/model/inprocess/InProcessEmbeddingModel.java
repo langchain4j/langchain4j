@@ -8,6 +8,13 @@ import java.util.List;
 
 import static java.lang.String.format;
 
+/**
+ * This is an embedding model that runs within your Java application's process.
+ * This class serves as a thin wrapper over the actual implementations.
+ * The implementations are located in separate, optional langchain4j-embeddings-xxx modules and are loaded dynamically.
+ * If you wish to use the model XXX, please add the langchain4j-embeddings-xxx dependency to your project.
+ * The model execution is carried out using the ONNX Runtime.
+ */
 public class InProcessEmbeddingModel implements EmbeddingModel {
 
     private final EmbeddingModel implementation;

@@ -1,5 +1,10 @@
 package dev.langchain4j.model.inprocess;
 
+/**
+ * Lists all the currently supported in-process embedding models.
+ * New models will be added gradually.
+ * If you would like a new model to be added, please open a GitHub issue at: https://github.com/langchain4j/langchain4j/issues/new/choose
+ */
 public enum InProcessEmbeddingModelType {
 
     /**
