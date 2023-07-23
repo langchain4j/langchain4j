@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.StreamingResultHandler;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
@@ -50,7 +50,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     @Override
-    public void process(String text, StreamingResultHandler handler) {
+    public void process(String text, StreamingResponseHandler handler) {
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
                 .prompt(text)
@@ -61,7 +61,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .onPartialResponse(partialResponse -> {
                     String partialResponseText = partialResponse.text();
                     if (partialResponseText != null) {
-                        handler.onPartialResult(partialResponseText);
+                        handler.onNext(partialResponseText);
                     }
                 })
                 .onComplete(handler::onComplete)
@@ -70,12 +70,12 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     @Override
-    public void process(Prompt prompt, StreamingResultHandler handler) {
+    public void process(Prompt prompt, StreamingResponseHandler handler) {
         process(prompt.text(), handler);
     }
 
     @Override
-    public void process(Object structuredPrompt, StreamingResultHandler handler) {
+    public void process(Object structuredPrompt, StreamingResponseHandler handler) {
         process(toPrompt(structuredPrompt), handler);
     }
 
