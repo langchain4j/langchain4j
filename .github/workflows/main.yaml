@@ -7,13 +7,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Pull LFS files
+        run: git lfs pull
+
       - name: Set up JDK 8
         uses: actions/setup-java@v3
         with:
           java-version: '8'
           distribution: 'temurin'
+
       - name: Test
         run: mvn --batch-mode test
+
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:

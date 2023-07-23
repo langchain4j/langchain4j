@@ -16,7 +16,6 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.openai.OpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
@@ -56,17 +55,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         this.modelName = modelName;
         this.maxRetries = maxRetries;
         this.tokenizer = new OpenAiTokenizer(this.modelName);
-    }
-
-    @Override
-    public Embedding embed(String text) {
-        List<Embedding> embeddings = embedTexts(singletonList(text));
-        return embeddings.get(0);
-    }
-
-    @Override
-    public Embedding embed(TextSegment textSegment) {
-        return embed(textSegment.text());
     }
 
     @Override
