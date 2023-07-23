@@ -14,6 +14,7 @@
         <module>langchain4j-parent</module>
         <module>langchain4j-core</module>
         <module>langchain4j-pinecone</module>
+        <module>langchain4j-weaviate</module>
         <module>langchain4j-spring-boot-starter</module>
     </modules>
 

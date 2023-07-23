@@ -12,7 +12,7 @@
     </parent>
 
 
-    <artifactId>langchain4j-pinecone</artifactId>
+    <artifactId>langchain4j-weaviate</artifactId>
     <packaging>jar</packaging>
 
     <name>langchain4j-weaviate</name>
@@ -63,43 +63,43 @@
 
     </dependencies>
 
-    <build>
-        <plugins>
-            <!-- TODO is this needed for weaviate? -->
-            <plugin>
-                <groupId>org.honton.chas</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <configuration>
-                    <!-- the pinecone module has non-permissive licenses -->
-                    <skipCompliance>true</skipCompliance>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
+<!--    <build>-->
+<!--        <plugins>-->
+<!--            &lt;!&ndash; TODO is this needed for weaviate? &ndash;&gt;-->
+<!--            <plugin>-->
+<!--                <groupId>org.honton.chas</groupId>-->
+<!--                <artifactId>license-maven-plugin</artifactId>-->
+<!--                <configuration>-->
+<!--                    &lt;!&ndash; the pinecone module has non-permissive licenses &ndash;&gt;-->
+<!--                    <skipCompliance>true</skipCompliance>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
+<!--        </plugins>-->
+<!--    </build>-->
 
-    <profiles>
-        <profile>
-            <!-- TODO is this needed for weaviate? -->
-            <id>compliance</id>
-            <activation>
-                <property>
-                    <name>compliance</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.honton.chas</groupId>
-                        <artifactId>license-maven-plugin</artifactId>
-                        <configuration>
-                            <!-- the pinecone module has non-permissive licenses -->
-                            <skipCompliance>true</skipCompliance>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
+<!--    <profiles>-->
+<!--        <profile>-->
+<!--            &lt;!&ndash; TODO is this needed for weaviate? &ndash;&gt;-->
+<!--            <id>compliance</id>-->
+<!--            <activation>-->
+<!--                <property>-->
+<!--                    <name>compliance</name>-->
+<!--                </property>-->
+<!--            </activation>-->
+<!--            <build>-->
+<!--                <plugins>-->
+<!--                    <plugin>-->
+<!--                        <groupId>org.honton.chas</groupId>-->
+<!--                        <artifactId>license-maven-plugin</artifactId>-->
+<!--                        <configuration>-->
+<!--                            &lt;!&ndash; the pinecone module has non-permissive licenses &ndash;&gt;-->
+<!--                            <skipCompliance>true</skipCompliance>-->
+<!--                        </configuration>-->
+<!--                    </plugin>-->
+<!--                </plugins>-->
+<!--            </build>-->
+<!--        </profile>-->
+<!--    </profiles>-->
 
     <licenses>
         <license>
