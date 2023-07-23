@@ -2,10 +2,14 @@ package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.Delta;
+import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.StreamingResultHandler;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.input.Prompt;
@@ -16,6 +20,7 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+import static dev.langchain4j.model.openai.OpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.OpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
@@ -67,28 +72,33 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
-    public void sendUserMessage(String text, StreamingResultHandler handler) {
+    public void sendUserMessage(String text, StreamingResponseHandler handler) {
         sendUserMessage(userMessage(text), handler);
     }
 
     @Override
-    public void sendUserMessage(UserMessage userMessage, StreamingResultHandler handler) {
+    public void sendUserMessage(UserMessage userMessage, StreamingResponseHandler handler) {
         sendMessages(singletonList(userMessage), handler);
     }
 
     @Override
-    public void sendUserMessage(Object structuredPrompt, StreamingResultHandler handler) {
+    public void sendUserMessage(Object structuredPrompt, StreamingResponseHandler handler) {
         Prompt prompt = toPrompt(structuredPrompt);
         sendUserMessage(prompt.toUserMessage(), handler);
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, StreamingResultHandler handler) {
+    public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
+        sendMessages(messages, null, handler);
+    }
 
+    @Override
+    public void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
         ChatCompletionRequest request = ChatCompletionRequest.builder()
                 .stream(true)
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
+                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)
@@ -97,15 +107,26 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .build();
 
         client.chatCompletion(request)
-                .onPartialResponse(partialResponse -> {
-                    String content = partialResponse.choices().get(0).delta().content();
-                    if (content != null) {
-                        handler.onPartialResult(content);
-                    }
-                })
+                .onPartialResponse(partialResponse -> handle(partialResponse, handler))
                 .onComplete(handler::onComplete)
                 .onError(handler::onError)
                 .execute();
+    }
+
+    private static void handle(ChatCompletionResponse partialResponse,
+                               StreamingResponseHandler handler) {
+        Delta delta = partialResponse.choices().get(0).delta();
+        String content = delta.content();
+        FunctionCall functionCall = delta.functionCall();
+        if (content != null) {
+            handler.onNext(content);
+        } else if (functionCall != null) {
+            if (functionCall.name() != null) {
+                handler.onToolName(functionCall.name());
+            } else if (functionCall.arguments() != null) {
+                handler.onToolArguments(functionCall.arguments());
+            }
+        }
     }
 
     @Override
