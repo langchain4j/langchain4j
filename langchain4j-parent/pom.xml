@@ -25,7 +25,7 @@
             <dependency>
                 <groupId>dev.ai4j</groupId>
                 <artifactId>openai4j</artifactId>
-                <version>0.5.2</version>
+                <version>0.6.0</version>
             </dependency>
 
             <dependency>
