@@ -30,7 +30,7 @@ public class OpenAiTokenizer implements Tokenizer {
     @Override
     public int countTokens(ChatMessage message) {
         return extraTokensPerEachMessage()
-                + countTokens(message.text())
+                + countTokens(message.text()) // TODO count functions
                 + countTokens(roleFrom(message).toString());
     }
 
