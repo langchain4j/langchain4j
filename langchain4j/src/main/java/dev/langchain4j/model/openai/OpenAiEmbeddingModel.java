@@ -87,11 +87,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     @Override
-    public int estimateTokenCount(TextSegment textSegment) {
-        return estimateTokenCount(textSegment.text());
-    }
-
-    @Override
     public int estimateTokenCount(List<TextSegment> textSegments) {
         int tokenCount = 0;
         for (TextSegment textSegment : textSegments) {

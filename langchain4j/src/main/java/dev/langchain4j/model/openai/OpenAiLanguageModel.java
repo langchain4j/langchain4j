@@ -3,8 +3,6 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
@@ -12,7 +10,6 @@ import lombok.Builder;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
@@ -68,33 +65,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public String process(Prompt prompt) {
-        return this.process(prompt.text());
-    }
-
-    @Override
-    public String process(Object structuredPrompt) {
-        return process(toPrompt(structuredPrompt));
-    }
-
-    @Override
     public int estimateTokenCount(String prompt) {
         return tokenizer.countTokens(prompt);
-    }
-
-    @Override
-    public int estimateTokenCount(Prompt prompt) {
-        return estimateTokenCount(prompt.text());
-    }
-
-    @Override
-    public int estimateTokenCount(Object structuredPrompt) {
-        return estimateTokenCount(toPrompt(structuredPrompt));
-    }
-
-    @Override
-    public int estimateTokenCount(TextSegment textSegment) {
-        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiLanguageModel withApiKey(String apiKey) {

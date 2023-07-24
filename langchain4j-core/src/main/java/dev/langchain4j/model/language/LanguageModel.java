@@ -2,6 +2,8 @@ package dev.langchain4j.model.language;
 
 import dev.langchain4j.model.input.Prompt;
 
+import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+
 /**
  * Represents a LLM with a simple text interface.
  * It is recommended to use the ChatLanguageModel instead, as it offers greater capabilities.
@@ -11,7 +13,11 @@ public interface LanguageModel {
 
     String process(String text);
 
-    String process(Prompt prompt);
+    default String process(Prompt prompt) {
+        return process(prompt.text());
+    }
 
-    String process(Object structuredPrompt);
+    default String process(Object structuredPrompt) {
+        return process(toPrompt(structuredPrompt));
+    }
 }
