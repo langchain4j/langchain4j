@@ -45,12 +45,13 @@ public class EmbeddingStoreIngestor {
     }
 
     public void ingest(List<Document> documents) {
-        List<TextSegment> segments = splitter.split(documents);
+        List<TextSegment> originalSegments = splitter.split(documents); // TODO make configurable
+        List<TextSegment> segments = originalSegments;
         if (transformer != null) {
             segments = transformer.transform(segments);
         }
         List<Embedding> embeddings = embeddingModel.embedAll(segments);
-        embeddingStore.addAll(embeddings, segments);
+        embeddingStore.addAll(embeddings, originalSegments);
     }
 
     public static Builder builder() {

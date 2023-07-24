@@ -39,10 +39,10 @@ public class HtmlDocumentParser implements DocumentParser {
 
             org.jsoup.nodes.Document jsoupDocument = Jsoup.parse(html);
 
-            String text = jsoupDocument.select("#main-content").text();
+            String text = jsoupDocument.select("#main-content").text(); // TODO provide as a configuration
 
             Metadata metadata = new Metadata();
-            metadata.add("title", jsoupDocument.select("#title-text").text());
+            metadata.add("title", jsoupDocument.select("#title-text").text()); // TODO provide as a configuration
 
             return Document.from(text, metadata);
         } catch (Exception e) {
