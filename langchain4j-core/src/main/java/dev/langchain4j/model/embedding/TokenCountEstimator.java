@@ -8,7 +8,9 @@ public interface TokenCountEstimator {
 
     int estimateTokenCount(String text);
 
-    int estimateTokenCount(TextSegment textSegment);
+    default int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
+    }
 
     int estimateTokenCount(List<TextSegment> textSegments);
 }

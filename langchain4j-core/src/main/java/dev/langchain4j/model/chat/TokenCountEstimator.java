@@ -8,19 +8,33 @@ import dev.langchain4j.model.input.Prompt;
 
 import java.util.List;
 
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
+import static java.util.Collections.singletonList;
+
 public interface TokenCountEstimator {
 
-    int estimateTokenCount(String text);
+    default int estimateTokenCount(String text) {
+        return estimateTokenCount(userMessage(text));
+    }
 
-    int estimateTokenCount(UserMessage userMessage);
+    default int estimateTokenCount(UserMessage userMessage) {
+        return estimateTokenCount(singletonList(userMessage));
+    }
 
     @MightChangeInTheFuture("not sure this method is useful/needed")
-    int estimateTokenCount(Prompt prompt);
+    default int estimateTokenCount(Prompt prompt) {
+        return estimateTokenCount(prompt.text());
+    }
 
     @MightChangeInTheFuture("not sure this method is useful/needed")
-    int estimateTokenCount(Object structuredPrompt);
+    default int estimateTokenCount(Object structuredPrompt) {
+        return estimateTokenCount(toPrompt(structuredPrompt));
+    }
 
     int estimateTokenCount(List<ChatMessage> messages);
 
-    int estimateTokenCount(TextSegment textSegment);
+    default int estimateTokenCount(TextSegment textSegment) {
+        return estimateTokenCount(textSegment.text());
+    }
 }
