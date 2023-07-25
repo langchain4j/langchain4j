@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.localai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
@@ -9,46 +9,40 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
 
-public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
-    private final Double presencePenalty;
-    private final Double frequencyPenalty;
-    private final OpenAiTokenizer tokenizer;
 
     @Builder
-    public OpenAiStreamingChatModel(String apiKey,
-                                    String modelName,
-                                    Double temperature,
-                                    Double topP,
-                                    Integer maxTokens,
-                                    Double presencePenalty,
-                                    Double frequencyPenalty,
-                                    Duration timeout,
-                                    Boolean logRequests,
-                                    Boolean logResponses) {
+    public LocalAiStreamingChatModel(String baseUrl,
+                                     String modelName,
+                                     Double temperature,
+                                     Double topP,
+                                     Integer maxTokens,
+                                     Duration timeout,
+                                     Boolean logRequests,
+                                     Boolean logResponses) {
 
-        modelName = modelName == null ? GPT_3_5_TURBO : modelName;
         temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(5) : timeout;
+        timeout = timeout == null ? ofSeconds(60) : timeout;
 
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
+                .apiKey("ignored")
+                .url(ensureNotBlank(baseUrl, "baseUrl"))
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
@@ -56,13 +50,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
-        this.presencePenalty = presencePenalty;
-        this.frequencyPenalty = frequencyPenalty;
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
 
     @Override
@@ -80,8 +71,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)
-                .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty)
                 .build();
 
         client.chatCompletion(request)
@@ -105,14 +94,5 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 handler.onToolArguments(functionCall.arguments());
             }
         }
-    }
-
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.countTokens(messages);
-    }
-
-    public static OpenAiStreamingChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
     }
 }

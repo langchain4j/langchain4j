@@ -1,23 +1,34 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.*;
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.Function;
+import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.ai4j.openai4j.chat.Message;
+import dev.ai4j.openai4j.chat.Role;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
-import static dev.ai4j.openai4j.chat.Role.*;
+import static dev.ai4j.openai4j.chat.Role.ASSISTANT;
+import static dev.ai4j.openai4j.chat.Role.FUNCTION;
+import static dev.ai4j.openai4j.chat.Role.SYSTEM;
+import static dev.ai4j.openai4j.chat.Role.USER;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-class OpenAiHelper {
+public class InternalOpenAiHelper {
 
     static final String OPENAI_URL = "https://api.openai.com";
 
@@ -34,14 +45,14 @@ class OpenAiHelper {
         return ofSeconds(10);
     }
 
-    static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
+    public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
-                .map(OpenAiHelper::toOpenAiMessage)
+                .map(InternalOpenAiHelper::toOpenAiMessage)
                 .collect(toList());
     }
 
-    static Message toOpenAiMessage(ChatMessage message) {
+    public static Message toOpenAiMessage(ChatMessage message) {
 
         return Message.builder()
                 .role(roleFrom(message))
@@ -77,7 +88,7 @@ class OpenAiHelper {
         return null;
     }
 
-    static Role roleFrom(ChatMessage message) {
+    public static Role roleFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             return ASSISTANT;
         } else if (message instanceof ToolExecutionResultMessage) {
@@ -89,13 +100,13 @@ class OpenAiHelper {
         }
     }
 
-    static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
         if (toolSpecifications == null) {
             return null;
         }
 
         return toolSpecifications.stream()
-                .map(OpenAiHelper::toFunction)
+                .map(InternalOpenAiHelper::toFunction)
                 .collect(toList());
     }
 
@@ -117,7 +128,7 @@ class OpenAiHelper {
                 .build();
     }
 
-    static AiMessage aiMessageFrom(ChatCompletionResponse response) {
+    public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         if (response.content() != null) {
             return aiMessage(response.content());
         } else {
