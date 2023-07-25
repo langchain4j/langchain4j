@@ -10,7 +10,7 @@ public interface DocumentSplitter {
 
     List<TextSegment> split(Document document);
 
-    default List<TextSegment> split(List<Document> documents) {
+    default List<TextSegment> splitAll(List<Document> documents) {
         return documents.stream()
                 .flatMap(document -> split(document).stream())
                 .collect(toList());
