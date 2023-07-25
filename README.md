@@ -20,6 +20,9 @@ This can be achieved thanks to:
 
 ## News
 
+21 July:
+- Now, you can do [text embedding inside your JVM](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/InProcessEmbeddingModelExamples.java).
+
 17 July:
 - You can now try out OpenAI's `gpt-3.5-turbo` and `text-embedding-ada-002` models with LangChain4j for free, without needing an OpenAI account and keys! Simply use the API key "demo".
 
@@ -161,12 +164,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.16.0</version>
+          <version>0.17.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.16.0'
+      implementation 'dev.langchain4j:langchain4j:0.17.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:

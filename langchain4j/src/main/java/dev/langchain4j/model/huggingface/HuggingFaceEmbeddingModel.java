@@ -9,7 +9,6 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public class HuggingFaceEmbeddingModel implements EmbeddingModel {
@@ -30,17 +29,6 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
                 timeout == null ? DEFAULT_TIMEOUT : timeout
         );
         this.waitForModel = waitForModel == null ? true : waitForModel;
-    }
-
-    @Override
-    public Embedding embed(String text) {
-        List<Embedding> embeddings = embedTexts(singletonList(text));
-        return embeddings.get(0);
-    }
-
-    @Override
-    public Embedding embed(TextSegment textSegment) {
-        return embed(textSegment.text());
     }
 
     @Override

@@ -2,16 +2,13 @@ package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.StreamingResultHandler;
-import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
 
 import java.time.Duration;
 
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
@@ -50,7 +47,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     @Override
-    public void process(String text, StreamingResultHandler handler) {
+    public void process(String text, StreamingResponseHandler handler) {
+
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
                 .prompt(text)
@@ -61,7 +59,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .onPartialResponse(partialResponse -> {
                     String partialResponseText = partialResponse.text();
                     if (partialResponseText != null) {
-                        handler.onPartialResult(partialResponseText);
+                        handler.onNext(partialResponseText);
                     }
                 })
                 .onComplete(handler::onComplete)
@@ -70,33 +68,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     @Override
-    public void process(Prompt prompt, StreamingResultHandler handler) {
-        process(prompt.text(), handler);
-    }
-
-    @Override
-    public void process(Object structuredPrompt, StreamingResultHandler handler) {
-        process(toPrompt(structuredPrompt), handler);
-    }
-
-    @Override
     public int estimateTokenCount(String prompt) {
         return tokenizer.countTokens(prompt);
-    }
-
-    @Override
-    public int estimateTokenCount(Prompt prompt) {
-        return estimateTokenCount(prompt.text());
-    }
-
-    @Override
-    public int estimateTokenCount(Object structuredPrompt) {
-        return estimateTokenCount(toPrompt(structuredPrompt));
-    }
-
-    @Override
-    public int estimateTokenCount(TextSegment textSegment) {
-        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {

@@ -84,7 +84,9 @@ public class ServiceOutputParser {
 
     static String outputFormatInstructions(Class<?> returnType) {
 
-        if (returnType == String.class || returnType == AiMessage.class) {
+        if (returnType == String.class
+                || returnType == AiMessage.class
+                || returnType == TokenStream.class) {
             return "";
         }
 

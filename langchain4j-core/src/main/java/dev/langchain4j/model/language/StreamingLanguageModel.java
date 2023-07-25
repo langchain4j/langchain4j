@@ -1,17 +1,19 @@
 package dev.langchain4j.model.language;
 
-import dev.langchain4j.WillChangeSoon;
-import dev.langchain4j.model.StreamingResultHandler;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.input.Prompt;
+
+import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 
 public interface StreamingLanguageModel {
 
-    @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
-    void process(String text, StreamingResultHandler handler);
+    void process(String text, StreamingResponseHandler handler);
 
-    @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
-    void process(Prompt prompt, StreamingResultHandler handler);
+    default void process(Prompt prompt, StreamingResponseHandler handler) {
+        process(prompt.text(), handler);
+    }
 
-    @WillChangeSoon("Most probably StreamingResultHandler will be replaced with fluent API")
-    void process(Object structuredPrompt, StreamingResultHandler handler);
+    default void process(Object structuredPrompt, StreamingResponseHandler handler) {
+        process(toPrompt(structuredPrompt), handler);
+    }
 }
