@@ -16,7 +16,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
-import static dev.langchain4j.model.openai.OpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
