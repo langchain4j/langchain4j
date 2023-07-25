@@ -13,7 +13,6 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -31,7 +30,6 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
                                  Boolean logRequests,
                                  Boolean logResponses) {
 
-        modelName = modelName == null ? TEXT_EMBEDDING_ADA_002 : modelName;
         timeout = timeout == null ? ofSeconds(60) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
