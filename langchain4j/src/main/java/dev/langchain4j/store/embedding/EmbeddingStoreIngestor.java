@@ -41,7 +41,7 @@ public class EmbeddingStoreIngestor {
     }
 
     public void ingest(List<Document> documents) {
-        List<TextSegment> segments = splitter.split(documents);
+        List<TextSegment> segments = splitter.splitAll(documents);
         List<Embedding> embeddings = embeddingModel.embedAll(segments);
         embeddingStore.addAll(embeddings, segments);
     }

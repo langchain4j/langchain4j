@@ -29,7 +29,7 @@ class EmbeddingStoreIngestorTest {
                 textSegment("Second sentence."),
                 textSegment("Third sentence.")
         );
-        when(splitter.split(documents)).thenReturn(segments);
+        when(splitter.splitAll(documents)).thenReturn(segments);
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         List<Embedding> embeddings = asList(
@@ -51,7 +51,7 @@ class EmbeddingStoreIngestorTest {
         ingestor.ingest(documents);
 
 
-        verify(splitter).split(documents);
+        verify(splitter).splitAll(documents);
         verifyNoMoreInteractions(splitter);
 
         verify(embeddingModel).embedAll(segments);
