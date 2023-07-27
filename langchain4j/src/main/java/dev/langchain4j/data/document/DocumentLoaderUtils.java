@@ -5,7 +5,7 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 
 import java.io.InputStream;
 
-import static dev.langchain4j.data.document.DocumentType.TEXT;
+import static dev.langchain4j.data.document.DocumentType.TXT;
 
 class DocumentLoaderUtils {
 
@@ -22,7 +22,7 @@ class DocumentLoaderUtils {
 
     static DocumentType detectDocumentType(String pathToFile) {
         if (pathToFile.endsWith("txt")) {
-            return TEXT;
+            return TXT;
         }
 
         if (pathToFile.endsWith("pdf")) {
@@ -34,7 +34,7 @@ class DocumentLoaderUtils {
 
     static DocumentParser parserFor(DocumentType type) {
         switch (type) {
-            case TEXT:
+            case TXT:
                 return new TextDocumentParser();
             case PDF:
                 return new PdfDocumentParser();
