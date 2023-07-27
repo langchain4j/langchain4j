@@ -10,6 +10,9 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 
+/**
+ * Represents a prompt, typically produced by applying one or multiple values to a PromptTemplate.
+ */
 public class Prompt {
 
     private final String text;

@@ -27,8 +27,8 @@ public class UrlSource implements DocumentSource {
     }
 
     @Override
-    public Metadata sourceMetadata() {
-        return new Metadata().add(URL, url.toString());
+    public Metadata metadata() {
+        return Metadata.from(URL, url.toString());
     }
 
     public static UrlSource from(String url) {
