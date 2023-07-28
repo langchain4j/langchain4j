@@ -23,16 +23,22 @@ public class ToolExecutor {
         this.method = method;
     }
 
-    public String execute(Map<String, Object> argumentsMap) {
+    public String execute(ToolExecutionRequest toolExecutionRequest) {
+        log.debug("About to execute {}", toolExecutionRequest);
 
-        Object[] arguments = prepareArguments(argumentsMap);
+        // TODO ensure this method never throws exceptions
 
+        Object[] arguments = prepareArguments(toolExecutionRequest.argumentsAsMap());
         try {
-            return execute(arguments);
+            String result = execute(arguments);
+            log.debug("Tool execution result: {}", result);
+            return result;
         } catch (IllegalAccessException e) {
             try {
                 method.setAccessible(true);
-                return execute(arguments);
+                String result = execute(arguments);
+                log.debug("Tool execution result: {}", result);
+                return result;
             } catch (IllegalAccessException e2) {
                 throw new RuntimeException(e2);
             } catch (InvocationTargetException e2) {

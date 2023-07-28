@@ -1,12 +1,10 @@
 package dev.langchain4j.model.huggingface;
 
-import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.language.LanguageModel;
 
 import java.time.Duration;
 
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 
 public class HuggingFaceLanguageModel implements LanguageModel {
 
@@ -61,17 +59,6 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         return response.generatedText();
     }
-
-    @Override
-    public String process(Prompt prompt) {
-        return this.process(prompt.text());
-    }
-
-    @Override
-    public String process(Object structuredPrompt) {
-        return process(toPrompt(structuredPrompt));
-    }
-
 
     public static Builder builder() {
         return new Builder();

@@ -3,19 +3,14 @@ package dev.langchain4j.model.huggingface;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.input.Prompt;
 
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
-import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
 public class HuggingFaceChatModel implements ChatLanguageModel {
@@ -49,27 +44,6 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         this.maxNewTokens = builder.maxNewTokens;
         this.returnFullText = builder.returnFullText;
         this.waitForModel = builder.waitForModel;
-    }
-
-    @Override
-    public AiMessage sendUserMessage(String userMessage) {
-        return sendUserMessage(userMessage(userMessage));
-    }
-
-    @Override
-    public AiMessage sendUserMessage(UserMessage userMessage) {
-        return sendMessages(userMessage);
-    }
-
-    @Override
-    public AiMessage sendUserMessage(Object structuredPrompt) {
-        Prompt prompt = toPrompt(structuredPrompt);
-        return sendUserMessage(prompt.toUserMessage());
-    }
-
-    @Override
-    public AiMessage sendMessages(ChatMessage... messages) {
-        return sendMessages(asList(messages));
     }
 
     @Override

@@ -13,10 +13,9 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.OpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
@@ -59,17 +58,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     @Override
-    public Embedding embed(String text) {
-        List<Embedding> embeddings = embedTexts(singletonList(text));
-        return embeddings.get(0);
-    }
-
-    @Override
-    public Embedding embed(TextSegment textSegment) {
-        return embed(textSegment.text());
-    }
-
-    @Override
     public List<Embedding> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
@@ -96,11 +84,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     @Override
     public int estimateTokenCount(String text) {
         return tokenizer.countTokens(text);
-    }
-
-    @Override
-    public int estimateTokenCount(TextSegment textSegment) {
-        return estimateTokenCount(textSegment.text());
     }
 
     @Override

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>0.18.0</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-embeddings</artifactId>
+    <packaging>jar</packaging>
+
+    <name>langchain4j-embeddings</name>
+    <description>Common functionality for other langchain4j-embeddings-xxx modules</description>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>0.18.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.15.1</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ai.djl</groupId>
+            <artifactId>api</artifactId>
+            <version>0.23.0</version>
+        </dependency>
+
+    </dependencies>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+
+</project>

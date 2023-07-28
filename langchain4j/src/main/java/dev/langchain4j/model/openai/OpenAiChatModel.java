@@ -6,23 +6,16 @@ import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.input.Prompt;
 import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
-import static dev.langchain4j.model.openai.OpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
@@ -80,27 +73,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public AiMessage sendUserMessage(String userMessage) {
-        return sendUserMessage(userMessage(userMessage));
-    }
-
-    @Override
-    public AiMessage sendUserMessage(UserMessage userMessage) {
-        return sendMessages(userMessage);
-    }
-
-    @Override
-    public AiMessage sendUserMessage(Object structuredPrompt) {
-        Prompt prompt = toPrompt(structuredPrompt);
-        return sendUserMessage(prompt.toUserMessage());
-    }
-
-    @Override
-    public AiMessage sendMessages(ChatMessage... messages) {
-        return sendMessages(asList(messages));
-    }
-
-    @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
         return sendMessages(messages, null);
     }
@@ -125,33 +97,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCount(String text) {
-        return estimateTokenCount(userMessage(text));
-    }
-
-    @Override
-    public int estimateTokenCount(UserMessage userMessage) {
-        return estimateTokenCount(singletonList(userMessage));
-    }
-
-    @Override
-    public int estimateTokenCount(Prompt prompt) {
-        return estimateTokenCount(prompt.text());
-    }
-
-    @Override
-    public int estimateTokenCount(Object structuredPrompt) {
-        return estimateTokenCount(toPrompt(structuredPrompt));
-    }
-
-    @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
         return tokenizer.countTokens(messages);
-    }
-
-    @Override
-    public int estimateTokenCount(TextSegment textSegment) {
-        return estimateTokenCount(textSegment.text());
     }
 
     public static OpenAiChatModel withApiKey(String apiKey) {

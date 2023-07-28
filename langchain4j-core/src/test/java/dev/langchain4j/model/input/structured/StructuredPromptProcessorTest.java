@@ -1,6 +1,6 @@
-package dev.langchain4j.model.input;
+package dev.langchain4j.model.input.structured;
 
-import dev.langchain4j.model.input.structured.StructuredPrompt;
+import dev.langchain4j.model.input.Prompt;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

@@ -15,6 +15,7 @@ jobs:
       - name: Test
         run: mvn --batch-mode test
 
+
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
     runs-on: ubuntu-latest

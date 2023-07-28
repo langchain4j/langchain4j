@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.16.0</version>
+    <version>0.18.0</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -25,7 +25,7 @@
             <dependency>
                 <groupId>dev.ai4j</groupId>
                 <artifactId>openai4j</artifactId>
-                <version>0.5.2</version>
+                <version>0.6.0</version>
             </dependency>
 
             <dependency>

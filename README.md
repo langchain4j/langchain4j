@@ -20,6 +20,10 @@ This can be achieved thanks to:
 
 ## News
 
+26 July:
+- We've added integration with [LocalAI](https://localai.io/). Now, you can use LLMs hosted locally!
+- Added support for [response streaming in AI Services](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java).
+
 21 July:
 - Now, you can do [text embedding inside your JVM](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/InProcessEmbeddingModelExamples.java).
 
@@ -158,24 +162,25 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 ## Getting started
 
-1. Add langchain4j dependency to your project:
+1. Add LangChain4j dependency to your project:
     - Maven:
       ```
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.17.0</version>
+          <version>0.18.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.17.0'
+      implementation 'dev.langchain4j:langchain4j:0.18.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
     ```java
     String apiKey = System.getenv("OPENAI_API_KEY");
     ```
+    You can use the API key "demo" to test OpenAI, which we provide for free.
     [How to gen an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
 
 
@@ -220,6 +225,10 @@ Please note that the library is in active development and:
     - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
+- Integration with [LocalAI](https://localai.io/) for:
+  - Chats (sync + streaming + functions)
+  - Completions (sync + streaming)
+  - Embeddings
 - [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
 - Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
