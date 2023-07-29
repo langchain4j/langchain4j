@@ -17,13 +17,13 @@ import java.util.Map;
 import static ai.onnxruntime.OnnxTensor.createTensor;
 import static java.nio.LongBuffer.wrap;
 
-public class OnnxEmbeddingModel {
+public class OnnxBertEmbeddingModel {
 
     private final OrtEnvironment environment;
     private final OrtSession session;
     private final BertTokenizer tokenizer;
 
-    public OnnxEmbeddingModel(String modelFilePath) {
+    public OnnxBertEmbeddingModel(String modelFilePath) {
         try {
             this.environment = OrtEnvironment.getEnvironment();
             this.session = environment.createSession(loadModel(modelFilePath));
@@ -38,7 +38,6 @@ public class OnnxEmbeddingModel {
             return toEmbedding(result);
         } catch (Exception e) {
             throw new RuntimeException(e);
-
         }
     }
 

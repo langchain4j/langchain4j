@@ -12,7 +12,7 @@ public abstract class AbstractInProcessEmbeddingModel implements EmbeddingModel,
 
     private static final int BERT_MAX_TOKENS = 510; // 512 - 2 (special tokens [CLS] and [SEP])
 
-    protected abstract OnnxEmbeddingModel model();
+    protected abstract OnnxBertEmbeddingModel model();
 
     @Override
     public List<Embedding> embedAll(List<TextSegment> segments) {
