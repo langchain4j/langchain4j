@@ -10,6 +10,11 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 
+/**
+ * Represents a prompt (an input text sent to the LLM).
+ * A prompt usually contains instructions, contextual information, end-user input, etc.
+ * A Prompt is typically created by applying one or multiple values to a PromptTemplate.
+ */
 public class Prompt {
 
     private final String text;

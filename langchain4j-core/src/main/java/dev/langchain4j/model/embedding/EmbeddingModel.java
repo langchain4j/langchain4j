@@ -7,6 +7,9 @@ import java.util.List;
 
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a LLM that generates an embedding for a given text.
+ */
 public interface EmbeddingModel {
 
     default Embedding embed(String text) {

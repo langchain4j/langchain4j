@@ -17,6 +17,14 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Collections.singletonMap;
 
+/**
+ * Represents a template of a prompt that can be reused multiple times.
+ * A template typically contains one or more variables (placeholders) defined as {{variable_name}} that are
+ * replaced with actual values to produce a Prompt.
+ * Special variables {{current_date}}, {{current_time}}, and {{current_date_time}} are automatically
+ * filled with LocalDate.now(), LocalTime.now(), and LocalDateTime.now() respectively.
+ * This class uses the Mustache templating engine under the hood, so all Mustache syntax and features are supported.
+ */
 public class PromptTemplate {
 
     private static final MustacheFactory MUSTACHE_FACTORY = new DefaultMustacheFactory();
@@ -29,10 +37,22 @@ public class PromptTemplate {
         this.clock = clock;
     }
 
+    /**
+     * Applies a value to a template containing a single variable. The single variable should have the name {{it}}.
+     *
+     * @param value The value that will be injected in place of the {{it}} placeholder in the template.
+     * @return A Prompt object where the {{it}} placeholder in the template has been replaced by the provided value.
+     */
     public Prompt apply(Object value) {
         return apply(singletonMap("it", value));
     }
 
+    /**
+     * Applies multiple values to a template containing multiple variables.
+     *
+     * @param variables A map of variable names to values that will be injected in place of the corresponding placeholders in the template.
+     * @return A Prompt object where the placeholders in the template have been replaced by the provided values.
+     */
     public Prompt apply(Map<String, Object> variables) {
         StringWriter writer = new StringWriter();
         mustache.execute(writer, injectDateTimeVariables(variables));
@@ -51,7 +71,7 @@ public class PromptTemplate {
         return from(template, Clock.systemDefaultZone());
     }
 
-    public static PromptTemplate from(String template, Clock clock) {
+    static PromptTemplate from(String template, Clock clock) {
         if (isNullOrBlank(template)) {
             throw illegalArgument("Prompt template cannot be null or empty");
         }
