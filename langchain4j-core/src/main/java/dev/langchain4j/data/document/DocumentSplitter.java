@@ -11,7 +11,7 @@ import static java.util.stream.Collectors.toList;
  * This is necessary as LLMs have a limited context window, making it impossible to send the entire document at once.
  * Therefore, the document should first be split into segments, and only the relevant segments should be sent to LLM.
  */
-public interface DocumentSplitter {
+public interface DocumentSplitter { // TODO TextSplitter?
 
     /**
      * Splits a single Document into a list of TextSegment objects.
