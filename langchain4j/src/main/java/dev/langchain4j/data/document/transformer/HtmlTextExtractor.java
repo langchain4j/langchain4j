@@ -44,14 +44,18 @@ public class HtmlTextExtractor implements DocumentTransformer {
 
         String text;
         if (cssSelector != null) {
-            text = jsoupDocument.select(cssSelector).stream()
-                    .map(HtmlTextExtractor::extractText)
-                    .collect(joining("\n\n"));
+            text = extractText(jsoupDocument, cssSelector);
         } else {
             text = extractText(jsoupDocument);
         }
 
         return Document.from(text, document.metadata());
+    }
+
+    private static String extractText(org.jsoup.nodes.Document jsoupDocument, String cssSelector) {
+        return jsoupDocument.select(cssSelector).stream()
+                .map(HtmlTextExtractor::extractText)
+                .collect(joining("\n\n"));
     }
 
     private static String extractText(Element element) {

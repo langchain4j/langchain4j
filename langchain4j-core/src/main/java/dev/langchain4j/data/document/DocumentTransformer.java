@@ -1,7 +1,9 @@
 package dev.langchain4j.data.document;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * Defines the interface for transforming a Document.
@@ -24,13 +26,9 @@ public interface DocumentTransformer {
      * @return A list of transformed documents. The length of this list may be shorter or longer than the original list. Returns an empty list if all documents are filtered out.
      */
     default List<Document> transformAll(List<Document> documents) {
-        List<Document> transformedDocuments = new ArrayList<>();
-        documents.forEach(document -> {
-            Document transformedDocument = transform(document);
-            if (transformedDocument != null) {
-                transformedDocuments.add(transformedDocument);
-            }
-        });
-        return transformedDocuments;
+        return documents.stream()
+                .map(this::transform)
+                .filter(Objects::nonNull)
+                .collect(toList());
     }
 }
