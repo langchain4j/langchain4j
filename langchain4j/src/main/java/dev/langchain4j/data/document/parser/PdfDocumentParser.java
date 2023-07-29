@@ -8,6 +8,9 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static dev.langchain4j.data.document.DocumentType.PDF;
+import static dev.langchain4j.data.document.Metadata.metadata;
+
 public class PdfDocumentParser implements DocumentParser {
 
     @Override
@@ -17,7 +20,7 @@ public class PdfDocumentParser implements DocumentParser {
             PDFTextStripper stripper = new PDFTextStripper();
             String content = stripper.getText(pdfDocument);
             pdfDocument.close();
-            return Document.from(content);
+            return Document.from(content, metadata(DOCUMENT_TYPE, PDF));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
