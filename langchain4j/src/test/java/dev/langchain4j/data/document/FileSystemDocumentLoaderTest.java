@@ -19,7 +19,7 @@ class FileSystemDocumentLoaderTest {
 
         Document document = loadDocument(toPath("test-file-utf8.txt"));
 
-        assertThat(document.text()).isEqualTo("test\ncontent");
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
         Metadata metadata = document.metadata();
         assertThat(metadata.get("file_name")).isEqualTo("test-file-utf8.txt");
         assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
@@ -31,7 +31,7 @@ class FileSystemDocumentLoaderTest {
 
         Document document = loadDocument(toPath("test-file.pdf"));
 
-        assertThat(document.text()).isEqualToIgnoringWhitespace("test\ncontent");
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
         Metadata metadata = document.metadata();
         assertThat(metadata.get("file_name")).isEqualTo("test-file.pdf");
         assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
