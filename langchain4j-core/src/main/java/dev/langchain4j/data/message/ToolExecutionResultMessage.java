@@ -2,6 +2,9 @@ package dev.langchain4j.data.message;
 
 import java.util.Objects;
 
+/**
+ * Represents the result of a tool execution. Tool execution requests come from a previous AiMessage.
+ */
 public class ToolExecutionResultMessage extends ChatMessage {
 
     private final String toolName;

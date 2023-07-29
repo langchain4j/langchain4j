@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.splitter.SentenceSplitter;
+import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -17,13 +17,16 @@ import static org.mockito.Mockito.*;
 class EmbeddingStoreIngestorTest {
 
     @Test
-    public void should_split_documents_then_embed_them_and_store_in_embedding_store() {
+    public void should_extract_text_then_split_into_segments_then_embed_them_and_store_in_embedding_store() {
 
         Document firstDocument = Document.from("First sentence.");
         Document secondDocument = Document.from("Second sentence. Third sentence.");
         List<Document> documents = asList(firstDocument, secondDocument);
 
-        DocumentSplitter splitter = mock(SentenceSplitter.class);
+        DocumentTransformer transformer = mock(DocumentTransformer.class);
+        when(transformer.transformAll(documents)).thenReturn(documents);
+
+        DocumentSplitter splitter = mock(DocumentSplitter.class);
         List<TextSegment> segments = asList(
                 textSegment("First sentence."),
                 textSegment("Second sentence."),
@@ -42,6 +45,7 @@ class EmbeddingStoreIngestorTest {
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .transformer(transformer)
                 .splitter(splitter)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
@@ -50,6 +54,9 @@ class EmbeddingStoreIngestorTest {
 
         ingestor.ingest(documents);
 
+
+        verify(transformer).transformAll(documents);
+        verifyNoMoreInteractions(transformer);
 
         verify(splitter).splitAll(documents);
         verifyNoMoreInteractions(splitter);

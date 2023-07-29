@@ -2,6 +2,9 @@ package dev.langchain4j.data.message;
 
 import java.util.Objects;
 
+/**
+ * Represents a message from a user, typically an end user of the application.
+ */
 public class UserMessage extends ChatMessage {
 
     private final String name;

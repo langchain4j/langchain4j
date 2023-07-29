@@ -4,6 +4,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Represents metadata of a Document or a TextSegment.
+ * The metadata is stored in a key-value map, where both keys and values are strings.
+ * For a Document, the metadata could include information such as the source, creation date,
+ * owner, or any other relevant details.
+ * For a TextSegment, in addition to metadata copied from a document, it can also include segment-specific information,
+ * such as the page number, the position of the segment within the document, chapter, etc.
+ */
 public class Metadata {
 
     private final Map<String, String> metadata;
@@ -23,8 +31,8 @@ public class Metadata {
         return metadata.get(key);
     }
 
-    public Metadata add(String key, String value) {
-        this.metadata.put(key, value);
+    public Metadata add(String key, Object value) {
+        this.metadata.put(key, value.toString());
         return this;
     }
 
@@ -54,5 +62,13 @@ public class Metadata {
         return "Metadata {" +
                 " metadata = " + metadata +
                 " }";
+    }
+
+    public static Metadata from(String key, Object value) {
+        return new Metadata().add(key, value);
+    }
+
+    public static Metadata metadata(String key, Object value) {
+        return from(key, value);
     }
 }
