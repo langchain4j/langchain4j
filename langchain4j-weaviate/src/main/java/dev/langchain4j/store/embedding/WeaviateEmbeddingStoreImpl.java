@@ -23,6 +23,7 @@ import lombok.val;
 public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private static final String DEFAULT_CLASS = "Default";
+  private static final Double DEFAULT_MIN_CERTAINTY = 0.8;
   private static final String METADATA_TEXT_SEGMENT = "text";
   private static final String ADDITIONALS = "_additional";
 
@@ -68,7 +69,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    return null;
+    return findRelevant(referenceEmbedding, maxResults, DEFAULT_MIN_CERTAINTY);
   }
 
   @Override
