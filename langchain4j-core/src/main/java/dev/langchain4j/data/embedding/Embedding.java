@@ -8,7 +8,8 @@ import java.util.List;
  * Represents a dense vector embedding of a text.
  * This class encapsulates a float array that captures the "meaning" or semantic information of the text.
  * Texts with similar meanings will have their vectors located close to each other in the embedding space.
- * The embeddings are typically created by embedding models. See EmbeddingModel interface.
+ * The embeddings are typically created by embedding models.
+ * @see dev.langchain4j.model.embedding.EmbeddingModel
  */
 public class Embedding {
 

@@ -7,14 +7,16 @@ import java.util.List;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Defines the interface for splitting a Document into a collection of TextSegment objects.
- * This is necessary as LLMs typically have a limited context window,
- * making it impractical to send the entire document at once. Instead, only the relevant segments should be sent.
+ * Defines the interface for splitting a document into text segments.
+ * This is necessary as LLMs have a limited context window, making it impossible to send the entire document at once.
+ * Therefore, the document should first be split into segments, and only the relevant segments should be sent to LLM.
  */
 public interface DocumentSplitter {
 
     /**
-     * Splits a single Document into a list of TextSegment objects. The metadata is typically copied from the document and enriched with segment-specific information, such as position in the document, page number, etc.
+     * Splits a single Document into a list of TextSegment objects.
+     * The metadata is typically copied from the document and enriched with segment-specific information,
+     * such as position in the document, page number, etc.
      *
      * @param document The Document to be split.
      * @return A list of TextSegment objects derived from the input Document.

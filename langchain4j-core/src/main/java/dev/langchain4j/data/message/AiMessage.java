@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * Represents a response message from an AI (LLM).
  * The message can contain either a textual response or a request to execute a tool.
- * In the case of tool execution, the response to this message should be a ToolExecutionResultMessage.
+ * In the case of tool execution, the response to this message should be a {@link ToolExecutionResultMessage}.
  */
 public class AiMessage extends ChatMessage {
 
