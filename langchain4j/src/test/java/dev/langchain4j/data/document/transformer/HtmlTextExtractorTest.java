@@ -1,11 +1,11 @@
 package dev.langchain4j.data.document.transformer;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.data.document.DocumentParser.DOCUMENT_TYPE;
 import static dev.langchain4j.data.document.DocumentType.HTML;
+import static dev.langchain4j.data.document.Metadata.metadata;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class HtmlTextExtractorTest {
@@ -23,7 +23,7 @@ class HtmlTextExtractorTest {
     void should_extract_all_text_from_html() {
 
         HtmlTextExtractor transformer = new HtmlTextExtractor();
-        Document htmlDocument = Document.from(SAMPLE_HTML, new Metadata().add(DOCUMENT_TYPE, HTML.toString()));
+        Document htmlDocument = Document.from(SAMPLE_HTML, metadata(DOCUMENT_TYPE, HTML.toString()));
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
@@ -44,7 +44,7 @@ class HtmlTextExtractorTest {
     void should_extract_text_from_html_by_css_selector() {
 
         HtmlTextExtractor transformer = new HtmlTextExtractor("#p1");
-        Document htmlDocument = Document.from(SAMPLE_HTML, new Metadata().add(DOCUMENT_TYPE, HTML.toString()));
+        Document htmlDocument = Document.from(SAMPLE_HTML, metadata(DOCUMENT_TYPE, HTML.toString()));
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
