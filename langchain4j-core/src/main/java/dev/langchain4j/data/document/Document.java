@@ -4,6 +4,11 @@ import dev.langchain4j.data.segment.TextSegment;
 
 import java.util.Objects;
 
+/**
+ * Represents an unstructured piece of text that usually corresponds to a content of a single file.
+ * This text could originate from various sources such as a text file, PDF, DOCX, or a web page (HTML).
+ * Each document may have associated metadata including its source, owner, creation date, etc.
+ */
 public class Document {
 
     private final String text;
