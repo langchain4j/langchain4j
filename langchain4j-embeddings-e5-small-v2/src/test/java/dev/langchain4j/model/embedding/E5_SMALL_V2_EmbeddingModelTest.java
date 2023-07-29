@@ -10,11 +10,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class E5_SMALL_V2_EmbeddingModelTest {
 
-    EmbeddingModel model = new E5_SMALL_V2_EmbeddingModel();
-
     @Test
     @Disabled("Temporary disabling. This test should run only when this or used (e.g. langchain4j-embeddings) module(s) change")
     void should_embed() {
+
+        EmbeddingModel model = new E5_SMALL_V2_EmbeddingModel();
 
         Embedding first = model.embed("query: hi");
         assertThat(first.vector()).hasSize(384);
@@ -29,6 +29,8 @@ class E5_SMALL_V2_EmbeddingModelTest {
     @Disabled("Temporary disabling. This test should run only when this or used (e.g. langchain4j-embeddings) module(s) change")
     void should_embed_510_token_long_text() {
 
+        EmbeddingModel model = new E5_SMALL_V2_EmbeddingModel();
+
         String oneToken = "hello ";
 
         Embedding embedding = model.embed(repeat(oneToken, 510));
@@ -39,6 +41,8 @@ class E5_SMALL_V2_EmbeddingModelTest {
     @Test
     @Disabled("Temporary disabling. This test should run only when this or used (e.g. langchain4j-embeddings) module(s) change")
     void should_fail_to_embed_511_token_long_text() {
+
+        EmbeddingModel model = new E5_SMALL_V2_EmbeddingModel();
 
         String oneToken = "hello ";
 
