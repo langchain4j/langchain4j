@@ -16,10 +16,13 @@ import lombok.val;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
-    private static final String WEAVIATE_CLASS = "Default";
+    private static final String DEFAULT_CLASS = "Default";
+    private static final String METADATA_TEXT_SEGMENT = "text";
+    private static final String ADDITIONALS = "_additional";
 
     private final WeaviateClient client;
 
@@ -46,6 +49,16 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         for (byte b : hashBytes) sb.append(String.format("%02x", b));
         String sha256Hash = sb.toString();
         return UUID.nameUUIDFromBytes(sha256Hash.getBytes(StandardCharsets.UTF_8)).toString();
+    }
+
+    private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
+        val additional = (Map<String, ?>) item.get(ADDITIONALS);
+
+        return new EmbeddingMatch<>(
+                (String) additional.get("id"),
+                Embedding.from(((List<Double>) additional.get("vector")).stream().map(Double::floatValue).collect(Collectors.toList())),
+                TextSegment.from((String) item.get(METADATA_TEXT_SEGMENT)),
+                (Double) additional.get("certainty"));
     }
 
     @Override
@@ -79,15 +92,14 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 //            ids.add(add(embeddings.get(i), embedded.get(i)));
 
             val props = new HashMap<String, Object>();
-            props.put("text", embedded.get(i).text());
+            props.put(METADATA_TEXT_SEGMENT, embedded.get(i).text());
 
             val id = generateUUI(embedded.get(i).text());
             ids.add(id);
 
             val object = WeaviateObject.builder()
-                    .className(WEAVIATE_CLASS)
+                    .className(DEFAULT_CLASS)
                     .id(id)
-//                .id("36ddd591-2dee-4e7e-a3cc-eb86d30a4305")
                     .properties(props)
                     .vector(embeddings.get(i).vectorAsList().toArray(new Float[0]))
                     .build();
@@ -105,8 +117,8 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         }
 
         val getResult = client.data().objectsGetter()
-                .withClassName(WEAVIATE_CLASS)
-                .withConsistencyLevel(ConsistencyLevel.ALL)  // default QUORUM
+                .withClassName(DEFAULT_CLASS)
+                .withConsistencyLevel(ConsistencyLevel.ALL)
                 .run();
 
         if (getResult.hasErrors()) {
@@ -122,13 +134,19 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minCertainty) {
         val result = client.graphQL().get()
-                .withClassName(WEAVIATE_CLASS)
-                .withFields(Field.builder().name("text").build())
+                .withClassName(DEFAULT_CLASS)
+                .withFields(Field.builder().name(METADATA_TEXT_SEGMENT).build(), Field.builder()
+                        .name(ADDITIONALS)
+                        .fields(
+                                Field.builder().name("id").build(),
+                                Field.builder().name("certainty").build(),
+                                Field.builder().name("vector").build()
+                        ).build())
                 .withNearVector(NearVectorArgument.builder()
                         .vector(referenceEmbedding.vectorAsList().toArray(new Float[0]))
-                        .certainty((float) minSimilarity)
+                        .certainty((float) minCertainty)
                         .build())
                 .withLimit(maxResults)
                 .run();
@@ -137,9 +155,11 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
             System.out.println(result.getError());
             return null;
         }
-        System.out.println(((Map)(result.getResult().getData())).get("Get"));
 
-        return null;
+        val resGetPart = ((Map<String, Map>) result.getResult().getData()).entrySet().stream().findFirst().get().getValue();
+        val resItems = ((Map.Entry<String, List<Map<String, ?>>>) resGetPart.entrySet().stream().findFirst().get()).getValue();
+
+        return resItems.stream().map(WeaviateEmbeddingStoreImpl::toEmbeddingMatch).collect(Collectors.toList());
     }
 
 }
