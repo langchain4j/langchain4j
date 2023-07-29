@@ -12,7 +12,7 @@ class DocumentLoaderUtils {
     static Document load(DocumentSource source, DocumentParser parser) {
         try (InputStream inputStream = source.inputStream()) {
             Document document = parser.parse(inputStream);
-            Metadata sourceMetadata = source.sourceMetadata();
+            Metadata sourceMetadata = source.metadata();
             document.metadata().mergeFrom(sourceMetadata);
             return document;
         } catch (Exception e) {
