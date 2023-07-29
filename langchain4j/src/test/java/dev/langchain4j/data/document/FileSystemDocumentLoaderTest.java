@@ -25,7 +25,6 @@ class FileSystemDocumentLoaderTest {
         assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
     }
 
-
     @Test
     void should_load_pdf_document() {
 
