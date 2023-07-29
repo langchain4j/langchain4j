@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.16.0</version>
+        <version>0.18.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -23,18 +23,13 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>0.16.0</version>
+            <version>0.18.0</version>
         </dependency>
 
         <dependency>
             <groupId>io.weaviate</groupId>
             <artifactId>client</artifactId>
             <version>4.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec</artifactId>
-            <version>4.1.93.Final</version>
         </dependency>
 
         <dependency>
