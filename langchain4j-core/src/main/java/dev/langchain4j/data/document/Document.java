@@ -29,6 +29,9 @@ public class Document {
     public TextSegment toTextSegment() {
         Metadata copy = metadata.copy();
         copy.add("index", "0");
+        copy.add("start_offset", String.valueOf(0)); // TODO names
+        copy.add("end_offset", String.valueOf(text.length() - 1)); // TODO names
+
         return TextSegment.from(text, copy);
     }
 
