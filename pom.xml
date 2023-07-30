@@ -24,6 +24,8 @@
         <module>langchain4j-embeddings-e5-small-v2-q</module>
 
         <module>langchain4j-spring-boot-starter</module>
+
+        <module>langchain4j-milvus</module>
     </modules>
 
 </project>
