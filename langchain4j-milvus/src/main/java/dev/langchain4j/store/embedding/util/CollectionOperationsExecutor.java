@@ -2,47 +2,41 @@ package dev.langchain4j.store.embedding.util;
 
 import dev.langchain4j.store.embedding.CollectionDescription;
 import dev.langchain4j.store.embedding.MilvusClient;
-import io.milvus.grpc.*;
+import io.milvus.grpc.FieldData;
+import io.milvus.grpc.FloatArray;
+import io.milvus.grpc.QueryResults;
+import io.milvus.grpc.SearchResults;
 import io.milvus.param.R;
-import io.milvus.param.RpcStatus;
 import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.response.SearchResultsWrapper;
-import lombok.Value;
-import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.util.CollectionRequestBuilder.*;
 
-@Value
-@Slf4j
 public class CollectionOperationsExecutor {
 
     public static void flush(MilvusClient milvusClient, String collectionName) {
         FlushParam request = buildFlushRequest(collectionName);
-        R<FlushResponse> response = milvusClient.flush(request);
-        checkIfResponseSuccessful(response);
+        milvusClient.flush(request);
     }
 
     public static void insert(MilvusClient milvusClient, List<InsertParam.Field> fields, String collectionName) {
         InsertParam request = buildInsertRequest(fields, collectionName);
-        R<MutationResult> response = milvusClient.insert(request);
-        checkIfResponseSuccessful(response);
+        milvusClient.insert(request);
     }
 
     public static void loadCollectionInMemory(MilvusClient milvusClient, String collectionName) {
         LoadCollectionParam request = buildLoadCollectionInMemoryRequest(collectionName);
-        R<RpcStatus> response = milvusClient.loadCollection(request);
-        checkIfResponseSuccessful(response);
+        milvusClient.loadCollection(request);
     }
 
     public static SearchResultsWrapper search(MilvusClient milvusClient, SearchParam searchRequest) {
         R<SearchResults> response = milvusClient.search(searchRequest);
-        checkIfResponseSuccessful(response);
 
         return new SearchResultsWrapper(response.getData().getResults());
     }
@@ -50,7 +44,6 @@ public class CollectionOperationsExecutor {
     public static float[] queryForVector(MilvusClient milvusClient, CollectionDescription collectionDescription, String rowId) {
         QueryParam request = buildQueryRequest(rowId, collectionDescription);
         R<QueryResults> response = milvusClient.query(request);
-        checkIfResponseSuccessful(response);
 
         FieldData vectorField = response.getData()
                 .getFieldsDataList()
@@ -70,10 +63,4 @@ public class CollectionOperationsExecutor {
     }
 
 
-    private static <T> void checkIfResponseSuccessful(R<T> response) {
-        if (response.getStatus() != ErrorCode.Success.getNumber()) {
-            log.error("Request failed with the next message: {}", response.getMessage());
-            throw new RuntimeException(response.getException());
-        }
-    }
 }

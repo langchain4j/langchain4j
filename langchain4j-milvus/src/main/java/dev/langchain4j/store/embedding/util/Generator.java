@@ -1,13 +1,10 @@
 package dev.langchain4j.store.embedding.util;
 
-import lombok.Value;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-@Value
 public class Generator {
 
     public static String generateRandomId() {

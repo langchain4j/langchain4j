@@ -8,13 +8,11 @@ import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
-import lombok.Value;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-@Value
 public class CollectionRequestBuilder {
 
     public static FlushParam buildFlushRequest(String collectionName) {

@@ -6,7 +6,6 @@ import dev.langchain4j.store.embedding.CollectionDescription;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.MilvusClient;
 import io.milvus.response.SearchResultsWrapper;
-import lombok.Value;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.store.embedding.util.CollectionOperationsExecutor.queryForVector;
 import static dev.langchain4j.store.embedding.util.Generator.generateEmptyScalars;
 
-@Value
 public class Mapper {
 
     public static List<List<Float>> toVectors(List<Embedding> embeddings) {
