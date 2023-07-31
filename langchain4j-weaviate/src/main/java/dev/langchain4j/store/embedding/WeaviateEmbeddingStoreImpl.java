@@ -140,7 +140,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     for (int i = 0; i < embeddings.size(); i++) {
       String id = ids != null
         ? ids.get(i)
-        : embedded != null ? generateUUI(embedded.get(i).text()) : generateRandomId();
+        : embedded != null ? generateUUID(embedded.get(i).text()) : generateRandomId();
       resIds.add(id);
       objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : null));
     }
@@ -186,7 +186,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   }
 
   // TODO this shall be migrated to some common place
-  private static String generateUUI(String input) {
+  private static String generateUUID(String input) {
     try {
       byte[] hashBytes = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
       StringBuilder sb = new StringBuilder();
