@@ -9,15 +9,18 @@ import dev.langchain4j.data.segment.TextSegment;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
+import io.weaviate.client.base.Result;
+import io.weaviate.client.v1.auth.exception.AuthException;
 import io.weaviate.client.v1.data.model.WeaviateObject;
 import io.weaviate.client.v1.data.replication.model.ConsistencyLevel;
+import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearVectorArgument;
 import io.weaviate.client.v1.graphql.query.fields.Field;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Builder;
-import lombok.SneakyThrows;
 import lombok.val;
 
 public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
@@ -31,15 +34,18 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final String objectClass;
 
   @Builder
-  @SneakyThrows
   public WeaviateEmbeddingStoreImpl(String apiKey, String scheme, String host, String objectClass) {
-    client = WeaviateAuthClient.apiKey(new Config(scheme, host), apiKey);
+    try {
+      client = WeaviateAuthClient.apiKey(new Config(scheme, host), apiKey);
+    } catch (AuthException e) {
+      throw new RuntimeException(e);
+    }
     this.objectClass = objectClass != null ? objectClass : DEFAULT_CLASS;
   }
 
   @Override
   public String add(Embedding embedding) {
-    val id = generateRandomId();
+    String id = generateRandomId();
     add(id, embedding);
     return id;
   }
@@ -78,7 +84,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     int maxResults,
     double minCertainty
   ) {
-    val result = client
+    Result<GraphQLResponse> result = client
       .graphQL()
       .get()
       .withClassName(objectClass)
@@ -108,17 +114,18 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       return emptyList();
     }
 
-    val resGetPart = ((Map<String, Map>) result.getResult().getData()).entrySet().stream().findFirst();
+    Optional<Map.Entry<String, Map>> resGetPart =
+      ((Map<String, Map>) result.getResult().getData()).entrySet().stream().findFirst();
     if (!resGetPart.isPresent()) {
       return emptyList();
     }
 
-    val resItemsPart = resGetPart.get().getValue().entrySet().stream().findFirst();
+    Optional resItemsPart = resGetPart.get().getValue().entrySet().stream().findFirst();
     if (!resItemsPart.isPresent()) {
       return emptyList();
     }
 
-    val resItems = ((Map.Entry<String, List<Map<String, ?>>>) resItemsPart.get()).getValue();
+    List<Map<String, ?>> resItems = ((Map.Entry<String, List<Map<String, ?>>>) resItemsPart.get()).getValue();
 
     return resItems.stream().map(WeaviateEmbeddingStoreImpl::toEmbeddingMatch).collect(Collectors.toList());
   }
@@ -128,10 +135,12 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
     }
 
-    val resIds = new ArrayList<String>();
-    val objects = new ArrayList<WeaviateObject>();
+    List<String> resIds = new ArrayList<>();
+    List<WeaviateObject> objects = new ArrayList<>();
     for (int i = 0; i < embeddings.size(); i++) {
-      val id = ids != null ? ids.get(i) : embedded != null ? generateUUI(embedded.get(i).text()) : generateRandomId();
+      String id = ids != null
+        ? ids.get(i)
+        : embedded != null ? generateUUI(embedded.get(i).text()) : generateRandomId();
       resIds.add(id);
       objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : null));
     }
@@ -147,14 +156,14 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   }
 
   private WeaviateObject buildObject(String id, Embedding embedding, String text) {
-    val builder = WeaviateObject
+    WeaviateObject.WeaviateObjectBuilder builder = WeaviateObject
       .builder()
       .className(objectClass)
       .id(id)
       .vector(embedding.vectorAsList().toArray(new Float[0]));
 
     if (text != null) {
-      val props = new HashMap<String, Object>();
+      Map<String, Object> props = new HashMap<>();
       props.put(METADATA_TEXT_SEGMENT, text);
 
       builder.properties(props);
@@ -177,12 +186,15 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   }
 
   // TODO this shall be migrated to some common place
-  @SneakyThrows
   private static String generateUUI(String input) {
-    val hashBytes = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
-    val sb = new StringBuilder();
-    for (byte b : hashBytes) sb.append(String.format("%02x", b));
-    return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
+    try {
+      byte[] hashBytes = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
+      StringBuilder sb = new StringBuilder();
+      for (byte b : hashBytes) sb.append(String.format("%02x", b));
+      return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
+    } catch (NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   // TODO this shall be migrated to some common place
