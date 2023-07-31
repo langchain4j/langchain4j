@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -10,6 +11,7 @@ import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
 import io.weaviate.client.base.Result;
+import io.weaviate.client.base.WeaviateErrorMessage;
 import io.weaviate.client.v1.auth.exception.AuthException;
 import io.weaviate.client.v1.data.model.WeaviateObject;
 import io.weaviate.client.v1.data.replication.model.ConsistencyLevel;
@@ -21,7 +23,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Builder;
-import lombok.val;
 
 public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
@@ -38,7 +39,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     try {
       client = WeaviateAuthClient.apiKey(new Config(scheme, host), apiKey);
     } catch (AuthException e) {
-      throw new RuntimeException(e);
+      throw new IllegalArgumentException(e);
     }
     this.objectClass = objectClass != null ? objectClass : DEFAULT_CLASS;
   }
@@ -57,10 +58,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public String add(Embedding embedding, TextSegment textSegment) {
-    return addAll(singletonList(embedding), singletonList(textSegment))
-      .stream()
-      .findFirst()
-      .orElse(null);
+    return addAll(singletonList(embedding), singletonList(textSegment)).stream().findFirst().orElse(null);
   }
 
   @Override
@@ -111,7 +109,9 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       .run();
 
     if (result.hasErrors()) {
-      return emptyList();
+      throw new IllegalArgumentException(
+        result.getError().getMessages().stream().map(WeaviateErrorMessage::getMessage).collect(joining("\n"))
+      );
     }
 
     Optional<Map.Entry<String, Map>> resGetPart =
@@ -173,7 +173,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   }
 
   private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
-    val additional = (Map<String, ?>) item.get(ADDITIONALS);
+    Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
 
     return new EmbeddingMatch<>(
       (String) additional.get("id"),
@@ -193,7 +193,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       for (byte b : hashBytes) sb.append(String.format("%02x", b));
       return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
     } catch (NoSuchAlgorithmException e) {
-      throw new RuntimeException(e);
+      throw new IllegalArgumentException(e);
     }
   }
 
