@@ -57,7 +57,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public String add(Embedding embedding, TextSegment textSegment) {
-    return addAll(singletonList(embedding), textSegment == null ? null : singletonList(textSegment))
+    return addAll(singletonList(embedding), singletonList(textSegment))
       .stream()
       .findFirst()
       .orElse(null);
