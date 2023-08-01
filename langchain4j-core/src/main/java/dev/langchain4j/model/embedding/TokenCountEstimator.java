@@ -16,5 +16,11 @@ public interface TokenCountEstimator {
         return estimateTokenCount(textSegment.text());
     }
 
-    int estimateTokenCount(List<TextSegment> textSegments);
+    default int estimateTokenCount(List<TextSegment> textSegments) {
+        int tokenCount = 0;
+        for (TextSegment textSegment : textSegments) {
+            tokenCount += estimateTokenCount(textSegment);
+        }
+        return tokenCount;
+    }
 }
