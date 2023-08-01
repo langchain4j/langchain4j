@@ -15,8 +15,8 @@
     <artifactId>langchain4j-pinecone</artifactId>
     <packaging>jar</packaging>
 
-    <name>langchain4j-pinecone</name>
-    <description>langchain4j integration with Pinecone</description>
+    <name>LangChain4j integration with Pinecone</name>
+    <description>It uses the io.pinecone.pinecone-client library, which has a proprietary license.</description>
 
     <dependencies>
 

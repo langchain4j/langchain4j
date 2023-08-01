@@ -86,15 +86,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         return tokenizer.countTokens(text);
     }
 
-    @Override
-    public int estimateTokenCount(List<TextSegment> textSegments) {
-        int tokenCount = 0;
-        for (TextSegment textSegment : textSegments) {
-            tokenCount += estimateTokenCount(textSegment);
-        }
-        return tokenCount;
-    }
-
     public static OpenAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }

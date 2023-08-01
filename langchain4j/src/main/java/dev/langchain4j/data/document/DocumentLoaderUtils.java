@@ -25,14 +25,8 @@ class DocumentLoaderUtils {
             return TXT;
         }
 
-        if (pathToFile.endsWith(".pdf")) {
-            return PDF;
-        }
-
-        if (pathToFile.endsWith(".html")
-                || pathToFile.endsWith(".htm")
-                || pathToFile.endsWith(".xhtml")) {
-            return HTML;
+        if (pathToFile.endsWith("pdf")) {
+            return DocumentType.PDF;
         }
 
         throw new UnsupportedDocumentTypeException(pathToFile);
@@ -41,7 +35,6 @@ class DocumentLoaderUtils {
     static DocumentParser parserFor(DocumentType type) {
         switch (type) {
             case TXT:
-            case HTML:
                 return new TextDocumentParser();
             case PDF:
                 return new PdfDocumentParser();
