@@ -22,7 +22,11 @@ class SegmentBuilder {
     }
 
     boolean hasSpaceFor(String text) {
-        return sb.length() + sizeFunction.apply(separator) + sizeFunction.apply(text) <= maxSegmentSize;
+        return sizeOf(sb.toString()) + sizeOf(separator) + sizeOf(text) <= maxSegmentSize;
+    }
+
+    int sizeOf(String text) {
+        return sizeFunction.apply(text);
     }
 
     void append(String text) {

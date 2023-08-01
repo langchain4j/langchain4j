@@ -2,7 +2,6 @@ package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import opennlp.tools.sentdetect.SentenceDetectorME;
@@ -11,7 +10,6 @@ import opennlp.tools.sentdetect.SentenceModel;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * Splits provided text into sentences and tries to fit as many sentences into one {@link TextSegment} as allowed by {@link SentenceSplitter#maxSegmentSize}.
