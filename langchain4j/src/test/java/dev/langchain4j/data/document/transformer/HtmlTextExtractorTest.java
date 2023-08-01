@@ -43,7 +43,7 @@ class HtmlTextExtractorTest {
     @Test
     void should_extract_text_from_html_by_css_selector() {
 
-        HtmlTextExtractor transformer = new HtmlTextExtractor("#p1");
+        HtmlTextExtractor transformer = new HtmlTextExtractor("#p1", false);
         Document htmlDocument = Document.from(SAMPLE_HTML, metadata(DOCUMENT_TYPE, HTML.toString()));
 
         Document transformedDocument = transformer.transform(htmlDocument);

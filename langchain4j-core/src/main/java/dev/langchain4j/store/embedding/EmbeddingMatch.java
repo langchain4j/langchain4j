@@ -53,10 +53,10 @@ public class EmbeddingMatch<Embedded> {
     @Override
     public String toString() {
         return "EmbeddingMatch {" +
-                " embeddingId = \"" + embeddingId + "\"" +
-                ", embedding = " + embedding +
+                " score = " + score +
                 ", embedded = " + embedded +
-                ", score = " + score +
+                ", embeddingId = \"" + embeddingId + "\"" +
+                ", embedding = " + embedding +
                 " }";
     }
 }

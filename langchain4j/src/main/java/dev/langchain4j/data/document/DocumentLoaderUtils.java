@@ -5,7 +5,7 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 
 import java.io.InputStream;
 
-import static dev.langchain4j.data.document.DocumentType.TXT;
+import static dev.langchain4j.data.document.DocumentType.*;
 
 class DocumentLoaderUtils {
 
@@ -21,12 +21,18 @@ class DocumentLoaderUtils {
     }
 
     static DocumentType detectDocumentType(String pathToFile) {
-        if (pathToFile.endsWith("txt")) {
+        if (pathToFile.endsWith(".txt")) {
             return TXT;
         }
 
-        if (pathToFile.endsWith("pdf")) {
-            return DocumentType.PDF;
+        if (pathToFile.endsWith(".pdf")) {
+            return PDF;
+        }
+
+        if (pathToFile.endsWith(".html")
+                || pathToFile.endsWith(".htm")
+                || pathToFile.endsWith(".xhtml")) {
+            return HTML;
         }
 
         throw new UnsupportedDocumentTypeException(pathToFile);
@@ -35,6 +41,7 @@ class DocumentLoaderUtils {
     static DocumentParser parserFor(DocumentType type) {
         switch (type) {
             case TXT:
+            case HTML:
                 return new TextDocumentParser();
             case PDF:
                 return new PdfDocumentParser();

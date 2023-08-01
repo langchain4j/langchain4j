@@ -20,21 +20,24 @@ import static org.jsoup.select.NodeTraversor.traverse;
 public class HtmlTextExtractor implements DocumentTransformer {
 
     private final String cssSelector;
+    private final boolean includeLinks;
 
     /**
      * Constructs an instance of HtmlToTextTransformer that extracts all text from a given Document containing HTML.
      */
     public HtmlTextExtractor() {
-        this(null);
+        this(null, false);
     }
 
     /**
      * Constructs an instance of HtmlToTextTransformer that extracts text from HTML elements matching the provided CSS selector.
      *
-     * @param cssSelector A CSS selector. For example, '#content' will extract all text from the HTML element with id "content".
+     * @param cssSelector  A CSS selector. For example, '#content' will extract all text from the HTML element with id "content".
+     * @param includeLinks Specifies whether links should be included in the extracted text.
      */
-    public HtmlTextExtractor(String cssSelector) {
+    public HtmlTextExtractor(String cssSelector, boolean includeLinks) {
         this.cssSelector = cssSelector;
+        this.includeLinks = includeLinks;
     }
 
     @Override
@@ -44,22 +47,22 @@ public class HtmlTextExtractor implements DocumentTransformer {
 
         String text;
         if (cssSelector != null) {
-            text = extractText(jsoupDocument, cssSelector);
+            text = extractText(jsoupDocument, cssSelector, includeLinks);
         } else {
-            text = extractText(jsoupDocument);
+            text = extractText(jsoupDocument, includeLinks);
         }
 
         return Document.from(text, document.metadata());
     }
 
-    private static String extractText(org.jsoup.nodes.Document jsoupDocument, String cssSelector) {
+    private static String extractText(org.jsoup.nodes.Document jsoupDocument, String cssSelector, boolean includeLinks) {
         return jsoupDocument.select(cssSelector).stream()
-                .map(HtmlTextExtractor::extractText)
+                .map(element -> extractText(element, includeLinks))
                 .collect(joining("\n\n"));
     }
 
-    private static String extractText(Element element) {
-        NodeVisitor visitor = new TextExtractingVisitor();
+    private static String extractText(Element element, boolean includeLinks) {
+        NodeVisitor visitor = new TextExtractingVisitor(includeLinks);
         traverse(visitor, element);
         return visitor.toString().trim();
     }
@@ -68,6 +71,11 @@ public class HtmlTextExtractor implements DocumentTransformer {
     private static class TextExtractingVisitor implements NodeVisitor {
 
         private final StringBuilder textBuilder = new StringBuilder();
+        private final boolean includeLinks;
+
+        private TextExtractingVisitor(boolean includeLinks) {
+            this.includeLinks = includeLinks;
+        }
 
         @Override
         public void head(Node node, int depth) { // hit when the node is first seen
@@ -87,7 +95,7 @@ public class HtmlTextExtractor implements DocumentTransformer {
             String name = node.nodeName();
             if (in(name, "br", "dd", "dt", "p", "h1", "h2", "h3", "h4", "h5", "h6"))
                 textBuilder.append("\n");
-            else if (name.equals("a"))
+            else if (includeLinks && name.equals("a"))
                 textBuilder.append(format(" <%s>", node.absUrl("href")));
         }
 
