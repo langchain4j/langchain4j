@@ -9,6 +9,14 @@ public class Utils {
         return string == null || string.trim().isEmpty();
     }
 
+    public static String repeat(String string, int times) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < times; i++) {
+            sb.append(string);
+        }
+        return sb.toString();
+    }
+
     public static <T> List<T> list(T... elements) {
         return Arrays.asList(elements);
     }
