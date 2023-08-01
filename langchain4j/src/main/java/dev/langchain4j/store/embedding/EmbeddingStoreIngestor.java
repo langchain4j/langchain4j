@@ -5,6 +5,7 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 
 import java.util.List;
@@ -18,22 +19,27 @@ import static java.util.Collections.singletonList;
  * It manages the entire pipeline process, from splitting the documents into text segments,
  * generating embeddings for these segments using a provided embedding model, to finally
  * storing these embeddings into an embedding store.
- * Optionally, it can also transform documents before splitting them, which can be useful if you want
+ * Optionally, it can transform documents before splitting them, which can be useful if you want
+ * to clean your data, format it differently, etc.
+ * Optionally, it can transform text segments after splitting, which can be useful if you want
  * to clean your data, format it differently, etc.
  */
 public class EmbeddingStoreIngestor {
 
-    private final DocumentTransformer transformer;
-    private final DocumentSplitter splitter;
+    private final DocumentTransformer documentTransformer;
+    private final DocumentSplitter documentSplitter;
+    private final TextSegmentTransformer textSegmentTransformer;
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
-    public EmbeddingStoreIngestor(DocumentTransformer transformer,
-                                  DocumentSplitter splitter,
+    public EmbeddingStoreIngestor(DocumentTransformer documentTransformer,
+                                  DocumentSplitter documentSplitter,
+                                  TextSegmentTransformer textSegmentTransformer,
                                   EmbeddingModel embeddingModel,
                                   EmbeddingStore<TextSegment> embeddingStore) {
-        this.transformer = transformer;
-        this.splitter = ensureNotNull(splitter, "splitter");
+        this.documentTransformer = documentTransformer;
+        this.documentSplitter = ensureNotNull(documentSplitter, "splitter");
+        this.textSegmentTransformer = textSegmentTransformer;
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
     }
@@ -47,10 +53,13 @@ public class EmbeddingStoreIngestor {
     }
 
     public void ingest(List<Document> documents) {
-        if (transformer != null) {
-            documents = transformer.transformAll(documents);
+        if (documentTransformer != null) {
+            documents = documentTransformer.transformAll(documents);
         }
-        List<TextSegment> segments = splitter.splitAll(documents);
+        List<TextSegment> segments = documentSplitter.splitAll(documents);
+        if (textSegmentTransformer != null) {
+            segments = textSegmentTransformer.transformAll(segments);
+        }
         List<Embedding> embeddings = embeddingModel.embedAll(segments);
         embeddingStore.addAll(embeddings, segments);
     }
@@ -61,18 +70,24 @@ public class EmbeddingStoreIngestor {
 
     public static class Builder {
 
-        private DocumentTransformer transformer;
-        private DocumentSplitter splitter;
+        private DocumentTransformer documentTransformer;
+        private DocumentSplitter documentSplitter;
+        private TextSegmentTransformer textSegmentTransformer;
         private EmbeddingModel embeddingModel;
         private EmbeddingStore<TextSegment> embeddingStore;
 
-        public Builder transformer(DocumentTransformer transformer) {
-            this.transformer = transformer;
+        public Builder documentTransformer(DocumentTransformer documentTransformer) {
+            this.documentTransformer = documentTransformer;
             return this;
         }
 
-        public Builder splitter(DocumentSplitter splitter) {
-            this.splitter = splitter;
+        public Builder documentSplitter(DocumentSplitter documentSplitter) {
+            this.documentSplitter = documentSplitter;
+            return this;
+        }
+
+        public Builder textSegmentTransformer(TextSegmentTransformer textSegmentTransformer) {
+            this.textSegmentTransformer = textSegmentTransformer;
             return this;
         }
 
@@ -87,7 +102,13 @@ public class EmbeddingStoreIngestor {
         }
 
         public EmbeddingStoreIngestor build() {
-            return new EmbeddingStoreIngestor(transformer, splitter, embeddingModel, embeddingStore);
+            return new EmbeddingStoreIngestor(
+                    documentTransformer,
+                    documentSplitter,
+                    textSegmentTransformer,
+                    embeddingModel,
+                    embeddingStore
+            );
         }
     }
 }

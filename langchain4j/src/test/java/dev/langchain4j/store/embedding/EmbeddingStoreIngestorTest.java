@@ -45,8 +45,8 @@ class EmbeddingStoreIngestorTest {
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .transformer(transformer)
-                .splitter(splitter)
+                .documentTransformer(transformer)
+                .documentSplitter(splitter)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
                 .build();
