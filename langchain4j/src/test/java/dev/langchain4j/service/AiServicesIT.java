@@ -23,6 +23,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
@@ -46,9 +47,7 @@ public class AiServicesIT {
             .build();
 
     @Spy
-    ChatMemory chatMemory = MessageWindowChatMemory.builder()
-            .capacityInMessages(10)
-            .build();
+    ChatMemory chatMemory = MessageWindowChatMemory.withCapacity(10);
 
     @Spy
     ModerationModel moderationModel = OpenAiModerationModel.builder()
@@ -145,7 +144,7 @@ public class AiServicesIT {
 
 
     enum Sentiment {
-        POSITIVE, NEUTRAL, NEGATIVE;
+        POSITIVE, NEUTRAL, NEGATIVE
     }
 
     interface SentimentAnalyzer {
@@ -453,7 +452,7 @@ public class AiServicesIT {
     }
 
     @Test
-    void should_keep_chat_history() {
+    void should_keep_chat_memory() {
 
         ChatWithHistory chatWithHistory = AiServices.builder(ChatWithHistory.class)
                 .chatLanguageModel(chatLanguageModel)
@@ -482,7 +481,7 @@ public class AiServicesIT {
     }
 
     @Test
-    void should_keep_chat_history_and_not_duplicate_system_message() {
+    void should_keep_chat_memory_and_not_duplicate_system_message() {
 
         ChatWithHistory chatWithHistory = AiServices.builder(ChatWithHistory.class)
                 .chatLanguageModel(chatLanguageModel)
@@ -518,7 +517,7 @@ public class AiServicesIT {
     }
 
     @Test
-    void should_keep_chat_history_and_add_new_system_message() {
+    void should_keep_chat_memory_and_add_new_system_message() {
 
         ChatWithHistory chatWithHistory = AiServices.builder(ChatWithHistory.class)
                 .chatLanguageModel(chatLanguageModel)
@@ -554,6 +553,65 @@ public class AiServicesIT {
         ), null);
         verify(chatMemory).add(aiMessage(secondAiMessage));
         verify(chatMemory, times(4)).messages();
+    }
+
+    interface ChatWithSeparateHistoryForEachUser {
+
+        String chat(@UserId int userId, @UserMessage String userMessage);
+    }
+
+    @Test
+    void should_keep_separate_chat_memory_for_each_user() {
+
+        ChatMemory chatMemoryOfFirstUser = spy(MessageWindowChatMemory.withCapacity(10));
+        ChatMemory chatMemoryOfSecondUser = spy(MessageWindowChatMemory.withCapacity(10));
+
+        Supplier<ChatMemory> chatMemorySupplier = mock(Supplier.class);
+        when(chatMemorySupplier.get())
+                .thenReturn(chatMemoryOfFirstUser)
+                .thenReturn(chatMemoryOfSecondUser)
+                .thenThrow(new RuntimeException("supplier was invoked more than 2 times, this should not happen"));
+
+        ChatWithSeparateHistoryForEachUser chatWithHistory = AiServices.builder(ChatWithSeparateHistoryForEachUser.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemorySupplier(chatMemorySupplier)
+                .build();
+
+        String firstMessageOfFirstUser = "Hello, my name is Klaus";
+        String firstAiResponseToFirstUser = chatWithHistory.chat(1, firstMessageOfFirstUser);
+        verify(chatMemoryOfFirstUser).add(userMessage(firstMessageOfFirstUser));
+        verify(chatLanguageModel).sendMessages(asList(userMessage(firstMessageOfFirstUser)), null);
+        verify(chatMemoryOfFirstUser).add(aiMessage(firstAiResponseToFirstUser));
+
+        String firstMessageOfSecondUser = "Hello, my name is Francine";
+        String firstAiResponseToSecondUser = chatWithHistory.chat(2, firstMessageOfSecondUser);
+        verify(chatMemoryOfSecondUser).add(userMessage(firstMessageOfSecondUser));
+        verify(chatLanguageModel).sendMessages(asList(userMessage(firstMessageOfSecondUser)), null);
+        verify(chatMemoryOfSecondUser).add(aiMessage(firstAiResponseToSecondUser));
+
+        String secondMessageOfFirstUser = "What is my name?";
+        String secondAiResponseToFirstUser = chatWithHistory.chat(1, secondMessageOfFirstUser);
+        assertThat(secondAiResponseToFirstUser).contains("Klaus");
+        verify(chatMemoryOfFirstUser).add(userMessage(secondMessageOfFirstUser));
+        verify(chatLanguageModel).sendMessages(asList(
+                userMessage(firstMessageOfFirstUser),
+                aiMessage(firstAiResponseToFirstUser),
+                userMessage(secondMessageOfFirstUser)
+        ), null);
+        verify(chatMemoryOfFirstUser).add(aiMessage(secondAiResponseToFirstUser));
+        verify(chatMemoryOfFirstUser, times(2)).messages();
+
+        String secondMessageOfSecondUser = "What is my name?";
+        String secondAiResponseToSecondUser = chatWithHistory.chat(2, secondMessageOfSecondUser);
+        assertThat(secondAiResponseToSecondUser).contains("Francine");
+        verify(chatMemoryOfSecondUser).add(userMessage(secondMessageOfSecondUser));
+        verify(chatLanguageModel).sendMessages(asList(
+                userMessage(firstMessageOfSecondUser),
+                aiMessage(firstAiResponseToSecondUser),
+                userMessage(secondMessageOfSecondUser)
+        ), null);
+        verify(chatMemoryOfSecondUser).add(aiMessage(secondAiResponseToSecondUser));
+        verify(chatMemoryOfSecondUser, times(2)).messages();
     }
 
     private static List<ChatMessage> asList(ChatMessage... messages) {

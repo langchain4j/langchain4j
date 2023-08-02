@@ -87,7 +87,7 @@ You can use LLM as a classifier:
 
 ```java
 enum Sentiment {
-    POSITIVE, NEUTRAL, NEGATIVE;
+    POSITIVE, NEUTRAL, NEGATIVE
 }
 
 interface SentimentAnalyzer {
