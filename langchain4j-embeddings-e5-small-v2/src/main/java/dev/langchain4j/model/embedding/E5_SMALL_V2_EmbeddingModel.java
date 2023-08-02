@@ -2,13 +2,10 @@ package dev.langchain4j.model.embedding;
 
 public class E5_SMALL_V2_EmbeddingModel extends AbstractInProcessEmbeddingModel {
 
-    private static final OnnxEmbeddingModel model = new OnnxEmbeddingModel(
-            "/e5-small-v2.onnx",
-            "/vocab.txt"
-    );
+    private static final OnnxBertEmbeddingModel model = new OnnxBertEmbeddingModel("/e5-small-v2.onnx");
 
     @Override
-    protected OnnxEmbeddingModel model() {
+    protected OnnxBertEmbeddingModel model() {
         return model;
     }
 }

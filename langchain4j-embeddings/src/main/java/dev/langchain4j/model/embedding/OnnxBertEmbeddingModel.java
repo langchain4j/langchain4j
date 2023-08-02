@@ -1,7 +1,5 @@
 package dev.langchain4j.model.embedding;
 
-import ai.djl.modality.nlp.DefaultVocabulary;
-import ai.djl.modality.nlp.bert.BertFullTokenizer;
 import ai.onnxruntime.OnnxTensor;
 import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
@@ -19,21 +17,17 @@ import java.util.Map;
 import static ai.onnxruntime.OnnxTensor.createTensor;
 import static java.nio.LongBuffer.wrap;
 
-public class OnnxEmbeddingModel {
+public class OnnxBertEmbeddingModel {
 
     private final OrtEnvironment environment;
     private final OrtSession session;
-    private final DefaultVocabulary vocabulary;
-    private final BertFullTokenizer tokenizer;
+    private final BertTokenizer tokenizer;
 
-    public OnnxEmbeddingModel(String modelFilePath, String vocabularyFilePath) {
+    public OnnxBertEmbeddingModel(String modelFilePath) {
         try {
             this.environment = OrtEnvironment.getEnvironment();
             this.session = environment.createSession(loadModel(modelFilePath));
-            this.vocabulary = DefaultVocabulary.builder()
-                    .addFromTextFile(getClass().getResource(vocabularyFilePath))
-                    .build();
-            this.tokenizer = new BertFullTokenizer(vocabulary, true);
+            this.tokenizer = new BertTokenizer();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -44,7 +38,6 @@ public class OnnxEmbeddingModel {
             return toEmbedding(result);
         } catch (Exception e) {
             throw new RuntimeException(e);
-
         }
     }
 
@@ -57,7 +50,7 @@ public class OnnxEmbeddingModel {
 
         // TODO reusable buffers
         long[] tokens = stringTokens.stream()
-                .mapToLong(vocabulary::getIndex)
+                .mapToLong(tokenizer::tokenId)
                 .toArray();
 
         long[] attentionMasks = new long[stringTokens.size()];
@@ -117,14 +110,12 @@ public class OnnxEmbeddingModel {
 
         float[] averagedVector = new float[vectorLength];
 
-        // TODO ignore [CLS] and [SEP] ?
         for (int i = 0; i < numVectors; i++) {
             for (int j = 0; j < vectorLength; j++) {
                 averagedVector[j] += vectors[i][j];
             }
         }
 
-        // TODO ignore [CLS] and [SEP] ?
         for (int j = 0; j < vectorLength; j++) {
             averagedVector[j] /= numVectors;
         }
@@ -146,5 +137,9 @@ public class OnnxEmbeddingModel {
         }
 
         return normalizedVector;
+    }
+
+    int countTokens(String text) {
+        return tokenizer.tokenize(text).size();
     }
 }

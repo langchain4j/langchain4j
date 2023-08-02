@@ -12,6 +12,9 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a LLM that has a chat interface and can stream responses one token at a time.
+ */
 public interface StreamingChatLanguageModel {
 
     default void sendUserMessage(String userMessage, StreamingResponseHandler handler) {
