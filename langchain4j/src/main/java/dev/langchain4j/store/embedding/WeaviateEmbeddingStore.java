@@ -15,8 +15,9 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
    * Creates a new WeaviateEmbeddingStore instance.
    *
    * @param apiKey      your Weaviate API key
-   * @param scheme      the scheme, e.g. "https"
-   * @param host        the host, e.g. "langchain4j-4jw7ufd9.weaviate.network"
+   * @param scheme      the scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
+   * @param host        the host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
+   *                    Find in under Details of your Weaviate cluster.
    * @param objectClass the object class you want to store, e.g. "MyGreatClass"
    * @param avoidDups   if true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
    *                    provided text segment, which avoids duplicated entries in DB.
