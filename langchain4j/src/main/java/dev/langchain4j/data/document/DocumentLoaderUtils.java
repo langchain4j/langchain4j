@@ -1,6 +1,6 @@
 package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.parser.MSOfficeDocumentParser;
+import dev.langchain4j.data.document.parser.MsOfficeDocumentParser;
 import dev.langchain4j.data.document.parser.PdfDocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 
@@ -61,13 +61,13 @@ class DocumentLoaderUtils {
                 return new TextDocumentParser(type);
             case PDF:
                 return new PdfDocumentParser();
-            case XLS:
-            case XLSX:
-            case DOC:
-            case DOCX:
-            case PPT:
-            case PPTX:
-                return new MSOfficeDocumentParser(type);
+                case XLS:
+                case XLSX:
+                case DOC:
+                case DOCX:
+                case PPT:
+                case PPTX:
+                return new MsOfficeDocumentParser(type);
             default:
                 throw new RuntimeException(String.format("Cannot find parser for document type '%s'", type));
         }
