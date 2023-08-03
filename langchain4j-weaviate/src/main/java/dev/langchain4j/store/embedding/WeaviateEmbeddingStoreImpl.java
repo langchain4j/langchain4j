@@ -33,15 +33,17 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private final WeaviateClient client;
   private final String objectClass;
+  private boolean avoidDups = true;
 
   @Builder
-  public WeaviateEmbeddingStoreImpl(String apiKey, String scheme, String host, String objectClass) {
+  public WeaviateEmbeddingStoreImpl(String apiKey, String scheme, String host, String objectClass, boolean avoidDups) {
     try {
       client = WeaviateAuthClient.apiKey(new Config(scheme, host), apiKey);
     } catch (AuthException e) {
       throw new IllegalArgumentException(e);
     }
     this.objectClass = objectClass != null ? objectClass : DEFAULT_CLASS;
+    this.avoidDups = avoidDups;
   }
 
   @Override
@@ -140,7 +142,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     for (int i = 0; i < embeddings.size(); i++) {
       String id = ids != null
         ? ids.get(i)
-        : embedded != null ? generateUUID(embedded.get(i).text()) : generateRandomId();
+        : avoidDups && embedded != null ? generateUUID(embedded.get(i).text()) : generateRandomId();
       resIds.add(id);
       objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : null));
     }

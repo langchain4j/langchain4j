@@ -11,8 +11,19 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   private final EmbeddingStore<TextSegment> implementation;
 
+  /**
+   * Creates a new WeaviateEmbeddingStore instance.
+   *
+   * @param apiKey      your Weaviate API key
+   * @param scheme      the scheme, e.g. "https"
+   * @param host        the host, e.g. "langchain4j-4jw7ufd9.weaviate.network"
+   * @param objectClass the object class you want to store, e.g. "MyGreatClass"
+   * @param avoidDups   if true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
+   *                    provided text segment, which avoids duplicated entries in DB.
+   *                    If false, then random ID will be generated.
+   */
   @Builder
-  public WeaviateEmbeddingStore(String apiKey, String scheme, String host, String objectClass) {
+  public WeaviateEmbeddingStore(String apiKey, String scheme, String host, String objectClass, boolean avoidDups) {
     try {
       implementation =
         loadDynamically(
@@ -20,7 +31,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
           apiKey,
           scheme,
           host,
-          objectClass
+          objectClass,
+          avoidDups
         );
     } catch (ClassNotFoundException e) {
       throw new RuntimeException(getMessage(), e);
@@ -48,13 +60,20 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     String apiKey,
     String scheme,
     String host,
-    String objectClass
+    String objectClass,
+    boolean avoidDups
   )
     throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     Class<?> implementationClass = Class.forName(implementationClassName);
-    Class<?>[] constructorParameterTypes = new Class<?>[] { String.class, String.class, String.class, String.class };
+    Class<?>[] constructorParameterTypes = new Class<?>[] {
+      String.class,
+      String.class,
+      String.class,
+      String.class,
+      boolean.class,
+    };
     Constructor<?> constructor = implementationClass.getConstructor(constructorParameterTypes);
-    return (EmbeddingStore<TextSegment>) constructor.newInstance(apiKey, scheme, host, objectClass);
+    return (EmbeddingStore<TextSegment>) constructor.newInstance(apiKey, scheme, host, objectClass, avoidDups);
   }
 
   @Override
@@ -64,10 +83,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   /**
    * Adds a new embedding with provided ID to the store.
-   * @param id the ID of the embedding to add in UUID format, since it's Weaviate requirement.
+   *
+   * @param id        the ID of the embedding to add in UUID format, since it's Weaviate requirement.
+   * @param embedding the embedding to add
    * @see <a href="https://weaviate.io/developers/weaviate/manage-data/create#id">Weaviate docs</a>
    * @see <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">Wikipedia about UUID</a>
-   * @param embedding the embedding to add
    */
   @Override
   public void add(String id, Embedding embedding) {
