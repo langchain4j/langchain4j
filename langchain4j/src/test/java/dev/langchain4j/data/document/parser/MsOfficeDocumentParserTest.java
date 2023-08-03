@@ -9,11 +9,8 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 
 import static dev.langchain4j.data.document.DocumentType.PPT;
-import static dev.langchain4j.data.document.DocumentType.PPTX;
 import static dev.langchain4j.data.document.DocumentType.XLS;
-import static dev.langchain4j.data.document.DocumentType.XLSX;
 import static dev.langchain4j.data.document.DocumentType.DOC;
-import static dev.langchain4j.data.document.DocumentType.DOCX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MsOfficeDocumentParserTest {
@@ -33,13 +30,13 @@ public class MsOfficeDocumentParserTest {
     @Test
     void should_parse_pptx_file() {
 
-        DocumentParser parser = new MsOfficeDocumentParser(PPTX);
+        DocumentParser parser = new MsOfficeDocumentParser(PPT);
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream("test-file.pptx");
 
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("PPTX");
+        assertThat(document.metadata().get("document_type")).isEqualTo("PPT");
     }
 
     @Test
@@ -57,13 +54,13 @@ public class MsOfficeDocumentParserTest {
     @Test
     void should_parse_docx_file() {
 
-        DocumentParser parser = new MsOfficeDocumentParser(DOCX);
+        DocumentParser parser = new MsOfficeDocumentParser(DOC);
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream("test-file.docx");
 
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("DOCX");
+        assertThat(document.metadata().get("document_type")).isEqualTo("DOC");
     }
 
     @Test
@@ -81,12 +78,12 @@ public class MsOfficeDocumentParserTest {
     @Test
     void should_parse_xlsx_file() {
 
-        DocumentParser parser = new MsOfficeDocumentParser(XLSX);
+        DocumentParser parser = new MsOfficeDocumentParser(XLS);
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream("test-file.xlsx");
 
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("XLSX");
+        assertThat(document.metadata().get("document_type")).isEqualTo("XLS");
     }
 }

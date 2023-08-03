@@ -47,6 +47,7 @@ class DocumentLoaderUtils {
             return Arrays.stream(pathToFile.toUpperCase().split("\\."))
                     .sorted(Comparator.reverseOrder())
                     .findFirst()
+                    .map((extension) -> extension.endsWith("X") ? extension.replaceFirst(".$", "") : extension)
                     .map(DocumentType::valueOf)
                     .get();
         }
@@ -62,11 +63,8 @@ class DocumentLoaderUtils {
             case PDF:
                 return new PdfDocumentParser();
                 case XLS:
-                case XLSX:
                 case DOC:
-                case DOCX:
                 case PPT:
-                case PPTX:
                 return new MsOfficeDocumentParser(type);
             default:
                 throw new RuntimeException(String.format("Cannot find parser for document type '%s'", type));
