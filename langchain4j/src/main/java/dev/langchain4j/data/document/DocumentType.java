@@ -4,5 +4,11 @@ public enum DocumentType {
 
     TXT,
     PDF,
-    HTML
+    HTML,
+    PPT,
+    PPTX,
+    DOC,
+    DOCX,
+    XLS,
+    XLSX
 }
