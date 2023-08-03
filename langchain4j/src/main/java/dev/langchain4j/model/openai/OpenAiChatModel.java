@@ -16,6 +16,7 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static java.util.Collections.singletonList;
 
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
@@ -74,22 +75,40 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
-        return sendMessages(messages, null);
+        return sendMessages(messages, null, null);
     }
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return sendMessages(messages, toolSpecifications, null);
+    }
 
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+    @Override
+    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return sendMessages(messages, singletonList(toolSpecification), toolSpecification);
+    }
+
+    private AiMessage sendMessages(List<ChatMessage> messages,
+                                   List<ToolSpecification> toolSpecifications,
+                                   ToolSpecification toolThatMustBeExecuted
+    ) {
+        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
-                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty)
-                .build();
+                .frequencyPenalty(frequencyPenalty);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            requestBuilder.functions(toFunctions(toolSpecifications));
+        }
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+        }
+
+        ChatCompletionRequest request = requestBuilder.build();
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 

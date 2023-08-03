@@ -18,6 +18,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
 
 public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
@@ -58,20 +59,40 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
-        sendMessages(messages, null, handler);
+        sendMessages(messages, null, null, handler);
     }
 
     @Override
     public void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+        sendMessages(messages, toolSpecifications, null, handler);
+    }
+
+    @Override
+    public void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler) {
+        sendMessages(messages, singletonList(toolSpecification), toolSpecification, handler);
+    }
+
+    private void sendMessages(List<ChatMessage> messages,
+                              List<ToolSpecification> toolSpecifications,
+                              ToolSpecification toolThatMustBeExecuted,
+                              StreamingResponseHandler handler
+    ) {
+        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
-                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .topP(topP)
-                .maxTokens(maxTokens)
-                .build();
+                .maxTokens(maxTokens);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            requestBuilder.functions(toFunctions(toolSpecifications));
+        }
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+        }
+
+        ChatCompletionRequest request = requestBuilder.build();
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> handle(partialResponse, handler))
