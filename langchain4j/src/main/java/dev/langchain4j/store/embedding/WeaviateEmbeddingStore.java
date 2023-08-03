@@ -14,17 +14,25 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
   /**
    * Creates a new WeaviateEmbeddingStore instance.
    *
-   * @param apiKey      your Weaviate API key
-   * @param scheme      the scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
-   * @param host        the host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
-   *                    Find in under Details of your Weaviate cluster.
-   * @param objectClass the object class you want to store, e.g. "MyGreatClass"
-   * @param avoidDups   if true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
-   *                    provided text segment, which avoids duplicated entries in DB.
-   *                    If false, then random ID will be generated.
+   * @param apiKey           your Weaviate API key
+   * @param scheme           the scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
+   * @param host             the host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
+   *                         Find in under Details of your Weaviate cluster.
+   * @param objectClass      the object class you want to store, e.g. "MyGreatClass"
+   * @param avoidDups        if true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
+   *                         provided text segment, which avoids duplicated entries in DB.
+   *                         If false, then random ID will be generated.
+   * @param consistencyLevel Consistency level: ONE, QUORUM (default) or ALL. Find more details <a href="https://weaviate.io/developers/weaviate/concepts/replication-architecture/consistency#tunable-write-consistency">here</a>.
    */
   @Builder
-  public WeaviateEmbeddingStore(String apiKey, String scheme, String host, String objectClass, boolean avoidDups) {
+  public WeaviateEmbeddingStore(
+    String apiKey,
+    String scheme,
+    String host,
+    String objectClass,
+    boolean avoidDups,
+    String consistencyLevel
+  ) {
     try {
       implementation =
         loadDynamically(
@@ -33,7 +41,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
           scheme,
           host,
           objectClass,
-          avoidDups
+          avoidDups,
+          consistencyLevel
         );
     } catch (ClassNotFoundException e) {
       throw new RuntimeException(getMessage(), e);
@@ -62,7 +71,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     String scheme,
     String host,
     String objectClass,
-    boolean avoidDups
+    boolean avoidDups,
+    String consistencyLevel
   )
     throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
     Class<?> implementationClass = Class.forName(implementationClassName);
@@ -72,9 +82,17 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
       String.class,
       String.class,
       boolean.class,
+      String.class,
     };
     Constructor<?> constructor = implementationClass.getConstructor(constructorParameterTypes);
-    return (EmbeddingStore<TextSegment>) constructor.newInstance(apiKey, scheme, host, objectClass, avoidDups);
+    return (EmbeddingStore<TextSegment>) constructor.newInstance(
+      apiKey,
+      scheme,
+      host,
+      objectClass,
+      avoidDups,
+      consistencyLevel
+    );
   }
 
   @Override
@@ -86,9 +104,9 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
    * Adds a new embedding with provided ID to the store.
    *
    * @param id        the ID of the embedding to add in UUID format, since it's Weaviate requirement.
+   *                  See <a href="https://weaviate.io/developers/weaviate/manage-data/create#id">Weaviate docs</a> and
+   *                  <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">UUID on Wikipedia</a>
    * @param embedding the embedding to add
-   * @see <a href="https://weaviate.io/developers/weaviate/manage-data/create#id">Weaviate docs</a>
-   * @see <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">Wikipedia about UUID</a>
    */
   @Override
   public void add(String id, Embedding embedding) {

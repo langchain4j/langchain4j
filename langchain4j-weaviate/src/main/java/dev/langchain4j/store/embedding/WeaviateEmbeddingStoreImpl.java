@@ -34,9 +34,17 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final WeaviateClient client;
   private final String objectClass;
   private boolean avoidDups = true;
+  private String consistencyLevel = ConsistencyLevel.QUORUM;
 
   @Builder
-  public WeaviateEmbeddingStoreImpl(String apiKey, String scheme, String host, String objectClass, boolean avoidDups) {
+  public WeaviateEmbeddingStoreImpl(
+    String apiKey,
+    String scheme,
+    String host,
+    String objectClass,
+    boolean avoidDups,
+    String consistencyLevel
+  ) {
     try {
       client = WeaviateAuthClient.apiKey(new Config(scheme, host), apiKey);
     } catch (AuthException e) {
@@ -44,6 +52,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
     this.objectClass = objectClass != null ? objectClass : DEFAULT_CLASS;
     this.avoidDups = avoidDups;
+    this.consistencyLevel = consistencyLevel;
   }
 
   @Override
@@ -151,7 +160,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       .batch()
       .objectsBatcher()
       .withObjects(objects.toArray(new WeaviateObject[0]))
-      .withConsistencyLevel(ConsistencyLevel.ALL)
+      .withConsistencyLevel(consistencyLevel)
       .run();
 
     return resIds;
