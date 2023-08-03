@@ -62,6 +62,13 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     return implementation.add(embedding);
   }
 
+  /**
+   * Adds a new embedding with provided ID to the store.
+   * @param id the ID of the embedding to add in UUID format, since it's Weaviate requirement.
+   * @see <a href="https://weaviate.io/developers/weaviate/manage-data/create#id">Weaviate docs</a>
+   * @see <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">Wikipedia about UUID</a>
+   * @param embedding the embedding to add
+   */
   @Override
   public void add(String id, Embedding embedding) {
     implementation.add(id, embedding);
