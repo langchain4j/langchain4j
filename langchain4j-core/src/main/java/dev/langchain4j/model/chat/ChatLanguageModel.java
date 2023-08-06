@@ -50,7 +50,7 @@ public interface ChatLanguageModel {
     /**
      * Sends a sequence of messages to the LLM and returns a response.
      * Typically, the sequence contains messages in the following order:
-     * System (optional) -> User -> AI -> User -> AI -> User ...
+     * System (optional) - User - AI - User - AI - User ...
      *
      * @param messages An array of messages to be sent.
      * @return Response from the LLM.
@@ -60,9 +60,9 @@ public interface ChatLanguageModel {
     }
 
     /**
-     * Sends a sequence of messages to the LLM and returns a response.
-     * Typically, the sequence contains messages in the following order:
-     * System (optional) -> User -> AI -> User -> AI -> User ...
+     * Sends a list of messages to the LLM and returns a response.
+     * Typically, the list contains messages in the following order:
+     * System (optional) - User - AI - User - AI - User ...
      *
      * @param messages A list of messages to be sent.
      * @return Response from the LLM.
@@ -70,13 +70,26 @@ public interface ChatLanguageModel {
     AiMessage sendMessages(List<ChatMessage> messages);
 
     /**
-     * Sends a sequence of messages to the LLM and returns a response.
-     * Typically, the sequence contains messages in the following order:
-     * System (optional) -> User -> AI -> User -> AI -> User ...
+     * Sends a list of messages and a list of tool specifications to the LLM and returns a response.
+     * Typically, the list contains messages in the following order:
+     * System (optional) - User - AI - User - AI - User ...
      *
      * @param messages           A list of messages to be sent.
      * @param toolSpecifications A list of tools that the LLM is allowed to execute.
+     *                           The LLM autonomously decides whether to use any of these tools.
      * @return Response from the LLM. AiMessage can contain either a textual response or a request to execute a tool.
      */
     AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications);
+
+    /**
+     * Sends a list of messages and a specification of a tool that must be executed to the LLM and returns a response
+     * that contains a request to execute specified tool.
+     * Typically, the list contains messages in the following order:
+     * System (optional) - User - AI - User - AI - User ...
+     *
+     * @param messages          A list of messages to be sent.
+     * @param toolSpecification The specification of a tool that must be executed. LLM is forced to call this tool.
+     * @return The response from the LLM, which contains a request to execute a tool.
+     */
+    AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification);
 }

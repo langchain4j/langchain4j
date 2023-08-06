@@ -97,15 +97,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
             // TODO what if there are multiple tool executions in a row? (for the future)
             context.streamingChatLanguageModel.sendMessages(
                     chatMemory.messages(),
-                    // TODO does it make sense to send tools if LLM will not call them in the response anyway? (current openai behavior)
-                    context.toolSpecifications,
-                    new AiServiceStreamingResponseHandler(
-                            context,
-                            chatMemory,
-                            tokenHandler,
-                            completionHandler,
-                            errorHandler
-                    )
+                    new AiServiceStreamingResponseHandler(context, chatMemory, tokenHandler, completionHandler, errorHandler)
             );
         }
     }

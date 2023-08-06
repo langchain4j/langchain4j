@@ -16,6 +16,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
 
 public class LocalAiChatModel implements ChatLanguageModel {
 
@@ -60,20 +61,38 @@ public class LocalAiChatModel implements ChatLanguageModel {
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
-        return sendMessages(messages, null);
+        return sendMessages(messages, null, null);
     }
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return sendMessages(messages, toolSpecifications, null);
+    }
 
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+    @Override
+    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return sendMessages(messages, singletonList(toolSpecification), toolSpecification);
+    }
+
+    private AiMessage sendMessages(List<ChatMessage> messages,
+                                   List<ToolSpecification> toolSpecifications,
+                                   ToolSpecification toolThatMustBeExecuted
+    ) {
+        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
-                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .topP(topP)
-                .maxTokens(maxTokens)
-                .build();
+                .maxTokens(maxTokens);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            requestBuilder.functions(toFunctions(toolSpecifications));
+        }
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+        }
+
+        ChatCompletionRequest request = requestBuilder.build();
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 

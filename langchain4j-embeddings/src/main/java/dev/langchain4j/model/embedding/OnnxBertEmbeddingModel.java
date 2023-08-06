@@ -23,10 +23,10 @@ public class OnnxBertEmbeddingModel {
     private final OrtSession session;
     private final BertTokenizer tokenizer;
 
-    public OnnxBertEmbeddingModel(String modelFilePath) {
+    public OnnxBertEmbeddingModel(InputStream modelInputStream) {
         try {
             this.environment = OrtEnvironment.getEnvironment();
-            this.session = environment.createSession(loadModel(modelFilePath));
+            this.session = environment.createSession(loadModel(modelInputStream));
             this.tokenizer = new BertTokenizer();
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -79,9 +79,9 @@ public class OnnxBertEmbeddingModel {
         }
     }
 
-    private byte[] loadModel(String modelFilePath) {
+    private byte[] loadModel(InputStream modelInputStream) {
         try (
-                InputStream inputStream = getClass().getResourceAsStream(modelFilePath);
+                InputStream inputStream = modelInputStream;
                 ByteArrayOutputStream buffer = new ByteArrayOutputStream()
         ) {
             int nRead;

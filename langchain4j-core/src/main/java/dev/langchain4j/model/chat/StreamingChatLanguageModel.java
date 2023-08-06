@@ -33,4 +33,6 @@ public interface StreamingChatLanguageModel {
     void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler);
 
     void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler);
+
+    void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler);
 }
