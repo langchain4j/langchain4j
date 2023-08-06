@@ -15,6 +15,8 @@ import static java.lang.String.format;
  * An embedding model that runs within your Java application's process.
  * Several pre-packaged embedding models are available out-of-the-box: e5-small-v2, all-minilm-l6-v2, etc.
  * Additionally, any BERT-based model (e.g., from HuggingFace) can be used, as long as it is in ONNX format.
+ * Information on how to convert models into ONNX format can be found <a href="https://huggingface.co/docs/optimum/exporters/onnx/usage_guides/export_a_model">here</a>.
+ * Many converted models are available <a href="https://huggingface.co/Xenova">here</a>.
  * This class is a thin wrapper over the actual implementations.
  * Specific implementation classes, along with the models, are located in separate,
  * optional langchain4j-embeddings-xxx modules and are loaded dynamically.
