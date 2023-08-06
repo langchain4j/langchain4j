@@ -37,6 +37,72 @@ class FileSystemDocumentLoaderTest {
     }
 
     @Test
+    void should_load_ppt_document() {
+
+        Document document = loadDocument(toPath("test-file.ppt"));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
+        Metadata metadata = document.metadata();
+        assertThat(metadata.get("file_name")).isEqualTo("test-file.ppt");
+        assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
+    }
+
+    @Test
+    void should_load_pptx_document() {
+
+        Document document = loadDocument(toPath("test-file.pptx"));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
+        Metadata metadata = document.metadata();
+        assertThat(metadata.get("file_name")).isEqualTo("test-file.pptx");
+        assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
+    }
+
+    @Test
+    void should_load_doc_document() {
+
+        Document document = loadDocument(toPath("test-file.doc"));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
+        Metadata metadata = document.metadata();
+        assertThat(metadata.get("file_name")).isEqualTo("test-file.doc");
+        assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
+    }
+
+    @Test
+    void should_load_docx_document() {
+
+        Document document = loadDocument(toPath("test-file.docx"));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
+        Metadata metadata = document.metadata();
+        assertThat(metadata.get("file_name")).isEqualTo("test-file.docx");
+        assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
+    }
+
+    @Test
+    void should_load_xls_document() {
+
+        Document document = loadDocument(toPath("test-file.xls"));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
+        Metadata metadata = document.metadata();
+        assertThat(metadata.get("file_name")).isEqualTo("test-file.xls");
+        assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
+    }
+
+    @Test
+    void should_load_xlsx_document() {
+
+        Document document = loadDocument(toPath("test-file.xlsx"));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
+        Metadata metadata = document.metadata();
+        assertThat(metadata.get("file_name")).isEqualTo("test-file.xlsx");
+        assertThat(Paths.get(metadata.get("absolute_directory_path"))).isAbsolute();
+    }
+
+    @Test
     void should_load_documents_ignoring_unsupported_document_types() {
 
         String userDir = System.getProperty("user.dir");
@@ -47,7 +113,7 @@ class FileSystemDocumentLoaderTest {
 
         List<Document> documents = loadDocuments(resourceDirectory);
 
-        assertThat(documents).hasSize(3);
+        assertThat(documents).hasSize(9);
     }
 
     private Path toPath(String fileName) {
