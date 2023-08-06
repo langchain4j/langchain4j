@@ -48,15 +48,6 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
-        return sendMessages(messages, null);
-    }
-
-    @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-
-        if (toolSpecifications != null && toolSpecifications.size() > 0) {
-            throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
-        }
 
         TextGenerationRequest request = TextGenerationRequest.builder()
                 .inputs(messages.stream()
@@ -75,6 +66,16 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         TextGenerationResponse textGenerationResponse = client.chat(request);
 
         return aiMessage(textGenerationResponse.generatedText());
+    }
+
+    @Override
+    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
+    }
+
+    @Override
+    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
     }
 
     public static Builder builder() {

@@ -19,6 +19,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
 
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
@@ -67,22 +68,42 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
-        sendMessages(messages, null, handler);
+        sendMessages(messages, null, null, handler);
     }
 
     @Override
     public void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+        sendMessages(messages, toolSpecifications, null, handler);
+    }
+
+    @Override
+    public void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler) {
+        sendMessages(messages, singletonList(toolSpecification), toolSpecification, handler);
+    }
+
+    private void sendMessages(List<ChatMessage> messages,
+                              List<ToolSpecification> toolSpecifications,
+                              ToolSpecification toolThatMustBeExecuted,
+                              StreamingResponseHandler handler
+    ) {
+        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
-                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty)
-                .build();
+                .frequencyPenalty(frequencyPenalty);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            requestBuilder.functions(toFunctions(toolSpecifications));
+        }
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+        }
+
+        ChatCompletionRequest request = requestBuilder.build();
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> handle(partialResponse, handler))

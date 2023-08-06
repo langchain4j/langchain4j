@@ -1,27 +1,16 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Function;
-import dev.ai4j.openai4j.chat.FunctionCall;
-import dev.ai4j.openai4j.chat.Message;
-import dev.ai4j.openai4j.chat.Role;
+import dev.ai4j.openai4j.chat.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
-import static dev.ai4j.openai4j.chat.Role.ASSISTANT;
-import static dev.ai4j.openai4j.chat.Role.FUNCTION;
-import static dev.ai4j.openai4j.chat.Role.SYSTEM;
-import static dev.ai4j.openai4j.chat.Role.USER;
+import static dev.ai4j.openai4j.chat.Role.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
@@ -101,10 +90,6 @@ public class InternalOpenAiHelper {
     }
 
     public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
-        if (toolSpecifications == null) {
-            return null;
-        }
-
         return toolSpecifications.stream()
                 .map(InternalOpenAiHelper::toFunction)
                 .collect(toList());
