@@ -1,11 +1,11 @@
-package dev.langchain4j.store.embedding.util;
+package dev.langchain4j.store.embedding;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
-public class Generator {
+class Generator {
 
     public static String generateRandomId() {
         return UUID.randomUUID().toString();

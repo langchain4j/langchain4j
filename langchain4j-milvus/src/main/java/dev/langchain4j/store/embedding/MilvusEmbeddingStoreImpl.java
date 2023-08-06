@@ -2,6 +2,9 @@ package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.milvus.MilvusCollectionDescription;
+import dev.langchain4j.store.embedding.milvus.MilvusOperationsParams;
+import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.SearchParam;
@@ -9,29 +12,46 @@ import io.milvus.response.SearchResultsWrapper;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-import static dev.langchain4j.store.embedding.util.CollectionOperationsExecutor.*;
-import static dev.langchain4j.store.embedding.util.CollectionRequestBuilder.buildSearchRequest;
-import static dev.langchain4j.store.embedding.util.Generator.generateRandomId;
-import static dev.langchain4j.store.embedding.util.Generator.generateRandomIds;
-import static dev.langchain4j.store.embedding.util.Mapper.*;
+import static dev.langchain4j.store.embedding.CollectionOperationsExecutor.*;
+import static dev.langchain4j.store.embedding.CollectionRequestBuilder.buildSearchRequest;
+import static dev.langchain4j.store.embedding.Generator.generateRandomId;
+import static dev.langchain4j.store.embedding.Generator.generateRandomIds;
+import static dev.langchain4j.store.embedding.Mapper.*;
 import static java.util.Collections.singletonList;
 
-/**
- * Data type of the data to insert must match the schema of the collection, otherwise Milvus will raise exception.
- * Also the number of the dimensions in the vector produced by your embedding service must match vector field in Milvus DB.
- * Meaning if your embedding service returns 2-dimensional array e.g. [0.0129503,0.0155482] the vector field in Milvus DB must also be 2-dimensional.
- */
 public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
-    private final MilvusClient milvusClient;
-    private final CollectionDescription collectionDescription;
+    private MilvusServiceClient milvusClient;
+    private MilvusCollectionDescription collectionDescription;
+    private MilvusOperationsParams operationsParams;
 
-    public MilvusEmbeddingStoreImpl(String host, int port, String databaseName, String uri, String token, long connectTimeoutMs, long keepAliveTimeMs, long keepAliveTimeoutMs, boolean keepAliveWithoutCalls, long rpcDeadlineMs, boolean secure, long idleTimeoutMs, String username, String password, CollectionDescription collectionDescription) {
-        ConnectParam connectParam = ConnectParam.newBuilder().withHost(host).withPort(port).withDatabaseName(databaseName).withUri(uri).withToken(token).withConnectTimeout(connectTimeoutMs, TimeUnit.MILLISECONDS).withKeepAliveTime(keepAliveTimeMs, TimeUnit.MILLISECONDS).withKeepAliveTimeout(keepAliveTimeoutMs, TimeUnit.MILLISECONDS).keepAliveWithoutCalls(keepAliveWithoutCalls).withRpcDeadline(rpcDeadlineMs, TimeUnit.MILLISECONDS).secure(secure).withIdleTimeout(idleTimeoutMs, TimeUnit.MILLISECONDS).withAuthorization(username, password).build();
-        this.milvusClient = new MilvusClient(connectParam);
+    public MilvusEmbeddingStoreImpl(String host,
+                                    int port,
+                                    String databaseName,
+                                    String uri,
+                                    String token,
+                                    boolean secure,
+                                    String username,
+                                    String password,
+                                    MilvusCollectionDescription collectionDescription,
+                                    MilvusOperationsParams operationsParams) {
+
+        ConnectParam connectParam = ConnectParam.newBuilder()
+                .withHost(host)
+                .withPort(port)
+                .withDatabaseName(databaseName)
+                .withUri(uri)
+                .withToken(token)
+                .secure(secure)
+                .withAuthorization(username, password).build();
+        this.milvusClient = new MilvusServiceClient(connectParam);
+
+        isNotNull(collectionDescription, "MilvusCollectionDescription");
         this.collectionDescription = collectionDescription;
+
+        isNotNull(operationsParams, "MilvusOperationsParams");
+        this.operationsParams = operationsParams;
     }
 
 
@@ -71,14 +91,13 @@ public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         return findRelevant(referenceEmbedding, maxResults, 0.0);
     }
 
-    // minSimilarity is ignored
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
-        loadCollectionInMemory(milvusClient, collectionDescription.getCollectionName());
+        loadCollectionInMemory(milvusClient, collectionDescription.collectionName());
 
-        SearchParam searchRequest = buildSearchRequest(referenceEmbedding.vectorAsList(), maxResults, collectionDescription);
+        SearchParam searchRequest = buildSearchRequest(referenceEmbedding.vectorAsList(), maxResults, collectionDescription, operationsParams);
         SearchResultsWrapper resultsWrapper = search(milvusClient, searchRequest);
 
-        return toEmbeddingMatches(milvusClient, resultsWrapper, collectionDescription);
+        return toEmbeddingMatches(milvusClient, resultsWrapper, collectionDescription, operationsParams, minSimilarity);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
@@ -87,13 +106,19 @@ public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
         List<InsertParam.Field> fields = new ArrayList<>();
-        fields.add(new InsertParam.Field(collectionDescription.getIdFieldName(), ids));
-        fields.add(new InsertParam.Field(collectionDescription.getVectorFieldName(), toVectors(embeddings)));
-        fields.add(new InsertParam.Field(collectionDescription.getScalarFieldName(), toScalars(textSegments, ids.size())));
+        fields.add(new InsertParam.Field(collectionDescription.idFieldName(), ids));
+        fields.add(new InsertParam.Field(collectionDescription.vectorFieldName(), toVectors(embeddings)));
+        fields.add(new InsertParam.Field(collectionDescription.scalarFieldName(), toScalars(textSegments, ids.size())));
 
-        insert(milvusClient, fields, collectionDescription.getCollectionName());
+        insert(milvusClient, fields, collectionDescription.collectionName());
 
-        flush(milvusClient, collectionDescription.getCollectionName());
+        flush(milvusClient, collectionDescription.collectionName());
+    }
+
+    private void isNotNull(Object o, String fieldName) {
+        if (o == null) {
+            throw new IllegalArgumentException(String.format("'%s' cannot be null.%n", fieldName));
+        }
     }
 
     public static MilvusEmbeddingStoreImplBuilder builder() {
@@ -115,7 +140,8 @@ public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         private long idleTimeoutMs;
         private String username;
         private String password;
-        private CollectionDescription collectionDescription;
+        private MilvusCollectionDescription collectionDescription;
+        private MilvusOperationsParams operationsParams;
 
         MilvusEmbeddingStoreImplBuilder() {
         }
@@ -190,13 +216,27 @@ public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public MilvusEmbeddingStoreImplBuilder collectionDescription(CollectionDescription collectionDescription) {
+        public MilvusEmbeddingStoreImplBuilder collectionDescription(MilvusCollectionDescription collectionDescription) {
             this.collectionDescription = collectionDescription;
             return this;
         }
 
+        public MilvusEmbeddingStoreImplBuilder operationsParams(MilvusOperationsParams operationsParams) {
+            this.operationsParams = operationsParams;
+            return this;
+        }
+
         public MilvusEmbeddingStoreImpl build() {
-            return new MilvusEmbeddingStoreImpl(this.host, this.port, this.databaseName, this.uri, this.token, this.connectTimeoutMs, this.keepAliveTimeMs, this.keepAliveTimeoutMs, this.keepAliveWithoutCalls, this.rpcDeadlineMs, this.secure, this.idleTimeoutMs, this.username, this.password, this.collectionDescription);
+            return new MilvusEmbeddingStoreImpl(this.host,
+                    this.port,
+                    this.databaseName,
+                    this.uri,
+                    this.token,
+                    this.secure,
+                    this.username,
+                    this.password,
+                    this.collectionDescription,
+                    this.operationsParams);
         }
 
         public String toString() {

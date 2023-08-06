@@ -11,11 +11,18 @@
     </parent>
 
     <artifactId>langchain4j-milvus</artifactId>
+    <name>LangChain4j integration with Milvus</name>
 
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+            <version>${parent.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
             <version>${parent.version}</version>
         </dependency>
 
