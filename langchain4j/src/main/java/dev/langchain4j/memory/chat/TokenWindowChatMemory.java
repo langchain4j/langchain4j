@@ -75,8 +75,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     private int getCurrentTokenCount() {
-        int systemMessageTokenCount = maybeSystemMessage.map(systemMessage ->
-                tokenizer.countTokens(systemMessage)).orElse(0);
+        int systemMessageTokenCount = maybeSystemMessage.map(tokenizer::countTokens).orElse(0);
         int previousMessagesTokenCount = tokenizer.countTokens(previousMessages);
         return systemMessageTokenCount + previousMessagesTokenCount;
     }

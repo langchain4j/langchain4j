@@ -4,5 +4,8 @@ public enum DocumentType {
 
     TXT,
     PDF,
-    HTML
+    HTML,
+    PPT,
+    DOC,
+    XLS
 }
