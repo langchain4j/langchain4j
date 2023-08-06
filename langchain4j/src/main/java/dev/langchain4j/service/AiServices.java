@@ -375,8 +375,7 @@ public class AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         if (method.getReturnType() == TokenStream.class) {
-                            ChatMemory chatMemory = context.hasChatMemory() ? context.chatMemoryOf(userId) : null;
-                            return new AiServiceTokenStream(messages, context, chatMemory); // TODO moderation
+                            return new AiServiceTokenStream(messages, context, userId); // TODO moderation
                         }
 
                         AiMessage aiMessage = context.chatLanguageModel.sendMessages(messages, context.toolSpecifications);

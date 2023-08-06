@@ -583,13 +583,13 @@ public class AiServicesIT {
         String firstMessageOfFirstUser = "Hello, my name is Klaus";
         String firstAiResponseToFirstUser = chatWithHistory.chat(1, firstMessageOfFirstUser);
         verify(chatMemoryOfFirstUser).add(userMessage(firstMessageOfFirstUser));
-        verify(chatLanguageModel).sendMessages(asList(userMessage(firstMessageOfFirstUser)), null);
+        verify(chatLanguageModel).sendMessages(asList(userMessage(firstMessageOfFirstUser)), NO_TOOLS);
         verify(chatMemoryOfFirstUser).add(aiMessage(firstAiResponseToFirstUser));
 
         String firstMessageOfSecondUser = "Hello, my name is Francine";
         String firstAiResponseToSecondUser = chatWithHistory.chat(2, firstMessageOfSecondUser);
         verify(chatMemoryOfSecondUser).add(userMessage(firstMessageOfSecondUser));
-        verify(chatLanguageModel).sendMessages(asList(userMessage(firstMessageOfSecondUser)), null);
+        verify(chatLanguageModel).sendMessages(asList(userMessage(firstMessageOfSecondUser)), NO_TOOLS);
         verify(chatMemoryOfSecondUser).add(aiMessage(firstAiResponseToSecondUser));
 
         String secondMessageOfFirstUser = "What is my name?";
@@ -600,7 +600,7 @@ public class AiServicesIT {
                 userMessage(firstMessageOfFirstUser),
                 aiMessage(firstAiResponseToFirstUser),
                 userMessage(secondMessageOfFirstUser)
-        ), null);
+        ), NO_TOOLS);
         verify(chatMemoryOfFirstUser).add(aiMessage(secondAiResponseToFirstUser));
         verify(chatMemoryOfFirstUser, times(2)).messages();
 
@@ -612,7 +612,7 @@ public class AiServicesIT {
                 userMessage(firstMessageOfSecondUser),
                 aiMessage(firstAiResponseToSecondUser),
                 userMessage(secondMessageOfSecondUser)
-        ), null);
+        ), NO_TOOLS);
         verify(chatMemoryOfSecondUser).add(aiMessage(secondAiResponseToSecondUser));
         verify(chatMemoryOfSecondUser, times(2)).messages();
     }

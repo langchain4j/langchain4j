@@ -13,12 +13,12 @@ class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messagesToSend;
     private final AiServiceContext context;
-    private final ChatMemory chatMemory;
+    private final Object userId;
 
-    AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, ChatMemory chatMemory) {
+    AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object userId) {
         this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
         this.context = ensureNotNull(context, "context");
-        this.chatMemory = chatMemory;
+        this.userId = ensureNotNull(userId, "userId");;
         ensureNotNull(context.streamingChatLanguageModel, "streamingChatLanguageModel");
     }
 
@@ -78,7 +78,7 @@ class AiServiceTokenStream implements TokenStream {
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(
                             context,
-                            chatMemory,
+                            userId,
                             tokenHandler,
                             completionHandler,
                             errorHandler

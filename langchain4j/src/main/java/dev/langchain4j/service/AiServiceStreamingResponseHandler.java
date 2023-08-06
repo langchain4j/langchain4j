@@ -3,7 +3,6 @@ package dev.langchain4j.service;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.StreamingResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +22,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
     private final Logger log = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final AiServiceContext context;
-    private final ChatMemory chatMemory;
+    private final Object userId;
 
     private final Consumer<String> tokenHandler;
     private final Runnable completionHandler;
@@ -34,12 +33,12 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
     private final StringBuilder toolArgumentsBuilder;
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
-                                      ChatMemory chatMemory,
+                                      Object userId,
                                       Consumer<String> tokenHandler,
                                       Runnable completionHandler,
                                       Consumer<Throwable> errorHandler) {
         this.context = ensureNotNull(context, "context");
-        this.chatMemory = chatMemory;
+        this.userId = ensureNotNull(userId, "userId");
 
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
         this.completionHandler = completionHandler;
@@ -72,8 +71,8 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
         String toolName = toolNameBuilder.toString();
 
         if (toolName.isEmpty()) {
-            if (chatMemory != null) {
-                chatMemory.add(aiMessage(answerBuilder.toString()));
+            if (context.hasChatMemory()) {
+                context.chatMemoryOf(userId).add(aiMessage(answerBuilder.toString()));
             }
             if (completionHandler != null) {
                 completionHandler.run();
@@ -85,19 +84,19 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
                     .arguments(toolArgumentsBuilder.toString())
                     .build();
 
-            chatMemory.add(aiMessage(toolExecutionRequest));
+            context.chatMemoryOf(userId).add(aiMessage(toolExecutionRequest));
 
             ToolExecutor toolExecutor = context.toolExecutors.get(toolName); // TODO what if no such tool?
             String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
             ToolExecutionResultMessage toolExecutionResultMessage
                     = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
 
-            chatMemory.add(toolExecutionResultMessage);
+            context.chatMemoryOf(userId).add(toolExecutionResultMessage);
 
             // TODO what if there are multiple tool executions in a row? (for the future)
             context.streamingChatLanguageModel.sendMessages(
-                    chatMemory.messages(),
-                    new AiServiceStreamingResponseHandler(context, chatMemory, tokenHandler, completionHandler, errorHandler)
+                    context.chatMemoryOf(userId).messages(),
+                    new AiServiceStreamingResponseHandler(context, userId, tokenHandler, completionHandler, errorHandler)
             );
         }
     }
