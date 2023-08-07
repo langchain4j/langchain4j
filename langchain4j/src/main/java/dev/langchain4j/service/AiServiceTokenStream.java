@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.service.context.StreamingChatLanguageModelContext;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -11,12 +12,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messagesToSend;
-    private final AiServiceContext context;
+    private final StreamingChatLanguageModelContext context;
 
-    AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context) {
+    AiServiceTokenStream(List<ChatMessage> messagesToSend, StreamingChatLanguageModelContext context) {
         this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
         this.context = ensureNotNull(context, "context");
-        ensureNotNull(context.streamingChatLanguageModel, "streamingChatLanguageModel");
+        ensureNotNull(context.getStreamingChatLanguageModel(), "streamingChatLanguageModel");
     }
 
     @Override
@@ -70,9 +71,9 @@ class AiServiceTokenStream implements TokenStream {
         @Override
         public void start() {
 
-            context.streamingChatLanguageModel.sendMessages(
+            context.getStreamingChatLanguageModel().sendMessages(
                     messagesToSend,
-                    context.toolSpecifications,
+                    context.getToolSpecifications(),
                     new AiServiceStreamingResponseHandler(
                             context,
                             tokenHandler,

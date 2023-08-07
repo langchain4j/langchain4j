@@ -41,10 +41,10 @@ public class AiServices<T> {
 
     private final Logger log = LoggerFactory.getLogger(AiServices.class);
 
-    private final AiServiceContext context = new AiServiceContext();
+    private final DefaultContext defaultContext = new DefaultContext();
 
     private AiServices(Class<T> aiServiceClass) {
-        context.aiServiceClass = aiServiceClass;
+        defaultContext.aiServiceClass = aiServiceClass;
     }
 
     public static <T> T create(Class<T> aiService, ChatLanguageModel chatLanguageModel) {
@@ -64,35 +64,35 @@ public class AiServices<T> {
     }
 
     public AiServices<T> chatLanguageModel(ChatLanguageModel chatLanguageModel) {
-        context.chatLanguageModel = chatLanguageModel;
+        defaultContext.chatLanguageModel = chatLanguageModel;
         return this;
     }
 
     public AiServices<T> streamingChatLanguageModel(StreamingChatLanguageModel streamingChatLanguageModel) {
-        context.streamingChatLanguageModel = streamingChatLanguageModel;
+        defaultContext.streamingChatLanguageModel = streamingChatLanguageModel;
         return this;
     }
 
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.chatMemory = chatMemory;
+        defaultContext.chatMemory = chatMemory;
         return this;
     }
 
     public AiServices<T> moderationModel(ModerationModel moderationModel) {
-        context.moderationModel = moderationModel;
+        defaultContext.moderationModel = moderationModel;
         return this;
     }
 
     public AiServices<T> tools(Object... objectsWithTools) {
-        context.toolSpecifications = new ArrayList<>();
-        context.toolExecutors = new HashMap<>();
+        defaultContext.toolSpecifications = new ArrayList<>();
+        defaultContext.toolExecutors = new HashMap<>();
 
         for (Object objectWithTool : objectsWithTools) {
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
                 if (method.isAnnotationPresent(Tool.class)) {
                     ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                    context.toolSpecifications.add(toolSpecification);
-                    context.toolExecutors.put(toolSpecification.name(), new ToolExecutor(objectWithTool, method));
+                    defaultContext.toolSpecifications.add(toolSpecification);
+                    defaultContext.toolExecutors.put(toolSpecification.name(), new ToolExecutor(objectWithTool, method));
                 }
             }
         }
@@ -101,30 +101,30 @@ public class AiServices<T> {
     }
 
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
-        context.retriever = retriever;
+        defaultContext.retriever = retriever;
         return this;
     }
 
     public T build() {
 
-        if (context.chatLanguageModel == null && context.streamingChatLanguageModel == null) {
+        if (defaultContext.chatLanguageModel == null && defaultContext.streamingChatLanguageModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
         }
 
-        for (Method method : context.aiServiceClass.getMethods()) {
-            if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
+        for (Method method : defaultContext.aiServiceClass.getMethods()) {
+            if (method.isAnnotationPresent(Moderate.class) && defaultContext.moderationModel == null) {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
         }
 
-        if (context.toolSpecifications != null && context.chatMemory == null) {
+        if (defaultContext.toolSpecifications != null && defaultContext.chatMemory == null) {
             throw illegalConfiguration("Please set up chatMemory in order to use tools");
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
-                context.aiServiceClass.getClassLoader(),
-                new Class<?>[]{context.aiServiceClass},
+                defaultContext.aiServiceClass.getClassLoader(),
+                new Class<?>[]{defaultContext.aiServiceClass},
                 new InvocationHandler() {
 
                     private final ExecutorService executor = Executors.newCachedThreadPool();
@@ -141,8 +141,8 @@ public class AiServices<T> {
                         Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
                         ChatMessage userMessage = prepareUserMessage(method, args);
 
-                        if (context.retriever != null) { // TODO extract method/class
-                            List<TextSegment> relevant = context.retriever.findRelevant(userMessage.text());
+                        if (defaultContext.retriever != null) { // TODO extract method/class
+                            List<TextSegment> relevant = defaultContext.retriever.findRelevant(userMessage.text());
 
                             if (relevant == null || relevant.isEmpty()) {
                                 log.debug("No relevant information was found");
@@ -159,14 +159,14 @@ public class AiServices<T> {
                             }
                         }
 
-                        if (context.chatMemory != null) {
+                        if (defaultContext.chatMemory != null) {
                             systemMessage.ifPresent(this::addIfNeeded);
-                            context.chatMemory.add(userMessage);
+                            defaultContext.chatMemory.add(userMessage);
                         }
 
                         List<ChatMessage> messages;
-                        if (context.chatMemory != null) {
-                            messages = context.chatMemory.messages();
+                        if (defaultContext.chatMemory != null) {
+                            messages = defaultContext.chatMemory.messages();
                         } else {
                             messages = new ArrayList<>();
                             systemMessage.ifPresent(messages::add);
@@ -176,18 +176,18 @@ public class AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         if (method.getReturnType() == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context); // TODO moderation
+                            return new AiServiceTokenStream(messages, defaultContext); // TODO moderation
                         }
 
-                        AiMessage aiMessage = context.chatLanguageModel.sendMessages(messages, context.toolSpecifications);
+                        AiMessage aiMessage = defaultContext.chatLanguageModel.sendMessages(messages, defaultContext.toolSpecifications);
 
                         verifyModerationIfNeeded(moderationFuture);
 
                         ToolExecutionRequest toolExecutionRequest;
                         while (true) { // TODO limit number of cycles
 
-                            if (context.chatMemory != null) {
-                                context.chatMemory.add(aiMessage);
+                            if (defaultContext.chatMemory != null) {
+                                defaultContext.chatMemory.add(aiMessage);
                             }
 
                             toolExecutionRequest = aiMessage.toolExecutionRequest();
@@ -195,14 +195,14 @@ public class AiServices<T> {
                                 break;
                             }
 
-                            ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                            ToolExecutor toolExecutor = defaultContext.toolExecutors.get(toolExecutionRequest.name());
                             String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
                             ToolExecutionResultMessage toolExecutionResultMessage
                                     = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
 
-                            context.chatMemory.add(toolExecutionResultMessage);
+                            defaultContext.chatMemory.add(toolExecutionResultMessage);
 
-                            aiMessage = context.chatLanguageModel.sendMessages(context.chatMemory.messages());
+                            aiMessage = defaultContext.chatLanguageModel.sendMessages(defaultContext.chatMemory.messages());
                         }
 
                         return ServiceOutputParser.parse(aiMessage, method.getReturnType());
@@ -212,7 +212,7 @@ public class AiServices<T> {
                         if (method.isAnnotationPresent(Moderate.class)) {
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                return context.moderationModel.moderate(messagesToModerate);
+                                return defaultContext.moderationModel.moderate(messagesToModerate);
                             });
                         }
                         return null;
@@ -240,7 +240,7 @@ public class AiServices<T> {
 
                     private void addIfNeeded(ChatMessage systemMessage) { // TODO move to memory?
                         boolean shouldAddSystemMessage = true;
-                        List<ChatMessage> messages = context.chatMemory.messages();
+                        List<ChatMessage> messages = defaultContext.chatMemory.messages();
                         for (int i = messages.size() - 1; i >= 0; i--) {
                             if (messages.get(i) instanceof dev.langchain4j.data.message.SystemMessage) {
                                 if (messages.get(i).equals(systemMessage)) {
@@ -250,7 +250,7 @@ public class AiServices<T> {
                             }
                         }
                         if (shouldAddSystemMessage) {
-                            context.chatMemory.add(systemMessage);
+                            defaultContext.chatMemory.add(systemMessage);
                         }
                     }
                 });
