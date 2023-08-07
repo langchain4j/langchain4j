@@ -1,9 +1,12 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.pinecone;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import io.pinecone.PineconeClient;
 import io.pinecone.PineconeClientConfig;
 import io.pinecone.PineconeConnection;
@@ -13,8 +16,8 @@ import lombok.Builder;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -28,12 +31,12 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     private final String nameSpace;
 
     @Builder
-    public PineconeEmbeddingStoreImpl(String apiKey, String environment, String projectName, String index, String nameSpace) {
+    public PineconeEmbeddingStoreImpl(String apiKey, String environment, String project, String index, String nameSpace) {
 
         PineconeClientConfig configuration = new PineconeClientConfig()
                 .withApiKey(apiKey)
                 .withEnvironment(environment)
-                .withProjectName(projectName);
+                .withProjectName(project);
 
         PineconeClient pineconeClient = new PineconeClient(configuration);
 
@@ -46,7 +49,7 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding) {
-        String id = generateRandomId(embedding);
+        String id = randomUUID();
         add(id, embedding);
         return id;
     }
@@ -58,7 +61,7 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
-        String id = generateRandomId(embedding);
+        String id = randomUUID();
         addInternal(id, embedding, textSegment);
         return id;
     }
@@ -67,7 +70,7 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     public List<String> addAll(List<Embedding> embeddings) {
 
         List<String> ids = embeddings.stream()
-                .map(PineconeEmbeddingStoreImpl::generateRandomId)
+                .map(ignored -> randomUUID())
                 .collect(toList());
 
         addAllInternal(ids, embeddings, null);
@@ -79,7 +82,7 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
 
         List<String> ids = embeddings.stream()
-                .map(PineconeEmbeddingStoreImpl::generateRandomId)
+                .map(ignored -> randomUUID())
                 .collect(toList());
 
         addAllInternal(ids, embeddings, textSegments);
@@ -100,33 +103,26 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
             String id = ids.get(i);
             Embedding embedding = embeddings.get(i);
-            TextSegment textSegment = textSegments.get(i);
 
-            Struct vectorMetadata = Struct.newBuilder()
-                    .putFields(METADATA_TEXT_SEGMENT, Value.newBuilder()
-                            .setStringValue(textSegment.text())
-                            .build())
-                    .build();
-
-            Vector vector = Vector.newBuilder()
+            Vector.Builder vectorBuilder = Vector.newBuilder()
                     .setId(id)
-                    .addAllValues(embedding.vectorAsList())
-                    .setMetadata(vectorMetadata)
-                    .build();
+                    .addAllValues(embedding.vectorAsList());
 
-            upsertRequestBuilder.addVectors(vector);
+            if (textSegments != null) {
+                vectorBuilder.setMetadata(Struct.newBuilder()
+                        .putFields(METADATA_TEXT_SEGMENT, Value.newBuilder()
+                                .setStringValue(textSegments.get(i).text())
+                                .build()));
+            }
+
+            upsertRequestBuilder.addVectors(vectorBuilder.build());
         }
 
         connection.getBlockingStub().upsert(upsertRequestBuilder.build());
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-        return findRelevant(referenceEmbedding, maxResults, -1); // TODO check -1
-    }
-
-    @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
 
         QueryVector queryVector = QueryVector
                 .newBuilder()
@@ -154,7 +150,6 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
             return emptyList();
         }
 
-        // TODO take minSimilarity into account
         Collection<Vector> matchedVectors = connection.getBlockingStub().fetch(FetchRequest.newBuilder()
                         .addAllIds(matchedVectorIds)
                         .setNamespace(nameSpace)
@@ -163,31 +158,23 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
                 .values();
 
         return matchedVectors.stream()
-                .map(PineconeEmbeddingStoreImpl::toEmbeddingMatch)
+                .map(vector -> toEmbeddingMatch(vector, referenceEmbedding))
+                .filter(match -> match.score() >= minScore)
                 .collect(toList());
     }
 
-    private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector) {
+    private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
         Value textSegmentValue = vector.getMetadata()
                 .getFieldsMap()
                 .get(METADATA_TEXT_SEGMENT);
 
+        Embedding embedding = Embedding.from(vector.getValuesList());
+
         return new EmbeddingMatch<>(
+                RelevanceScore.cosine(embedding.vector(), referenceEmbedding.vector()),
                 vector.getId(),
-                Embedding.from(vector.getValuesList()),
-                createTextSegmentIfExists(textSegmentValue),
-                null); // TODO
-    }
-
-    private static TextSegment createTextSegmentIfExists(Value textSegmentValue) {
-        if (textSegmentValue == null) {
-            return null;
-        }
-
-        return TextSegment.from(textSegmentValue.getStringValue());
-    }
-
-    private static String generateRandomId(Embedding embedding) {
-        return UUID.randomUUID().toString();
+                embedding,
+                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue())
+        );
     }
 }
