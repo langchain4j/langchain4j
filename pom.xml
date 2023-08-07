@@ -17,6 +17,7 @@
 
         <module>langchain4j-pinecone</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-vespa</module>
 
         <module>langchain4j-embeddings</module>
         <module>langchain4j-embeddings-all-minilm-l6-v2</module>

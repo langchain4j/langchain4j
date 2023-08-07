@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-parent</artifactId>
+        <version>0.18.0</version>
+        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+    </parent>
+
+
+    <artifactId>langchain4j-vespa</artifactId>
+    <packaging>jar</packaging>
+
+    <name>LangChain4j integration with Vespa</name>
+    <!-- TODO
+    <description>Uses io.weaviate.client library which has a BSD 3-Clause license:
+        https://github.com/weaviate/java-client/blob/main/LICENSE
+    </description>-->
+
+    <dependencies>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <version>0.18.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.yahoo.vespa</groupId>
+            <artifactId>vespa-feed-client</artifactId>
+            <version>8.202.11</version>
+        </dependency>
+
+    </dependencies>
+
+<!--    <properties>-->
+<!--        <maven.compiler.source>11</maven.compiler.source>-->
+<!--        <maven.compiler.target>11</maven.compiler.target>-->
+<!--    </properties>-->
+
+    <!-- TODO
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>-->
+
+</project>
