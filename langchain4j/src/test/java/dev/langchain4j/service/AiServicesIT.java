@@ -1,7 +1,12 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -21,16 +26,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.Supplier;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.NUMBER;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -272,7 +277,7 @@ public class AiServicesIT {
         CreateRecipePrompt prompt = CreateRecipePrompt
                 .builder()
                 .dish("salad")
-                .ingredients(Arrays.asList("cucumber", "tomato", "feta", "onion", "olives"))
+                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
                 .build();
 
         Recipe recipe = chef.createRecipeFrom(prompt);
@@ -301,7 +306,7 @@ public class AiServicesIT {
         CreateRecipePrompt prompt = CreateRecipePrompt
                 .builder()
                 .dish("salad")
-                .ingredients(Arrays.asList("cucumber", "tomato", "feta", "onion", "olives"))
+                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
                 .build();
 
         Recipe recipe = chef.createRecipeFrom(prompt, "funny");
@@ -617,7 +622,71 @@ public class AiServicesIT {
         verify(chatMemoryOfSecondUser, times(2)).messages();
     }
 
-    private static List<ChatMessage> asList(ChatMessage... messages) {
-        return new ArrayList<>(Arrays.asList(messages));
+
+    interface Assistant {
+
+        String chat(String userMessage);
+    }
+
+    static class Calculator {
+
+        @Tool("calculates the square root of the provided number")
+        double squareRoot(@P("number to operate on") double number) {
+            return Math.sqrt(number);
+        }
+    }
+
+    @Test
+    void should_execute_tool_then_answer() {
+
+        Calculator calculator = spy(new Calculator());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withCapacity(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(calculator)
+                .build();
+
+        String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
+
+        String answer = assistant.chat(userMessage);
+
+        assertThat(answer).contains("6.97");
+
+
+        verify(calculator).squareRoot(485906798473894056.0);
+        verifyNoMoreInteractions(calculator);
+
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+
+        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
+        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
+        AiMessage aiMessage = (AiMessage) messages.get(1);
+        assertThat(aiMessage.toolExecutionRequest().name()).isEqualTo("squareRoot");
+        assertThat(aiMessage.toolExecutionRequest().arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
+        assertThat(messages.get(1).text()).isNull();
+
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(messages.get(2).text()).isEqualTo("6.97070153193991E8");
+
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
+        assertThat(messages.get(3).text()).contains("6.97");
+
+        verify(chatLanguageModel).sendMessages(
+                singletonList(messages.get(0)),
+                singletonList(ToolSpecification.builder()
+                        .name("squareRoot")
+                        .description("calculates the square root of the provided number")
+                        .addParameter("arg0", NUMBER, JsonSchemaProperty.description("number to operate on"))
+                        .build())
+        );
+        verify(chatLanguageModel).sendMessages(asList(messages.get(0), messages.get(1), messages.get(2)));
     }
 }

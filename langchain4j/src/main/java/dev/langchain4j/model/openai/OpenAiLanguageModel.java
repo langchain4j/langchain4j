@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
@@ -19,7 +20,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     private final String modelName;
     private final Double temperature;
     private final Integer maxRetries;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiLanguageModel(String apiKey,
@@ -66,7 +67,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
     @Override
     public int estimateTokenCount(String prompt) {
-        return tokenizer.countTokens(prompt);
+        return tokenizer.estimateTokenCountInText(prompt);
     }
 
     public static OpenAiLanguageModel withApiKey(String apiKey) {

@@ -1,14 +1,10 @@
-package dev.langchain4j.service;
-
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
+package dev.langchain4j.agent.tool;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -18,9 +14,19 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
-class ToolSpecifications {
+public class ToolSpecifications {
 
-    static ToolSpecification toolSpecificationFrom(Method method) {
+    public static List<ToolSpecification> toolSpecificationsFrom(Object objectWithTools) {
+        List<ToolSpecification> toolSpecifications = new ArrayList<>();
+        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
+            if (method.isAnnotationPresent(Tool.class)) {
+                toolSpecifications.add(toolSpecificationFrom(method));
+            }
+        }
+        return toolSpecifications;
+    }
+
+    public static ToolSpecification toolSpecificationFrom(Method method) {
         Tool annotation = method.getAnnotation(Tool.class);
 
         String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();

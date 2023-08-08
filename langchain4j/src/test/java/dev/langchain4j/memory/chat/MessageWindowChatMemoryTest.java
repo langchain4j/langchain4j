@@ -12,8 +12,6 @@ import java.util.List;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.TestUtils.aiMessageWith;
-import static dev.langchain4j.internal.TestUtils.userMessageWith;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,7 +23,7 @@ class MessageWindowChatMemoryTest {
         SystemMessage systemMessage = systemMessage("bla bla bla");
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .systemMessage(systemMessage)
-                .capacityInMessages(3)
+                .capacity(3)
                 .build();
         assertThat(chatMemory.messages())
                 .hasSize(1)
@@ -77,7 +75,7 @@ class MessageWindowChatMemoryTest {
     void should_keep_specified_number_of_messages_in_chat_history_without_system_message() {
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .capacityInMessages(2)
+                .capacity(2)
                 .build();
         assertThat(chatMemory.messages())
                 .hasSize(0);
@@ -119,21 +117,24 @@ class MessageWindowChatMemoryTest {
     }
 
     @Test
-    void should_load_previous_messages_with_message_restriction() {
+    void should_load_messages_with_message_restriction() {
 
         List<ChatMessage> previousMessages = asList(
-                userMessageWith(10),
-                aiMessageWith(10),
-                userMessageWith(10),
-                aiMessageWith(10)
+                userMessage("first"),
+                aiMessage("second"),
+                userMessage("third"),
+                aiMessage("fourth")
         );
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .previousMessages(previousMessages)
-                .capacityInMessages(3)
+                .messages(previousMessages)
+                .capacity(3)
                 .build();
 
-        assertThat(chatMemory.messages())
-                .hasSize(3);
+        assertThat(chatMemory.messages()).containsExactly(
+                aiMessage("second"),
+                userMessage("third"),
+                aiMessage("fourth")
+        );
     }
 }

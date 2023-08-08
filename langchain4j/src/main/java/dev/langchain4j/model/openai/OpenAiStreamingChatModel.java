@@ -8,6 +8,7 @@ import dev.ai4j.openai4j.chat.FunctionCall;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
@@ -30,7 +31,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiStreamingChatModel(String apiKey,
@@ -130,7 +131,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.countTokens(messages);
+        return tokenizer.estimateTokenCountInMessages(messages);
     }
 
     public static OpenAiStreamingChatModel withApiKey(String apiKey) {
