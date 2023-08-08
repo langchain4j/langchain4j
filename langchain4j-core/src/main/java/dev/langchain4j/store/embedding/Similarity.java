@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 public class Similarity {
 
     /**
@@ -18,6 +21,12 @@ public class Similarity {
      * @return cosine similarity in the range [-1..1]
      */
     public static double cosine(float[] a, float[] b) {
+        ensureNotNull(a, "a");
+        ensureNotNull(b, "b");
+        if (a.length != b.length) {
+            throw illegalArgument("Length of vector a (%s) must be equal to the length of vector b (%s)",
+                    a.length, b.length);
+        }
 
         double dotProduct = 0.0;
         double normA = 0.0;
@@ -25,8 +34,8 @@ public class Similarity {
 
         for (int i = 0; i < a.length; i++) {
             dotProduct += a[i] * b[i];
-            normA += Math.pow(a[i], 2);
-            normB += Math.pow(b[i], 2);
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
         }
 
         return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
