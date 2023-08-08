@@ -6,8 +6,6 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 
 import java.io.InputStream;
 
-import static dev.langchain4j.data.document.DocumentType.*;
-
 class DocumentLoaderUtils {
 
     static Document load(DocumentSource source, DocumentParser parser) {
@@ -19,36 +17,6 @@ class DocumentLoaderUtils {
         } catch (Exception e) {
             throw new RuntimeException("Failed to load document", e);
         }
-    }
-
-    static DocumentType detectDocumentType(String pathToFile) {
-        if (pathToFile.endsWith(".txt")) {
-            return TXT;
-        }
-
-        if (pathToFile.endsWith(".html")
-                || pathToFile.endsWith(".htm")
-                || pathToFile.endsWith(".xhtml")) {
-            return HTML;
-        }
-
-        if (pathToFile.endsWith(".pdf")) {
-            return PDF;
-        }
-
-        if (pathToFile.endsWith(".doc") || pathToFile.endsWith(".docx")) {
-            return DOC;
-        }
-
-        if (pathToFile.endsWith(".xls") || pathToFile.endsWith(".xlsx")) {
-            return XLS;
-        }
-
-        if (pathToFile.endsWith(".ppt") || pathToFile.endsWith(".pptx")) {
-            return PPT;
-        }
-
-        throw new UnsupportedDocumentTypeException(pathToFile);
     }
 
     static DocumentParser parserFor(DocumentType type) {
