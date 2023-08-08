@@ -12,7 +12,8 @@ import lombok.Builder;
 
 /**
  * Represents the <a href="https://weaviate.io/">Weaviate</a> vector database.
- * Assumes the use of cosine as the distance metric.
+ * Current implementation assumes the cosine distance metric is used.
+ * To use WeaviateEmbeddingStore, please add the "langchain4j-weaviate" dependency to your project.
  */
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 

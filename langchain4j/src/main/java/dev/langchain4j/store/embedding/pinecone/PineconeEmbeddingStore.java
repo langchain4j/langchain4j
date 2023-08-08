@@ -22,19 +22,19 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Creates an instance of PineconeEmbeddingStore.
      *
      * @param apiKey      The Pinecone API key.
-     * @param environment The environment of the index (e.g., "northamerica-northeast1-gcp").
-     * @param project     The project of the index (e.g., "19a129b").
-     *                    This can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{project}/indexes.
+     * @param environment The environment (e.g., "northamerica-northeast1-gcp").
+     * @param projectId   The ID of the project (e.g., "19a129b"). This is <b>not</b> the project name.
+     *                    The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
      * @param index       The name of the index (e.g., "test").
      * @param nameSpace   (Optional) Namespace. If not provided, "default" will be used.
      */
-    public PineconeEmbeddingStore(String apiKey, String environment, String project, String index, String nameSpace) {
+    public PineconeEmbeddingStore(String apiKey, String environment, String projectId, String index, String nameSpace) {
         try {
             implementation = loadDynamically(
                     "dev.langchain4j.store.embedding.pinecone.PineconeEmbeddingStoreImpl",
                     apiKey,
                     environment,
-                    project,
+                    projectId,
                     index,
                     nameSpace
             );
@@ -107,7 +107,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         private String apiKey;
         private String environment;
-        private String project;
+        private String projectId;
         private String index;
         private String nameSpace;
 
@@ -120,7 +120,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param environment The environment of the index (e.g., "northamerica-northeast1-gcp").
+         * @param environment The environment (e.g., "northamerica-northeast1-gcp").
          */
         public Builder environment(String environment) {
             this.environment = environment;
@@ -128,11 +128,11 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param project The project of the index (e.g., "19a129b").
-         *                This can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{project}/indexes.
+         * @param projectId The ID of the project (e.g., "19a129b"). This is <b>not</b> the project name.
+         *                  The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
          */
-        public Builder project(String project) {
-            this.project = project;
+        public Builder projectId(String projectId) {
+            this.projectId = projectId;
             return this;
         }
 
@@ -153,7 +153,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, environment, project, index, nameSpace);
+            return new PineconeEmbeddingStore(apiKey, environment, projectId, index, nameSpace);
         }
     }
 }

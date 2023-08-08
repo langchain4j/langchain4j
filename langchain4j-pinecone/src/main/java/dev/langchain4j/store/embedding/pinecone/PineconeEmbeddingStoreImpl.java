@@ -31,12 +31,16 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     private final String nameSpace;
 
     @Builder
-    public PineconeEmbeddingStoreImpl(String apiKey, String environment, String project, String index, String nameSpace) {
+    public PineconeEmbeddingStoreImpl(String apiKey,
+                                      String environment,
+                                      String projectId,
+                                      String index,
+                                      String nameSpace) {
 
         PineconeClientConfig configuration = new PineconeClientConfig()
                 .withApiKey(apiKey)
                 .withEnvironment(environment)
-                .withProjectName(project);
+                .withProjectName(projectId);
 
         PineconeClient pineconeClient = new PineconeClient(configuration);
 
