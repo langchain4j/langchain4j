@@ -1,9 +1,16 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.inmemory;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.PriorityQueue;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Comparator.comparingDouble;
 
 public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
@@ -25,7 +32,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     @Override
     public String add(Embedding embedding) {
-        String id = generateRandomId();
+        String id = randomUUID();
         add(id, embedding);
         return id;
     }
@@ -37,7 +44,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     @Override
     public String add(Embedding embedding, Embedded embedded) {
-        String id = generateRandomId();
+        String id = randomUUID();
         add(id, embedding, embedded);
         return id;
     }
@@ -69,20 +76,15 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-        return findRelevant(referenceEmbedding, maxResults, -1);
-    }
-
-    @Override
-    public List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minSimilarity) {
+    public List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
 
         Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
         for (Entry<Embedded> entry : entries) {
-            double similarity = cosineSimilarity(entry.embedding, referenceEmbedding);
-            if (similarity >= minSimilarity) {
-                matches.add(new EmbeddingMatch<>(entry.id, entry.embedding, entry.embedded, similarity));
+            double score = RelevanceScore.cosine(entry.embedding.vector(), referenceEmbedding.vector());
+            if (score >= minScore) {
+                matches.add(new EmbeddingMatch<>(score, entry.id, entry.embedding, entry.embedded));
                 if (matches.size() > maxResults) {
                     matches.poll();
                 }
@@ -92,30 +94,5 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         List<EmbeddingMatch<Embedded>> result = new ArrayList<>(matches);
         result.sort(comparingDouble(EmbeddingMatch::score));
         return result;
-    }
-
-    /**
-     * Calculates cosine similarity between two embeddings (vectors)
-     *
-     * @param first  embedding
-     * @param second embedding
-     * @return cosine similarity (from -1 to 1)
-     */
-    private static float cosineSimilarity(Embedding first, Embedding second) {
-        float dot = 0.0F;
-        float nru = 0.0F;
-        float nrv = 0.0F;
-
-        for (int i = 0; i < first.vector().length; ++i) {
-            dot += first.vector()[i] * second.vector()[i];
-            nru += first.vector()[i] * first.vector()[i];
-            nrv += second.vector()[i] * second.vector()[i];
-        }
-
-        return dot / (float) (Math.sqrt(nru) * Math.sqrt(nrv));
-    }
-
-    private static String generateRandomId() {
-        return UUID.randomUUID().toString();
     }
 }
