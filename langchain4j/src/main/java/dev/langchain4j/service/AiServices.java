@@ -241,9 +241,10 @@ public class AiServices<T> {
 
     /**
      * Configures the tools that the LLM can use.
+     * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
      *
      * @param objectsWithTools One or more objects whose methods are annotated with {@code @Tool}.
-     *                         All these tools (methods annotated with {@code @Tool}) are accessible to the LLM.
+     *                         All these tools (methods annotated with {@code @Tool}) will be accessible to the LLM.
      *                         Note that inherited methods are not considered.
      * @return A builder instance. After configuring all necessary components, invoke {@code build()}.
      * @see Tool
@@ -254,6 +255,7 @@ public class AiServices<T> {
 
     /**
      * Configures the tools that the LLM can use.
+     * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
      *
      * @param objectsWithTools A list of objects whose methods are annotated with {@code @Tool}.
      *                         All these tools (methods annotated with {@code @Tool}) are accessible to the LLM.
@@ -314,7 +316,13 @@ public class AiServices<T> {
         }
 
         if (context.toolSpecifications != null && !context.hasChatMemory()) {
-            throw illegalConfiguration("Please set up chatMemory or chatMemorySupplier in order to use tools");
+            throw illegalConfiguration(
+                    "Please set up chatMemory or chatMemorySupplier in order to use tools. "
+                            + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
+                            + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
+                            "result of the tool's execution without the initial message from the user, it won't interpret " +
+                            "the result properly."
+            );
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
