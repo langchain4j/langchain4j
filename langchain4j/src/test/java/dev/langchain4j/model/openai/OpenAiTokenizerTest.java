@@ -1,16 +1,58 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.ChatMessage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiTokenizerTest {
 
     OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
+
+    @ParameterizedTest
+    @MethodSource
+    void should_count_tokens_for_messages(List<ChatMessage> messages, int expectedTokenCount) {
+        int tokenCount = tokenizer.countTokens(messages);
+        assertThat(tokenCount).isEqualTo(expectedTokenCount);
+    }
+
+    static Stream<Arguments> should_count_tokens_for_messages() {
+        // expected token count was taken from real OpenAI responses (usage.prompt_tokens)
+        return Stream.of(
+                Arguments.of(singletonList(userMessage("hello")), 8),
+                Arguments.of(singletonList(userMessage("Klaus", "hello")), 11),
+                Arguments.of(asList(userMessage("hello"), aiMessage("hi there")), 14),
+                Arguments.of(asList(
+                        userMessage("How much is 2 plus 2?"),
+                        aiMessage(ToolExecutionRequest.builder()
+                                .name("calculator")
+                                .arguments("{\"a\":2, \"b\":2}")
+                                .build())
+                ), 35),
+                Arguments.of(asList(
+                        userMessage("How much is 2 plus 2?"),
+                        aiMessage(ToolExecutionRequest.builder()
+                                .name("calculator")
+                                .arguments("{\"a\":2, \"b\":2}")
+                                .build()),
+                        toolExecutionResultMessage("calculator", "4")
+                ), 40)
+        );
+    }
 
     @Test
     void should_encode_and_decode_text() {
