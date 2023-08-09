@@ -34,6 +34,10 @@
             <artifactId>vespa-feed-client</artifactId>
             <version>8.202.11</version>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
 
     </dependencies>
 

@@ -9,11 +9,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import lombok.Builder;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private FeedClient feedClient;
 
+  @Builder
   public VespaEmbeddingStoreImpl() {
     this.feedClient =
       FeedClientBuilder
@@ -51,9 +53,11 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     for (int i = 0; i < embeddings.size(); i++) {
       DocumentId id = DocumentId.of("namespace", "carrot", String.valueOf(i)/* TBD ID gen! */);
+      // TODO use any programmatic JSON builder?
       String json =
         "{\"fields\": {\"text_segment\": \"" +
-        embedded.get(i).text() +
+        // TODO something better than this replace?
+        embedded.get(i).text().replace("\n", " ") +
         "\", \"vector\": [" +
         embeddings.get(i).vectorAsList().stream().map(String::valueOf).collect(Collectors.joining(",")) +
         "]}}";
