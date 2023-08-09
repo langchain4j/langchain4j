@@ -42,7 +42,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
                                         PromptTemplate promptTemplate,
                                         Retriever<TextSegment> retriever) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withCapacity(10) : chatMemory;
+        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withMaxMessages(10) : chatMemory;
         this.promptTemplate = promptTemplate == null ? DEFAULT_PROMPT_TEMPLATE : promptTemplate;
         this.retriever = ensureNotNull(retriever, "retriever");
     }

@@ -22,7 +22,7 @@ public class ConversationalChain implements Chain<String, String> {
     @Builder
     private ConversationalChain(ChatLanguageModel chatLanguageModel, ChatMemory chatMemory) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withCapacity(10) : chatMemory;
+        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withMaxMessages(10) : chatMemory;
     }
 
     @Override

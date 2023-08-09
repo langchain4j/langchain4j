@@ -23,7 +23,7 @@ class MessageWindowChatMemoryTest {
         SystemMessage systemMessage = systemMessage("bla bla bla");
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .systemMessage(systemMessage)
-                .capacity(3)
+                .maxMessages(3)
                 .build();
         assertThat(chatMemory.messages())
                 .hasSize(1)
@@ -75,7 +75,7 @@ class MessageWindowChatMemoryTest {
     void should_keep_specified_number_of_messages_in_chat_history_without_system_message() {
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .capacity(2)
+                .maxMessages(2)
                 .build();
         assertThat(chatMemory.messages())
                 .hasSize(0);
@@ -117,24 +117,25 @@ class MessageWindowChatMemoryTest {
     }
 
     @Test
-    void should_load_messages_with_message_restriction() {
+    void should_load_messages_and_keep_only_3_most_recent() {
 
-        List<ChatMessage> previousMessages = asList(
+        List<ChatMessage> messages = asList(
                 userMessage("first"),
                 aiMessage("second"),
                 userMessage("third"),
-                aiMessage("fourth")
+                aiMessage("fourth"),
+                userMessage("fifth")
         );
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
-                .messages(previousMessages)
-                .capacity(3)
+                .messages(messages)
+                .maxMessages(3)
                 .build();
 
         assertThat(chatMemory.messages()).containsExactly(
-                aiMessage("second"),
                 userMessage("third"),
-                aiMessage("fourth")
+                aiMessage("fourth"),
+                userMessage("fifth")
         );
     }
 }

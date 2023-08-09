@@ -4,7 +4,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -17,13 +16,10 @@ import static java.util.stream.Collectors.toList;
 public class ToolSpecifications {
 
     public static List<ToolSpecification> toolSpecificationsFrom(Object objectWithTools) {
-        List<ToolSpecification> toolSpecifications = new ArrayList<>();
-        for (Method method : objectWithTools.getClass().getDeclaredMethods()) {
-            if (method.isAnnotationPresent(Tool.class)) {
-                toolSpecifications.add(toolSpecificationFrom(method));
-            }
-        }
-        return toolSpecifications;
+        return stream(objectWithTools.getClass().getDeclaredMethods())
+                .filter(method -> method.isAnnotationPresent(Tool.class))
+                .map(ToolSpecifications::toolSpecificationFrom)
+                .collect(toList());
     }
 
     public static ToolSpecification toolSpecificationFrom(Method method) {

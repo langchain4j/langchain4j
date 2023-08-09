@@ -24,7 +24,7 @@ public class ConversationalChainTest {
         String aiMessage = "Hi there";
         when(chatLanguageModel.sendMessages(anyList())).thenReturn(aiMessage(aiMessage));
 
-        ChatMemory chatMemory = spy(MessageWindowChatMemory.withCapacity(10));
+        ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
 
         ConversationalChain chain = ConversationalChain.builder()
                 .chatLanguageModel(chatLanguageModel)

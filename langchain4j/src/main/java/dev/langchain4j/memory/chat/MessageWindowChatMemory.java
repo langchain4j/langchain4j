@@ -14,7 +14,8 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * Chat memory that retains the N most recent messages.
+ * This chat memory operates as a sliding window of {@link #maxMessages} messages.
+ * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one is discarded.
  * Optionally, a system message can be set.
  * System message will always be retained at the first position (index 0) and will never be removed.
@@ -23,12 +24,15 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
-    private final Integer capacity;
+    private final Integer maxMessages;
     private final SystemMessage systemMessage;
     private final LinkedList<ChatMessage> messages;
 
     private MessageWindowChatMemory(Builder builder) {
-        this.capacity = ensureNotNull(builder.capacity, "capacity");
+        this.maxMessages = ensureNotNull(builder.maxMessages, "maxMessages");
+        if (this.maxMessages < 1) {
+            throw illegalArgument("maxMessages should be greater than 0");
+        }
         this.systemMessage = builder.systemMessage;
         this.messages = ensureNotNull(builder.messages, "messages");
         ensureCapacity();
@@ -58,7 +62,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private void ensureCapacity() {
         int currentMessageCount = currentMessageCount();
 
-        while (currentMessageCount > capacity) {
+        while (currentMessageCount > maxMessages) {
             ChatMessage oldestMessage = messages.removeFirst();
             log.debug("Removing the oldest message to comply with capacity requirements: {}", oldestMessage);
             currentMessageCount--;
@@ -77,15 +81,12 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     public static class Builder {
 
-        private Integer capacity;
+        private Integer maxMessages;
         private SystemMessage systemMessage;
         private LinkedList<ChatMessage> messages = new LinkedList<>();
 
-        public Builder capacity(Integer capacity) {
-            if (capacity < 1) {
-                throw illegalArgument("Capacity should be greater than 1");
-            }
-            this.capacity = capacity;
+        public Builder maxMessages(Integer maxMessages) {
+            this.maxMessages = maxMessages;
             return this;
         }
 
@@ -112,7 +113,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         }
     }
 
-    public static MessageWindowChatMemory withCapacity(int capacity) {
-        return builder().capacity(capacity).build();
+    public static MessageWindowChatMemory withMaxMessages(int maxMessages) {
+        return builder().maxMessages(maxMessages).build();
     }
 }

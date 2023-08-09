@@ -410,6 +410,8 @@ public class AiServices<T> {
                             ChatMemory chatMemory = context.chatMemoryOf(userId);
                             chatMemory.add(toolExecutionResultMessage);
 
+                            // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
+                            // This is the current behavior of OpenAI, though it might change in the future.
                             aiMessage = context.chatLanguageModel.sendMessages(chatMemory.messages());
                         }
 

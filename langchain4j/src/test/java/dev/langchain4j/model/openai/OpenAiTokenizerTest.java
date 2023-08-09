@@ -81,7 +81,7 @@ class OpenAiTokenizerTest {
     @Test
     void should_count_tokens_in_tools() {
         int tokenCount = tokenizer.estimateTokenCountInTools(new Tools());
-        assertThat(tokenCount).isEqualTo(93);
+        assertThat(tokenCount).isEqualTo(93); // found experimentally while playing with OpenAI API
     }
 
     @Test

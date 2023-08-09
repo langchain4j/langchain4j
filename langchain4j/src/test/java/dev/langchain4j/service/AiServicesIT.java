@@ -55,7 +55,7 @@ public class AiServicesIT {
             .build();
 
     @Spy
-    ChatMemory chatMemory = MessageWindowChatMemory.withCapacity(10);
+    ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
     @Spy
     ModerationModel moderationModel = OpenAiModerationModel.builder()
@@ -571,8 +571,8 @@ public class AiServicesIT {
     @Test
     void should_keep_separate_chat_memory_for_each_user() {
 
-        ChatMemory chatMemoryOfFirstUser = spy(MessageWindowChatMemory.withCapacity(10));
-        ChatMemory chatMemoryOfSecondUser = spy(MessageWindowChatMemory.withCapacity(10));
+        ChatMemory chatMemoryOfFirstUser = spy(MessageWindowChatMemory.withMaxMessages(10));
+        ChatMemory chatMemoryOfSecondUser = spy(MessageWindowChatMemory.withMaxMessages(10));
 
         Supplier<ChatMemory> chatMemorySupplier = mock(Supplier.class);
         when(chatMemorySupplier.get())
@@ -641,7 +641,7 @@ public class AiServicesIT {
 
         Calculator calculator = spy(new Calculator());
 
-        ChatMemory chatMemory = MessageWindowChatMemory.withCapacity(10);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatLanguageModel)
@@ -687,6 +687,9 @@ public class AiServicesIT {
                         .addParameter("arg0", NUMBER, JsonSchemaProperty.description("number to operate on"))
                         .build())
         );
+
+        // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
+        // This is the current behavior of OpenAI, though it might change in the future.
         verify(chatLanguageModel).sendMessages(asList(messages.get(0), messages.get(1), messages.get(2)));
     }
 }
