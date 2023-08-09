@@ -485,7 +485,7 @@ public class AiServicesIT {
                 userMessage(secondUserMessage)
         ), NO_TOOLS);
         verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory, times(2)).messages();
+        verify(chatMemory, times(10)).messages();
     }
 
     @Test
