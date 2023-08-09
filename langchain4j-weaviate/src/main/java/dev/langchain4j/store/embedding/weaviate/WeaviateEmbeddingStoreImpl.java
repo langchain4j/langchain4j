@@ -1,5 +1,6 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.weaviate;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -7,6 +8,8 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
@@ -57,7 +60,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public String add(Embedding embedding) {
-    String id = generateRandomId();
+    String id = randomUUID();
     add(id, embedding);
     return id;
   }
@@ -151,7 +154,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     for (int i = 0; i < embeddings.size(); i++) {
       String id = ids != null
         ? ids.get(i)
-        : avoidDups && embedded != null ? generateUUID(embedded.get(i).text()) : generateRandomId();
+        : avoidDups && embedded != null ? generateUUID(embedded.get(i).text()) : randomUUID();
       resIds.add(id);
       objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : null));
     }
@@ -187,12 +190,12 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
 
     return new EmbeddingMatch<>(
+      (Double) additional.get("certainty"),
       (String) additional.get("id"),
       Embedding.from(
         ((List<Double>) additional.get("vector")).stream().map(Double::floatValue).collect(Collectors.toList())
       ),
-      TextSegment.from((String) item.get(METADATA_TEXT_SEGMENT)),
-      (Double) additional.get("certainty")
+      TextSegment.from((String) item.get(METADATA_TEXT_SEGMENT))
     );
   }
 
@@ -206,10 +209,5 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     } catch (NoSuchAlgorithmException e) {
       throw new IllegalArgumentException(e);
     }
-  }
-
-  // TODO this shall be migrated to some common place
-  private static String generateRandomId() {
-    return UUID.randomUUID().toString();
   }
 }
