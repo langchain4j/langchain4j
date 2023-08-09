@@ -14,6 +14,11 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
+/**
+ * Represents a connection to the OpenAI LLM with a completion interface, such as text-davinci-003.
+ * However, it's recommended to use {@link OpenAiChatModel} instead,
+ * as it offers more advanced features like function calling, multi-turn conversations, etc.
+ */
 public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;

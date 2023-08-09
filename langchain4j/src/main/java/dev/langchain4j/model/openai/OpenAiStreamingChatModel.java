@@ -22,6 +22,10 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a connection to the OpenAI LLM with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ */
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;

@@ -19,6 +19,9 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_00
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Represents a connection to the OpenAI embedding model, such as text-embedding-ada-002.
+ */
 public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
     private final OpenAiClient client;
