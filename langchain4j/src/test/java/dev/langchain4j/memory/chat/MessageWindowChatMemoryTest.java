@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MessageWindowChatMemoryTest {
 
     @Test
-    void should_keep_specified_number_of_messages_in_chat_history() {
+    void should_keep_specified_number_of_messages_in_chat_memory() {
 
         SystemMessage systemMessage = systemMessage("bla bla bla");
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
@@ -72,7 +72,7 @@ class MessageWindowChatMemoryTest {
     }
 
     @Test
-    void should_keep_specified_number_of_messages_in_chat_history_without_system_message() {
+    void should_keep_specified_number_of_messages_in_chat_memory_without_system_message() {
 
         ChatMemory chatMemory = MessageWindowChatMemory.builder()
                 .maxMessages(2)
