@@ -26,7 +26,6 @@ public interface ChatMemory {
      */
     List<ChatMessage> messages();
 
-
     /**
      * Clears the chat memory.
      */

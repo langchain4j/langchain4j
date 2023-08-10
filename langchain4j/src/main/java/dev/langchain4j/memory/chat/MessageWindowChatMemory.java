@@ -2,104 +2,109 @@ package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
-import lombok.val;
-import lombok.var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+/**
+ * This chat memory operates as a sliding window of {@link #maxMessages} messages.
+ * It retains as many of the most recent messages as can fit into the window.
+ * If there isn't enough space for a new message, the oldest one is discarded.
+ * Optionally, a system message can be set.
+ * System message will always be retained at the first position (index 0) and will never be removed.
+ */
 public class MessageWindowChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
-    private final Optional<SystemMessage> maybeSystemMessage;
-    private final LinkedList<ChatMessage> previousMessages;
-    private final Integer capacity;
+    private final Integer maxMessages;
+    private final SystemMessage systemMessage;
+    private final LinkedList<ChatMessage> messages;
 
     private MessageWindowChatMemory(Builder builder) {
-        this.maybeSystemMessage = builder.maybeSystemMessage;
-        this.previousMessages = builder.previousMessages;
-        this.capacity = builder.capacity;
+        this.maxMessages = ensureNotNull(builder.maxMessages, "maxMessages");
+        if (this.maxMessages < 1) {
+            throw illegalArgument("maxMessages should be greater than 0");
+        }
+        this.systemMessage = builder.systemMessage;
+        this.messages = ensureNotNull(builder.messages, "messages");
         ensureCapacity();
     }
 
     @Override
     public void add(ChatMessage message) {
-        previousMessages.add(message);
+        messages.add(message);
         ensureCapacity();
     }
 
     @Override
     public List<ChatMessage> messages() {
-        val messages = new ArrayList<ChatMessage>();
-        maybeSystemMessage.ifPresent(messages::add);
-        messages.addAll(previousMessages);
+        List<ChatMessage> messages = new ArrayList<>();
+        if (systemMessage != null) {
+            messages.add(systemMessage);
+        }
+        messages.addAll(this.messages);
         return messages;
     }
 
     @Override
     public void clear() {
-        previousMessages.clear();
+        messages.clear();
     }
 
     private void ensureCapacity() {
-        var currentNumberOfMessagesInHistory = getCurrentNumberOfMessages();
+        int currentMessageCount = currentMessageCount();
 
-        while (currentNumberOfMessagesInHistory > capacity) {
-
-            ChatMessage oldestMessage = previousMessages.removeFirst();
-
-            log.debug("Removing the oldest message from {} '{}' to comply with capacity requirements",
-                    oldestMessage instanceof UserMessage ? "user" : "AI",
-                    oldestMessage.text());
-
-            currentNumberOfMessagesInHistory--;
+        while (currentMessageCount > maxMessages) {
+            ChatMessage oldestMessage = messages.removeFirst();
+            log.debug("Removing the oldest message to comply with capacity requirements: {}", oldestMessage);
+            currentMessageCount--;
         }
 
-        log.debug("Current message count: {}", getCurrentNumberOfMessages());
+        log.debug("Current message count: {}", currentMessageCount());
     }
 
-    private int getCurrentNumberOfMessages() {
-        return maybeSystemMessage.map(m -> 1).orElse(0) + previousMessages.size();
+    private int currentMessageCount() {
+        return messages().size();
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {
 
-        private Optional<SystemMessage> maybeSystemMessage = Optional.empty();
-        private Integer capacity;
-        private LinkedList<ChatMessage> previousMessages = new LinkedList<>();
+        private Integer maxMessages;
+        private SystemMessage systemMessage;
+        private LinkedList<ChatMessage> messages = new LinkedList<>();
 
-        public Builder systemMessage(SystemMessage systemMessage) {
-            this.maybeSystemMessage = Optional.ofNullable(systemMessage);
+        public Builder maxMessages(Integer maxMessages) {
+            this.maxMessages = maxMessages;
             return this;
         }
 
         public Builder systemMessage(String systemMessage) {
-            if (systemMessage == null) {
-                this.maybeSystemMessage = Optional.empty();
-                return this;
-            }
-
             return systemMessage(SystemMessage.from(systemMessage));
         }
 
-        public Builder capacityInMessages(Integer capacityInMessages) {
-            this.capacity = capacityInMessages;
+        public Builder systemMessage(SystemMessage systemMessage) {
+            this.systemMessage = systemMessage;
             return this;
         }
 
-        public Builder previousMessages(List<ChatMessage> previousMessages) {
-            if (previousMessages == null) {
+        public Builder messages(List<ChatMessage> messages) {
+            if (messages == null) {
                 return this;
             }
 
-            this.previousMessages = new LinkedList<>(previousMessages);
+            this.messages = new LinkedList<>(messages);
             return this;
         }
 
@@ -108,11 +113,7 @@ public class MessageWindowChatMemory implements ChatMemory {
         }
     }
 
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static MessageWindowChatMemory withCapacity(int n) {
-        return builder().capacityInMessages(n).build();
+    public static MessageWindowChatMemory withMaxMessages(int maxMessages) {
+        return builder().maxMessages(maxMessages).build();
     }
 }

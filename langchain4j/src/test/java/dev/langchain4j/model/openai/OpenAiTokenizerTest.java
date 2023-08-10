@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.ChatMessage;
 import org.junit.jupiter.api.Test;
@@ -25,12 +27,12 @@ class OpenAiTokenizerTest {
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_for_messages(List<ChatMessage> messages, int expectedTokenCount) {
-        int tokenCount = tokenizer.countTokens(messages);
+    void should_count_tokens_in_messages(List<ChatMessage> messages, int expectedTokenCount) {
+        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
         assertThat(tokenCount).isEqualTo(expectedTokenCount);
     }
 
-    static Stream<Arguments> should_count_tokens_for_messages() {
+    static Stream<Arguments> should_count_tokens_in_messages() {
         // expected token count was taken from real OpenAI responses (usage.prompt_tokens)
         return Stream.of(
                 Arguments.of(singletonList(userMessage("hello")), 8),
@@ -52,6 +54,34 @@ class OpenAiTokenizerTest {
                         toolExecutionResultMessage("calculator", "4")
                 ), 40)
         );
+    }
+
+    static class Tools {
+
+        @Tool
+        int add(int a, int b) {
+            return a + b;
+        }
+
+        @Tool("calculates the square root of the provided number")
+        double squareRoot(@P("number to operate on") double number) {
+            return Math.sqrt(number);
+        }
+
+        @Tool
+        int temperature(String location, TemperatureUnit temperatureUnit) {
+            return 0;
+        }
+    }
+
+    enum TemperatureUnit {
+        F, C
+    }
+
+    @Test
+    void should_count_tokens_in_tools() {
+        int tokenCount = tokenizer.estimateTokenCountInTools(new Tools());
+        assertThat(tokenCount).isEqualTo(93); // found experimentally while playing with OpenAI API
     }
 
     @Test
@@ -77,33 +107,33 @@ class OpenAiTokenizerTest {
 
     @Test
     void should_count_tokens_in_short_texts() {
-        assertThat(tokenizer.countTokens("Hello")).isEqualTo(1);
-        assertThat(tokenizer.countTokens("Hello!")).isEqualTo(2);
-        assertThat(tokenizer.countTokens("Hello, how are you?")).isEqualTo(6);
+        assertThat(tokenizer.estimateTokenCountInText("Hello")).isEqualTo(1);
+        assertThat(tokenizer.estimateTokenCountInText("Hello!")).isEqualTo(2);
+        assertThat(tokenizer.estimateTokenCountInText("Hello, how are you?")).isEqualTo(6);
     }
 
     @Test
     void should_count_tokens_in_average_text() {
         String text1 = "Hello, how are you doing? What do you want to talk about?";
-        assertThat(tokenizer.countTokens(text1)).isEqualTo(15);
+        assertThat(tokenizer.estimateTokenCountInText(text1)).isEqualTo(15);
 
         String text2 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 2));
-        assertThat(tokenizer.countTokens(text2)).isEqualTo(2 * 15);
+        assertThat(tokenizer.estimateTokenCountInText(text2)).isEqualTo(2 * 15);
 
         String text3 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 3));
-        assertThat(tokenizer.countTokens(text3)).isEqualTo(3 * 15);
+        assertThat(tokenizer.estimateTokenCountInText(text3)).isEqualTo(3 * 15);
     }
 
     @Test
     void should_count_tokens_in_large_text() {
         String text1 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 10));
-        assertThat(tokenizer.countTokens(text1)).isEqualTo(10 * 15);
+        assertThat(tokenizer.estimateTokenCountInText(text1)).isEqualTo(10 * 15);
 
         String text2 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 50));
-        assertThat(tokenizer.countTokens(text2)).isEqualTo(50 * 15);
+        assertThat(tokenizer.estimateTokenCountInText(text2)).isEqualTo(50 * 15);
 
         String text3 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 100));
-        assertThat(tokenizer.countTokens(text3)).isEqualTo(100 * 15);
+        assertThat(tokenizer.estimateTokenCountInText(text3)).isEqualTo(100 * 15);
     }
 
     public static List<String> repeat(String s, int n) {
