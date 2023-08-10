@@ -168,12 +168,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.18.0</version>
+          <version>0.19.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.18.0'
+      implementation 'dev.langchain4j:langchain4j:0.19.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
