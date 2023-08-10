@@ -6,6 +6,7 @@ import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
@@ -18,6 +19,9 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a connection to the OpenAI LLM with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ */
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
@@ -28,7 +32,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Double presencePenalty;
     private final Double frequencyPenalty;
     private final Integer maxRetries;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiChatModel(String apiKey,
@@ -117,7 +121,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.countTokens(messages);
+        return tokenizer.estimateTokenCountInMessages(messages);
     }
 
     public static OpenAiChatModel withApiKey(String apiKey) {

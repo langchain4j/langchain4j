@@ -8,6 +8,7 @@ import dev.ai4j.openai4j.chat.FunctionCall;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
@@ -21,6 +22,10 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
+/**
+ * Represents a connection to the OpenAI LLM with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ */
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
@@ -30,7 +35,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiStreamingChatModel(String apiKey,
@@ -130,7 +135,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.countTokens(messages);
+        return tokenizer.estimateTokenCountInMessages(messages);
     }
 
     public static OpenAiStreamingChatModel withApiKey(String apiKey) {

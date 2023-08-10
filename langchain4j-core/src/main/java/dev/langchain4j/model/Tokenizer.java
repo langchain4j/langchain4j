@@ -1,12 +1,36 @@
 package dev.langchain4j.model;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationsFrom;
+import static java.util.Collections.singletonList;
 
 public interface Tokenizer {
 
-    int countTokens(String text);
+    int estimateTokenCountInText(String text);
 
-    int countTokens(ChatMessage message);
+    int estimateTokenCountInMessage(ChatMessage message);
 
-    int countTokens(Iterable<ChatMessage> messages);
+    int estimateTokenCountInMessages(Iterable<ChatMessage> messages);
+
+    default int estimateTokenCountInTools(Object objectWithTools) {
+        return estimateTokenCountInTools(singletonList(objectWithTools));
+    }
+
+    default int estimateTokenCountInTools(Iterable<Object> objectsWithTools) {
+        List<ToolSpecification> toolSpecifications = new ArrayList<>();
+        objectsWithTools.forEach(objectWithTools ->
+                toolSpecifications.addAll(toolSpecificationsFrom(objectWithTools)));
+        return estimateTokenCountInToolSpecifications(toolSpecifications);
+    }
+
+    default int estimateTokenCountInToolSpecification(ToolSpecification toolSpecification) {
+        return estimateTokenCountInToolSpecifications(singletonList(toolSpecification));
+    }
+
+    int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications);
 }

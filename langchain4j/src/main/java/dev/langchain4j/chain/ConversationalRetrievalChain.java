@@ -19,9 +19,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
 /**
- * A chain for interacting with a specified ChatLanguageModel based on the information provided by a specified Retriever.
- * Includes a default PromptTemplate, which can be overridden.
- * Includes a default ChatMemory (a message window with a capacity of 10), which can be overridden.
+ * A chain for interacting with a specified {@link ChatLanguageModel} based on the information provided by a specified {@link Retriever}.
+ * Includes a default {@link PromptTemplate}, which can be overridden.
+ * Includes a default {@link ChatMemory} (a message window with maximum 10 messages), which can be overridden.
  */
 public class ConversationalRetrievalChain implements Chain<String, String> {
 
@@ -42,7 +42,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
                                         PromptTemplate promptTemplate,
                                         Retriever<TextSegment> retriever) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withCapacity(10) : chatMemory;
+        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withMaxMessages(10) : chatMemory;
         this.promptTemplate = promptTemplate == null ? DEFAULT_PROMPT_TEMPLATE : promptTemplate;
         this.retriever = ensureNotNull(retriever, "retriever");
     }

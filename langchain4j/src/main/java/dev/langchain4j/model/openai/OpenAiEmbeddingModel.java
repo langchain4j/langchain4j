@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingRequest;
 import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import lombok.Builder;
@@ -18,12 +19,15 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_00
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Represents a connection to the OpenAI embedding model, such as text-embedding-ada-002.
+ */
 public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Integer maxRetries;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiEmbeddingModel(String apiKey,
@@ -83,7 +87,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
 
     @Override
     public int estimateTokenCount(String text) {
-        return tokenizer.countTokens(text);
+        return tokenizer.estimateTokenCountInText(text);
     }
 
     public static OpenAiEmbeddingModel withApiKey(String apiKey) {

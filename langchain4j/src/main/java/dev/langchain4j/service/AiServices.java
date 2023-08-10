@@ -26,12 +26,12 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
+import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static dev.langchain4j.service.ToolSpecifications.toolSpecificationFrom;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -410,6 +410,8 @@ public class AiServices<T> {
                             ChatMemory chatMemory = context.chatMemoryOf(userId);
                             chatMemory.add(toolExecutionResultMessage);
 
+                            // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
+                            // This is the current behavior of OpenAI, though it might change in the future.
                             aiMessage = context.chatLanguageModel.sendMessages(chatMemory.messages());
                         }
 

@@ -11,8 +11,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * A chain for interacting with a specified ChatLanguageModel while maintaining a memory of the conversation.
- * Includes a default ChatMemory (a message window with a capacity of 10), which can be overridden.
+ * A chain for interacting with a specified {@link ChatLanguageModel} while maintaining a memory of the conversation.
+ * Includes a default {@link ChatMemory} (a message window with maximum 10 messages), which can be overridden.
  */
 public class ConversationalChain implements Chain<String, String> {
 
@@ -22,7 +22,7 @@ public class ConversationalChain implements Chain<String, String> {
     @Builder
     private ConversationalChain(ChatLanguageModel chatLanguageModel, ChatMemory chatMemory) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withCapacity(10) : chatMemory;
+        this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withMaxMessages(10) : chatMemory;
     }
 
     @Override
