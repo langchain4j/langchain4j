@@ -1,12 +1,20 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.weaviate;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 
+/**
+ * Represents the <a href="https://weaviate.io/">Weaviate</a> vector database.
+ * Current implementation assumes the cosine distance metric is used.
+ * To use WeaviateEmbeddingStore, please add the "langchain4j-weaviate" dependency to your project.
+ */
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   private final EmbeddingStore<TextSegment> implementation;
@@ -36,7 +44,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     try {
       implementation =
         loadDynamically(
-          "dev.langchain4j.store.embedding.WeaviateEmbeddingStoreImpl",
+          "dev.langchain4j.store.embedding.weaviate.WeaviateEmbeddingStoreImpl",
           apiKey,
           scheme,
           host,
@@ -128,17 +136,25 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     return implementation.addAll(embeddings, textSegments);
   }
 
+  /**
+   * {@inheritDoc}
+   * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
+   */
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
     return implementation.findRelevant(referenceEmbedding, maxResults);
   }
 
+  /**
+   * {@inheritDoc}
+   * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
+   */
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(
     Embedding referenceEmbedding,
     int maxResults,
-    double minSimilarity
+    double minScore
   ) {
-    return implementation.findRelevant(referenceEmbedding, maxResults, minSimilarity);
+    return implementation.findRelevant(referenceEmbedding, maxResults, minScore);
   }
 }

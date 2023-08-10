@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
@@ -12,12 +13,18 @@ import java.time.Duration;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
+/**
+ * Represents a connection to the OpenAI LLM with a completion interface, such as text-davinci-003.
+ * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
+ * as it offers more advanced features like function calling, multi-turn conversations, etc.
+ */
 public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiStreamingLanguageModel(String apiKey,
@@ -26,7 +33,6 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         Duration timeout,
                                         Boolean logRequests,
                                         Boolean logResponses) {
-
 
         modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
         temperature = temperature == null ? 0.7 : temperature;
@@ -69,7 +75,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
 
     @Override
     public int estimateTokenCount(String prompt) {
-        return tokenizer.countTokens(prompt);
+        return tokenizer.estimateTokenCountInText(prompt);
     }
 
     public static OpenAiStreamingLanguageModel withApiKey(String apiKey) {

@@ -5,7 +5,6 @@ import dev.langchain4j.data.document.source.UrlSource;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import static dev.langchain4j.data.document.DocumentLoaderUtils.detectDocumentType;
 import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
 
 public class UrlDocumentLoader {
@@ -18,7 +17,7 @@ public class UrlDocumentLoader {
      * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
      */
     public static Document load(URL url) {
-        return load(url, detectDocumentType(url.toString()));
+        return load(url, DocumentType.of(url.toString()));
     }
 
     /**

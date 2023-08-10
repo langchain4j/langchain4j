@@ -22,6 +22,9 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Represents a connection to the OpenAI moderation model, such as text-moderation-latest.
+ */
 public class OpenAiModerationModel implements ModerationModel {
 
     private final OpenAiClient client;
