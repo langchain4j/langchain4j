@@ -8,6 +8,7 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
@@ -31,6 +32,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         String modelName,
                                         Double temperature,
                                         Duration timeout,
+                                        Proxy proxy,
                                         Boolean logRequests,
                                         Boolean logResponses) {
 
@@ -44,6 +46,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
