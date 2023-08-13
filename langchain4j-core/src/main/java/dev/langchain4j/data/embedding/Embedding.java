@@ -3,12 +3,14 @@ package dev.langchain4j.data.embedding;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Represents a dense vector embedding of a text.
  * This class encapsulates a float array that captures the "meaning" or semantic information of the text.
  * Texts with similar meanings will have their vectors located close to each other in the embedding space.
  * The embeddings are typically created by embedding models.
+ *
  * @see dev.langchain4j.model.embedding.EmbeddingModel
  */
 public class Embedding {
@@ -29,6 +31,10 @@ public class Embedding {
             list.add(f);
         }
         return list;
+    }
+
+    public int length() {
+        return Optional.ofNullable(vector).map(v -> v.length).orElse(0);
     }
 
     @Override
