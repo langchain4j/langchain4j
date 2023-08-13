@@ -5,10 +5,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Comparator.comparingDouble;
@@ -92,7 +89,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         }
 
         List<EmbeddingMatch<Embedded>> result = new ArrayList<>(matches);
-        result.sort(comparingDouble(EmbeddingMatch::score));
+        result.sort(comparator);
+        Collections.reverse(result);
         return result;
     }
 }
