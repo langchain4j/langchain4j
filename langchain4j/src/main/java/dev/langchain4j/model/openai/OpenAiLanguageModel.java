@@ -8,6 +8,7 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -33,6 +34,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                                Double temperature,
                                Duration timeout,
                                Integer maxRetries,
+                               Proxy proxy,
                                Boolean logRequests,
                                Boolean logResponses) {
 
@@ -47,6 +49,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();

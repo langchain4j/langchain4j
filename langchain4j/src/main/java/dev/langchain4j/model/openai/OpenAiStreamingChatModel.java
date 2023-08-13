@@ -13,6 +13,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -46,6 +47,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Double presencePenalty,
                                     Double frequencyPenalty,
                                     Duration timeout,
+                                    Proxy proxy,
                                     Boolean logRequests,
                                     Boolean logResponses) {
 
@@ -59,6 +61,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
