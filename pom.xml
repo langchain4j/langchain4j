@@ -20,6 +20,7 @@
         <module>langchain4j-elastic</module>
 
         <module>langchain4j-spring-boot-starter</module>
+        <module>langchain4j-common</module>
     </modules>
 
     <properties>
