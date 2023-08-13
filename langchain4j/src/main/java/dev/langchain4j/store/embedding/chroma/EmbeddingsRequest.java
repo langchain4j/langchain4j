@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public class EmbeddingsRequest {
+class EmbeddingsRequest {
 
     private final List<float[]> embeddings;
     private final List<Map<String, String>> metadatas;

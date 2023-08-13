@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.List;
 import java.util.Map;
 
-public class SuccessfulResponse {
+class SuccessfulResponse {
 
     private List<List<String>> ids;
     private List<List<Double>> distances;

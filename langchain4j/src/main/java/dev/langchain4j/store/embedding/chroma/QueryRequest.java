@@ -4,7 +4,7 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 
-public class QueryRequest {
+class QueryRequest {
 
     //TODO where={"metadata_field": "is_equal_to_this"}, # optional filter
     //TODO   # where_document={"$contains":"search_string"}  # optional filter

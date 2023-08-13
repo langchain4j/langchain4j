@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.HashMap;
 import java.util.Map;
 
-public class CollectionCreationRequest {
+class CollectionCreationRequest {
 
     private final String name;
     private final Map<String, String> metadata;

@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.chroma;
 
-public class IndexCreationRequest {
+class IndexCreationRequest {
 
     private String type;
     private String title;

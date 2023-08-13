@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.chroma;
 
 import java.util.Map;
 
-public class CollectionCreationResponse {
+class CollectionCreationResponse {
 
     private String name;
     private String id;
