@@ -32,7 +32,7 @@
         <spring-boot.version>2.7.14</spring-boot.version>
         <snakeyaml.version>2.0</snakeyaml.version>
         <elastic.version>8.9.0</elastic.version>
-        <jackson-databind.version>2.12.3</jackson-databind.version>
+        <jackson-databind.version>2.12.7.1</jackson-databind.version>
     </properties>
 
     <dependencyManagement>

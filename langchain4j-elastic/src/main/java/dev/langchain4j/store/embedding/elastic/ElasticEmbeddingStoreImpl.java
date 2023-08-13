@@ -4,7 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import dev.langchain4j.common.utils.AssertUtil;
+import dev.langchain4j.internal.AssertUtils;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -17,8 +17,12 @@ import org.elasticsearch.client.RestClient;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 /**
+ * Elastic Embedding Store Implementation
  *
+ * @author Martin7-1
  */
 public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
@@ -26,8 +30,8 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     @Builder
     public ElasticEmbeddingStoreImpl(String serverUrl, String apiKey) {
-        AssertUtil.notNull(serverUrl);
-        AssertUtil.notNull(apiKey);
+        AssertUtils.notNull(serverUrl);
+        AssertUtils.notNull(apiKey);
         RestClient restClient = RestClient
                 .builder(HttpHost.create(serverUrl))
                 .setDefaultHeaders(new Header[]{
@@ -40,12 +44,14 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding) {
-        return null;
+        String id = randomUUID();
+        add(id, embedding);
+        return id;
     }
 
     @Override
     public void add(String id, Embedding embedding) {
-
+        // TODO: use Elasticsearch Client to add embedding
     }
 
     @Override

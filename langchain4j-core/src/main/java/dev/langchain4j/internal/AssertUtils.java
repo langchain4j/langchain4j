@@ -1,11 +1,13 @@
-package dev.langchain4j.common.utils;
+package dev.langchain4j.internal;
 
 /**
  * Assert Utility
+ *
+ * @author Martin7-1
  */
-public class AssertUtil {
+public class AssertUtils {
 
-    private AssertUtil() throws InstantiationException {
+    private AssertUtils() throws InstantiationException {
         throw new InstantiationException("can't instantiate this class");
     }
 
