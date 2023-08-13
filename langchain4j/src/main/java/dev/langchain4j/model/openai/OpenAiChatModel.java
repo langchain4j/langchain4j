@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -44,6 +45,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Double frequencyPenalty,
                            Duration timeout,
                            Integer maxRetries,
+                           Proxy proxy,
                            Boolean logRequests,
                            Boolean logResponses) {
 
@@ -64,6 +66,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
