@@ -3,14 +3,18 @@ package dev.langchain4j.store.embedding.elastic;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.SearchTemplateResponse;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.indices.GetIndexResponse;
 import co.elastic.clients.elasticsearch.indices.IndexState;
+import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.AssertUtils;
+import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
@@ -22,9 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -42,9 +44,9 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     @Builder
     public ElasticEmbeddingStoreImpl(String serverUrl, String apiKey, String indexName) {
-        AssertUtils.notNull(serverUrl);
-        AssertUtils.notNull(apiKey);
-        AssertUtils.notNull(indexName);
+        serverUrl = ValidationUtils.ensureNotNull(serverUrl, "serverUrl");
+        apiKey = ValidationUtils.ensureNotNull(apiKey, "apiKey");
+        indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
         RestClient restClient = RestClient
                 .builder(HttpHost.create(serverUrl))
                 .setDefaultHeaders(new Header[]{
@@ -94,9 +96,39 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        // TODO: find relevant
-        return null;
+        try {
+            client.putScript(r -> r.id("find-relevant-script")
+                    .script(s -> s.lang("mustache")
+                            .source("{\n" +
+                                    "        \"script_score\": {\n" +
+                                    "            \"script\": {\n" +
+                                    "                \"source\": \"cosineSimilarity(params.query_vector, 'vector') + 1.0\",\n" +
+                                    "                \"params\": {\"query_vector\": \"{{queryVector}}\"},\n" +
+                                    "            },\n" +
+                                    "        }\n" +
+                                    "    }")));
+
+            SearchTemplateResponse<EmbeddingMatch> response = client.searchTemplate(r -> r
+                            .index("some-index")
+                            .id("find-relevant-script")
+                            .params("queryVector", JsonData.of(referenceEmbedding.vectorAsList())),
+                    EmbeddingMatch.class
+            );
+            List<Hit<EmbeddingMatch>> hits = response.hits().hits();
+            List<EmbeddingMatch<TextSegment>> resList = new ArrayList<>();
+            for (Hit<EmbeddingMatch> hit : hits) {
+                resList.add(hit.source());
+            }
+            return resList;
+        } catch (IOException e) {
+            log.error("[ElasticSearch encounter I/O Exception]", e);
+        } catch (ElasticsearchException e) {
+            log.error("[ElasticSearch Exception]", e);
+        }
+
+        return new ArrayList<>();
     }
 
     private void doAdd(String id, Embedding embedding, TextSegment embedded) {
@@ -104,8 +136,8 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
 
     private void doAddAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        AssertUtils.isTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        AssertUtils.isTrue(embedded == null || ids.size() == embedded.size(), "ids size is not equal to embedded size");
+        ValidationUtils.ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
+        ValidationUtils.ensureTrue(embedded == null || ids.size() == embedded.size(), "ids size is not equal to embedded size");
 
         try {
             createIndexIfNotExist();
@@ -135,7 +167,9 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
             Document document = Document.builder()
                     .vector(embeddings.get(i).vectorAsList())
                     .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : embedded.get(i).metadata())
+                    .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
+                            .map(Metadata::getOriginalMetadata)
+                            .orElse(null))
                     .build();
             bulkBuilder.operations(op -> op.index(idx -> idx
                     .index(indexName)

@@ -32,7 +32,6 @@
         <spring-boot.version>2.7.14</spring-boot.version>
         <snakeyaml.version>2.0</snakeyaml.version>
         <elastic.version>8.9.0</elastic.version>
-        <jackson-databind.version>2.12.7.1</jackson-databind.version>
     </properties>
 
     <dependencyManagement>
@@ -148,12 +147,6 @@
                 <groupId>co.elastic.clients</groupId>
                 <artifactId>elasticsearch-java</artifactId>
                 <version>${elastic.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson-databind.version}</version>
             </dependency>
             <!-- End 3rd Party Dependencies -->
         </dependencies>

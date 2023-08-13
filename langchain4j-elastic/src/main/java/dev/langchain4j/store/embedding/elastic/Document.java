@@ -16,9 +16,9 @@ public class Document {
 
     private List<Float> vector;
     private String text;
-    private Metadata metadata;
+    private Map<String, String> metadata;
 
-    public Document(List<Float> vector, String text, Metadata metadata) {
+    public Document(List<Float> vector, String text, Map<String, String> metadata) {
         this.vector = vector;
         this.text = text;
         this.metadata = metadata;
