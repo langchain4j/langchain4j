@@ -89,6 +89,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         }
 
         List<EmbeddingMatch<Embedded>> result = new ArrayList<>(matches);
+        result.sort(comparator);
         Collections.reverse(result);
         return result;
     }
