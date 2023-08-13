@@ -53,15 +53,14 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     /**
      * script to find relevant document in elastic
      */
-    private static final String DEFAULT_SCRIPT =
-            "{" +
-                    "   \"script_score\": {" +
-                    "       \"script\": {" +
-                    "           \"source\": \"cosineSimilarity(params.query_vector, 'vector') + 1.0\"," +
-                    "           \"params\": {\"query_vector\": \"{{queryVector}}\"}," +
-                    "       }," +
-                    "   }" +
-                    "}";
+    private static final String DEFAULT_SCRIPT = "{" +
+            "   \"script_score\": {" +
+            "       \"script\": {" +
+            "           \"source\": \"cosineSimilarity(params.query_vector, 'vector') + 1.0\"," +
+            "           \"params\": {\"query_vector\": \"{{queryVector}}\"}," +
+            "       }," +
+            "   }" +
+            "}";
 
     @Builder
     public ElasticEmbeddingStoreImpl(String serverUrl, String apiKey, String indexName) {
@@ -132,6 +131,7 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
             );
             return response.hits().hits().stream()
                     .filter(hit -> hit.score() != null && hit.score() >= minScore)
+                    .limit(maxResults)
                     .map(hit -> ((EmbeddingMatch<TextSegment>) hit.source()))
                     .collect(Collectors.toList());
         } catch (IOException e) {
