@@ -2,18 +2,22 @@ package dev.langchain4j.store.embedding.elastic;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
 import co.elastic.clients.elasticsearch._types.mapping.TextProperty;
 import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
-import co.elastic.clients.elasticsearch.core.SearchTemplateResponse;
-import co.elastic.clients.elasticsearch.indices.GetIndexResponse;
-import co.elastic.clients.elasticsearch.indices.IndexState;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
+import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -41,41 +45,26 @@ import static dev.langchain4j.internal.Utils.randomUUID;
  */
 public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
+    private static final Logger log = LoggerFactory.getLogger(ElasticEmbeddingStoreImpl.class);
     private final ElasticsearchClient client;
     private final String indexName;
-    private static final Logger log = LoggerFactory.getLogger(ElasticEmbeddingStoreImpl.class);
-    /**
-     * script id use in {@link ElasticEmbeddingStoreImpl#findRelevant(Embedding, int, double)}
-     *
-     * <p><b>NOTE: do not change this attribute, will break backward compatibility! </b></p>
-     */
-    private static final String FIND_RELEVANT_SCRIPT_ID = "find-relevant-script";
-    /**
-     * script to find relevant document in elastic
-     */
-    private static final String DEFAULT_SCRIPT = "{" +
-            "   \"script_score\": {" +
-            "       \"script\": {" +
-            "           \"source\": \"cosineSimilarity(params.query_vector, 'vector') + 1.0\"," +
-            "           \"params\": {\"query_vector\": \"{{queryVector}}\"}," +
-            "       }," +
-            "   }" +
-            "}";
+    private final ObjectMapper objectMapper;
 
     @Builder
     public ElasticEmbeddingStoreImpl(String serverUrl, String apiKey, String indexName) {
         serverUrl = ValidationUtils.ensureNotNull(serverUrl, "serverUrl");
-        apiKey = ValidationUtils.ensureNotNull(apiKey, "apiKey");
         indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
+        // if local deployment, there is no need to set Authorization Header
         RestClient restClient = RestClient
                 .builder(HttpHost.create(serverUrl))
-                .setDefaultHeaders(new Header[]{
+                .setDefaultHeaders(apiKey == null ? new Header[0] : new Header[]{
                         new BasicHeader("Authorization", "ApiKey " + apiKey)
                 })
                 .build();
         ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
         this.client = new ElasticsearchClient(transport);
         this.indexName = indexName;
+        objectMapper = new ObjectMapper();
     }
 
     @Override
@@ -116,24 +105,22 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         try {
-            client.putScript(r -> r.id(FIND_RELEVANT_SCRIPT_ID)
-                    .script(s -> s.lang("mustache")
-                            .source(DEFAULT_SCRIPT)));
+            ScriptScoreQuery scriptScoreQuery = ScriptScoreQuery.of(q -> q
+                    .minScore((float) minScore)
+                    .query(Query.of(qu -> qu.matchAll(m -> m)))
+                    .script(s -> s.inline(InlineScript.of(i -> i
+                            .source("cosineSimilarity(params.query_vector, 'vector') + 1.0")
+                            .params("query_vector", toJsonData(referenceEmbedding.vector()))))));
+            SearchResponse<Document> response = client.search(
+                    SearchRequest.of(s -> s.query(n -> n.scriptScore(scriptScoreQuery)).size(maxResults)), Document.class);
 
-            SearchTemplateResponse<EmbeddingMatch> response = client.searchTemplate(r -> r
-                            .index(indexName)
-                            .id(FIND_RELEVANT_SCRIPT_ID)
-                            .params("queryVector", JsonData.of(referenceEmbedding.vectorAsList())),
-                    EmbeddingMatch.class
-            );
             return response.hits().hits().stream()
-                    .filter(hit -> hit.score() != null && hit.score() >= minScore)
-                    .limit(maxResults)
-                    .map(hit -> ((EmbeddingMatch<TextSegment>) hit.source()))
-                    .collect(Collectors.toList());
+                    .map(hit -> Optional.ofNullable(hit.source()).map(document -> new EmbeddingMatch<>(hit.score(), hit.id(),
+                                    new Embedding(document.getVector()),
+                                    new TextSegment(document.getText(), Optional.ofNullable(document.getMetadata()).map(Metadata::new).orElse(null))))
+                            .orElse(null)).collect(Collectors.toList());
         } catch (IOException e) {
             log.error("[ElasticSearch encounter I/O Exception]", e);
         } catch (ElasticsearchException e) {
@@ -165,9 +152,9 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
 
     private void createIndexIfNotExist(int dim) throws IOException {
-        GetIndexResponse response = client.indices().get(c -> c.index(indexName));
-        Map<String, IndexState> indexStateMap = response.result();
-        if (!indexStateMap.containsKey(indexName)) {
+        try {
+            client.indices().get(c -> c.index(indexName));
+        } catch (ElasticsearchException indexNotFound) {
             client.indices().create(c -> c.index(indexName)
                     .mappings(getDefaultMappings(dim)));
         }
@@ -187,7 +174,7 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         for (int i = 0; i < size; i++) {
             int finalI = i;
             Document document = Document.builder()
-                    .vector(embeddings.get(i).vectorAsList())
+                    .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
                     .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
                             .map(Metadata::getOriginalMetadata)
@@ -200,5 +187,14 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         }
 
         client.bulk(bulkBuilder.build());
+    }
+
+    private <T> JsonData toJsonData(T rawData) {
+        try {
+            return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
+        } catch (JsonProcessingException e) {
+            log.error("[Encounter Json Transfer Exception, data to transfer={}]", rawData, e);
+            return null;
+        }
     }
 }
