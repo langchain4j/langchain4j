@@ -16,7 +16,7 @@ class ChromaClient {
 
     private final ChromaApi chromaApi;
 
-    ChromaClient(String urlBase, Duration timeout) {
+    ChromaClient(String baseUrl, Duration timeout) {
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -29,7 +29,7 @@ class ChromaClient {
                 .create();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(urlBase)
+                .baseUrl(baseUrl)
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(gson))
                 .build();
@@ -37,9 +37,9 @@ class ChromaClient {
         this.chromaApi = retrofit.create(ChromaApi.class);
     }
 
-    CollectionCreationResponse createCollection(CollectionCreationRequest collectionCreationRequest) {
+    Collection createCollection(CollectionCreationRequest collectionCreationRequest) {
         try {
-            Response<CollectionCreationResponse> response = chromaApi.createCollection(collectionCreationRequest).execute();
+            Response<Collection> response = chromaApi.createCollection(collectionCreationRequest).execute();
             if (response.isSuccessful()) {
                 return response.body();
             } else {
@@ -50,9 +50,9 @@ class ChromaClient {
         }
     }
 
-    CollectionCreationResponse getCollection(String collectionName) {
+    Collection getCollection(String collectionName) {
         try {
-            Response<CollectionCreationResponse> response = chromaApi.collection(collectionName).execute();
+            Response<Collection> response = chromaApi.collection(collectionName).execute();
             if (response.isSuccessful()) {
                 return response.body();
             } else {
@@ -66,7 +66,7 @@ class ChromaClient {
 
     boolean addEmbedding(String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
         try {
-            Response<Boolean> retrofitResponse = chromaApi.addEmbedding(collectionId, addEmbeddingsRequest)
+            Response<Boolean> retrofitResponse = chromaApi.addEmbeddings(collectionId, addEmbeddingsRequest)
                     .execute();
             if (retrofitResponse.isSuccessful()) {
                 return Boolean.TRUE.equals(retrofitResponse.body());
@@ -78,9 +78,9 @@ class ChromaClient {
         }
     }
 
-    SuccessfulResponse getNearestNeighbors(String collectionId, QueryRequest queryRequest) {
+    QueryResponse getNearestNeighbors(String collectionId, QueryRequest queryRequest) {
         try {
-            Response<SuccessfulResponse> retrofitResponse = chromaApi.queryCollection(collectionId, queryRequest)
+            Response<QueryResponse> retrofitResponse = chromaApi.queryCollection(collectionId, queryRequest)
                     .execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();

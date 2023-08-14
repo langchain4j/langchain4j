@@ -45,7 +45,7 @@ public class Metadata {
     }
 
     public Map<String, String> asMap() {
-        return metadata;
+        return new HashMap<>(metadata);
     }
 
     @Override

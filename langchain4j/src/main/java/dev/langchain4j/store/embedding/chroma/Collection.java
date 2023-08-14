@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.chroma;
 
 import java.util.Map;
 
-class CollectionCreationResponse {
+class Collection {
 
     private String name;
     private String id;
@@ -22,7 +22,7 @@ class CollectionCreationResponse {
 
     @Override
     public String toString() {
-        return "CollectionCreationResponse{" +
+        return "Collection{" +
                 "name='" + name + '\'' +
                 ", id='" + id + '\'' +
                 ", chromaMetadata=" + metadata +

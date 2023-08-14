@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.IntStream;
 
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -33,15 +32,15 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public ChromaEmbeddingStore(String urlBase, Duration timeout, String collectionName) {
         this.chromaClient = new ChromaClient(urlBase, timeout);
 
-        CollectionCreationResponse response = chromaClient.getCollection(collectionName);
+        Collection response = chromaClient.getCollection(collectionName);
 
         collectionName = collectionName == null ? "default" : collectionName;
 
         if (response == null) {
-            CollectionCreationResponse collectionCreationResponse = chromaClient.createCollection(CollectionCreationRequest.builder()
+            Collection collection = chromaClient.createCollection(CollectionCreationRequest.builder()
                     .withName(collectionName)
                     .build());
-            collectionId = collectionCreationResponse.id();
+            collectionId = collection.id();
         } else {
             collectionId = response.id();
         }
@@ -123,20 +122,17 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        float[] vector = referenceEmbedding.vector();
         QueryRequest queryRequest = QueryRequest.builder()
-                .queryEmbedding(singletonList(IntStream.range(0, vector.length)
-                        .mapToObj(i -> vector[i])
-                        .collect(toList())))
+                .queryEmbedding(singletonList(referenceEmbedding.vectorAsList()))
                 .nResults(maxResults)
                 .build();
 
-        SuccessfulResponse nearestNeighbors = chromaClient.getNearestNeighbors(collectionId, queryRequest);
+        QueryResponse nearestNeighbors = chromaClient.getNearestNeighbors(collectionId, queryRequest);
 
         return toEmbeddingMatches(nearestNeighbors);
     }
 
-    private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(SuccessfulResponse nearestNeighbors) {
+    private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse nearestNeighbors) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
         for (int i = 0; i < nearestNeighbors.getIds().get(0).size(); i++) {
             EmbeddingMatch<TextSegment> textSegmentEmbeddingMatch = new EmbeddingMatch<>(
@@ -153,7 +149,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * By default, cosine distance will be used. For details: <a href="https://github.com/nmslib/hnswlib/tree/master#python-bindings"></a>
-     * Converts a cosine distance in the range [0, 2] to a score in the range [1, 0].
+     * Converts a cosine distance in the range [0, 2] to a score in the range [0, 1].
      *
      * @param distance The distance value.
      * @return The converted score.

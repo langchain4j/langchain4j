@@ -6,21 +6,21 @@ import static java.util.Arrays.asList;
 
 class QueryRequest {
 
-    private final List<List<Float>> query_embeddings;
-    private final int n_results;
+    private final List<List<Float>> queryEmbeddings;
+    private final int nResults;
     private final List<String> include;
 
     public QueryRequest(Builder builder) {
-        this.query_embeddings = builder.queryEmbedding;
-        this.n_results = builder.nResults;
+        this.queryEmbeddings = builder.queryEmbedding;
+        this.nResults = builder.nResults;
         this.include = builder.include;
     }
 
     @Override
     public String toString() {
         return "QueryRequest{" +
-                " queryEmbedding=" + query_embeddings +
-                ", nResults=" + n_results +
+                " queryEmbedding=" + queryEmbeddings +
+                ", nResults=" + nResults +
                 ", include=" + include +
                 '}';
     }

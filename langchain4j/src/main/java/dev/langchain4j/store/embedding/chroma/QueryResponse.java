@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.List;
 import java.util.Map;
 
-class SuccessfulResponse {
+class QueryResponse {
 
     private List<List<String>> ids;
     private List<List<Double>> distances;
@@ -33,7 +33,7 @@ class SuccessfulResponse {
 
     @Override
     public String toString() {
-        return "SuccessfulResponse{" +
+        return "QueryResponse{" +
                 "ids=" + ids +
                 ", distances=" + distances +
                 ", metadatas=" + metadatas +
