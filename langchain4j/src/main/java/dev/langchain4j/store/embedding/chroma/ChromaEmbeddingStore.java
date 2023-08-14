@@ -133,9 +133,10 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(SuccessfulResponse nearestNeighbors) {
+        ResponseValidator.validate(nearestNeighbors);
+
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
         for (int i = 0; i < nearestNeighbors.getIds().get(0).size(); i++) {
-            //TODO response validation
             EmbeddingMatch<TextSegment> textSegmentEmbeddingMatch = new EmbeddingMatch<>(
                     distanceToScore(nearestNeighbors.getDistances().get(0).get(i)),
                     nearestNeighbors.getIds().get(0).get(i),
