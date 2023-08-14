@@ -11,6 +11,7 @@ import dev.langchain4j.retriever.Retriever;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 class AiServiceContext {
 
@@ -19,7 +20,8 @@ class AiServiceContext {
     ChatLanguageModel chatLanguageModel;
     StreamingChatLanguageModel streamingChatLanguageModel;
 
-    ChatMemory chatMemory;
+    Map</* userId */ Object, ChatMemory> chatMemories;
+    Supplier<ChatMemory> chatMemorySupplier;
 
     ModerationModel moderationModel;
 
@@ -27,4 +29,12 @@ class AiServiceContext {
     Map<String, ToolExecutor> toolExecutors;
 
     Retriever<TextSegment> retriever;
+
+    boolean hasChatMemory() {
+        return chatMemories != null;
+    }
+
+    ChatMemory chatMemoryOf(Object userId) {
+        return chatMemories.computeIfAbsent(userId, key -> chatMemorySupplier.get());
+    }
 }

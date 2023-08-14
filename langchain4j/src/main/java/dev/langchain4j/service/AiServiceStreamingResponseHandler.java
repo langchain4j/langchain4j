@@ -22,6 +22,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
     private final Logger log = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
     private final AiServiceContext context;
+    private final Object userId;
 
     private final Consumer<String> tokenHandler;
     private final Runnable completionHandler;
@@ -32,10 +33,12 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
     private final StringBuilder toolArgumentsBuilder;
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
+                                      Object userId,
                                       Consumer<String> tokenHandler,
                                       Runnable completionHandler,
                                       Consumer<Throwable> errorHandler) {
         this.context = ensureNotNull(context, "context");
+        this.userId = ensureNotNull(userId, "userId");
 
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
         this.completionHandler = completionHandler;
@@ -66,11 +69,10 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
     public void onComplete() {
 
         String toolName = toolNameBuilder.toString();
-        String toolArguments = toolArgumentsBuilder.toString();
 
         if (toolName.isEmpty()) {
-            if (context.chatMemory != null) {
-                context.chatMemory.add(aiMessage(answerBuilder.toString()));
+            if (context.hasChatMemory()) {
+                context.chatMemoryOf(userId).add(aiMessage(answerBuilder.toString()));
             }
             if (completionHandler != null) {
                 completionHandler.run();
@@ -79,26 +81,23 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
 
             ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                     .name(toolName)
-                    .arguments(toolArguments)
+                    .arguments(toolArgumentsBuilder.toString())
                     .build();
 
-            if (context.chatMemory != null) {
-                context.chatMemory.add(aiMessage(toolExecutionRequest));
-            }
+            context.chatMemoryOf(userId).add(aiMessage(toolExecutionRequest));
 
             ToolExecutor toolExecutor = context.toolExecutors.get(toolName); // TODO what if no such tool?
             String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
             ToolExecutionResultMessage toolExecutionResultMessage
                     = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
 
-            context.chatMemory.add(toolExecutionResultMessage);
+            context.chatMemoryOf(userId).add(toolExecutionResultMessage);
 
-            // TODO what if there are multiple tool executions in a row? (for the future)
+            // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
+            // This is the current behavior of OpenAI, though it might change in the future.
             context.streamingChatLanguageModel.sendMessages(
-                    context.chatMemory.messages(),
-                    // TODO does it make sense to send tools if LLM will not call them in the response anyway? (current openai behavior)
-                    context.toolSpecifications,
-                    new AiServiceStreamingResponseHandler(context, tokenHandler, completionHandler, errorHandler)
+                    context.chatMemoryOf(userId).messages(),
+                    new AiServiceStreamingResponseHandler(context, userId, tokenHandler, completionHandler, errorHandler)
             );
         }
     }

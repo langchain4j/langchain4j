@@ -8,10 +8,12 @@ import dev.ai4j.openai4j.chat.FunctionCall;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -19,7 +21,12 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
 
+/**
+ * Represents a connection to the OpenAI LLM with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ */
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
@@ -29,7 +36,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiStreamingChatModel(String apiKey,
@@ -40,6 +47,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Double presencePenalty,
                                     Double frequencyPenalty,
                                     Duration timeout,
+                                    Proxy proxy,
                                     Boolean logRequests,
                                     Boolean logResponses) {
 
@@ -53,6 +61,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
@@ -67,22 +76,42 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
-        sendMessages(messages, null, handler);
+        sendMessages(messages, null, null, handler);
     }
 
     @Override
     public void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+        sendMessages(messages, toolSpecifications, null, handler);
+    }
+
+    @Override
+    public void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler) {
+        sendMessages(messages, singletonList(toolSpecification), toolSpecification, handler);
+    }
+
+    private void sendMessages(List<ChatMessage> messages,
+                              List<ToolSpecification> toolSpecifications,
+                              ToolSpecification toolThatMustBeExecuted,
+                              StreamingResponseHandler handler
+    ) {
+        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
-                .functions(toFunctions(toolSpecifications))
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty)
-                .build();
+                .frequencyPenalty(frequencyPenalty);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            requestBuilder.functions(toFunctions(toolSpecifications));
+        }
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+        }
+
+        ChatCompletionRequest request = requestBuilder.build();
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> handle(partialResponse, handler))
@@ -109,7 +138,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.countTokens(messages);
+        return tokenizer.estimateTokenCountInMessages(messages);
     }
 
     public static OpenAiStreamingChatModel withApiKey(String apiKey) {

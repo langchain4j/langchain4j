@@ -28,7 +28,7 @@ jobs:
           distribution: 'temurin'
         # Check we only rely on permissive licenses in the main parts of the library:
       - name: License Compliance
-        run: mvn -P compliance -pl langchain4j,langchain4j-core,langchain4j-spring-boot-starter org.honton.chas:license-maven-plugin:compliance
+        run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
 
 # TODO's
 #  - setup integration tests

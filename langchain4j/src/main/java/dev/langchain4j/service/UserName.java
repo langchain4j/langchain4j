@@ -7,7 +7,7 @@ import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * The value of a parameter annotated with @UserName will be injected into the name field of UserMessage
+ * The value of a method parameter annotated with @UserName will be injected into the field 'name' of a UserMessage.
  */
 @Retention(RUNTIME)
 @Target(PARAMETER)

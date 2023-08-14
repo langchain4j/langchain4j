@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.18.0</version>
+    <version>0.20.0</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -16,12 +16,7 @@
         <module>langchain4j</module>
 
         <module>langchain4j-pinecone</module>
-
-        <module>langchain4j-embeddings</module>
-        <module>langchain4j-embeddings-all-minilm-l6-v2</module>
-        <module>langchain4j-embeddings-all-minilm-l6-v2-q</module>
-        <module>langchain4j-embeddings-e5-small-v2</module>
-        <module>langchain4j-embeddings-e5-small-v2-q</module>
+        <module>langchain4j-weaviate</module>
 
         <module>langchain4j-spring-boot-starter</module>
 

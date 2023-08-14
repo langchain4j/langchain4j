@@ -2,7 +2,6 @@ package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import org.slf4j.Logger;
@@ -11,113 +10,108 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+/**
+ * This chat memory operates as a sliding window of {@link #maxTokens} tokens.
+ * It retains as many of the most recent messages as can fit into the window.
+ * If there isn't enough space for a new message, the oldest one (or multiple) is discarded.
+ * Optionally, a system message can be set.
+ * System message will always be retained at the first position (index 0) and will never be removed.
+ */
 public class TokenWindowChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(TokenWindowChatMemory.class);
 
-    // safety net to limit the cost in case user did not define it himself
-    private static final int DEFAULT_CAPACITY_IN_TOKENS = 200;
-
+    private final Integer maxTokens;
     private final Tokenizer tokenizer;
-    private final Optional<SystemMessage> maybeSystemMessage;
-    private final LinkedList<ChatMessage> previousMessages;
-    private final Integer capacityInTokens;
+    private final SystemMessage systemMessage;
+    private final LinkedList<ChatMessage> messages;
 
     private TokenWindowChatMemory(Builder builder) {
-        if (builder.tokenizer == null) {
-            throw new IllegalStateException("Tokenizer must be defined");
+        this.maxTokens = ensureNotNull(builder.maxTokens, "maxTokens");
+        if (this.maxTokens < 1) {
+            throw illegalArgument("maxTokens should be greater than 0");
         }
-        this.tokenizer = builder.tokenizer;
-        this.maybeSystemMessage = builder.maybeSystemMessage;
-        this.previousMessages = builder.previousMessages;
-        this.capacityInTokens = builder.capacityInTokens;
+        this.tokenizer = ensureNotNull(builder.tokenizer, "tokenizer");
+        this.systemMessage = builder.systemMessage;
+        this.messages = ensureNotNull(builder.messages, "messages");
         ensureCapacity();
     }
 
     @Override
     public void add(ChatMessage message) {
-        previousMessages.add(message);
+        messages.add(message);
         ensureCapacity();
     }
 
     @Override
     public List<ChatMessage> messages() {
         List<ChatMessage> messages = new ArrayList<>();
-        maybeSystemMessage.ifPresent(messages::add);
-        messages.addAll(previousMessages);
+        if (systemMessage != null) {
+            messages.add(systemMessage);
+        }
+        messages.addAll(this.messages);
         return messages;
     }
 
     @Override
     public void clear() {
-        previousMessages.clear();
+        messages.clear();
     }
 
     private void ensureCapacity() {
-        int currentNumberOfTokensInHistory = getCurrentTokenCount();
+        int currentTokenCount = currentTokenCount();
 
-        while (currentNumberOfTokensInHistory > capacityInTokens) {
-
-            ChatMessage oldestMessage = previousMessages.removeFirst();
-            int tokenCount = tokenizer.countTokens(oldestMessage);
-
-            log.debug("Removing the oldest {} message '{}' ({} tokens) to comply with capacity requirements",
-                    oldestMessage instanceof UserMessage ? "user" : "AI",
-                    oldestMessage.text(),
-                    tokenCount);
-
-            currentNumberOfTokensInHistory -= tokenCount;
+        while (currentTokenCount > maxTokens) {
+            ChatMessage oldestMessage = messages.removeFirst();
+            int tokenCountOfOldestMessage = tokenizer.estimateTokenCountInMessage(oldestMessage);
+            log.debug("Removing the oldest message ({} tokens) to comply with capacity requirements: {}",
+                    tokenCountOfOldestMessage, oldestMessage);
+            currentTokenCount -= tokenCountOfOldestMessage;
         }
 
-        log.debug("Current token count: {}", getCurrentTokenCount());
+        log.debug("Current token count: {}", currentTokenCount());
     }
 
-    private int getCurrentTokenCount() {
-        int systemMessageTokenCount = maybeSystemMessage.map(systemMessage ->
-                tokenizer.countTokens(systemMessage)).orElse(0);
-        int previousMessagesTokenCount = tokenizer.countTokens(previousMessages);
-        return systemMessageTokenCount + previousMessagesTokenCount;
+    private int currentTokenCount() {
+        return tokenizer.estimateTokenCountInMessages(messages());
+    }
+
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static class Builder {
 
+        private Integer maxTokens;
         private Tokenizer tokenizer;
-        private Optional<SystemMessage> maybeSystemMessage = Optional.empty();
-        private Integer capacityInTokens = DEFAULT_CAPACITY_IN_TOKENS;
-        private LinkedList<ChatMessage> previousMessages = new LinkedList<>();
+        private SystemMessage systemMessage;
+        private LinkedList<ChatMessage> messages = new LinkedList<>();
 
-        public Builder tokenizer(Tokenizer tokenizer) {
+        public Builder maxTokens(Integer maxTokens, Tokenizer tokenizer) {
+            this.maxTokens = maxTokens;
             this.tokenizer = tokenizer;
             return this;
         }
 
-        public Builder systemMessage(SystemMessage systemMessage) {
-            this.maybeSystemMessage = Optional.ofNullable(systemMessage);
-            return this;
-        }
-
         public Builder systemMessage(String systemMessage) {
-            if (systemMessage == null) {
-                this.maybeSystemMessage = Optional.empty();
-                return this;
-            }
-
             return systemMessage(SystemMessage.from(systemMessage));
         }
 
-        public Builder capacityInTokens(Integer capacityInTokens) {
-            this.capacityInTokens = capacityInTokens;
+        public Builder systemMessage(SystemMessage systemMessage) {
+            this.systemMessage = systemMessage;
             return this;
         }
 
-        public Builder previousMessages(List<ChatMessage> previousMessages) {
-            if (previousMessages == null) {
+        public Builder messages(List<ChatMessage> messages) {
+            if (messages == null) {
                 return this;
             }
 
-            this.previousMessages = new LinkedList<>(previousMessages);
+            this.messages = new LinkedList<>(messages);
             return this;
         }
 
@@ -126,7 +120,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         }
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static TokenWindowChatMemory withMaxTokens(int maxTokens, Tokenizer tokenizer) {
+        return builder().maxTokens(maxTokens, tokenizer).build();
     }
 }
