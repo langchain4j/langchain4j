@@ -29,7 +29,7 @@ public class TestUtils {
     void should_create_system_message_with_tokens(int numberOfTokens) {
         SystemMessage systemMessage = systemMessageWith(numberOfTokens);
 
-        assertThat(TOKENIZER.countTokens(systemMessage)).isEqualTo(numberOfTokens);
+        assertThat(TOKENIZER.estimateTokenCountInMessage(systemMessage)).isEqualTo(numberOfTokens);
     }
 
     public static SystemMessage systemMessageWith(int numberOfTokens) {
@@ -41,7 +41,7 @@ public class TestUtils {
     void should_create_user_message_with_tokens(int numberOfTokens) {
         UserMessage userMessage = userMessageWith(numberOfTokens);
 
-        assertThat(TOKENIZER.countTokens(userMessage)).isEqualTo(numberOfTokens);
+        assertThat(TOKENIZER.estimateTokenCountInMessage(userMessage)).isEqualTo(numberOfTokens);
     }
 
     public static UserMessage userMessageWith(int numberOfTokens) {
@@ -53,7 +53,7 @@ public class TestUtils {
     void should_create_ai_message_with_tokens(int numberOfTokens) {
         AiMessage aiMessage = aiMessageWith(numberOfTokens);
 
-        assertThat(TOKENIZER.countTokens(aiMessage)).isEqualTo(numberOfTokens);
+        assertThat(TOKENIZER.estimateTokenCountInMessage(aiMessage)).isEqualTo(numberOfTokens);
     }
 
     public static AiMessage aiMessageWith(int numberOfTokens) {
@@ -65,7 +65,7 @@ public class TestUtils {
     void should_generate_tokens(int numberOfTokens) {
         String text = generateTextWith(numberOfTokens);
 
-        assertThat(TOKENIZER.countTokens(text)).isEqualTo(numberOfTokens);
+        assertThat(TOKENIZER.estimateTokenCountInText(text)).isEqualTo(numberOfTokens);
     }
 
     private static String generateTextWith(int n) {

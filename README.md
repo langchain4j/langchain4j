@@ -20,12 +20,20 @@ This can be achieved thanks to:
 
 ## News
 
+10 August:
+- [Integration with Weaviate](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) by [@Heezer](https://github.com/Heezer)
+- [Support for DOC, XLS and PPT document types](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java) by [@oognuyh](https://github.com/oognuyh)
+- [Separate chat memory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
+- [Custom in-process embedding models](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/model/InProcessEmbeddingModelExamples.java)
+- Added lots of Javadoc
+- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.19.0)
+
 26 July:
 - We've added integration with [LocalAI](https://localai.io/). Now, you can use LLMs hosted locally!
 - Added support for [response streaming in AI Services](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java).
 
 21 July:
-- Now, you can do [text embedding inside your JVM](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/InProcessEmbeddingModelExamples.java).
+- Now, you can do [text embedding inside your JVM](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/model/InProcessEmbeddingModelExamples.java).
 
 17 July:
 - You can now try out OpenAI's `gpt-3.5-turbo` and `text-embedding-ada-002` models with LangChain4j for free, without needing an OpenAI account and keys! Simply use the API key "demo".
@@ -76,11 +84,12 @@ interface Assistant {
     String chat(String userMessage);
 }
 
-    Assistant assistant = AiServices.create(Assistant.class, model);
+Assistant assistant = AiServices.create(Assistant.class, model);
 
-    String answer = assistant.chat("Hello");
+String answer = assistant.chat("Hello");
     
-    System.out.println(answer); // Hello! How can I assist you today?
+System.out.println(answer);
+// Hello! How can I assist you today?
 ```
 
 You can use LLM as a classifier:
@@ -99,13 +108,13 @@ interface SentimentAnalyzer {
     boolean isPositive(String text);
 }
 
-    SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
+SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-    Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
-    // POSITIVE
+Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
+// POSITIVE
 
-    boolean positive = sentimentAnalyzer.isPositive("It is bad!");
-    // false
+boolean positive = sentimentAnalyzer.isPositive("It is bad!");
+// false
 ```
 
 You can easily extract structured information from unstructured data:
@@ -126,14 +135,14 @@ interface PersonExtractor {
     Person extractPersonFrom(String text);
 }
 
-    PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
+PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
 
-    String text = "In 1968, amidst the fading echoes of Independence Day, "
-            + "a child named John arrived under the calm evening sky. "
-            + "This newborn, bearing the surname Doe, marked the start of a new journey.";
+String text = "In 1968, amidst the fading echoes of Independence Day, "
+    + "a child named John arrived under the calm evening sky. "
+    + "This newborn, bearing the surname Doe, marked the start of a new journey.";
 
-    Person person = extractor.extractPersonFrom(text);
-    // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
+Person person = extractor.extractPersonFrom(text);
+// Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
 ```
 
 You can define more sophisticated prompt templates using mustache syntax:
@@ -146,10 +155,10 @@ interface Translator {
     String translate(@V("text") String text, @V("language") String language);
 }
 
-    Translator translator = AiServices.create(Translator.class, model);
+Translator translator = AiServices.create(Translator.class, model);
 
-    String translation = translator.translate("Hello, how are you?", "Italian");
-    // Ciao, come stai?
+String translation = translator.translate("Hello, how are you?", "Italian");
+// Ciao, come stai?
 ```
 
 You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
@@ -168,12 +177,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.18.0</version>
+          <version>0.20.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.18.0'
+      implementation 'dev.langchain4j:langchain4j:0.20.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
@@ -215,6 +224,8 @@ Please note that the library is in active development and:
     - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/SimpleServiceExample.java)
     - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
     - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+    - [With Streaming](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
+    - [With Retriever](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
     - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
     - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
@@ -231,13 +242,14 @@ Please note that the library is in active development and:
   - Embeddings
 - [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
-- Integration with [Pinecone](https://docs.pinecone.io/docs/overview) embedding store
-- In-memory embedding store (for prototyping and testing)
+- [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/PineconeEmbeddingStoreExample.java) with [Pinecone](https://www.pinecone.io/)
+- [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) with [Weaviate](https://weaviate.io/)
+- [In-memory embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/InMemoryEmbeddingStoreExample.java) (for prototyping and testing)
 - [Structured outputs](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/PromptTemplateExamples.java)
 - [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StructuredPromptTemplateExamples.java)
 - [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StreamingExamples.java)
-- [Loading text and PDF documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+- [Loading txt, pdf, doc, xls and ppt documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)
 - [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java):
     - by paragraph
     - by sentence
@@ -247,8 +259,8 @@ Please note that the library is in active development and:
 ## Coming soon:
 
 - Extending "AI Service" features
-- Integration with more LLM providers (commercial and open)
-- Integrations with more embedding stores (commercial and open)
+- Integration with more LLM providers (commercial and free)
+- Integrations with more embedding stores (commercial and free)
 - Support for more document types
 - Long-term memory for chatbots and agents
 - Chain-of-Thought and Tree-of-Thought
@@ -301,7 +313,7 @@ Here are some best practices for using LLMs:
 
 - Be responsible. Use AI for Good.
 - Be specific. The more specific your query, the best results you will get.
-- Add [magical "Let’s think step by step" instruction](https://arxiv.org/pdf/2205.11916.pdf) to your prompt.
+- Add a ["Let’s think step by step" instruction](https://arxiv.org/pdf/2205.11916.pdf) to your prompt.
 - Specify steps to achieve the desired goal yourself. This will make the LLM do what you want it to do.
 - Provide examples. Sometimes it is best to show LLM a few examples of what you want instead of trying to explain it.
 - Ask LLM to provide structured output (JSON, XML, etc). This way you can parse response more easily and distinguish

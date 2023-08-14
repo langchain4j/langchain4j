@@ -13,10 +13,10 @@ import static java.lang.String.format;
 
 /**
  * An embedding model that runs within your Java application's process.
- * Several pre-packaged embedding models are available out-of-the-box: e5-small-v2, all-minilm-l6-v2, etc.
+ * Several pre-packaged embedding models are available out-of-the-box, see {@link InProcessEmbeddingModelType}.
  * Additionally, any BERT-based model (e.g., from HuggingFace) can be used, as long as it is in ONNX format.
  * Information on how to convert models into ONNX format can be found <a href="https://huggingface.co/docs/optimum/exporters/onnx/usage_guides/export_a_model">here</a>.
- * Many converted models are available <a href="https://huggingface.co/Xenova">here</a>.
+ * Many models converted to ONNX format are available <a href="https://huggingface.co/Xenova">here</a>.
  * This class is a thin wrapper over the actual implementations.
  * Specific implementation classes, along with the models, are located in separate,
  * optional langchain4j-embeddings-xxx modules and are loaded dynamically.
@@ -32,6 +32,7 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
     /**
      * Loads one of the pre-packaged embedding models.
      * Requires "langchain4j-embeddings-${type}" dependency.
+     *
      * @param type The model type to load.
      */
     public InProcessEmbeddingModel(InProcessEmbeddingModelType type) {
@@ -47,6 +48,7 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
     /**
      * Loads a custom embedding model.
      * Requires "langchain4j-embeddings" dependency.
+     *
      * @param pathToModel The path to the .onnx model file (e.g., "/home/me/model.onnx").
      */
     public InProcessEmbeddingModel(String pathToModel) {
@@ -56,6 +58,7 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
     /**
      * Loads a custom embedding model.
      * Requires "langchain4j-embeddings" dependency.
+     *
      * @param pathToModel The path to the .onnx model file (e.g., "/home/me/model.onnx").
      */
     public InProcessEmbeddingModel(Path pathToModel) {
@@ -89,11 +92,11 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
                         + "<dependency>\n" +
                         "    <groupId>dev.langchain4j</groupId>\n" +
                         "    <artifactId>langchain4j-embeddings-%s</artifactId>\n" +
-                        "    <version>0.18.0</version>\n" +
+                        "    <version>0.20.0</version>\n" +
                         "</dependency>\n"
                         + "\n"
                         + "Gradle:\n"
-                        + "implementation 'dev.langchain4j:langchain4j-embeddings-%s:0.18.0'\n",
+                        + "implementation 'dev.langchain4j:langchain4j-embeddings-%s:0.20.0'\n",
                 type.name(),
                 type.name().replace("_", "-").toLowerCase(),
                 type.name().replace("_", "-").toLowerCase()
@@ -107,11 +110,11 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
                 + "<dependency>\n" +
                 "    <groupId>dev.langchain4j</groupId>\n" +
                 "    <artifactId>langchain4j-embeddings</artifactId>\n" +
-                "    <version>0.18.0</version>\n" +
+                "    <version>0.20.0</version>\n" +
                 "</dependency>\n"
                 + "\n"
                 + "Gradle:\n"
-                + "implementation 'dev.langchain4j:langchain4j-embeddings:0.18.0'\n";
+                + "implementation 'dev.langchain4j:langchain4j-embeddings:0.20.0'\n";
     }
 
     @Override

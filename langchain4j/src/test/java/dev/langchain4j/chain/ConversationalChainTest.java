@@ -24,7 +24,7 @@ public class ConversationalChainTest {
         String aiMessage = "Hi there";
         when(chatLanguageModel.sendMessages(anyList())).thenReturn(aiMessage(aiMessage));
 
-        ChatMemory chatMemory = spy(MessageWindowChatMemory.withCapacity(10));
+        ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
 
         ConversationalChain chain = ConversationalChain.builder()
                 .chatLanguageModel(chatLanguageModel)
@@ -40,7 +40,7 @@ public class ConversationalChainTest {
         assertThat(response).isEqualTo(aiMessage);
 
         verify(chatMemory).add(userMessage(userMessage));
-        verify(chatMemory).messages();
+        verify(chatMemory, times(5)).messages();
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(userMessage)));
         verify(chatMemory).add(aiMessage(aiMessage));
 
