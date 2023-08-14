@@ -32,7 +32,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public ChromaEmbeddingStore(String urlBase, Duration timeout, String collectionName) {
         this.chromaClient = new ChromaClient(urlBase, timeout);
+
         CollectionCreationResponse response = chromaClient.getCollection(collectionName);
+
+        collectionName = collectionName == null ? "default" : collectionName;
+
         if (response == null) {
             CollectionCreationResponse collectionCreationResponse = chromaClient.createCollection(CollectionCreationRequest.builder()
                     .withName(collectionName)
