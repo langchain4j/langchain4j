@@ -10,6 +10,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -34,6 +35,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                                 String modelName,
                                 Duration timeout,
                                 Integer maxRetries,
+                                Proxy proxy,
                                 Boolean logRequests,
                                 Boolean logResponses) {
 
@@ -53,6 +55,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
