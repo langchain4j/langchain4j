@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.18.0</version>
+        <version>0.19.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -21,6 +21,12 @@
         https://github.com/weaviate/java-client/blob/main/LICENSE
     </description>-->
 
+        <properties>
+            <vespa.version>8.209.11</vespa.version>
+    <!--        <maven.compiler.source>11</maven.compiler.source>-->
+    <!--        <maven.compiler.target>11</maven.compiler.target>-->
+        </properties>
+
     <dependencies>
 
         <dependency>
@@ -32,7 +38,22 @@
         <dependency>
             <groupId>com.yahoo.vespa</groupId>
             <artifactId>vespa-feed-client</artifactId>
-            <version>8.202.11</version>
+            <version>${vespa.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.yahoo.vespa</groupId>
+            <artifactId>client</artifactId>
+            <version>${vespa.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.13</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk15on</artifactId>
+            <version>1.70</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -40,11 +61,6 @@
         </dependency>
 
     </dependencies>
-
-<!--    <properties>-->
-<!--        <maven.compiler.source>11</maven.compiler.source>-->
-<!--        <maven.compiler.target>11</maven.compiler.target>-->
-<!--    </properties>-->
 
     <!-- TODO
     <licenses>
