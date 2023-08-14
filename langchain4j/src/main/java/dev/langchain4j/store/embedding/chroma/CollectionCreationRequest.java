@@ -20,18 +20,6 @@ class CollectionCreationRequest {
         this.get_or_create = builder.get_or_create;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public Map<String, String> getMetadata() {
-        return metadata;
-    }
-
-    public boolean isGet_or_create() {
-        return get_or_create;
-    }
-
     @Override
     public String toString() {
         return "CollectionCreationRequest{" +

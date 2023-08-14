@@ -52,10 +52,11 @@ class ChromaClient {
 
     CollectionCreationResponse getCollection(String collectionName) {
         try {
-            Response<CollectionCreationResponse> response = chromaApi.getCollection(collectionName).execute();
+            Response<CollectionCreationResponse> response = chromaApi.collection(collectionName).execute();
             if (response.isSuccessful()) {
                 return response.body();
             } else {
+                // if collection is not present, Chroma returns: Status - 500
                 return null;
             }
         } catch (IOException e) {
@@ -63,9 +64,9 @@ class ChromaClient {
         }
     }
 
-    boolean addEmbeddingToCollection(String collectionId, EmbeddingsRequest embeddingsRequest) {
+    boolean addEmbedding(String collectionId, EmbeddingsRequest embeddingsRequest) {
         try {
-            Response<Boolean> retrofitResponse = chromaApi.addEmbeddingToCollection(collectionId, embeddingsRequest)
+            Response<Boolean> retrofitResponse = chromaApi.addEmbedding(collectionId, embeddingsRequest)
                     .execute();
             if (retrofitResponse.isSuccessful()) {
                 return Boolean.TRUE.equals(retrofitResponse.body());
@@ -79,7 +80,7 @@ class ChromaClient {
 
     SuccessfulResponse getNearestNeighbors(String collectionId, QueryRequest queryRequest) {
         try {
-            Response<SuccessfulResponse> retrofitResponse = chromaApi.getNearestNeighbors(collectionId, queryRequest)
+            Response<SuccessfulResponse> retrofitResponse = chromaApi.queryCollection(collectionId, queryRequest)
                     .execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();

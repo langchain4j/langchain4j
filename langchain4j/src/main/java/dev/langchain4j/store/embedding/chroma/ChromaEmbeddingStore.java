@@ -41,9 +41,9 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             CollectionCreationResponse collectionCreationResponse = chromaClient.createCollection(CollectionCreationRequest.builder()
                     .withName(collectionName)
                     .build());
-            collectionId = collectionCreationResponse.getId();
+            collectionId = collectionCreationResponse.id();
         } else {
-            collectionId = response.getId();
+            collectionId = response.id();
         }
     }
 
@@ -113,7 +113,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
                         .collect(toList()))
                 .build();
 
-        chromaClient.addEmbeddingToCollection(collectionId, embeddingsRequest);
+        chromaClient.addEmbedding(collectionId, embeddingsRequest);
     }
 
     @Override

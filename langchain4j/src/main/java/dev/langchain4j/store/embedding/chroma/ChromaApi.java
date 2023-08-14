@@ -11,7 +11,7 @@ interface ChromaApi {
 
     @GET("/api/v1/collections/{collection_name}")
     @Headers({"Content-Type: application/json"})
-    Call<CollectionCreationResponse> getCollection(@Path("collection_name") String collectionName);
+    Call<CollectionCreationResponse> collection(@Path("collection_name") String collectionName);
 
     @POST("/api/v1/collections")
     @Headers({"Content-Type: application/json"})
@@ -19,10 +19,10 @@ interface ChromaApi {
 
     @POST("/api/v1/collections/{collection_id}/add")
     @Headers({"Content-Type: application/json"})
-    Call<Boolean> addEmbeddingToCollection(@Path("collection_id") String collectionId, @Body EmbeddingsRequest embedding);
+    Call<Boolean> addEmbedding(@Path("collection_id") String collectionId, @Body EmbeddingsRequest embedding);
 
     @POST("/api/v1/collections/{collection_id}/query")
     @Headers({"Content-Type: application/json"})
-    Call<SuccessfulResponse> getNearestNeighbors(@Path("collection_id") String collectionId, @Body QueryRequest queryRequest);
+    Call<SuccessfulResponse> queryCollection(@Path("collection_id") String collectionId, @Body QueryRequest queryRequest);
 
 }

@@ -20,26 +20,6 @@ class EmbeddingsRequest {
         this.incrementIndex = builder.incrementIndex;
     }
 
-    public List<float[]> getEmbeddings() {
-        return embeddings;
-    }
-
-    public List<Map<String, String>> getMetadatas() {
-        return metadatas;
-    }
-
-    public List<String> getDocuments() {
-        return documents;
-    }
-
-    public List<String> getIds() {
-        return ids;
-    }
-
-    public boolean isIncrementIndex() {
-        return incrementIndex;
-    }
-
     @Override
     public String toString() {
         return "EmbeddingsRequest{" +

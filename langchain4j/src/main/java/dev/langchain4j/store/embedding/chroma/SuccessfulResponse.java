@@ -15,40 +15,20 @@ class SuccessfulResponse {
         return ids;
     }
 
-    public void setIds(List<List<String>> ids) {
-        this.ids = ids;
-    }
-
     public List<List<Double>> getDistances() {
         return distances;
-    }
-
-    public void setDistances(List<List<Double>> distances) {
-        this.distances = distances;
     }
 
     public List<List<Map<String, String>>> getMetadatas() {
         return metadatas;
     }
 
-    public void setMetadatas(List<List<Map<String, String>>> metadatas) {
-        this.metadatas = metadatas;
-    }
-
     public List<List<List<Float>>> getEmbeddings() {
         return embeddings;
     }
 
-    public void setEmbeddings(List<List<List<Float>>> embeddings) {
-        this.embeddings = embeddings;
-    }
-
     public List<List<String>> getDocuments() {
         return documents;
-    }
-
-    public void setDocuments(List<List<String>> documents) {
-        this.documents = documents;
     }
 
     @Override

@@ -8,15 +8,15 @@ class CollectionCreationResponse {
     private String id;
     private Map<String, String> metadata;
 
-    public String getName() {
+    public String name() {
         return name;
     }
 
-    public String getId() {
+    public String id() {
         return id;
     }
 
-    public Map<String, String> getMetadata() {
+    public Map<String, String> metadata() {
         return metadata;
     }
 
