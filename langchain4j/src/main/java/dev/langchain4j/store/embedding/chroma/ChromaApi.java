@@ -19,7 +19,7 @@ interface ChromaApi {
 
     @POST("/api/v1/collections/{collection_id}/add")
     @Headers({"Content-Type: application/json"})
-    Call<Boolean> addEmbedding(@Path("collection_id") String collectionId, @Body EmbeddingsRequest embedding);
+    Call<Boolean> addEmbedding(@Path("collection_id") String collectionId, @Body AddEmbeddingsRequest embedding);
 
     @POST("/api/v1/collections/{collection_id}/query")
     @Headers({"Content-Type: application/json"})

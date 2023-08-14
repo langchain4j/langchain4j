@@ -64,9 +64,9 @@ class ChromaClient {
         }
     }
 
-    boolean addEmbedding(String collectionId, EmbeddingsRequest embeddingsRequest) {
+    boolean addEmbedding(String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
         try {
-            Response<Boolean> retrofitResponse = chromaApi.addEmbedding(collectionId, embeddingsRequest)
+            Response<Boolean> retrofitResponse = chromaApi.addEmbedding(collectionId, addEmbeddingsRequest)
                     .execute();
             if (retrofitResponse.isSuccessful()) {
                 return Boolean.TRUE.equals(retrofitResponse.body());

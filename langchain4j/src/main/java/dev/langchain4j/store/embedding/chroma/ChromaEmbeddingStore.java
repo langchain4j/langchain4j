@@ -95,7 +95,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        EmbeddingsRequest embeddingsRequest = EmbeddingsRequest.builder()
+        AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest.builder()
                 .embeddings(embeddings.stream()
                         .map(Embedding::vector)
                         .collect(toList()))
@@ -113,7 +113,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
                         .collect(toList()))
                 .build();
 
-        chromaClient.addEmbedding(collectionId, embeddingsRequest);
+        chromaClient.addEmbedding(collectionId, addEmbeddingsRequest);
     }
 
     @Override

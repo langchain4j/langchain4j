@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-class EmbeddingsRequest {
+class AddEmbeddingsRequest {
 
     private final List<float[]> embeddings;
     private final List<Map<String, String>> metadatas;
@@ -12,7 +12,7 @@ class EmbeddingsRequest {
     private final List<String> ids;
     private final boolean incrementIndex;
 
-    public EmbeddingsRequest(Builder builder) {
+    public AddEmbeddingsRequest(Builder builder) {
         this.embeddings = builder.embeddings;
         this.metadatas = builder.chromaMetadata;
         this.documents = builder.documents;
@@ -22,7 +22,7 @@ class EmbeddingsRequest {
 
     @Override
     public String toString() {
-        return "EmbeddingsRequest{" +
+        return "AddEmbeddingsRequest{" +
                 "embeddings=" + embeddings +
                 ", metadatas=" + metadatas +
                 ", documents=" + documents +
@@ -75,8 +75,8 @@ class EmbeddingsRequest {
             return this;
         }
 
-        EmbeddingsRequest build() {
-            return new EmbeddingsRequest(this);
+        AddEmbeddingsRequest build() {
+            return new AddEmbeddingsRequest(this);
         }
     }
 
