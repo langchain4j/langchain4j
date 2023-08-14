@@ -20,13 +20,4 @@ class Collection {
         return metadata;
     }
 
-    @Override
-    public String toString() {
-        return "Collection{" +
-                "name='" + name + '\'' +
-                ", id='" + id + '\'' +
-                ", chromaMetadata=" + metadata +
-                '}';
-    }
-
 }

@@ -3,19 +3,20 @@ package dev.langchain4j.store.embedding.chroma;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
  * Represents a store for embeddings with Chroma backend.
+ * The cosine distance is always used as the distance method for Chroma implementation
  */
 public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
@@ -37,9 +38,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         collectionName = collectionName == null ? "default" : collectionName;
 
         if (response == null) {
-            Collection collection = chromaClient.createCollection(CollectionCreationRequest.builder()
-                    .withName(collectionName)
-                    .build());
+            Collection collection = chromaClient.createCollection(new CollectionCreationRequest(collectionName));
             collectionId = collection.id();
         } else {
             collectionId = response.id();
@@ -48,7 +47,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding) {
-        String id = generateRandomId(embedding);
+        String id = Utils.randomUUID();
         add(id, embedding);
         return id;
     }
@@ -60,7 +59,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
-        String id = generateRandomId(embedding);
+        String id = Utils.randomUUID();
         addInternal(id, embedding, textSegment);
         return id;
     }
@@ -69,7 +68,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<String> addAll(List<Embedding> embeddings) {
 
         List<String> ids = embeddings.stream()
-                .map(ChromaEmbeddingStore::generateRandomId)
+                .map(embedding -> Utils.randomUUID())
                 .collect(toList());
 
         addAllInternal(ids, embeddings, null);
@@ -81,7 +80,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
 
         List<String> ids = embeddings.stream()
-                .map(ChromaEmbeddingStore::generateRandomId)
+                .map(embedding -> Utils.randomUUID())
                 .collect(toList());
 
         addAllInternal(ids, embeddings, textSegments);
@@ -122,10 +121,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        QueryRequest queryRequest = QueryRequest.builder()
-                .queryEmbedding(singletonList(referenceEmbedding.vectorAsList()))
-                .nResults(maxResults)
-                .build();
+        QueryRequest queryRequest = new QueryRequest(singletonList(referenceEmbedding.vectorAsList()), maxResults);
 
         QueryResponse nearestNeighbors = chromaClient.getNearestNeighbors(collectionId, queryRequest);
 
@@ -134,13 +130,13 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse nearestNeighbors) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
-        for (int i = 0; i < nearestNeighbors.getIds().get(0).size(); i++) {
+        for (int i = 0; i < nearestNeighbors.ids().get(0).size(); i++) {
             EmbeddingMatch<TextSegment> textSegmentEmbeddingMatch = new EmbeddingMatch<>(
-                    distanceToScore(nearestNeighbors.getDistances().get(0).get(i)),
-                    nearestNeighbors.getIds().get(0).get(i),
-                    Embedding.from(nearestNeighbors.getEmbeddings().get(0).get(i)),
-                    nearestNeighbors.getDocuments().get(0).get(i) == null ? null : TextSegment.from(nearestNeighbors.getDocuments().get(0).get(i),
-                            nearestNeighbors.getMetadatas().get(0).get(i) == null ? null : new Metadata(nearestNeighbors.getMetadatas().get(0).get(i)))
+                    distanceToScore(nearestNeighbors.distances().get(0).get(i)),
+                    nearestNeighbors.ids().get(0).get(i),
+                    Embedding.from(nearestNeighbors.embeddings().get(0).get(i)),
+                    nearestNeighbors.documents().get(0).get(i) == null ? null : TextSegment.from(nearestNeighbors.documents().get(0).get(i),
+                            nearestNeighbors.metadatas().get(0).get(i) == null ? null : new Metadata(nearestNeighbors.metadatas().get(0).get(i)))
             );
             embeddingMatches.add(textSegmentEmbeddingMatch);
         }
@@ -148,21 +144,14 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * By default, cosine distance will be used. For details: <a href="https://github.com/nmslib/hnswlib/tree/master#python-bindings"></a>
+     * By default, cosine distance will be used. For details: <a href="https://docs.trychroma.com/usage-guide"></a>
      * Converts a cosine distance in the range [0, 2] to a score in the range [0, 1].
      *
      * @param distance The distance value.
      * @return The converted score.
      */
     private static double distanceToScore(double distance) {
-        if (distance < 0 || distance > 2) {
-            throw new IllegalArgumentException("Distance must be in the range [0, 2]");
-        }
         return 1 - (distance / 2);
-    }
-
-    private static String generateRandomId(Embedding embedding) {
-        return UUID.randomUUID().toString();
     }
 
 }

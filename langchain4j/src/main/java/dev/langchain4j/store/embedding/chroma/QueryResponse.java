@@ -11,35 +11,24 @@ class QueryResponse {
     private List<List<List<Float>>> embeddings;
     private List<List<String>> documents;
 
-    public List<List<String>> getIds() {
+    public List<List<String>> ids() {
         return ids;
     }
 
-    public List<List<Double>> getDistances() {
+    public List<List<Double>> distances() {
         return distances;
     }
 
-    public List<List<Map<String, String>>> getMetadatas() {
+    public List<List<Map<String, String>>> metadatas() {
         return metadatas;
     }
 
-    public List<List<List<Float>>> getEmbeddings() {
+    public List<List<List<Float>>> embeddings() {
         return embeddings;
     }
 
-    public List<List<String>> getDocuments() {
+    public List<List<String>> documents() {
         return documents;
-    }
-
-    @Override
-    public String toString() {
-        return "QueryResponse{" +
-                "ids=" + ids +
-                ", distances=" + distances +
-                ", metadatas=" + metadatas +
-                ", embeddings=" + embeddings +
-                ", documents=" + documents +
-                '}';
     }
 
 }
