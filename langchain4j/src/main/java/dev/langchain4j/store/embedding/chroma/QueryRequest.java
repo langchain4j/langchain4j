@@ -11,8 +11,8 @@ class QueryRequest {
     private final int nResults;
     private final List<String> include = asList("metadatas", "documents", "distances", "embeddings");
 
-    public QueryRequest(List<Float> queryEmbeddings, int nResults) {
-        this.queryEmbeddings = singletonList(queryEmbeddings);
+    public QueryRequest(List<Float> queryEmbedding, int nResults) {
+        this.queryEmbeddings = singletonList(queryEmbedding);
         this.nResults = nResults;
     }
 
