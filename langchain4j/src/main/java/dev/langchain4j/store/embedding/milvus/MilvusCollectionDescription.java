@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 public class MilvusCollectionDescription {
 
     private String collectionName;
@@ -12,22 +14,10 @@ public class MilvusCollectionDescription {
                                        String vectorFieldName,
                                        String scalarFieldName) {
 
-        if (inputIsValid("collectionName", collectionName)) {
-            this.collectionName = collectionName;
-        }
-
-        if (inputIsValid("idFieldName", idFieldName)) {
-            this.idFieldName = idFieldName;
-        }
-
-        if (inputIsValid("vectorFieldName", vectorFieldName)) {
-            this.vectorFieldName = vectorFieldName;
-        }
-
-        if (inputIsValid("scalarFieldName", scalarFieldName)) {
-            this.scalarFieldName = scalarFieldName;
-        }
-
+        this.collectionName = ensureNotBlank(collectionName, "collectionName");
+        this.idFieldName = ensureNotBlank(idFieldName, "idFieldName");
+        this.vectorFieldName = ensureNotBlank(vectorFieldName, "vectorFieldName");
+        this.scalarFieldName = ensureNotBlank(scalarFieldName, "scalarFieldName");
     }
 
     public String collectionName() {
@@ -87,14 +77,6 @@ public class MilvusCollectionDescription {
             return "MilvusCollectionDescription.MilvusCollectionDescriptionBuilder(collectionName=" + this.collectionName + ", idFieldName=" + this.idFieldName + ", vectorFieldName=" + this.vectorFieldName + ", scalarFieldName=" + this.scalarFieldName + ")";
         }
 
-    }
-
-    private static boolean inputIsValid(String fieldName, String input) {
-        if (input == null || input.trim().isEmpty()) {
-            throw new IllegalArgumentException(String.format("The field '%s' is mandatory%n", fieldName));
-        } else {
-            return true;
-        }
     }
 
 }

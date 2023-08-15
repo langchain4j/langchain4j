@@ -53,11 +53,11 @@ class Mapper {
             String text = String.valueOf(resultsWrapper.getFieldData(collectionDescription.scalarFieldName(), 0).get(i));
             Embedding embedding = Embedding.from(idsAndVectors.getOrDefault(rowId, Collections.emptyList()));
             TextSegment textSegment = new TextSegment(text, null);
-            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(rowId, embedding, textSegment, score);
+            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(score, rowId, embedding, textSegment);
             result.add(embeddingMatch);
         }
 
-        return filterByMinSimilarity(result, minSimilarity, operationsParams.metricType());
+        return filterByMinSimilarity(result, minSimilarity, operationsParams.metricType().name());
     }
 
     private static List<EmbeddingMatch<TextSegment>> filterByMinSimilarity(List<EmbeddingMatch<TextSegment>> matches,
@@ -94,7 +94,7 @@ class Mapper {
             QueryResultsWrapper queryResultsWrapper = queryForVectors(milvusClient,
                     collectionDescription,
                     rowIds,
-                    operationsParams.consistencyLevel());
+                    operationsParams.consistencyLevel().name());
 
             Map<String, List<Float>> idsAndVectors = new HashMap<>();
             for (QueryResultsWrapper.RowRecord row : queryResultsWrapper.getRowRecords()) {

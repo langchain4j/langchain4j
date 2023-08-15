@@ -5,13 +5,13 @@ public class MilvusOperationsParams {
     /**
      * Possible options: STRONG, BOUNDED or EVENTUALLY.
      */
-    private String consistencyLevel;
+    private ConsistencyLevel consistencyLevel;
 
     /**
      * Possible options: L2 or IP.
-     * Metric types for binary vectors are not supported at he moment
+     * Metric types for binary vectors are not supported at the moment
      */
-    private String metricType;
+    private MetricType metricType;
 
     /**
      * During a similarity search in Milvus, the vector value is not returned.
@@ -21,23 +21,17 @@ public class MilvusOperationsParams {
      */
     private boolean queryForVectorOnSearch;
 
-    public MilvusOperationsParams(String consistencyLevel, String metricType, boolean queryForVectorOnSearch) {
-        if (consistencyLevelIsValid(consistencyLevel)) {
-            this.consistencyLevel = consistencyLevel;
-        }
-
-        if (metricTypeIsValid(metricType)) {
-            this.metricType = metricType;
-        }
-
+    public MilvusOperationsParams(ConsistencyLevel consistencyLevel, MetricType metricType, boolean queryForVectorOnSearch) {
+        this.consistencyLevel = consistencyLevel;
+        this.metricType = metricType;
         this.queryForVectorOnSearch = queryForVectorOnSearch;
     }
 
-    public String consistencyLevel() {
+    public ConsistencyLevel consistencyLevel() {
         return consistencyLevel;
     }
 
-    public String metricType() {
+    public MetricType metricType() {
         return metricType;
     }
 
@@ -45,17 +39,4 @@ public class MilvusOperationsParams {
         return queryForVectorOnSearch;
     }
 
-    private boolean consistencyLevelIsValid(String input) {
-        if (!"STRONG".equals(input) && !"BOUNDED".equals(input) && !"EVENTUALLY".equals(input)) {
-            throw new IllegalArgumentException("Invalid consistencyLevel. Acceptable values are: STRONG, BOUNDED, or EVENTUALLY.");
-        }
-        return true;
-    }
-
-    private boolean metricTypeIsValid(String input) {
-        if (!"L2".equals(input) && !"IP".equals(input)) {
-            throw new IllegalArgumentException("Invalid metricType. Acceptable values are: L2 or IP.");
-        }
-        return true;
-    }
 }

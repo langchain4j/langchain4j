@@ -45,8 +45,8 @@ class CollectionRequestBuilder {
 
         return SearchParam.newBuilder()
                 .withCollectionName(collectionDescription.collectionName())
-                .withConsistencyLevel(ConsistencyLevelEnum.valueOf(operationsParams.consistencyLevel()))
-                .withMetricType(MetricType.valueOf(operationsParams.metricType()))
+                .withConsistencyLevel(ConsistencyLevelEnum.valueOf(operationsParams.consistencyLevel().name()))
+                .withMetricType(MetricType.valueOf(operationsParams.metricType().name()))
                 .withOutFields(searchOutputFields)
                 .withTopK(maxResults)
                 .withVectors(searchVector)
