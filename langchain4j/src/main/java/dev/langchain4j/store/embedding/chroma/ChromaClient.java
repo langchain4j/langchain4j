@@ -37,9 +37,9 @@ class ChromaClient {
         this.chromaApi = retrofit.create(ChromaApi.class);
     }
 
-    Collection createCollection(CollectionCreationRequest collectionCreationRequest) {
+    Collection createCollection(CreateCollectionRequest createCollectionRequest) {
         try {
-            Response<Collection> response = chromaApi.createCollection(collectionCreationRequest).execute();
+            Response<Collection> response = chromaApi.createCollection(createCollectionRequest).execute();
             if (response.isSuccessful()) {
                 return response.body();
             } else {
@@ -64,7 +64,7 @@ class ChromaClient {
         }
     }
 
-    boolean addEmbedding(String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
+    boolean addEmbeddings(String collectionId, AddEmbeddingsRequest addEmbeddingsRequest) {
         try {
             Response<Boolean> retrofitResponse = chromaApi.addEmbeddings(collectionId, addEmbeddingsRequest)
                     .execute();
@@ -78,7 +78,7 @@ class ChromaClient {
         }
     }
 
-    QueryResponse getNearestNeighbors(String collectionId, QueryRequest queryRequest) {
+    QueryResponse queryCollection(String collectionId, QueryRequest queryRequest) {
         try {
             Response<QueryResponse> retrofitResponse = chromaApi.queryCollection(collectionId, queryRequest)
                     .execute();

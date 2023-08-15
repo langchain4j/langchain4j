@@ -4,16 +4,16 @@ import java.util.Map;
 
 class Collection {
 
-    private String name;
     private String id;
+    private String name;
     private Map<String, String> metadata;
-
-    public String name() {
-        return name;
-    }
 
     public String id() {
         return id;
+    }
+
+    public String name() {
+        return name;
     }
 
     public Map<String, String> metadata() {

@@ -6,21 +6,13 @@ import java.util.Map;
 class QueryResponse {
 
     private List<List<String>> ids;
-    private List<List<Double>> distances;
-    private List<List<Map<String, String>>> metadatas;
     private List<List<List<Float>>> embeddings;
     private List<List<String>> documents;
+    private List<List<Map<String, String>>> metadatas;
+    private List<List<Double>> distances;
 
     public List<List<String>> ids() {
         return ids;
-    }
-
-    public List<List<Double>> distances() {
-        return distances;
-    }
-
-    public List<List<Map<String, String>>> metadatas() {
-        return metadatas;
     }
 
     public List<List<List<Float>>> embeddings() {
@@ -29,6 +21,14 @@ class QueryResponse {
 
     public List<List<String>> documents() {
         return documents;
+    }
+
+    public List<List<Map<String, String>>> metadatas() {
+        return metadatas;
+    }
+
+    public List<List<Double>> distances() {
+        return distances;
     }
 
 }

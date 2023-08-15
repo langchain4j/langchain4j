@@ -15,7 +15,7 @@ interface ChromaApi {
 
     @POST("/api/v1/collections")
     @Headers({"Content-Type: application/json"})
-    Call<Collection> createCollection(@Body CollectionCreationRequest collectionCreationRequest);
+    Call<Collection> createCollection(@Body CreateCollectionRequest createCollectionRequest);
 
     @POST("/api/v1/collections/{collection_id}/add")
     @Headers({"Content-Type: application/json"})

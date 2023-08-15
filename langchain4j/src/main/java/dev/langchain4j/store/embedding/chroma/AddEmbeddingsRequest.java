@@ -6,16 +6,16 @@ import java.util.Map;
 
 class AddEmbeddingsRequest {
 
-    private final List<float[]> embeddings;
-    private final List<Map<String, String>> metadatas;
-    private final List<String> documents;
     private final List<String> ids;
+    private final List<float[]> embeddings;
+    private final List<String> documents;
+    private final List<Map<String, String>> metadatas;
 
     public AddEmbeddingsRequest(Builder builder) {
-        this.embeddings = builder.embeddings;
-        this.metadatas = builder.chromaMetadata;
-        this.documents = builder.documents;
         this.ids = builder.ids;
+        this.embeddings = builder.embeddings;
+        this.documents = builder.documents;
+        this.metadatas = builder.metadatas;
     }
 
     public static Builder builder() {
@@ -23,21 +23,21 @@ class AddEmbeddingsRequest {
     }
 
     public static class Builder {
-        private List<float[]> embeddings = new ArrayList<>();
-        private List<Map<String, String>> chromaMetadata = new ArrayList<>();
-        private List<String> documents = new ArrayList<>();
         private List<String> ids = new ArrayList<>();
+        private List<float[]> embeddings = new ArrayList<>();
+        private List<String> documents = new ArrayList<>();
+        private List<Map<String, String>> metadatas = new ArrayList<>();
 
-        public Builder embeddings(List<float[]> embeddings) {
-            if (embeddings != null) {
-                this.embeddings = embeddings;
+        public Builder ids(List<String> ids) {
+            if (ids != null) {
+                this.ids = ids;
             }
             return this;
         }
 
-        public Builder metadatas(List<Map<String, String>> chromaMetadata) {
-            if (chromaMetadata != null) {
-                this.chromaMetadata = chromaMetadata;
+        public Builder embeddings(List<float[]> embeddings) {
+            if (embeddings != null) {
+                this.embeddings = embeddings;
             }
             return this;
         }
@@ -49,9 +49,9 @@ class AddEmbeddingsRequest {
             return this;
         }
 
-        public Builder ids(List<String> ids) {
-            if (ids != null) {
-                this.ids = ids;
+        public Builder metadatas(List<Map<String, String>> metadatas) {
+            if (metadatas != null) {
+                this.metadatas = metadatas;
             }
             return this;
         }
