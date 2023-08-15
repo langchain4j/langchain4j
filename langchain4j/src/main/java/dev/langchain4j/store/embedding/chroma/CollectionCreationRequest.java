@@ -13,8 +13,8 @@ class CollectionCreationRequest {
      */
     CollectionCreationRequest(String name) {
         this.name = name;
-        //TODO other distances? Currently, only cosine distance is possible
         HashMap<String, String> metadata = new HashMap<>();
+        //Currently, only cosine distance is possible
         metadata.put("hnsw:space", "cosine");
         this.metadata = metadata;
     }

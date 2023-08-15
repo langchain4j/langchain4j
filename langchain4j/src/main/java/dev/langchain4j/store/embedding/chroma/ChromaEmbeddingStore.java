@@ -10,6 +10,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -121,7 +122,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        QueryRequest queryRequest = new QueryRequest(singletonList(referenceEmbedding.vectorAsList()), maxResults);
+        QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults);
 
         QueryResponse nearestNeighbors = chromaClient.getNearestNeighbors(collectionId, queryRequest);
 
@@ -130,14 +131,16 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse nearestNeighbors) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
+
         for (int i = 0; i < nearestNeighbors.ids().get(0).size(); i++) {
-            EmbeddingMatch<TextSegment> textSegmentEmbeddingMatch = new EmbeddingMatch<>(
-                    distanceToScore(nearestNeighbors.distances().get(0).get(i)),
-                    nearestNeighbors.ids().get(0).get(i),
-                    Embedding.from(nearestNeighbors.embeddings().get(0).get(i)),
-                    nearestNeighbors.documents().get(0).get(i) == null ? null : TextSegment.from(nearestNeighbors.documents().get(0).get(i),
-                            nearestNeighbors.metadatas().get(0).get(i) == null ? null : new Metadata(nearestNeighbors.metadatas().get(0).get(i)))
-            );
+
+            double score = distanceToScore(nearestNeighbors.distances().get(0).get(i));
+            String embeddingId = nearestNeighbors.ids().get(0).get(i);
+            Embedding embedding = Embedding.from(nearestNeighbors.embeddings().get(0).get(i));
+            TextSegment embedded = toEmbedded(nearestNeighbors, i);
+
+            EmbeddingMatch<TextSegment> textSegmentEmbeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
+
             embeddingMatches.add(textSegmentEmbeddingMatch);
         }
         return embeddingMatches;
@@ -152,6 +155,12 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     private static double distanceToScore(double distance) {
         return 1 - (distance / 2);
+    }
+
+    private static TextSegment toEmbedded(QueryResponse nearestNeighbors, int i) {
+        String text = nearestNeighbors.documents().get(0).get(i);
+        Map<String, String> metadata = nearestNeighbors.metadatas().get(0).get(i);
+        return text == null ? null : TextSegment.from(text, metadata == null ? null : new Metadata(metadata));
     }
 
 }

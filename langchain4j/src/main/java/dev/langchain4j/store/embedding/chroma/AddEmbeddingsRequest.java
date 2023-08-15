@@ -10,25 +10,12 @@ class AddEmbeddingsRequest {
     private final List<Map<String, String>> metadatas;
     private final List<String> documents;
     private final List<String> ids;
-    private final boolean incrementIndex;
 
     public AddEmbeddingsRequest(Builder builder) {
         this.embeddings = builder.embeddings;
         this.metadatas = builder.chromaMetadata;
         this.documents = builder.documents;
         this.ids = builder.ids;
-        this.incrementIndex = builder.incrementIndex;
-    }
-
-    @Override
-    public String toString() {
-        return "AddEmbeddingsRequest{" +
-                "embeddings=" + embeddings +
-                ", metadatas=" + metadatas +
-                ", documents=" + documents +
-                ", ids=" + ids +
-                ", incrementIndex=" + incrementIndex +
-                '}';
     }
 
     public static Builder builder() {
@@ -40,7 +27,6 @@ class AddEmbeddingsRequest {
         private List<Map<String, String>> chromaMetadata = new ArrayList<>();
         private List<String> documents = new ArrayList<>();
         private List<String> ids = new ArrayList<>();
-        private boolean incrementIndex;
 
         public Builder embeddings(List<float[]> embeddings) {
             if (embeddings != null) {
@@ -67,11 +53,6 @@ class AddEmbeddingsRequest {
             if (ids != null) {
                 this.ids = ids;
             }
-            return this;
-        }
-
-        public Builder incrementIndex(boolean incrementIndex) {
-            this.incrementIndex = incrementIndex;
             return this;
         }
 
