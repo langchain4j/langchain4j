@@ -36,6 +36,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.isCollectionEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 /**
@@ -107,10 +108,13 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         try {
+            // Use Script Score and cosineSimilarity to calculate
+            // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
             ScriptScoreQuery scriptScoreQuery = ScriptScoreQuery.of(q -> q
                     .minScore((float) minScore)
                     .query(Query.of(qu -> qu.matchAll(m -> m)))
                     .script(s -> s.inline(InlineScript.of(i -> i
+                            // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
                             .source("cosineSimilarity(params.query_vector, 'vector') + 1.0")
                             .params("query_vector", toJsonData(referenceEmbedding.vector()))))));
             SearchResponse<Document> response = client.search(
@@ -135,10 +139,12 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        ValidationUtils.ensureNotEmpty(ids, "ids");
-        ValidationUtils.ensureNotEmpty(embeddings, "embeddings");
+        if (isCollectionEmpty(ids) || isCollectionEmpty(embeddings)) {
+            log.info("[do not add empty embeddings to elasticsearch]");
+            return;
+        }
         ValidationUtils.ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ValidationUtils.ensureTrue(embedded == null || ids.size() == embedded.size(), "ids size is not equal to embedded size");
+        ValidationUtils.ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         try {
             createIndexIfNotExist(embeddings.get(0).length());
@@ -154,9 +160,13 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     private void createIndexIfNotExist(int dim) throws IOException {
         try {
             client.indices().get(c -> c.index(indexName));
-        } catch (ElasticsearchException indexNotFound) {
-            client.indices().create(c -> c.index(indexName)
-                    .mappings(getDefaultMappings(dim)));
+        } catch (ElasticsearchException e) {
+            if (String.format("no such index [%s]", indexName).equals(e.response().error().reason())) {
+                client.indices().create(c -> c.index(indexName)
+                        .mappings(getDefaultMappings(dim)));
+            } else {
+                log.error("[Encounter unexpect exception when check index exist]", e);
+            }
         }
     }
 
@@ -177,7 +187,7 @@ public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
                     .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
-                            .map(Metadata::getOriginalMetadata)
+                            .map(Metadata::copyMap)
                             .orElse(null))
                     .build();
             bulkBuilder.operations(op -> op.index(idx -> idx
