@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.elastic;
+package dev.langchain4j.store.embedding.elasticsearch;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

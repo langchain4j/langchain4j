@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.elastic;
+package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
@@ -44,15 +44,15 @@ import static dev.langchain4j.internal.Utils.randomUUID;
  *
  * @author Martin7-1
  */
-public class ElasticEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
+public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(ElasticEmbeddingStoreImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(ElasticsearchEmbeddingStoreImpl.class);
     private final ElasticsearchClient client;
     private final String indexName;
     private final ObjectMapper objectMapper;
 
     @Builder
-    public ElasticEmbeddingStoreImpl(String serverUrl, String apiKey, String indexName) {
+    public ElasticsearchEmbeddingStoreImpl(String serverUrl, String apiKey, String indexName) {
         serverUrl = ValidationUtils.ensureNotNull(serverUrl, "serverUrl");
         indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
         // if local deployment, there is no need to set Authorization Header

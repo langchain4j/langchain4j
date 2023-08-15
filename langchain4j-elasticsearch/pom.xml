@@ -10,7 +10,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-elastic</artifactId>
+    <artifactId>langchain4j-elasticsearch</artifactId>
     <packaging>jar</packaging>
 
     <name>LangChain4j integration with Elastic</name>

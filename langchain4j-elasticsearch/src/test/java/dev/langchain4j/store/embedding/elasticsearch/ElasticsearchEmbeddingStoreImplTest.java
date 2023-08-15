@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.elastic;
+package dev.langchain4j.store.embedding.elasticsearch;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -22,9 +22,9 @@ import java.util.List;
  * @author Martin7-1
  */
 @Disabled
-class ElasticEmbeddingStoreImplTest {
+class ElasticsearchEmbeddingStoreImplTest {
 
-    private final EmbeddingStore<TextSegment> store = new ElasticEmbeddingStoreImpl("http://localhost:9200", null, "test-index");
+    private final EmbeddingStore<TextSegment> store = new ElasticsearchEmbeddingStoreImpl("http://localhost:9200", null, "test-index");
 
     @Test
     void testAdd() {
