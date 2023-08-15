@@ -10,7 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
 /**
- * Represents a <a href="https://www.elasticsearch.co/">Elasticsearch</a> index as an embedding store.
+ * Represents a <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
  * To use ElasticsearchEmbeddingStore, please add the "langchain4j-elasticsearch" dependency to your project.
  */
