@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.20.0</version>
+    <version>${reversion}</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -21,5 +21,10 @@
 
         <module>langchain4j-spring-boot-starter</module>
     </modules>
+
+    <properties>
+        <!-- stand for release version -->
+        <reversion>0.20.0</reversion>
+    </properties>
 
 </project>
