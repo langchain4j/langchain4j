@@ -17,8 +17,12 @@ class ChromaEmbeddingStoreTest {
     @Test
     @Disabled("To run this test, you must have a local Chroma instance")
     public void testAddEmbeddingAndFindRelevant() {
-        ChromaEmbeddingStore chromaEmbeddingStore = new ChromaEmbeddingStore("http://localhost:8000",
-                "default", ofSeconds(15));
+
+        ChromaEmbeddingStore chromaEmbeddingStore = ChromaEmbeddingStore.builder()
+                .baseUrl("http://localhost:8000")
+                .collectionName("collectionName")
+                .timeout(ofSeconds(15))
+                .build();
 
         Embedding embedding = Embedding.from(new float[]{9.9F, 4.5F, 3.5F, 1.3F, 1.7F, 5.7F, 6.4F, 5.5F, 8.2F, 9.3F, 1.5F});
         TextSegment textSegment = TextSegment.textSegment("Text", Metadata.from("Key", "Value"));

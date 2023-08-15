@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.chroma;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
@@ -46,6 +45,35 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             collectionId = collection.id();
         } else {
             collectionId = response.id();
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+   static class Builder {
+        private String baseUrl;
+        private String collectionName;
+        private Duration timeout;
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder collectionName(String collectionName) {
+            this.collectionName = collectionName;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public ChromaEmbeddingStore build() {
+            return new ChromaEmbeddingStore(this.baseUrl, this.collectionName, this.timeout);
         }
     }
 
