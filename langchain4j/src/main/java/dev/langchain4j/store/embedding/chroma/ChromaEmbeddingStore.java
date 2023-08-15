@@ -33,18 +33,18 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param timeout        The timeout duration for the Chroma client.
      */
     public ChromaEmbeddingStore(String baseUrl, String collectionName, Duration timeout) {
-        timeout = timeout == null ? ofSeconds(15) : timeout;
         collectionName = collectionName == null ? "default" : collectionName;
+        timeout = timeout == null ? ofSeconds(15) : timeout;
 
         this.chromaClient = new ChromaClient(baseUrl, timeout);
 
-        Collection response = chromaClient.getCollection(collectionName);
+        Collection collection = chromaClient.collection(collectionName);
 
-        if (response == null) {
-            Collection collection = chromaClient.createCollection(new CreateCollectionRequest(collectionName));
-            collectionId = collection.id();
+        if (collection == null) {
+            Collection createdCollection = chromaClient.createCollection(new CreateCollectionRequest(collectionName));
+            collectionId = createdCollection.id();
         } else {
-            collectionId = response.id();
+            collectionId = collection.id();
         }
     }
 

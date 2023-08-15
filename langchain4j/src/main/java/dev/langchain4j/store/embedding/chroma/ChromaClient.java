@@ -50,7 +50,7 @@ class ChromaClient {
         }
     }
 
-    Collection getCollection(String collectionName) {
+    Collection collection(String collectionName) {
         try {
             Response<Collection> response = chromaApi.collection(collectionName).execute();
             if (response.isSuccessful()) {
