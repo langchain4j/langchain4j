@@ -5,6 +5,7 @@ import java.time.Duration;
 class OpenAi {
 
     private String apiKey;
+    private String mappingUrl;
     private String modelName;
     private Double temperature;
     private Double topP;
@@ -22,6 +23,14 @@ class OpenAi {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getMappingUrl() {
+        return mappingUrl;
+    }
+
+    public void setMappingUrl(String mappingUrl) {
+        this.mappingUrl = mappingUrl;
     }
 
     public String getModelName() {

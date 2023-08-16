@@ -47,6 +47,7 @@ public class LangChain4jAutoConfiguration {
                 }
                 return OpenAiChatModel.builder()
                         .apiKey(openAi.getApiKey())
+                        .mappingUrl(openAi.getMappingUrl())
                         .modelName(openAi.getModelName())
                         .temperature(openAi.getTemperature())
                         .topP(openAi.getTopP())
