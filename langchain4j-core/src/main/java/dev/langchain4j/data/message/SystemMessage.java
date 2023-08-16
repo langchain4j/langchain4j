@@ -2,6 +2,9 @@ package dev.langchain4j.data.message;
 
 import java.util.Objects;
 
+import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
+import static dev.langchain4j.internal.Utils.quoted;
+
 /**
  * Represents a system message, typically defined by a developer.
  * This type of message usually provides instructions regarding the AI's actions, such as its behavior or response style.
@@ -10,6 +13,11 @@ public class SystemMessage extends ChatMessage {
 
     public SystemMessage(String text) {
         super(text);
+    }
+
+    @Override
+    public ChatMessageType type() {
+        return SYSTEM;
     }
 
     @Override
@@ -28,7 +36,7 @@ public class SystemMessage extends ChatMessage {
     @Override
     public String toString() {
         return "SystemMessage {" +
-                " text = \"" + text + "\"" +
+                " text = " + quoted(text) +
                 " }";
     }
 

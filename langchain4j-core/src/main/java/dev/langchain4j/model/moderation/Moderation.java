@@ -2,6 +2,8 @@ package dev.langchain4j.model.moderation;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 public class Moderation {
 
     private final boolean flagged;
@@ -43,7 +45,7 @@ public class Moderation {
     public String toString() {
         return "Moderation {" +
                 " flagged = " + flagged +
-                ", flaggedText = \"" + flaggedText + "\"" +
+                ", flaggedText = " + quoted(flaggedText) +
                 " }";
     }
 
