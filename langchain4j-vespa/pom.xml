@@ -22,7 +22,7 @@
     </description>-->
 
         <properties>
-            <vespa.version>8.209.11</vespa.version>
+            <vespa.version>8.210.20</vespa.version>
     <!--        <maven.compiler.source>11</maven.compiler.source>-->
     <!--        <maven.compiler.target>11</maven.compiler.target>-->
         </properties>
@@ -32,7 +32,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>0.18.0</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

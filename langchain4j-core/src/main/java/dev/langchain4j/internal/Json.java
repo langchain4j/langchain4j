@@ -20,6 +20,7 @@ public class Json {
                     new JsonPrimitive(localDateTime.format(ISO_LOCAL_DATE_TIME)))
             .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, type, context) ->
                     LocalDateTime.parse(json.getAsString(), ISO_LOCAL_DATE_TIME))
+            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
             .create();
 
     public static String toJson(Object o) {

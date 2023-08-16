@@ -1,21 +1,17 @@
 package dev.langchain4j.store.embedding;
 
 import ai.vespa.client.dsl.A;
-import ai.vespa.client.dsl.Annotation;
-import ai.vespa.client.dsl.NearestNeighbor;
 import ai.vespa.client.dsl.Q;
 import ai.vespa.feed.client.*;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import java.lang.reflect.Method;
+import dev.langchain4j.internal.Json;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-
-import dev.langchain4j.internal.Json;
 import lombok.Builder;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -30,14 +26,14 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Builder
   public VespaEmbeddingStoreImpl() {
-    this.feedClient =
-      FeedClientBuilder
-        .create(URI.create("https://alexey-heezer.carrot.mytenant346.aws-us-east-1c.dev.z.vespa-app.cloud/"))
-        .setCertificate(
-          Paths.get("/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-public-cert.pem"),
-          Paths.get("/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-private-key.pem")
-        )
-        .build();
+//        this.feedClient =
+//          FeedClientBuilder
+//            .create(URI.create("https://alexey-heezer.carrot.mytenant346.aws-us-east-1c.dev.z.vespa-app.cloud/"))
+//            .setCertificate(
+//              Paths.get("/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-public-cert.pem"),
+//              Paths.get("/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-private-key.pem")
+//            )
+//            .build();
   }
 
   @Override
@@ -106,23 +102,17 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     try (
       CloseableHttpClient httpClient = HttpClients
         .custom()
-        .setSSLContext(new SslContextBuilder().withCertificateAndKey(Paths.get(certPath), Paths.get(keyPath)).build())
+        .setSSLContext(
+          new VespaSslContextBuilder().withCertificateAndKey(Paths.get(certPath), Paths.get(keyPath)).build()
+        )
         .build()
     ) {
-      NearestNeighbor nb = Q.nearestNeighbor("vector", "q");
-
-      // workaround to invoke ai.vespa.client.dsl.NearestNeighbor#annotate,
-      // see https://github.com/vespa-engine/vespa/issues/28029
-      Method method = NearestNeighbor.class.getDeclaredMethod("annotate", new Class<?>[] { Annotation.class });
-      method.setAccessible(true);
-      method.invoke(nb, A.a("targetHits", 10));
-
       String searchQuery = Q
-        .select("text_segment")
+        .select("text_segment, vector")
         .from("carrot")
-        .where(nb)
+        .where(Q.nearestNeighbor("vector", "q").annotate(A.a("targetHits", 10)))
         .fix()
-        .hits(3)
+        .hits(maxResults)
         .ranking("semantic_similarity")
         .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
         .build();
@@ -133,15 +123,17 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         .build();
 
       response = httpClient.execute(new HttpGet(uri));
+      QueryResponse parsedResponse = Json.fromJson(EntityUtils.toString(response.getEntity()), QueryResponse.class);
 
-      System.out.println("Response Status: " + response.getStatusLine());
-      System.out.println("Response Content: " + EntityUtils.toString(response.getEntity()));
-
+      return parsedResponse
+        .getRoot()
+        .getChildren()
+        .stream()
+        .map(VespaEmbeddingStoreImpl::mapResponseItem)
+        .collect(Collectors.toList());
     } catch (Throwable t) {
       throw new RuntimeException(t);
     }
-
-    return null;
   }
 
   @Override
@@ -151,5 +143,14 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     double minSimilarity
   ) {
     return null;
+  }
+
+  private static EmbeddingMatch<TextSegment> mapResponseItem(QueryResponse.ChildNode in) {
+    return new EmbeddingMatch(
+      in.getRelevance(),
+      in.getId(),
+      Embedding.from(in.getFields().getVector().getValues()),
+      TextSegment.from(in.getFields().getTextSegment())
+    );
   }
 }
