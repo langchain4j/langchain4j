@@ -1,13 +1,16 @@
-package dev.langchain4j.model.localai;
+package dev.langchain4j.model.azure;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.embedding.EmbeddingRequest;
 import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -16,35 +19,46 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-public class LocalAiEmbeddingModel implements EmbeddingModel {
+/**
+ * Represents a connection to the OpenAI embedding model, such as text-embedding-ada-002, accessing it via Azure.
+ * <p>
+ * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
+ * <p>
+ */
+public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
     private final OpenAiClient client;
-    private final String modelName;
     private final Integer maxRetries;
+    private final Tokenizer tokenizer;
 
     @Builder
-    public LocalAiEmbeddingModel(String baseUrl,
-                                 String modelName,
-                                 Duration timeout,
-                                 Integer maxRetries,
-                                 Boolean logRequests,
-                                 Boolean logResponses) {
+    public AzureOpenAiEmbeddingModel(String baseUrl,
+                                     String apiVersion,
+                                     String apiKey,
+                                     Tokenizer tokenizer,
+                                     Duration timeout,
+                                     Integer maxRetries,
+                                     Proxy proxy,
+                                     Boolean logRequests,
+                                     Boolean logResponses) {
 
-        timeout = timeout == null ? ofSeconds(60) : timeout;
+        timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
+                .azureApiKey(apiKey)
+                .apiVersion(apiVersion)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = maxRetries;
+        this.tokenizer = tokenizer;
     }
 
     @Override
@@ -54,9 +68,13 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
                 .map(TextSegment::text)
                 .collect(toList());
 
+        return embedTexts(texts);
+    }
+
+    private List<Embedding> embedTexts(List<String> texts) {
+
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(texts)
-                .model(modelName)
                 .build();
 
         EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
@@ -65,4 +83,10 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .collect(toList());
     }
+
+    @Override
+    public int estimateTokenCount(String text) {
+        return tokenizer.estimateTokenCountInText(text);
+    }
+
 }

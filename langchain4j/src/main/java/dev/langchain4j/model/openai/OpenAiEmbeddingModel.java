@@ -15,7 +15,9 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -31,7 +33,8 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiEmbeddingModel(String apiKey,
+    public OpenAiEmbeddingModel(String baseUrl,
+                                String apiKey,
                                 String modelName,
                                 Duration timeout,
                                 Integer maxRetries,
@@ -39,18 +42,17 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                                 Boolean logRequests,
                                 Boolean logResponses) {
 
+        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            baseUrl = OPENAI_DEMO_URL;
+        }
         modelName = modelName == null ? TEXT_EMBEDDING_ADA_002 : modelName;
         timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        String url = OPENAI_URL;
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            url = OPENAI_DEMO_URL;
-        }
-
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
-                .url(url)
+                .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
