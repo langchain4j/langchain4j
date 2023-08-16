@@ -10,6 +10,7 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import lombok.Builder;
+import org.jsoup.internal.StringUtil;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -37,6 +38,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     @Builder
     public OpenAiChatModel(String apiKey,
+                           String mappingUrl,
                            String modelName,
                            Double temperature,
                            Double topP,
@@ -55,6 +57,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         String url = OPENAI_URL;
+
+        if (!StringUtil.isBlank(mappingUrl)) {
+            url = mappingUrl;
+        }
+
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             url = OPENAI_DEMO_URL;
         }
