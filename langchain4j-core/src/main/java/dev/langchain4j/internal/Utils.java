@@ -1,6 +1,10 @@
 package dev.langchain4j.internal;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Utils {
 
@@ -19,4 +23,16 @@ public class Utils {
     public static String randomUUID() {
         return UUID.randomUUID().toString();
     }
+
+    public static String generateUUIDFrom(String input) {
+        try {
+            byte[] hashBytes = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashBytes) sb.append(String.format("%02x", b));
+            return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
 }

@@ -6,21 +6,11 @@ import java.util.List;
 
 public class Record {
 
-  private String id;
   private Double relevance;
   private Fields fields;
 
-  public Record(String id, String textSegment, List<Float> vector) {
-    this.id = id;
-    this.fields = new Fields(textSegment, vector);
-  }
-
-  public String getId() {
-    return id;
-  }
-
-  public void setId(String id) {
-    this.id = id;
+  public Record(String documentId, String textSegment, List<Float> vector) {
+    this.fields = new Fields(documentId, textSegment, vector);
   }
 
   public double getRelevance() {
@@ -41,13 +31,24 @@ public class Record {
 
   public static class Fields {
 
+    @SerializedName("documentid")
+    private String documentId;
     @SerializedName("text_segment")
     private String textSegment;
     private Vector vector;
 
-    public Fields(String textSegment, List<Float> vector) {
+    public Fields(String documentId, String textSegment, List<Float> vector) {
+      this.documentId = documentId;
       this.textSegment = textSegment;
       this.vector = new Vector(vector);
+    }
+
+    public String getDocumentId() {
+      return documentId;
+    }
+
+    public void setDocumentId(String documentId) {
+      this.documentId = documentId;
     }
 
     public String getTextSegment() {

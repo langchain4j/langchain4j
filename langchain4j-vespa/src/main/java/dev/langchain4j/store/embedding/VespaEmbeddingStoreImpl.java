@@ -1,5 +1,8 @@
 package dev.langchain4j.store.embedding;
 
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.Q;
 import ai.vespa.feed.client.*;
@@ -23,10 +26,14 @@ import org.apache.http.util.EntityUtils;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
-  private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
+  private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
   private static final String DEFAULT_NAMESPACE = "namespace";
   // TODO
   private static final String DEFAULT_DOCUMENT_TYPE = "carrot";
+  private static final boolean DEFAULT_AVOID_DUPS = true;
+  // TODO
+  private static final String FIELD_NAME_TEXT_SEGMENT = "text_segment";
+  private static final String FIELD_NAME_VECTOR = "vector";
 
   private final String url;
   private final String keyPath;
@@ -34,15 +41,25 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final Duration timeout;
   private final String namespace;
   private final String documentType;
+  private final boolean avoidDups;
 
   @Builder
-  public VespaEmbeddingStoreImpl(String url, String keyPath, String certPath, Duration timeout, String namespace, String documentType) {
+  public VespaEmbeddingStoreImpl(
+    String url,
+    String keyPath,
+    String certPath,
+    Duration timeout,
+    String namespace,
+    String documentType,
+    Boolean avoidDups
+  ) {
     this.url = url;
     this.keyPath = keyPath;
     this.certPath = certPath;
     this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
     this.namespace = namespace != null ? namespace : DEFAULT_NAMESPACE;
     this.documentType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+    this.avoidDups = avoidDups != null ? avoidDups : DEFAULT_AVOID_DUPS;
   }
 
   @Override
@@ -75,11 +92,12 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       List<Record> records = new ArrayList<>();
 
       for (int i = 0; i < embeddings.size(); i++) {
-        DocumentId id = DocumentId.of(namespace, documentType, String.valueOf(i)/* TBD ID gen! */);
-        //        String json = Json.toJson(new Record(id.toString(), embedded.get(i).text(), embeddings.get(i).vectorAsList()));
-        records.add(
-          new Record(id.toString(), embedded != null ? embedded.get(i).text() : null, embeddings.get(i).vectorAsList())
-        );
+        String recordId = avoidDups && embedded != null ? generateUUIDFrom(embedded.get(i).text()) : randomUUID();
+//        String recordId = Long.toString(i);
+        DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
+        String text = embedded != null ? embedded.get(i).text() : null;
+        //        String json = Json.toJson(new Record(documentId.toString(), embedded.get(i).text(), embeddings.get(i).vectorAsList()));
+        records.add(new Record(documentId.toString(), text, embeddings.get(i).vectorAsList()));
       }
 
       jsonFeeder.feedMany(
@@ -140,9 +158,9 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         .build()
     ) {
       String searchQuery = Q
-        .select("text_segment, vector")
-        .from("carrot")
-        .where(Q.nearestNeighbor("vector", "q").annotate(A.a("targetHits", 10)))
+        .select("documentid", FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+        .from(documentType)
+        .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", 10)))
         .fix()
         .hits(maxResults)
         .ranking("semantic_similarity")
@@ -186,7 +204,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private static EmbeddingMatch<TextSegment> mapResponseItem(Record in) {
     return new EmbeddingMatch(
       in.getRelevance(),
-      in.getId(),
+      in.getFields().getDocumentId(),
       Embedding.from(in.getFields().getVector().getValues()),
       TextSegment.from(in.getFields().getTextSegment())
     );

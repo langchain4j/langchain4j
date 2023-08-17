@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.weaviate;
 
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
@@ -21,8 +21,6 @@ import io.weaviate.client.v1.data.replication.model.ConsistencyLevel;
 import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearVectorArgument;
 import io.weaviate.client.v1.graphql.query.fields.Field;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Builder;
@@ -156,7 +154,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     for (int i = 0; i < embeddings.size(); i++) {
       String id = ids != null
         ? ids.get(i)
-        : avoidDups && embedded != null ? generateUUID(embedded.get(i).text()) : randomUUID();
+        : avoidDups && embedded != null ? generateUUIDFrom(embedded.get(i).text()) : randomUUID();
       resIds.add(id);
       objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : null));
     }
@@ -199,17 +197,5 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       ),
       TextSegment.from((String) item.get(METADATA_TEXT_SEGMENT))
     );
-  }
-
-  // TODO this shall be migrated to some common place
-  private static String generateUUID(String input) {
-    try {
-      byte[] hashBytes = MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8));
-      StringBuilder sb = new StringBuilder();
-      for (byte b : hashBytes) sb.append(String.format("%02x", b));
-      return UUID.nameUUIDFromBytes(sb.toString().getBytes(UTF_8)).toString();
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalArgumentException(e);
-    }
   }
 }
