@@ -3,23 +3,30 @@ package dev.langchain4j.model.openai;
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
+/**
+ * Represents a connection to the OpenAI LLM with a completion interface, such as text-davinci-003.
+ * However, it's recommended to use {@link OpenAiChatModel} instead,
+ * as it offers more advanced features like function calling, multi-turn conversations, etc.
+ */
 public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
     private final Double temperature;
     private final Integer maxRetries;
-    private final OpenAiTokenizer tokenizer;
+    private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiLanguageModel(String apiKey,
@@ -27,6 +34,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                                Double temperature,
                                Duration timeout,
                                Integer maxRetries,
+                               Proxy proxy,
                                Boolean logRequests,
                                Boolean logResponses) {
 
@@ -41,6 +49,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
@@ -66,7 +75,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
     @Override
     public int estimateTokenCount(String prompt) {
-        return tokenizer.countTokens(prompt);
+        return tokenizer.estimateTokenCountInText(prompt);
     }
 
     public static OpenAiLanguageModel withApiKey(String apiKey) {

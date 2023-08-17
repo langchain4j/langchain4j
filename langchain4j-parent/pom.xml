@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.18.0</version>
+    <version>0.20.0</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -25,7 +25,7 @@
             <dependency>
                 <groupId>dev.ai4j</groupId>
                 <artifactId>openai4j</artifactId>
-                <version>0.6.0</version>
+                <version>0.6.1</version>
             </dependency>
 
             <dependency>
@@ -43,13 +43,13 @@
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
-                <version>1.18.26</version>
+                <version>1.18.28</version>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
-                <version>2.0.28</version>
+                <version>2.0.29</version>
             </dependency>
 
             <dependency>

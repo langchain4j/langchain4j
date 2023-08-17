@@ -1,7 +1,6 @@
 package dev.langchain4j.internal;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.UUID;
 
 public class Utils {
 
@@ -17,7 +16,7 @@ public class Utils {
         return sb.toString();
     }
 
-    public static <T> List<T> list(T... elements) {
-        return Arrays.asList(elements);
+    public static String randomUUID() {
+        return UUID.randomUUID().toString();
     }
 }

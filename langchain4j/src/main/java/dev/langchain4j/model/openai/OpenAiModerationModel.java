@@ -11,6 +11,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -22,6 +23,9 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Represents a connection to the OpenAI moderation model, such as text-moderation-latest.
+ */
 public class OpenAiModerationModel implements ModerationModel {
 
     private final OpenAiClient client;
@@ -33,6 +37,7 @@ public class OpenAiModerationModel implements ModerationModel {
                                  String modelName,
                                  Duration timeout,
                                  Integer maxRetries,
+                                 Proxy proxy,
                                  Boolean logRequests,
                                  Boolean logResponses) {
 
@@ -52,6 +57,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();

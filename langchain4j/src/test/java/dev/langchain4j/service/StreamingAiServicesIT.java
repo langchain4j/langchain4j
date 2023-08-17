@@ -50,7 +50,7 @@ public class StreamingAiServicesIT {
     @Test
     void should_stream_answers_with_memory() throws Exception {
 
-        ChatMemory chatMemory = MessageWindowChatMemory.withCapacity(10);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatLanguageModel(streamingChatModel)
@@ -115,7 +115,7 @@ public class StreamingAiServicesIT {
 
         Calculator calculator = spy(new Calculator());
 
-        ChatMemory chatMemory = MessageWindowChatMemory.withCapacity(10);
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .streamingChatLanguageModel(streamingChatModel)

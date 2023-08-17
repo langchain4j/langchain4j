@@ -15,16 +15,16 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
     private final int maxResults;
-    private final Double minSimilarity;
+    private final Double minScore;
 
     public EmbeddingStoreRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                    EmbeddingModel embeddingModel,
                                    int maxResults,
-                                   Double minSimilarity) {
+                                   Double minScore) {
         this.embeddingStore = embeddingStore;
         this.embeddingModel = embeddingModel;
         this.maxResults = maxResults;
-        this.minSimilarity = minSimilarity;
+        this.minScore = minScore;
     }
 
     @Override
@@ -33,10 +33,10 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
         Embedding embeddedText = embeddingModel.embed(text);
 
         List<EmbeddingMatch<TextSegment>> relevant;
-        if (minSimilarity == null) {
+        if (minScore == null) {
             relevant = embeddingStore.findRelevant(embeddedText, maxResults);
         } else {
-            relevant = embeddingStore.findRelevant(embeddedText, maxResults, minSimilarity);
+            relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore);
         }
 
         return relevant.stream()
@@ -52,7 +52,7 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
         return new EmbeddingStoreRetriever(embeddingStore, embeddingModel, maxResults, null);
     }
 
-    public static EmbeddingStoreRetriever from(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel, int maxResults, double minSimilarity) {
-        return new EmbeddingStoreRetriever(embeddingStore, embeddingModel, maxResults, minSimilarity);
+    public static EmbeddingStoreRetriever from(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel, int maxResults, double minScore) {
+        return new EmbeddingStoreRetriever(embeddingStore, embeddingModel, maxResults, minScore);
     }
 }

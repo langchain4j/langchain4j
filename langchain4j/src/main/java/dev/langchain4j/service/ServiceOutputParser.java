@@ -19,7 +19,7 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-public class ServiceOutputParser {
+class ServiceOutputParser {
 
     private static final Map<Class<?>, OutputParser<?>> OUTPUT_PARSERS = new HashMap<>();
 

@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.data.document.DocumentLoaderUtils.detectDocumentType;
 import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
 import static dev.langchain4j.data.document.source.FileSystemSource.from;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -24,7 +23,7 @@ public class FileSystemDocumentLoader {
 
     /**
      * Loads a document from the specified file, detecting document type automatically.
-     * Currently, .txt and .pdf files are supported.
+     * See {@link DocumentType} for the list of supported document types.
      *
      * @param filePath path to the file
      * @return document
@@ -32,12 +31,12 @@ public class FileSystemDocumentLoader {
      * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
      */
     public static Document loadDocument(Path filePath) {
-        return loadDocument(filePath, detectDocumentType(filePath.toString()));
+        return loadDocument(filePath, DocumentType.of(filePath.toString()));
     }
 
     /**
      * Loads a document from the specified file, detecting document type automatically.
-     * Currently, .txt and .pdf files are supported.
+     * See {@link DocumentType} for the list of supported document types.
      *
      * @param filePath path to the file
      * @return document
@@ -79,7 +78,7 @@ public class FileSystemDocumentLoader {
     /**
      * Loads documents from the specified directory. Does not use recursion.
      * Detects document types automatically. Files with unsupported types are ignored.
-     * Currently, .txt and .pdf files are supported.
+     * See {@link DocumentType} for the list of supported document types.
      *
      * @param directoryPath path to the directory with files
      * @return list of documents
@@ -112,7 +111,7 @@ public class FileSystemDocumentLoader {
     /**
      * Loads documents from the specified directory. Does not use recursion.
      * Detects document types automatically. Files with unsupported types are ignored.
-     * Currently, .txt and .pdf files are supported.
+     * See {@link DocumentType} for the list of supported document types.
      *
      * @param directoryPath path to the directory with files
      * @return list of documents
