@@ -31,13 +31,15 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private static final String DEFAULT_CLASS = "Default";
   private static final Double DEFAULT_MIN_CERTAINTY = 0.0;
+  private static final Boolean DEFAULT_AVOID_DUPS = Boolean.TRUE;
+  private static final String DEFAULT_CONSISTENCY_LEVEL = ConsistencyLevel.QUORUM;
   private static final String METADATA_TEXT_SEGMENT = "text";
   private static final String ADDITIONALS = "_additional";
 
   private final WeaviateClient client;
   private final String objectClass;
-  private boolean avoidDups = true;
-  private String consistencyLevel = ConsistencyLevel.QUORUM;
+  private boolean avoidDups;
+  private String consistencyLevel;
 
   @Builder
   public WeaviateEmbeddingStoreImpl(
@@ -45,7 +47,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     String scheme,
     String host,
     String objectClass,
-    boolean avoidDups,
+    Boolean avoidDups,
     String consistencyLevel
   ) {
     try {
@@ -54,8 +56,8 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       throw new IllegalArgumentException(e);
     }
     this.objectClass = objectClass != null ? objectClass : DEFAULT_CLASS;
-    this.avoidDups = avoidDups;
-    this.consistencyLevel = consistencyLevel;
+    this.avoidDups = avoidDups != null ? avoidDups : DEFAULT_AVOID_DUPS;
+    this.consistencyLevel = consistencyLevel != null ? consistencyLevel : DEFAULT_CONSISTENCY_LEVEL;
   }
 
   @Override
