@@ -44,6 +44,10 @@ public class Metadata {
         return new Metadata(new HashMap<>(metadata));
     }
 
+    public Map<String, String> asMap() {
+        return new HashMap<>(metadata);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
