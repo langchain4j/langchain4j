@@ -31,7 +31,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private static final String DEFAULT_CLASS = "Default";
   private static final Double DEFAULT_MIN_CERTAINTY = 0.0;
-  private static final Boolean DEFAULT_AVOID_DUPS = Boolean.TRUE;
+  private static final boolean DEFAULT_AVOID_DUPS = true;
   private static final String DEFAULT_CONSISTENCY_LEVEL = ConsistencyLevel.QUORUM;
   private static final String METADATA_TEXT_SEGMENT = "text";
   private static final String ADDITIONALS = "_additional";
