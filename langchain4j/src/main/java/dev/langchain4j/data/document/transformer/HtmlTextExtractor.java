@@ -2,11 +2,14 @@ package dev.langchain4j.data.document.transformer;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentTransformer;
+import dev.langchain4j.data.document.Metadata;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
 import org.jsoup.nodes.TextNode;
 import org.jsoup.select.NodeVisitor;
+
+import java.util.Map;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
@@ -20,14 +23,17 @@ import static org.jsoup.select.NodeTraversor.traverse;
 public class HtmlTextExtractor implements DocumentTransformer {
 
     private final String cssSelector;
+    private final Map<String, String> metadataCssSelectors;
     private final boolean includeLinks;
 
     /**
      * Constructs an instance of HtmlToTextTransformer that extracts all text from a given Document containing HTML.
      */
     public HtmlTextExtractor() {
-        this(null, false);
+        this(null, null, false);
     }
+
+// TODO builder
 
     /**
      * Constructs an instance of HtmlToTextTransformer that extracts text from HTML elements matching the provided CSS selector.
@@ -35,8 +41,9 @@ public class HtmlTextExtractor implements DocumentTransformer {
      * @param cssSelector  A CSS selector. For example, '#content' will extract all text from the HTML element with id "content".
      * @param includeLinks Specifies whether links should be included in the extracted text.
      */
-    public HtmlTextExtractor(String cssSelector, boolean includeLinks) {
+    public HtmlTextExtractor(String cssSelector, Map<String, String> metadataCssSelectors, boolean includeLinks) {
         this.cssSelector = cssSelector;
+        this.metadataCssSelectors = metadataCssSelectors;
         this.includeLinks = includeLinks;
     }
 
@@ -52,7 +59,13 @@ public class HtmlTextExtractor implements DocumentTransformer {
             text = extractText(jsoupDocument, includeLinks);
         }
 
-        return Document.from(text, document.metadata());
+        Metadata metadata = document.metadata();
+        if (metadataCssSelectors != null) {
+            metadataCssSelectors.forEach((metadataKey, cssSelector) ->
+                    metadata.add(metadataKey, jsoupDocument.select(cssSelector).text()));
+        }
+
+        return Document.from(text, metadata);
     }
 
     private static String extractText(org.jsoup.nodes.Document jsoupDocument, String cssSelector, boolean includeLinks) {

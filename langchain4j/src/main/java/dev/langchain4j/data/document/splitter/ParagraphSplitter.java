@@ -78,7 +78,7 @@ public class ParagraphSplitter implements DocumentSplitter {
 
     private int sizeOf(String text) {
         if (tokenizer != null) {
-            return tokenizer.countTokens(text);
+            return tokenizer.estimateTokenCountInText(text);
         }
         return text.length();
     }

@@ -54,12 +54,13 @@ public class SentenceSplitter implements DocumentSplitter {
 
         SegmentBuilder segmentBuilder = new SegmentBuilder(maxSegmentSize, this::sizeOf, SEPARATOR);
 
+        int offset = 0;
         for (String sentence : sentences) {
             if (segmentBuilder.hasSpaceFor(sentence)) {
                 segmentBuilder.append(sentence);
             } else {
                 if (segmentBuilder.isNotEmpty()) {
-                    TextSegment segment = segmentBuilder.buildWith(document.metadata());
+                    TextSegment segment = segmentBuilder.buildWith(document.metadata().copy().add("end_offset", offset));
                     textSegments.add(segment);
                     segmentBuilder.refresh();
                 }
@@ -73,17 +74,18 @@ public class SentenceSplitter implements DocumentSplitter {
                         if (segmentBuilder.hasSpaceFor(word)) {
                             segmentBuilder.append(word);
                         } else {
-                            TextSegment segment = segmentBuilder.buildWith(document.metadata());
+                            TextSegment segment = segmentBuilder.buildWith(document.metadata().copy().add("end_offset", offset));
                             textSegments.add(segment);
                             segmentBuilder.refresh();
                         }
                     }
                 }
             }
+            offset++;
         }
 
         if (segmentBuilder.isNotEmpty()) {
-            TextSegment segment = segmentBuilder.buildWith(document.metadata());
+            TextSegment segment = segmentBuilder.buildWith(document.metadata().copy().add("end_offset", offset));
             textSegments.add(segment);
         }
 
@@ -92,7 +94,7 @@ public class SentenceSplitter implements DocumentSplitter {
 
     private int sizeOf(String text) {
         if (tokenizer != null) {
-            return tokenizer.countTokens(text);
+            return tokenizer.estimateTokenCountInText(text);
         }
         return text.length();
     }
