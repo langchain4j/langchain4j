@@ -6,11 +6,12 @@ import ai.vespa.feed.client.*;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.http.HttpResponse;
@@ -22,18 +23,26 @@ import org.apache.http.util.EntityUtils;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
-  private FeedClient feedClient;
+  private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(3);
+  private static final String DEFAULT_NAMESPACE = "namespace";
+  // TODO
+  private static final String DEFAULT_DOCUMENT_TYPE = "carrot";
+
+  private final String url;
+  private final String keyPath;
+  private final String certPath;
+  private final Duration timeout;
+  private final String namespace;
+  private final String documentType;
 
   @Builder
-  public VespaEmbeddingStoreImpl() {
-//        this.feedClient =
-//          FeedClientBuilder
-//            .create(URI.create("https://alexey-heezer.carrot.mytenant346.aws-us-east-1c.dev.z.vespa-app.cloud/"))
-//            .setCertificate(
-//              Paths.get("/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-public-cert.pem"),
-//              Paths.get("/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-private-key.pem")
-//            )
-//            .build();
+  public VespaEmbeddingStoreImpl(String url, String keyPath, String certPath, Duration timeout, String namespace, String documentType) {
+    this.url = url;
+    this.keyPath = keyPath;
+    this.certPath = certPath;
+    this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
+    this.namespace = namespace != null ? namespace : DEFAULT_NAMESPACE;
+    this.documentType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
   }
 
   @Override
@@ -60,44 +69,67 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
     }
 
-    for (int i = 0; i < embeddings.size(); i++) {
-      DocumentId id = DocumentId.of("namespace", "carrot", String.valueOf(i)/* TBD ID gen! */);
-      // TODO use any programmatic JSON builder?
-      String json =
-        "{\"fields\": {\"text_segment\": \"" +
-        // TODO something better than this replace?
-        embedded.get(i).text().replace("\n", " ") +
-        "\", \"vector\": [" +
-        embeddings.get(i).vectorAsList().stream().map(String::valueOf).collect(Collectors.joining(",")) +
-        "]}}";
-      OperationParameters params = OperationParameters.empty().timeout(Duration.ofSeconds(5));
-      CompletableFuture<Result> promise = feedClient.put(id, json, params);
-      promise.whenComplete(
-        (
-          (result, throwable) -> {
-            if (throwable != null) {
-              throwable.printStackTrace();
+    List<String> ids = new ArrayList<>();
+
+    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+      List<Record> records = new ArrayList<>();
+
+      for (int i = 0; i < embeddings.size(); i++) {
+        DocumentId id = DocumentId.of(namespace, documentType, String.valueOf(i)/* TBD ID gen! */);
+        //        String json = Json.toJson(new Record(id.toString(), embedded.get(i).text(), embeddings.get(i).vectorAsList()));
+        records.add(
+          new Record(id.toString(), embedded != null ? embedded.get(i).text() : null, embeddings.get(i).vectorAsList())
+        );
+      }
+
+      jsonFeeder.feedMany(
+        Json.toInputStream(records, List.class),
+        new JsonFeeder.ResultCallback() {
+          @Override
+          public void onNextResult(Result result, FeedException error) {
+            if (error == null) {
+              if (Result.Type.success.equals(result.type())) {
+                ids.add(result.documentId().toString());
+              }
             } else {
-              System.out.printf(
-                "'%s' for document '%s': %s%n",
-                result.type(),
-                result.documentId(),
-                result.resultMessage()
-              );
+              throw new RuntimeException(error.getMessage());
             }
           }
-        )
+
+          @Override
+          public void onError(FeedException error) {
+            throw new RuntimeException(error.getMessage());
+          }
+        }
       );
+      //        CompletableFuture<Result> promise = jsonFeeder.feedSingle(json);
+      //        promise.whenComplete(
+      //          (
+      //            (result, throwable) -> {
+      //              if (throwable != null) {
+      //                throw new RuntimeException(throwable);
+      //              } else {
+      //                System.out.printf(
+      //                  "'%s' for document '%s': %s%n",
+      //                  result.type(),
+      //                  result.documentId(),
+      //                  result.resultMessage()
+      //                );
+      //                ids.add(result.documentId().toString());
+      //              }
+      //            }
+      //          )
+      //        );
+
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
 
-    return null;
+    return ids;
   }
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    String certPath = "/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-public-cert.pem";
-    String keyPath = "/Users/alexey.titov/.vespa/mytenant346.carrot.alexey-heezer/data-plane-private-key.pem";
-
     HttpResponse response;
     try (
       CloseableHttpClient httpClient = HttpClients
@@ -117,12 +149,9 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
         .build();
 
-      URI uri = new URIBuilder("https://alexey-heezer.carrot.mytenant346.aws-us-east-1c.dev.z.vespa-app.cloud")
-        .setPath("search/")
-        .setCustomQuery(searchQuery)
-        .build();
+      URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
 
-      response = httpClient.execute(new HttpGet(uri));
+      response = httpClient.execute(new HttpGet(queryUri));
       QueryResponse parsedResponse = Json.fromJson(EntityUtils.toString(response.getEntity()), QueryResponse.class);
 
       return parsedResponse
@@ -145,7 +174,16 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     return null;
   }
 
-  private static EmbeddingMatch<TextSegment> mapResponseItem(QueryResponse.ChildNode in) {
+  private JsonFeeder buildJsonFeeder() {
+    return JsonFeeder
+      .builder(
+        FeedClientBuilder.create(URI.create(url)).setCertificate(Paths.get(certPath), Paths.get(keyPath)).build()
+      )
+      .withTimeout(timeout)
+      .build();
+  }
+
+  private static EmbeddingMatch<TextSegment> mapResponseItem(Record in) {
     return new EmbeddingMatch(
       in.getRelevance(),
       in.getId(),
