@@ -25,21 +25,25 @@ class TokenWindowChatMemoryTest {
         assertThat(chatMemory.messages())
                 .hasSize(1)
                 .containsExactly(firstUserMessage);
+        // @formatter:off
         assertThat(tokenizer.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                10 // firstUserMessage
-                        + 3 // overhead
+                  10 // firstUserMessage
+                + 3  // overhead
         );
+        // @formatter:on
 
         AiMessage firstAiMessage = aiMessageWithTokens(10);
         chatMemory.add(firstAiMessage);
         assertThat(chatMemory.messages())
                 .hasSize(2)
                 .containsExactly(firstUserMessage, firstAiMessage);
+        // @formatter:off
         assertThat(tokenizer.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                10 // firstUserMessage
-                        + 10 // firstAiMessage
-                        + 3 // overhead
+                  10 // firstUserMessage
+                + 10 // firstAiMessage
+                + 3  // overhead
         );
+        // @formatter:on
 
         UserMessage secondUserMessage = userMessageWithTokens(10);
         chatMemory.add(secondUserMessage);
@@ -50,12 +54,14 @@ class TokenWindowChatMemoryTest {
                         firstAiMessage,
                         secondUserMessage
                 );
+        // @formatter:off
         assertThat(tokenizer.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                10 // firstUserMessage
-                        + 10 // firstAiMessage
-                        + 10 // secondUserMessage
-                        + 3 // overhead
+                 10 // firstUserMessage
+               + 10 // firstAiMessage
+               + 10 // secondUserMessage
+               + 3  // overhead
         );
+        // @formatter:on
 
         AiMessage secondAiMessage = aiMessageWithTokens(10);
         chatMemory.add(secondAiMessage);
@@ -67,11 +73,13 @@ class TokenWindowChatMemoryTest {
                         secondUserMessage,
                         secondAiMessage
                 );
+        // @formatter:off
         assertThat(tokenizer.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                10 // firstAiMessage
-                        + 10 // secondUserMessage
-                        + 10 // secondAiMessage
-                        + 3 // overhead
+                 10 // firstAiMessage
+               + 10 // secondUserMessage
+               + 10 // secondAiMessage
+               + 3  // overhead
         );
+        // @formatter:on
     }
 }

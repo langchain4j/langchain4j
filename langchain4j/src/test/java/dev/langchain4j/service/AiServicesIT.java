@@ -598,17 +598,11 @@ public class AiServicesIT {
             }
         };
 
-        ChatMemoryProvider chatMemoryProvider = new ChatMemoryProvider() {
-
-            @Override
-            public ChatMemory chatMemoryOf(Object userId) {
-                return MessageWindowChatMemory.builder()
-                        .userId(userId)
-                        .maxMessages(10)
-                        .chatMemoryStore(store)
-                        .build();
-            }
-        };
+        ChatMemoryProvider chatMemoryProvider = userId -> MessageWindowChatMemory.builder()
+                .userId(userId)
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
 
         int firstUserId = 1;
         int secondUserId = 2;
