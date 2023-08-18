@@ -41,7 +41,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
         modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
         temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
+        timeout = timeout == null ? ofSeconds(60) : timeout;
 
         this.client = OpenAiClient.builder()
                 .baseUrl(baseUrl)

@@ -16,7 +16,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents a connection to the OpenAI LLM with a completion interface, such as text-davinci-003.
+ * Represents a connection to the OpenAI LLM, hosted on Azure (like text-davinci-003).
  * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.

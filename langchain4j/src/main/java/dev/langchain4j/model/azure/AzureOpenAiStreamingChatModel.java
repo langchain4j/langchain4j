@@ -24,7 +24,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a connection to the Azure OpenAI with a chat completion interface.
+ * Represents a connection to the OpenAI LLM, hosted on Azure, that has a chat completion interface (like gpt-3.5-turbo and gpt-4).
  * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
@@ -66,7 +66,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Boolean logResponses) {
 
         temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(5) : timeout;
+        timeout = timeout == null ? ofSeconds(15) : timeout;
 
         this.client = OpenAiClient.builder()
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))

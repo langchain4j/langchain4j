@@ -24,7 +24,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a chat model backed by Azure OpenAI.
+ * Represents a connection to the OpenAI LLM, hosted on Azure, that has a chat completion interface (like gpt-3.5-turbo and gpt-4).
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>

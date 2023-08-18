@@ -6,7 +6,6 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiChatModel;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -17,8 +16,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents a connection to the Azure OpenAI LLM with a completion interface.
- * However, it's recommended to use {@link OpenAiChatModel} instead,
+ * Represents a connection to the OpenAI LLM, hosted on Azure (like text-davinci-003).
+ * However, it's recommended to use {@link AzureOpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
@@ -54,7 +53,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Boolean logResponses) {
 
         temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
+        timeout = timeout == null ? ofSeconds(60) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()

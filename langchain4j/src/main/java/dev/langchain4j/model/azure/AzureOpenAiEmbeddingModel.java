@@ -20,7 +20,15 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the OpenAI embedding model, such as text-embedding-ada-002, accessing it via Azure.
+ * Represents a connection to the OpenAI embedding model, hosted on Azure (like text-embedding-ada-002).
+ * <p>
+ * There are two primary authentication methods to access Azure OpenAI:
+ * <p>
+ * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
+ * API Key in the "api-key" HTTP header.
+ * <p>
+ * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
+ * authentication/access token in the "Authorization" HTTP header.
  * <p>
  * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
  * <p>
