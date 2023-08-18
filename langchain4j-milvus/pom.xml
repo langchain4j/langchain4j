@@ -16,21 +16,8 @@
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>${parent.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
             <version>${parent.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>${parent.version}</version>
-            <scope>compile</scope>
         </dependency>
 
         <dependency>

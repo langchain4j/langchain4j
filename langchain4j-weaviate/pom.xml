@@ -11,7 +11,6 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-
     <artifactId>langchain4j-weaviate</artifactId>
     <packaging>jar</packaging>
 
