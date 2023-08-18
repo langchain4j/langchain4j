@@ -5,6 +5,8 @@ import dev.langchain4j.data.document.Metadata;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 /**
  * Represents a semantically meaningful segment (chunk/piece/fragment) of a larger entity such as a document or chat conversation.
  * This might be a sentence, a paragraph, or any other discrete unit of text that carries meaning.
@@ -45,8 +47,8 @@ public class TextSegment {
     @Override
     public String toString() {
         return "TextSegment {" +
-                " text = \"" + text + "\"" +
-                " metadata = \"" + metadata + "\"" +
+                " text = " + quoted(text) +
+                " metadata = " + metadata +
                 " }";
     }
 

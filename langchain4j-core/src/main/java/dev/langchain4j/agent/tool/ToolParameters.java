@@ -2,6 +2,8 @@ package dev.langchain4j.agent.tool;
 
 import java.util.*;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 public class ToolParameters {
 
     private final String type;
@@ -51,9 +53,9 @@ public class ToolParameters {
     @Override
     public String toString() {
         return "ToolParameters {"
-                + " type = " + type
+                + " type = " + quoted(type)
                 + ", properties = " + properties
-                + ", required=" + required
+                + ", required = " + required
                 + " }";
     }
 

@@ -2,6 +2,8 @@ package dev.langchain4j.agent.tool;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 public class JsonSchemaProperty {
 
     public static final JsonSchemaProperty STRING = type("string");
@@ -51,7 +53,7 @@ public class JsonSchemaProperty {
     @Override
     public String toString() {
         return "JsonSchemaProperty {"
-                + " key = " + key
+                + " key = " + quoted(key)
                 + ", value = " + value
                 + " }";
     }
