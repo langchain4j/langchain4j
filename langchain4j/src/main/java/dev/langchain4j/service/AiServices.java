@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
@@ -24,7 +25,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.function.Supplier;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
@@ -43,14 +43,14 @@ import static java.util.stream.Collectors.toList;
  * <p>
  * Currently, AI Services support:
  * <pre>
- * - Prompt templates for user and system messages using {@code @UserMessage} and {@code @SystemMessage}
- * - Structured prompts as method arguments (see {@code @StructuredPrompt})
- * - Shared or per-user (see {@code @UserId}) chat memory
+ * - Prompt templates for user and system messages using {@link UserMessage} and {@link SystemMessage}
+ * - Structured prompts as method arguments (see {@link StructuredPrompt})
+ * - Shared or per-user (see {@link UserId}) chat memory
  * - Retrievers
- * - Tools (see {@code @Tool})
+ * - Tools (see {@link Tool})
  * - Various return types (output parsers), see below
- * - Streaming (use {@code TokenStream} as a return type)
- * - Auto-moderation using {@code @Moderate}
+ * - Streaming (use {@link TokenStream} as a return type)
+ * - Auto-moderation using {@link Moderate}
  * </pre>
  * <p>
  * Here is the simplest example of an AI Service:
@@ -69,7 +69,7 @@ import static java.util.stream.Collectors.toList;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@code String} or an {@code AiMessage}, if you want to get the answer from the LLM as-is
+ * - a {@code String} or an {@link AiMessage}, if you want to get the answer from the LLM as-is
  * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
  * - any {@code Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
@@ -95,7 +95,7 @@ import static java.util.stream.Collectors.toList;
  * System.out.println(sentiment); // POSITIVE
  * </pre>
  * <p>
- * As demonstrated, you can put {@code @UserMessage} and {@code @SystemMessage} annotations above a method to define
+ * As demonstrated, you can put {@link UserMessage} and {@link SystemMessage} annotations above a method to define
  * templates for user and system messages, respectively.
  * In this example, the special {@code {{it}}} prompt template variable is used because there's only one method parameter.
  * However, you can use more parameters as demonstrated in the following example:
@@ -127,7 +127,7 @@ public class AiServices<T> {
     /**
      * Creates an AI Service (an implementation of the provided interface), that is backed by the provided chat model.
      * This convenience method can be used to create simple AI Services.
-     * For more complex cases, please use {@code builder()}.
+     * For more complex cases, please use {@link #builder}.
      *
      * @param aiService         The class of the interface to be implemented.
      * @param chatLanguageModel The chat model to be used under the hood.
@@ -142,11 +142,11 @@ public class AiServices<T> {
     /**
      * Creates an AI Service (an implementation of the provided interface), that is backed by the provided streaming chat model.
      * This convenience method can be used to create simple AI Services.
-     * For more complex cases, please use {@code builder()}.
+     * For more complex cases, please use {@link #builder}.
      *
      * @param aiService                  The class of the interface to be implemented.
      * @param streamingChatLanguageModel The streaming chat model to be used under the hood.
-     *                                   The return type of all methods should be {@code TokenStream}.
+     *                                   The return type of all methods should be {@link TokenStream}.
      * @return An instance of the provided interface, implementing all its defined methods.
      */
     public static <T> T create(Class<T> aiService, StreamingChatLanguageModel streamingChatLanguageModel) {
@@ -159,7 +159,7 @@ public class AiServices<T> {
      * Begins the construction of an AI Service.
      *
      * @param aiService The class of the interface to be implemented.
-     * @return A builder instance. Once you have configured all necessary components, call {@code build()}.
+     * @return builder
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
         return new AiServices<>(aiService);
@@ -167,11 +167,12 @@ public class AiServices<T> {
 
     /**
      * Configures chat model that will be used under the hood of the AI Service.
-     * Either {@code ChatLanguageModel} or {@code StreamingChatLanguageModel} should be configured,
+     * <p>
+     * Either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} should be configured,
      * but not both at the same time.
      *
      * @param chatLanguageModel Chat model that will be used under the hood of the AI Service.
-     * @return A builder instance. Once you have configured all necessary components, call {@code build()}.
+     * @return builder
      */
     public AiServices<T> chatLanguageModel(ChatLanguageModel chatLanguageModel) {
         context.chatLanguageModel = chatLanguageModel;
@@ -180,11 +181,13 @@ public class AiServices<T> {
 
     /**
      * Configures streaming chat model that will be used under the hood of the AI Service.
-     * Either {@code ChatLanguageModel} or {@code StreamingChatLanguageModel} should be configured,
+     * The methods of the AI Service must return a {@link TokenStream} type.
+     * <p>
+     * Either {@link ChatLanguageModel} or {@link StreamingChatLanguageModel} should be configured,
      * but not both at the same time.
      *
      * @param streamingChatLanguageModel Streaming chat model that will be used under the hood of the AI Service.
-     * @return A builder instance. Once you have configured all necessary components, call {@code build()}.
+     * @return builder
      */
     public AiServices<T> streamingChatLanguageModel(StreamingChatLanguageModel streamingChatLanguageModel) {
         context.streamingChatLanguageModel = streamingChatLanguageModel;
@@ -193,14 +196,18 @@ public class AiServices<T> {
 
     /**
      * Configures the chat memory that will be used to preserve conversation history between method calls.
-     * Unless a {@code ChatMemory} or chat memory supplier is configured, all method calls will be stateless.
-     * In other words, the LLM will not remember the conversation from the previous method call.
-     * The same {@code ChatMemory} instance will be used for every method call.
-     * If you want to use a separate {@code ChatMemory} for each user, configure a chat memory supplier instead (method below).
-     * Either a {@code ChatMemory} or a chat memory supplier can be configured, but not both simultaneously.
+     * <p>
+     * Unless a {@link ChatMemory} or {@link ChatMemoryProvider} is configured, all method calls will be independent of each other.
+     * In other words, the LLM will not remember the conversation from the previous method calls.
+     * <p>
+     * The same {@link ChatMemory} instance will be used for every method call.
+     * <p>
+     * If you want to have a separate {@link ChatMemory} for each user, configure {@link #chatMemoryProvider} instead.
+     * <p>
+     * Either a {@link ChatMemory} or a {@link ChatMemoryProvider} can be configured, but not both simultaneously.
      *
      * @param chatMemory An instance of chat memory to be used by the AI Service.
-     * @return A builder instance. After configuring all necessary components, call {@code build()}.
+     * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
         context.chatMemories = new ConcurrentHashMap<>();
@@ -209,29 +216,38 @@ public class AiServices<T> {
     }
 
     /**
-     * Configures the chat memory supplier, which will be used to create a dedicated instance of {@code ChatMemory} for each user.
-     * A new instance of chat memory will be automatically created for each new user by invoking {@code chatMemorySupplier.get()}.
+     * Configures the chat memory provider, which provides a dedicated instance of {@link ChatMemory} for each user.
+     * For each new (previously unseen) user, an instance of {@link ChatMemory} is automatically obtained
+     * by invoking {@link ChatMemoryProvider#chatMemoryOf(Object)}.
      * To distinguish between users, one of the method's arguments should be a user ID (of any data type)
-     * annotated with {@code @UserId}. This ID will be used to retrieve the respective user's chat memory.
-     * If you prefer to use the same (shared) {@code ChatMemory} for all users, configure a chat memory instead (method above).
-     * Either a {@code ChatMemory} or a chat memory supplier should be configured, but not both simultaneously.
+     * annotated with {@link UserId}.
+     * Example:
+     * <pre>
+     * interface Assistant {
      *
-     * @param chatMemorySupplier The supplier used to create a {@code ChatMemory} for each new user.
-     * @return A builder instance. After configuring all necessary components, call {@code build()}.
+     *     String chat(@UserId int userId, @UserMessage String message);
+     * }
+     * </pre>
+     * If you prefer to use the same (shared) {@link ChatMemory} for all users, configure a {@link #chatMemory} instead.
+     * <p>
+     * Either a {@link ChatMemory} or a {@link ChatMemoryProvider} should be configured, but not both simultaneously.
+     *
+     * @param chatMemoryProvider The provider of a {@link ChatMemory} for each new user.
+     * @return builder
      */
-    public AiServices<T> chatMemorySupplier(Supplier<ChatMemory> chatMemorySupplier) {
+    public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
         context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemorySupplier = chatMemorySupplier;
+        context.chatMemoryProvider = chatMemoryProvider;
         return this;
     }
 
     /**
      * Configures a moderation model to be used for automatic content moderation.
-     * If a method in the AI Service is annotated with {@code @Moderate}, the moderation model will be invoked
-     * to check the user content for any inappropriate or harmful material. See @Moderate for more details.
+     * If a method in the AI Service is annotated with {@link Moderate}, the moderation model will be invoked
+     * to check the user content for any inappropriate or harmful material.
      *
      * @param moderationModel The moderation model to be used for content moderation.
-     * @return A builder instance. Once you have configured all necessary components, call {@code build()}.
+     * @return builder
      * @see Moderate
      */
     public AiServices<T> moderationModel(ModerationModel moderationModel) {
@@ -243,10 +259,10 @@ public class AiServices<T> {
      * Configures the tools that the LLM can use.
      * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
      *
-     * @param objectsWithTools One or more objects whose methods are annotated with {@code @Tool}.
-     *                         All these tools (methods annotated with {@code @Tool}) will be accessible to the LLM.
-     *                         Note that inherited methods are not considered.
-     * @return A builder instance. After configuring all necessary components, invoke {@code build()}.
+     * @param objectsWithTools One or more objects whose methods are annotated with {@link Tool}.
+     *                         All these tools (methods annotated with {@link Tool}) will be accessible to the LLM.
+     *                         Note that inherited methods are ignored.
+     * @return builder
      * @see Tool
      */
     public AiServices<T> tools(Object... objectsWithTools) {
@@ -257,10 +273,10 @@ public class AiServices<T> {
      * Configures the tools that the LLM can use.
      * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
      *
-     * @param objectsWithTools A list of objects whose methods are annotated with {@code @Tool}.
-     *                         All these tools (methods annotated with {@code @Tool}) are accessible to the LLM.
-     *                         Note that inherited methods are not considered.
-     * @return A builder instance. After configuring all necessary components, invoke {@code build()}.
+     * @param objectsWithTools A list of objects whose methods are annotated with {@link Tool}.
+     *                         All these tools (methods annotated with {@link Tool}) are accessible to the LLM.
+     *                         Note that inherited methods are ignored.
+     * @return builder
      * @see Tool
      */
     public AiServices<T> tools(List<Object> objectsWithTools) {
@@ -290,7 +306,7 @@ public class AiServices<T> {
      * This relevant information is automatically injected into the message sent to the LLM.
      *
      * @param retriever The retriever to be used by the AI Service.
-     * @return A builder instance. After configuring all necessary components, call {@code build()}.
+     * @return builder
      */
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
         context.retriever = retriever;
@@ -317,7 +333,7 @@ public class AiServices<T> {
 
         if (context.toolSpecifications != null && !context.hasChatMemory()) {
             throw illegalConfiguration(
-                    "Please set up chatMemory or chatMemorySupplier in order to use tools. "
+                    "Please set up chatMemory or chatMemoryProvider in order to use tools. "
                             + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
                             + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
                             "result of the tool's execution without the initial message from the user, it won't interpret " +

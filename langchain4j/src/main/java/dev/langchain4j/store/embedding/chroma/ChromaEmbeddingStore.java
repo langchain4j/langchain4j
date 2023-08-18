@@ -17,8 +17,8 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a store for embeddings with Chroma backend.
- * The cosine distance is always used as the distance metric.
+ * Represents a store for embeddings using the Chroma backend.
+ * Always uses cosine distance as the distance metric.
  */
 public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
@@ -29,12 +29,12 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Initializes a new instance of ChromaEmbeddingStore with the specified parameters.
      *
      * @param baseUrl        The base URL of the Chroma service.
-     * @param collectionName The name of the collection in the Chroma service.
-     * @param timeout        The timeout duration for the Chroma client.
+     * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+     * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
      */
     public ChromaEmbeddingStore(String baseUrl, String collectionName, Duration timeout) {
         collectionName = collectionName == null ? "default" : collectionName;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
+        timeout = timeout == null ? ofSeconds(5) : timeout;
 
         this.chromaClient = new ChromaClient(baseUrl, timeout);
 
@@ -52,21 +52,34 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new Builder();
     }
 
-   static class Builder {
+    public static class Builder {
+
         private String baseUrl;
         private String collectionName;
         private Duration timeout;
 
+        /**
+         * @param baseUrl The base URL of the Chroma service.
+         * @return builder
+         */
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
             return this;
         }
 
+        /**
+         * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
+         * @return builder
+         */
         public Builder collectionName(String collectionName) {
             this.collectionName = collectionName;
             return this;
         }
 
+        /**
+         * @param timeout The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
+         * @return builder
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;

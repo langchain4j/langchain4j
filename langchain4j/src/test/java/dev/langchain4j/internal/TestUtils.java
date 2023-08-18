@@ -15,60 +15,60 @@ import java.util.List;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TestUtils {
 
-    private static final int EXTRA_TOKENS_PER_EACH_GPT_4_MESSAGE =
+    private static final int EXTRA_TOKENS_PER_EACH_MESSAGE =
             3 /* extra tokens for each message */ + 1 /* extra token for 'role' */;
-    private static final OpenAiTokenizer TOKENIZER = new OpenAiTokenizer(GPT_4);
+    private static final OpenAiTokenizer TOKENIZER = new OpenAiTokenizer(GPT_3_5_TURBO);
 
     @ParameterizedTest
     @ValueSource(ints = {5, 10, 25, 50, 100, 250, 500, 1000})
     void should_create_system_message_with_tokens(int numberOfTokens) {
-        SystemMessage systemMessage = systemMessageWith(numberOfTokens);
+        SystemMessage systemMessage = systemMessageWithTokens(numberOfTokens);
 
         assertThat(TOKENIZER.estimateTokenCountInMessage(systemMessage)).isEqualTo(numberOfTokens);
     }
 
-    public static SystemMessage systemMessageWith(int numberOfTokens) {
-        return systemMessage(generateTextWith(numberOfTokens - EXTRA_TOKENS_PER_EACH_GPT_4_MESSAGE));
+    public static SystemMessage systemMessageWithTokens(int numberOfTokens) {
+        return systemMessage(textWithTokens(numberOfTokens - EXTRA_TOKENS_PER_EACH_MESSAGE));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {5, 10, 25, 50, 100, 250, 500, 1000})
     void should_create_user_message_with_tokens(int numberOfTokens) {
-        UserMessage userMessage = userMessageWith(numberOfTokens);
+        UserMessage userMessage = userMessageWithTokens(numberOfTokens);
 
         assertThat(TOKENIZER.estimateTokenCountInMessage(userMessage)).isEqualTo(numberOfTokens);
     }
 
-    public static UserMessage userMessageWith(int numberOfTokens) {
-        return userMessage(generateTextWith(numberOfTokens - EXTRA_TOKENS_PER_EACH_GPT_4_MESSAGE));
+    public static UserMessage userMessageWithTokens(int numberOfTokens) {
+        return userMessage(textWithTokens(numberOfTokens - EXTRA_TOKENS_PER_EACH_MESSAGE));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {5, 10, 25, 50, 100, 250, 500, 1000})
     void should_create_ai_message_with_tokens(int numberOfTokens) {
-        AiMessage aiMessage = aiMessageWith(numberOfTokens);
+        AiMessage aiMessage = aiMessageWithTokens(numberOfTokens);
 
         assertThat(TOKENIZER.estimateTokenCountInMessage(aiMessage)).isEqualTo(numberOfTokens);
     }
 
-    public static AiMessage aiMessageWith(int numberOfTokens) {
-        return aiMessage(generateTextWith(numberOfTokens - EXTRA_TOKENS_PER_EACH_GPT_4_MESSAGE));
+    public static AiMessage aiMessageWithTokens(int numberOfTokens) {
+        return aiMessage(textWithTokens(numberOfTokens - EXTRA_TOKENS_PER_EACH_MESSAGE));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 5, 10, 25, 50, 100, 250, 500, 1000})
     void should_generate_tokens(int numberOfTokens) {
-        String text = generateTextWith(numberOfTokens);
+        String text = textWithTokens(numberOfTokens);
 
         assertThat(TOKENIZER.estimateTokenCountInText(text)).isEqualTo(numberOfTokens);
     }
 
-    private static String generateTextWith(int n) {
+    private static String textWithTokens(int n) {
         String text = String.join(" ", repeat("one two", n));
         return TOKENIZER.decode(TOKENIZER.encode(text, n));
     }

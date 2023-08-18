@@ -18,6 +18,13 @@ This can be achieved thanks to:
     - **Chains** to reduce the need for extensive boilerplate code in common use-cases.
     - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
 
+## Code examples
+
+Please see examples of how LangChain4j can be used in `langchain4j-examples` repo:
+
+- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
+- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
+
 ## News
 
 10 August:
@@ -201,13 +208,6 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     
     System.out.println(answer.text()); // Hello! How can I assist you today?
     ```
-
-## Code examples
-
-Please see more examples of how LangChain4j can be used:
-
-- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
-- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## Disclaimer
 

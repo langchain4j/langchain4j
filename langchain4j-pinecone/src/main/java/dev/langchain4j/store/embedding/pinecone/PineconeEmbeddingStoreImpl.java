@@ -22,6 +22,9 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * This is an internal implementation. Please use PineconeEmbeddingStore.
+ */
 public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
