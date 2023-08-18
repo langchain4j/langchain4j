@@ -19,6 +19,7 @@
         <module>langchain4j-weaviate</module>
 
         <module>langchain4j-spring-boot-starter</module>
+        <module>langchain4j-dashscope</module>
     </modules>
 
 </project>
