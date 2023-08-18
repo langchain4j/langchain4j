@@ -7,6 +7,8 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 public class ToolExecutionRequest {
 
     private static final Gson GSON = new Gson();
@@ -61,8 +63,8 @@ public class ToolExecutionRequest {
     @Override
     public String toString() {
         return "ToolExecutionRequest {"
-                + " name = " + name
-                + ", arguments = " + arguments
+                + " name = " + quoted(name)
+                + ", arguments = " + quoted(arguments)
                 + " }";
     }
 
