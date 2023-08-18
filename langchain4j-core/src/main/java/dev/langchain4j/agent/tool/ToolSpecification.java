@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
 
 public class ToolSpecification {
@@ -55,8 +56,8 @@ public class ToolSpecification {
     @Override
     public String toString() {
         return "ToolSpecification {"
-                + " name = " + name
-                + ", description = " + description
+                + " name = " + quoted(name)
+                + ", description = " + quoted(description)
                 + ", parameters = " + parameters
                 + " }";
     }

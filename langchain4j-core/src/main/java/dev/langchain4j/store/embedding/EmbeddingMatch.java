@@ -78,9 +78,9 @@ public class EmbeddingMatch<Embedded> {
     public String toString() {
         return "EmbeddingMatch {" +
                 " score = " + score +
-                ", embeddingId = \"" + embeddingId + "\"" +
-                ", embedding = " + embedding +
                 ", embedded = " + embedded +
+                ", embeddingId = " + embeddingId +
+                ", embedding = " + embedding +
                 " }";
     }
 }

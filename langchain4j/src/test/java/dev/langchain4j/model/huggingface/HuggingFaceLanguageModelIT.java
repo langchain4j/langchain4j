@@ -23,9 +23,9 @@ class HuggingFaceLanguageModelIT {
                 .waitForModel(true)
                 .build();
 
-        String answer = model.process("What is the capital of Germany?");
+        String answer = model.process("What is the capital of the USA?");
 
-        assertThat(answer).containsIgnoringCase("Berlin");
+        assertThat(answer).containsIgnoringCase("Washington");
         System.out.println(answer);
     }
 

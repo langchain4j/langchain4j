@@ -2,6 +2,9 @@ package dev.langchain4j.data.message;
 
 import java.util.Objects;
 
+import static dev.langchain4j.data.message.ChatMessageType.USER;
+import static dev.langchain4j.internal.Utils.quoted;
+
 /**
  * Represents a message from a user, typically an end user of the application.
  */
@@ -23,6 +26,11 @@ public class UserMessage extends ChatMessage {
     }
 
     @Override
+    public ChatMessageType type() {
+        return USER;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -39,8 +47,8 @@ public class UserMessage extends ChatMessage {
     @Override
     public String toString() {
         return "UserMessage {" +
-                " name = \"" + name + "\"" +
-                " text = \"" + text + "\"" +
+                " name = " + quoted(name) +
+                " text = " + quoted(text) +
                 " }";
     }
 
