@@ -12,11 +12,11 @@
     </parent>
 
 
-    <artifactId>langchain4j-pinecone</artifactId>
+    <artifactId>langchain4j-dashscope</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Pinecone</name>
-    <description>It uses the io.pinecone.pinecone-client library, which has a proprietary license.</description>
+    <name>LangChain4j integration with DashScope</name>
+    <description>It uses the dashscope-sdk-java library, which has an Apache-2.0 license.</description>
 
     <dependencies>
 
@@ -27,27 +27,9 @@
         </dependency>
 
         <dependency>
-            <groupId>io.pinecone</groupId>
-            <artifactId>pinecone-client</artifactId>
-            <version>0.2.3</version>
-            <exclusions>
-                <!-- due to CVE-2022-41915 vulnerability -->
-                <exclusion>
-                    <groupId>io.netty</groupId>
-                    <artifactId>netty-codec</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-codec</artifactId>
-            <version>4.1.94.Final</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
+            <groupId>com.alibaba</groupId>
+            <artifactId>dashscope-sdk-java</artifactId>
+            <version>2.1.1</version>
         </dependency>
 
         <dependency>
@@ -67,7 +49,6 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -76,35 +57,12 @@
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <configuration>
-                    <!-- the pinecone module has non-permissive licenses -->
+                    <!-- The weaviate client has a BSD-3 license, see https://github.com/weaviate/java-client/blob/main/LICENSE -->
                     <skipCompliance>true</skipCompliance>
                 </configuration>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>compliance</id>
-            <activation>
-                <property>
-                    <name>compliance</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.honton.chas</groupId>
-                        <artifactId>license-maven-plugin</artifactId>
-                        <configuration>
-                            <!-- the pinecone module has non-permissive licenses -->
-                            <skipCompliance>true</skipCompliance>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 
     <licenses>
         <license>
