@@ -25,13 +25,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param apiKey    apiKey to connect to elasticsearch (optional if elasticsearch is local deployment).
      * @param indexName The name of the index (e.g., "test").
      */
-    public ElasticsearchEmbeddingStore(String serverUrl, String apiKey, String indexName) {
+    public ElasticsearchEmbeddingStore(String serverUrl, String username, String password, String apiKey, String indexName) {
         try {
             implementation = loadDynamically(
                     "dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStoreImpl",
-                    serverUrl,
-                    apiKey,
-                    indexName
+                    serverUrl, username, password, apiKey, indexName
             );
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(getMessage(), e);
@@ -52,11 +50,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 + "implementation 'dev.langchain4j:langchain4j-elasticsearch:0.20.0'\n";
     }
 
-    private static EmbeddingStore<TextSegment> loadDynamically(String implementationClassName, String serverUrl, String apiKey, String indexName) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    private static EmbeddingStore<TextSegment> loadDynamically(String implementationClassName, String serverUrl, String username, String password, String apiKey, String indexName) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         Class<?> implementationClass = Class.forName(implementationClassName);
-        Class<?>[] constructorParameterTypes = new Class<?>[]{String.class, String.class, String.class};
+        Class<?>[] constructorParameterTypes = new Class<?>[]{String.class, String.class, String.class, String.class, String.class};
         Constructor<?> constructor = implementationClass.getConstructor(constructorParameterTypes);
-        return (EmbeddingStore<TextSegment>) constructor.newInstance(serverUrl, apiKey, indexName);
+        return (EmbeddingStore<TextSegment>) constructor.newInstance(serverUrl, username, password, apiKey, indexName);
     }
 
     public static Builder builder() {
@@ -101,6 +99,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     public static class Builder {
 
         private String serverUrl;
+        private String username;
+        private String password;
         private String apiKey;
         private String indexName;
 
@@ -113,10 +113,29 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * @param apiKey The Elasticsearch API key.
+         * @param username Elasticsearch username
+         * @return builder
          */
-        public Builder apiKey(String apiKey) {
-            this.apiKey = apiKey;
+        public Builder username(String username) {
+            this.username = username;
+            return this;
+        }
+
+        /**
+         * @param password Elasticsearch password
+         * @return builder
+         */
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        /**
+         * @param apikey Elasticsearch apikey
+         * @return builder
+         */
+        public Builder apikey(String apikey) {
+            this.apiKey = apikey;
             return this;
         }
 
@@ -129,7 +148,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         public ElasticsearchEmbeddingStore build() {
-            return new ElasticsearchEmbeddingStore(serverUrl, apiKey, indexName);
+            return new ElasticsearchEmbeddingStore(serverUrl, username, password, apiKey, indexName);
         }
     }
 }

@@ -27,8 +27,13 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
 import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +41,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.Utils.isCollectionEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.*;
 
 /**
  * Elastic Embedding Store Implementation
@@ -52,17 +56,29 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     private final ObjectMapper objectMapper;
 
     @Builder
-    public ElasticsearchEmbeddingStoreImpl(String serverUrl, String apiKey, String indexName) {
+    public ElasticsearchEmbeddingStoreImpl(String serverUrl,
+                                           String username,
+                                           String password,
+                                           String apiKey,
+                                           String indexName) {
         serverUrl = ValidationUtils.ensureNotNull(serverUrl, "serverUrl");
         indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
-        // if local deployment, there is no need to set Authorization Header
-        RestClient restClient = RestClient
-                .builder(HttpHost.create(serverUrl))
-                .setDefaultHeaders(apiKey == null ? new Header[0] : new Header[]{
-                        new BasicHeader("Authorization", "ApiKey " + apiKey)
-                })
-                .build();
-        ElasticsearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+
+        RestClientBuilder restClientBuilder = RestClient
+                // should we support multi node?
+                .builder(HttpHost.create(serverUrl));
+        if (!isNullOrBlank(username)) {
+            CredentialsProvider provider = new BasicCredentialsProvider();
+            provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+            restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
+        }
+        if (!isNullOrBlank(apiKey)) {
+            restClientBuilder.setDefaultHeaders(new Header[]{
+                    new BasicHeader("Authorization", "Apikey " + apiKey)
+            });
+        }
+        ElasticsearchTransport transport = new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
+
         this.client = new ElasticsearchClient(transport);
         this.indexName = indexName;
         objectMapper = new ObjectMapper();

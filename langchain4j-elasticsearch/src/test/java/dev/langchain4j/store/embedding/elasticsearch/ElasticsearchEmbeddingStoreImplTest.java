@@ -24,7 +24,12 @@ import java.util.List;
 @Disabled
 class ElasticsearchEmbeddingStoreImplTest {
 
-    private final EmbeddingStore<TextSegment> store = new ElasticsearchEmbeddingStoreImpl("http://localhost:9200", null, "test-index");
+    private final EmbeddingStore<TextSegment> store = new ElasticsearchEmbeddingStoreImpl(
+            "http://localhost:9200",
+            null,
+            null,
+            null,
+            "test-index");
 
     @Test
     void testAdd() {
