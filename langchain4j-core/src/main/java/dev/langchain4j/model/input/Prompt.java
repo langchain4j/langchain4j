@@ -9,6 +9,7 @@ import java.util.Objects;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.quoted;
 
 /**
  * Represents a prompt (an input text sent to the LLM).
@@ -55,7 +56,7 @@ public class Prompt {
     @Override
     public String toString() {
         return "Prompt {" +
-                " text = \"" + text + "\"" +
+                " text = " + quoted(text) +
                 " }";
     }
 

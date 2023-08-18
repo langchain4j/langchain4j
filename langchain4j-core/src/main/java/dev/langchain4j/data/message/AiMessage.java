@@ -4,6 +4,9 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 
 import java.util.Objects;
 
+import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.internal.Utils.quoted;
+
 /**
  * Represents a response message from an AI (LLM).
  * The message can contain either a textual response or a request to execute a tool.
@@ -27,6 +30,11 @@ public class AiMessage extends ChatMessage {
     }
 
     @Override
+    public ChatMessageType type() {
+        return AI;
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
@@ -43,8 +51,8 @@ public class AiMessage extends ChatMessage {
     @Override
     public String toString() {
         return "AiMessage {" +
-                " text = \"" + text + "\"" +
-                " toolExecutionRequest = \"" + toolExecutionRequest + "\"" +
+                " text = " + quoted(text) +
+                " toolExecutionRequest = " + toolExecutionRequest +
                 " }";
     }
 

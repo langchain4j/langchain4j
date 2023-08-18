@@ -10,15 +10,21 @@
     <packaging>pom</packaging>
 
     <modules>
+
         <module>langchain4j-parent</module>
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
+        <module>langchain4j-spring-boot-starter</module>
 
+        <!-- model providers -->
+        <module>langchain4j-dashscope</module>
+      
+        <!-- embedding stores -->
+        <module>langchain4j-milvus</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-weaviate</module>
-
-        <module>langchain4j-spring-boot-starter</module>
+        
     </modules>
 
 </project>

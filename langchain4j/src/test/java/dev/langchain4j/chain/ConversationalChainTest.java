@@ -40,7 +40,7 @@ public class ConversationalChainTest {
         assertThat(response).isEqualTo(aiMessage);
 
         verify(chatMemory).add(userMessage(userMessage));
-        verify(chatMemory, times(5)).messages();
+        verify(chatMemory, times(3)).messages();
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(userMessage)));
         verify(chatMemory).add(aiMessage(aiMessage));
 

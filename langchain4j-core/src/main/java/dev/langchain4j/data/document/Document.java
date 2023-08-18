@@ -4,6 +4,8 @@ import dev.langchain4j.data.segment.TextSegment;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 /**
  * Represents an unstructured piece of text that usually corresponds to a content of a single file.
  * This text could originate from various sources such as a text file, PDF, DOCX, or a web page (HTML).
@@ -48,8 +50,8 @@ public class Document {
     @Override
     public String toString() {
         return "Document {" +
-                " text = \"" + text + "\"" +
-                " metadata = \"" + metadata + "\"" +
+                " text = " + quoted(text) +
+                " metadata = " + metadata +
                 " }";
     }
 
