@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.azure;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.embedding.EmbeddingRequest;
@@ -15,44 +15,48 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the OpenAI embedding model, such as text-embedding-ada-002.
+ * Represents a connection to the OpenAI embedding model, hosted on Azure (like text-embedding-ada-002).
+ * <p>
+ * There are two primary authentication methods to access Azure OpenAI:
+ * <p>
+ * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
+ * API Key in the "api-key" HTTP header.
+ * <p>
+ * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
+ * authentication/access token in the "Authorization" HTTP header.
+ * <p>
+ * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
+ * <p>
  */
-public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
+public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
     private final OpenAiClient client;
-    private final String modelName;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiEmbeddingModel(String baseUrl,
-                                String apiKey,
-                                String modelName,
-                                Duration timeout,
-                                Integer maxRetries,
-                                Proxy proxy,
-                                Boolean logRequests,
-                                Boolean logResponses) {
+    public AzureOpenAiEmbeddingModel(String baseUrl,
+                                     String apiVersion,
+                                     String apiKey,
+                                     Tokenizer tokenizer,
+                                     Duration timeout,
+                                     Integer maxRetries,
+                                     Proxy proxy,
+                                     Boolean logRequests,
+                                     Boolean logResponses) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-        modelName = modelName == null ? TEXT_EMBEDDING_ADA_002 : modelName;
         timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
+                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
+                .azureApiKey(apiKey)
+                .apiVersion(apiVersion)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
@@ -61,9 +65,8 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
         this.maxRetries = maxRetries;
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
+        this.tokenizer = tokenizer;
     }
 
     @Override
@@ -80,7 +83,6 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
 
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(texts)
-                .model(modelName)
                 .build();
 
         EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
@@ -95,7 +97,4 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         return tokenizer.estimateTokenCountInText(text);
     }
 
-    public static OpenAiEmbeddingModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
 }

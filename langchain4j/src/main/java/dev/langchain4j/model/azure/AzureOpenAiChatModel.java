@@ -1,4 +1,4 @@
-package dev.langchain4j.model.openai;
+package dev.langchain4j.model.azure;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
@@ -16,23 +16,32 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.defaultTimeoutFor;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a connection to the OpenAI LLM with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * Represents a connection to the OpenAI LLM, hosted on Azure, that has a chat completion interface (like gpt-3.5-turbo and gpt-4).
+ * <p>
+ * There are two primary authentication methods to access Azure OpenAI:
+ * <p>
+ * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
+ * API Key in the "api-key" HTTP header.
+ * <p>
+ * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
+ * authentication/access token in the "Authorization" HTTP header.
+ * <p>
+ * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
+ * <p>
+ * Please note, that currently, only API Key authentication is supported by this class,
+ * second authentication option will be supported later.
  */
-public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
-    private final String modelName;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
@@ -42,32 +51,29 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiChatModel(String baseUrl,
-                           String apiKey,
-                           String modelName,
-                           Double temperature,
-                           Double topP,
-                           Integer maxTokens,
-                           Double presencePenalty,
-                           Double frequencyPenalty,
-                           Duration timeout,
-                           Integer maxRetries,
-                           Proxy proxy,
-                           Boolean logRequests,
-                           Boolean logResponses) {
+    public AzureOpenAiChatModel(String baseUrl,
+                                String apiVersion,
+                                String apiKey,
+                                Tokenizer tokenizer,
+                                Double temperature,
+                                Double topP,
+                                Integer maxTokens,
+                                Double presencePenalty,
+                                Double frequencyPenalty,
+                                Duration timeout,
+                                Integer maxRetries,
+                                Proxy proxy,
+                                Boolean logRequests,
+                                Boolean logResponses) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-        modelName = modelName == null ? GPT_3_5_TURBO : modelName;
         temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
+        timeout = timeout == null ? ofSeconds(60) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
-                .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
+                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
+                .azureApiKey(apiKey)
+                .apiVersion(apiVersion)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
@@ -76,14 +82,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
         this.temperature = temperature;
         this.topP = topP;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = maxRetries;
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
+        this.tokenizer = tokenizer;
     }
 
     @Override
@@ -106,7 +111,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                                    ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
-                .model(modelName)
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
                 .topP(topP)
@@ -133,7 +137,4 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
-    public static OpenAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
-    }
 }
