@@ -17,26 +17,26 @@ import java.util.List;
 public interface ChatMemoryStore {
 
     /**
-     * Retrieves messages for a specified user.
+     * Retrieves messages for a specified chat memory.
      *
-     * @param userId The ID of the user.
-     * @return List of messages for the specified user. Must not be null. Can be deserialized from JSON using {@link ChatMessageDeserializer}.
+     * @param memoryId The ID of the chat memory.
+     * @return List of messages for the specified chat memory. Must not be null. Can be deserialized from JSON using {@link ChatMessageDeserializer}.
      */
-    List<ChatMessage> getMessages(Object userId);
+    List<ChatMessage> getMessages(Object memoryId);
 
     /**
-     * Updates messages for a specified user.
+     * Updates messages for a specified chat memory.
      *
-     * @param userId   The ID of the user.
-     * @param messages List of messages for the specified user, that represent the current state of the {@link ChatMemory}.
+     * @param memoryId The ID of the chat memory.
+     * @param messages List of messages for the specified chat memory, that represent the current state of the {@link ChatMemory}.
      *                 Can be serialized to JSON using {@link ChatMessageSerializer}.
      */
-    void updateMessages(Object userId, List<ChatMessage> messages);
+    void updateMessages(Object memoryId, List<ChatMessage> messages);
 
     /**
-     * Deletes all messages for a specified user.
+     * Deletes all messages for a specified chat memory.
      *
-     * @param userId The ID of the user.
+     * @param memoryId The ID of the chat memory.
      */
-    void deleteMessages(Object userId);
+    void deleteMessages(Object memoryId);
 }

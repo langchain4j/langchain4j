@@ -45,7 +45,7 @@ import static java.util.stream.Collectors.toList;
  * <pre>
  * - Prompt templates for user and system messages using {@link UserMessage} and {@link SystemMessage}
  * - Structured prompts as method arguments (see {@link StructuredPrompt})
- * - Shared or per-user (see {@link UserId}) chat memory
+ * - Shared or per-user (see {@link MemoryId}) chat memory
  * - Retrievers
  * - Tools (see {@link Tool})
  * - Various return types (output parsers), see below
@@ -116,7 +116,7 @@ public class AiServices<T> {
 
     private final Logger log = LoggerFactory.getLogger(AiServices.class);
 
-    private static final String SHARED = "shared";
+    private static final String DEFAULT = "default";
 
     private final AiServiceContext context = new AiServiceContext();
 
@@ -202,7 +202,7 @@ public class AiServices<T> {
      * <p>
      * The same {@link ChatMemory} instance will be used for every method call.
      * <p>
-     * If you want to have a separate {@link ChatMemory} for each user, configure {@link #chatMemoryProvider} instead.
+     * If you want to have a separate {@link ChatMemory} for each user/conversation, configure {@link #chatMemoryProvider} instead.
      * <p>
      * Either a {@link ChatMemory} or a {@link ChatMemoryProvider} can be configured, but not both simultaneously.
      *
@@ -211,28 +211,28 @@ public class AiServices<T> {
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
         context.chatMemories = new ConcurrentHashMap<>();
-        context.chatMemories.put(SHARED, chatMemory);
+        context.chatMemories.put(DEFAULT, chatMemory);
         return this;
     }
 
     /**
-     * Configures the chat memory provider, which provides a dedicated instance of {@link ChatMemory} for each user.
-     * For each new (previously unseen) user, an instance of {@link ChatMemory} is automatically obtained
-     * by invoking {@link ChatMemoryProvider#chatMemoryOf(Object)}.
-     * To distinguish between users, one of the method's arguments should be a user ID (of any data type)
-     * annotated with {@link UserId}.
+     * Configures the chat memory provider, which provides a dedicated instance of {@link ChatMemory} for each user/conversation.
+     * To distinguish between users/conversations, one of the method's arguments should be a memory ID (of any data type)
+     * annotated with {@link MemoryId}.
+     * For each new (previously unseen) memoryId, an instance of {@link ChatMemory} will be automatically obtained
+     * by invoking {@link ChatMemoryProvider#get(Object id)}.
      * Example:
      * <pre>
      * interface Assistant {
      *
-     *     String chat(@UserId int userId, @UserMessage String message);
+     *     String chat(@MemoryId int memoryId, @UserMessage String message);
      * }
      * </pre>
-     * If you prefer to use the same (shared) {@link ChatMemory} for all users, configure a {@link #chatMemory} instead.
+     * If you prefer to use the same (shared) {@link ChatMemory} for all users/conversations, configure a {@link #chatMemory} instead.
      * <p>
-     * Either a {@link ChatMemory} or a {@link ChatMemoryProvider} should be configured, but not both simultaneously.
+     * Either a {@link ChatMemory} or a {@link ChatMemoryProvider} can be configured, but not both simultaneously.
      *
-     * @param chatMemoryProvider The provider of a {@link ChatMemory} for each new user.
+     * @param chatMemoryProvider The provider of a {@link ChatMemory} for each new user/conversation.
      * @return builder
      */
     public AiServices<T> chatMemoryProvider(ChatMemoryProvider chatMemoryProvider) {
@@ -379,17 +379,17 @@ public class AiServices<T> {
                             }
                         }
 
-                        Object userId = getUserId(method, args).orElse(SHARED);
+                        Object memoryId = memoryId(method, args).orElse(DEFAULT);
 
                         if (context.hasChatMemory()) {
-                            ChatMemory chatMemory = context.chatMemoryOf(userId);
+                            ChatMemory chatMemory = context.chatMemory(memoryId);
                             systemMessage.ifPresent(it -> addIfNeeded(it, chatMemory));
                             chatMemory.add(userMessage);
                         }
 
                         List<ChatMessage> messages;
                         if (context.hasChatMemory()) {
-                            messages = context.chatMemoryOf(userId).messages();
+                            messages = context.chatMemory(memoryId).messages();
                         } else {
                             messages = new ArrayList<>();
                             systemMessage.ifPresent(messages::add);
@@ -399,7 +399,7 @@ public class AiServices<T> {
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
                         if (method.getReturnType() == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context, userId); // TODO moderation
+                            return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
                         AiMessage aiMessage = context.chatLanguageModel.sendMessages(messages, context.toolSpecifications);
@@ -410,7 +410,7 @@ public class AiServices<T> {
                         while (true) { // TODO limit number of cycles
 
                             if (context.hasChatMemory()) {
-                                context.chatMemoryOf(userId).add(aiMessage);
+                                context.chatMemory(memoryId).add(aiMessage);
                             }
 
                             toolExecutionRequest = aiMessage.toolExecutionRequest();
@@ -423,7 +423,7 @@ public class AiServices<T> {
                             ToolExecutionResultMessage toolExecutionResultMessage
                                     = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
 
-                            ChatMemory chatMemory = context.chatMemoryOf(userId);
+                            ChatMemory chatMemory = context.chatMemory(memoryId);
                             chatMemory.add(toolExecutionResultMessage);
 
                             // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
@@ -484,16 +484,16 @@ public class AiServices<T> {
         return (T) proxyInstance;
     }
 
-    private Optional<Object> getUserId(Method method, Object[] args) {
+    private Optional<Object> memoryId(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(UserId.class)) {
-                Object userId = args[i];
-                if (userId == null) {
-                    throw illegalArgument("The value of parameter %s annotated with @UserId in method %s must not be null",
+            if (parameters[i].isAnnotationPresent(MemoryId.class)) {
+                Object memoryId = args[i];
+                if (memoryId == null) {
+                    throw illegalArgument("The value of parameter %s annotated with @MemoryId in method %s must not be null",
                             parameters[i].getName(), method.getName());
                 }
-                return Optional.of(userId);
+                return Optional.of(memoryId);
             }
         }
         return Optional.empty();
@@ -558,7 +558,7 @@ public class AiServices<T> {
             return userMessage(userName, toString(args[0]) + outputFormatInstructions);
         }
 
-        throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserId or @UserName");
+        throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
     }
 
     private static String getUserName(Parameter[] parameters, Object[] args) {
@@ -579,11 +579,11 @@ public class AiServices<T> {
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
             UserMessage userMessage = parameter.getAnnotation(UserMessage.class);
-            UserId userId = parameter.getAnnotation(UserId.class);
+            MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
-            if (v == null && userMessage == null && userId == null && userName == null) {
+            if (v == null && userMessage == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage or @UserId or @UserName",
+                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage or @UserName or @MemoryId",
                         parameter.getName(), method.getName()
                 );
             }

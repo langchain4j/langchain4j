@@ -8,24 +8,26 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Stores chat memory for each user in memory.
+ * Implementation of {@link ChatMemoryStore} that stores state of {@link dev.langchain4j.memory.ChatMemory} (chat messages) in-memory.
+ * <p>
+ * This storage mechanism is transient and does not persist data across application restarts.
  */
 public class InMemoryChatMemoryStore implements ChatMemoryStore {
 
-    private final Map<Object, List<ChatMessage>> messagesByUserId = new ConcurrentHashMap<>();
+    private final Map<Object, List<ChatMessage>> messagesByMemoryId = new ConcurrentHashMap<>();
 
     @Override
-    public List<ChatMessage> getMessages(Object userId) {
-        return messagesByUserId.computeIfAbsent(userId, ignored -> new ArrayList<>());
+    public List<ChatMessage> getMessages(Object memoryId) {
+        return messagesByMemoryId.computeIfAbsent(memoryId, ignored -> new ArrayList<>());
     }
 
     @Override
-    public void updateMessages(Object userId, List<ChatMessage> messages) {
-        messagesByUserId.put(userId, messages);
+    public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+        messagesByMemoryId.put(memoryId, messages);
     }
 
     @Override
-    public void deleteMessages(Object userId) {
-        messagesByUserId.remove(userId);
+    public void deleteMessages(Object memoryId) {
+        messagesByMemoryId.remove(memoryId);
     }
 }

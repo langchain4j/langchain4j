@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -27,13 +26,13 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(TokenWindowChatMemory.class);
 
-    private final Object userId;
+    private final Object id;
     private final Integer maxTokens;
     private final Tokenizer tokenizer;
     private final ChatMemoryStore store;
 
     private TokenWindowChatMemory(Builder builder) {
-        this.userId = ensureNotNull(builder.userId, "userId");
+        this.id = ensureNotNull(builder.id, "id");
         this.maxTokens = ensureNotNull(builder.maxTokens, "maxTokens");
         if (this.maxTokens < 1) {
             throw illegalArgument("maxTokens should be greater than 0");
@@ -43,8 +42,8 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     @Override
-    public Object userId() {
-        return userId;
+    public Object id() {
+        return id;
     }
 
     @Override
@@ -52,12 +51,12 @@ public class TokenWindowChatMemory implements ChatMemory {
         List<ChatMessage> messages = messages();
         messages.add(message);
         ensureCapacity(messages, maxTokens, tokenizer);
-        store.updateMessages(userId, messages);
+        store.updateMessages(id, messages);
     }
 
     @Override
     public List<ChatMessage> messages() {
-        List<ChatMessage> messages = new ArrayList<>(store.getMessages(userId));
+        List<ChatMessage> messages = new ArrayList<>(store.getMessages(id));
         ensureCapacity(messages, maxTokens, tokenizer);
         return messages;
     }
@@ -76,7 +75,7 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public void clear() {
-        store.deleteMessages(userId);
+        store.deleteMessages(id);
     }
 
     public static Builder builder() {
@@ -85,18 +84,18 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     public static class Builder {
 
-        private Object userId = randomUUID();
+        private Object id = "default";
         private Integer maxTokens;
         private Tokenizer tokenizer;
         private ChatMemoryStore store = new InMemoryChatMemoryStore();
 
         /**
-         * @param userId The ID of the user to whom this chat memory belongs.
-         *               If not provided, a random UUID will be generated.
+         * @param id The ID of the {@link ChatMemory}.
+         *           If not provided, a "default" will be used.
          * @return builder
          */
-        public Builder userId(Object userId) {
-            this.userId = userId;
+        public Builder id(Object id) {
+            this.id = id;
             return this;
         }
 

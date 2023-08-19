@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>${revision}</version>
+    <version>0.21.0</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -14,7 +14,6 @@
     <url>https://github.com/langchain4j/langchain4j</url>
 
     <properties>
-        <revision>0.20.0</revision>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -106,28 +105,19 @@
                 <artifactId>tinylog-impl</artifactId>
                 <version>2.6.2</version>
             </dependency>
+
             <dependency>
                 <groupId>org.tinylog</groupId>
                 <artifactId>slf4j-tinylog</artifactId>
                 <version>2.6.2</version>
             </dependency>
+
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter</artifactId>
-                <version>2.7.13</version>
-                <exclusions>
-                    <!-- due to vulnerabilities -->
-                    <exclusion>
-                        <groupId>org.yaml</groupId>
-                        <artifactId>snakeyaml</artifactId>
-                    </exclusion>
-                </exclusions>
+                <version>2.7.14</version>
             </dependency>
-            <dependency>
-                <groupId>org.yaml</groupId>
-                <artifactId>snakeyaml</artifactId>
-                <version>2.0</version>
-            </dependency>
+
         </dependencies>
 
     </dependencyManagement>

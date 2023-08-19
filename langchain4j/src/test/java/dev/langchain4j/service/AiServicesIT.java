@@ -571,41 +571,41 @@ public class AiServicesIT {
 
     interface ChatWithSeparateMemoryForEachUser {
 
-        String chat(@UserId int userId, @UserMessage String userMessage);
+        String chat(@MemoryId int memoryId, @UserMessage String userMessage);
     }
 
     @Test
     void should_keep_separate_chat_memory_for_each_user_in_store() {
 
         // emulating persistent storage
-        Map</* userId */ Object, String> persistentStorage = new HashMap<>();
+        Map</* memoryId */ Object, String> persistentStorage = new HashMap<>();
 
         ChatMemoryStore store = new ChatMemoryStore() {
 
             @Override
-            public List<ChatMessage> getMessages(Object userId) {
-                return messagesFromJson(persistentStorage.get(userId));
+            public List<ChatMessage> getMessages(Object memoryId) {
+                return messagesFromJson(persistentStorage.get(memoryId));
             }
 
             @Override
-            public void updateMessages(Object userId, List<ChatMessage> messages) {
-                persistentStorage.put(userId, messagesToJson(messages));
+            public void updateMessages(Object memoryId, List<ChatMessage> messages) {
+                persistentStorage.put(memoryId, messagesToJson(messages));
             }
 
             @Override
-            public void deleteMessages(Object userId) {
-                persistentStorage.remove(userId);
+            public void deleteMessages(Object memoryId) {
+                persistentStorage.remove(memoryId);
             }
         };
 
-        ChatMemoryProvider chatMemoryProvider = userId -> MessageWindowChatMemory.builder()
-                .userId(userId)
+        ChatMemoryProvider chatMemoryProvider = memoryId -> MessageWindowChatMemory.builder()
+                .id(memoryId)
                 .maxMessages(10)
                 .chatMemoryStore(store)
                 .build();
 
-        int firstUserId = 1;
-        int secondUserId = 2;
+        int firstMemoryId = 1;
+        int secondMemoryId = 2;
 
         ChatWithSeparateMemoryForEachUser chatWithMemory = AiServices.builder(ChatWithSeparateMemoryForEachUser.class)
                 .chatLanguageModel(chatLanguageModel)
@@ -613,15 +613,15 @@ public class AiServicesIT {
                 .build();
 
         String firstMessageFromFirstUser = "Hello, my name is Klaus";
-        String firstAiResponseToFirstUser = chatWithMemory.chat(firstUserId, firstMessageFromFirstUser);
+        String firstAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, firstMessageFromFirstUser);
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(firstMessageFromFirstUser)), NO_TOOLS);
 
         String firstMessageFromSecondUser = "Hello, my name is Francine";
-        String firstAiResponseToSecondUser = chatWithMemory.chat(secondUserId, firstMessageFromSecondUser);
+        String firstAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, firstMessageFromSecondUser);
         verify(chatLanguageModel).sendMessages(singletonList(userMessage(firstMessageFromSecondUser)), NO_TOOLS);
 
         String secondMessageFromFirstUser = "What is my name?";
-        String secondAiResponseToFirstUser = chatWithMemory.chat(firstUserId, secondMessageFromFirstUser);
+        String secondAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, secondMessageFromFirstUser);
         assertThat(secondAiResponseToFirstUser).contains("Klaus");
         verify(chatLanguageModel).sendMessages(asList(
                 userMessage(firstMessageFromFirstUser),
@@ -630,7 +630,7 @@ public class AiServicesIT {
         ), NO_TOOLS);
 
         String secondMessageFromSecondUser = "What is my name?";
-        String secondAiResponseToSecondUser = chatWithMemory.chat(secondUserId, secondMessageFromSecondUser);
+        String secondAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);
         assertThat(secondAiResponseToSecondUser).contains("Francine");
         verify(chatLanguageModel).sendMessages(asList(
                 userMessage(firstMessageFromSecondUser),
@@ -638,9 +638,9 @@ public class AiServicesIT {
                 userMessage(secondMessageFromSecondUser)
         ), NO_TOOLS);
 
-        assertThat(persistentStorage).containsOnlyKeys(firstUserId, secondUserId);
+        assertThat(persistentStorage).containsOnlyKeys(firstMemoryId, secondMemoryId);
 
-        List<ChatMessage> persistedMessagesOfFirstUser = messagesFromJson(persistentStorage.get(firstUserId));
+        List<ChatMessage> persistedMessagesOfFirstUser = messagesFromJson(persistentStorage.get(firstMemoryId));
         assertThat(persistedMessagesOfFirstUser).containsExactly(
                 userMessage(firstMessageFromFirstUser),
                 aiMessage(firstAiResponseToFirstUser),
@@ -648,7 +648,7 @@ public class AiServicesIT {
                 aiMessage(secondAiResponseToFirstUser)
         );
 
-        List<ChatMessage> persistedMessagesOfSecondUser = messagesFromJson(persistentStorage.get(secondUserId));
+        List<ChatMessage> persistedMessagesOfSecondUser = messagesFromJson(persistentStorage.get(secondMemoryId));
         assertThat(persistedMessagesOfSecondUser).containsExactly(
                 userMessage(firstMessageFromSecondUser),
                 aiMessage(firstAiResponseToSecondUser),
