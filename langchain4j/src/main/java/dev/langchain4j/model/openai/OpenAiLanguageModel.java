@@ -12,6 +12,7 @@ import java.net.Proxy;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
@@ -29,7 +30,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiLanguageModel(String apiKey,
+    public OpenAiLanguageModel(String baseUrl,
+                               String apiKey,
                                String modelName,
                                Double temperature,
                                Duration timeout,
@@ -38,13 +40,15 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                                Boolean logRequests,
                                Boolean logResponses) {
 
+        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
         modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
         temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .openAiApiKey(apiKey)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

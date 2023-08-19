@@ -24,4 +24,11 @@ public class Utils {
     public static String randomUUID() {
         return UUID.randomUUID().toString();
     }
+
+    public static String quoted(String string) {
+        if (string == null) {
+            return "null";
+        }
+        return "\"" + string + "\"";
+    }
 }

@@ -2,6 +2,9 @@ package dev.langchain4j.data.message;
 
 import java.util.Objects;
 
+import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
+import static dev.langchain4j.internal.Utils.quoted;
+
 /**
  * Represents the result of a tool execution. Tool execution requests come from a previous AiMessage.
  */
@@ -16,6 +19,11 @@ public class ToolExecutionResultMessage extends ChatMessage {
 
     public String toolName() {
         return toolName;
+    }
+
+    @Override
+    public ChatMessageType type() {
+        return TOOL_EXECUTION_RESULT;
     }
 
     @Override
@@ -35,8 +43,8 @@ public class ToolExecutionResultMessage extends ChatMessage {
     @Override
     public String toString() {
         return "ToolExecutionResultMessage {" +
-                " toolName = \"" + toolName + "\"" +
-                " text = \"" + text + "\"" +
+                " toolName = " + quoted(toolName) +
+                " text = " + quoted(text) +
                 " }";
     }
 

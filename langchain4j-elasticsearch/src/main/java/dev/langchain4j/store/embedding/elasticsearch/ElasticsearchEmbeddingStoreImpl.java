@@ -203,7 +203,7 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
                     .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
-                            .map(Metadata::copyMap)
+                            .map(Metadata::asMap)
                             .orElse(null))
                     .build();
             bulkBuilder.operations(op -> op.index(idx -> idx

@@ -44,7 +44,7 @@ public class Metadata {
         return new Metadata(new HashMap<>(metadata));
     }
 
-    public Map<String, String> copyMap() {
+    public Map<String, String> asMap() {
         return new HashMap<>(metadata);
     }
 

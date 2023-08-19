@@ -11,6 +11,7 @@ import lombok.Builder;
 import java.net.Proxy;
 import java.time.Duration;
 
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
@@ -28,7 +29,8 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiStreamingLanguageModel(String apiKey,
+    public OpenAiStreamingLanguageModel(String baseUrl,
+                                        String apiKey,
                                         String modelName,
                                         Double temperature,
                                         Duration timeout,
@@ -36,12 +38,14 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         Boolean logRequests,
                                         Boolean logResponses) {
 
+        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
         modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
         temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
+        timeout = timeout == null ? ofSeconds(60) : timeout;
 
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .openAiApiKey(apiKey)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

@@ -17,6 +17,7 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
@@ -39,7 +40,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiStreamingChatModel(String apiKey,
+    public OpenAiStreamingChatModel(String baseUrl,
+                                    String apiKey,
                                     String modelName,
                                     Double temperature,
                                     Double topP,
@@ -51,12 +53,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Boolean logRequests,
                                     Boolean logResponses) {
 
+        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
         modelName = modelName == null ? GPT_3_5_TURBO : modelName;
         temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? ofSeconds(5) : timeout;
 
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .openAiApiKey(apiKey)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

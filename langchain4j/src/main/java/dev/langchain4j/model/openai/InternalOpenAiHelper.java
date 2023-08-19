@@ -19,10 +19,10 @@ import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
 
-    static final String OPENAI_URL = "https://api.openai.com";
+    static final String OPENAI_URL = "https://api.openai.com/v1";
 
     static final String OPENAI_DEMO_API_KEY = "demo";
-    static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai";
+    static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
 
     static Duration defaultTimeoutFor(String modelName) {
         if (modelName.startsWith(GPT_3_5_TURBO)) {

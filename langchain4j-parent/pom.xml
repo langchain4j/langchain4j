@@ -4,14 +4,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-aggregator</artifactId>
-        <version>${reversion}</version>
-    </parent>
-
+    <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>${reversion}</version>
+    <version>${revision}</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -19,10 +14,11 @@
     <url>https://github.com/langchain4j/langchain4j</url>
 
     <properties>
+        <revision>0.20.0</revision>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <openai4j.version>0.6.1</openai4j.version>
+        <openai4j.version>0.9.0</openai4j.version>
         <jtokkit.version>0.6.1</jtokkit.version>
         <lombok.version>1.18.28</lombok.version>
         <pdfbox.version>2.0.29</pdfbox.version>
@@ -42,42 +38,6 @@
 
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j</artifactId>
-                <version>${reversion}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-core</artifactId>
-                <version>${reversion}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-elastic</artifactId>
-                <version>${reversion}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-pinecone</artifactId>
-                <version>${reversion}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-weaviate</artifactId>
-                <version>${reversion}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-spring-boot-starter</artifactId>
-                <version>${reversion}</version>
-            </dependency>
-
             <!-- Begin 3rd Party Dependencies -->
             <dependency>
                 <groupId>dev.ai4j</groupId>
