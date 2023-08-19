@@ -1,6 +1,7 @@
 package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.service.MemoryId;
 
 /**
  * Provides instances of {@link ChatMemory}.
@@ -10,14 +11,14 @@ import dev.langchain4j.memory.ChatMemory;
 public interface ChatMemoryProvider {
 
     /**
-     * Provides an instance of {@link ChatMemory} associated with the given user ID.
-     * This method is called each time an AI Service method (with a parameter annotated with {@link dev.langchain4j.service.UserId})
-     * is called with a previously unseen userId.
+     * Provides an instance of {@link ChatMemory}.
+     * This method is called each time an AI Service method (having a parameter annotated with {@link MemoryId})
+     * is called with a previously unseen memory ID.
      * Once the {@link ChatMemory} instance is returned, it's retained in memory and managed by {@link dev.langchain4j.service.AiServices}.
      *
-     * @param userId The ID of the user.
-     * @return A {@link ChatMemory} instance belonging to the specified user.
-     * @see dev.langchain4j.service.UserId
+     * @param memoryId The ID of the chat memory.
+     * @return A {@link ChatMemory} instance.
+     * @see MemoryId
      */
-    ChatMemory chatMemoryOf(Object userId);
+    ChatMemory get(Object memoryId);
 }

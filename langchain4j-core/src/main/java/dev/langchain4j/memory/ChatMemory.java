@@ -5,16 +5,16 @@ import dev.langchain4j.data.message.ChatMessage;
 import java.util.List;
 
 /**
- * Represents the memory (history) of a chat conversation with a user.
+ * Represents the memory (history) of a chat conversation.
  * Since LLMs are stateless, it's necessary to send previous messages to provide the LLM with the conversation context.
  * {@link ChatMemory} helps with retaining messages in the conversation and ensuring they fit within LLM's context window.
  */
 public interface ChatMemory {
 
     /**
-     * @return The ID of the user this {@link ChatMemory} belongs to.
+     * @return The ID of the {@link ChatMemory}.
      */
-    Object userId();
+    Object id();
 
     /**
      * Adds a message to the chat memory.

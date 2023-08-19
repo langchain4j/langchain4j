@@ -20,7 +20,7 @@ class AiServiceContext {
     ChatLanguageModel chatLanguageModel;
     StreamingChatLanguageModel streamingChatLanguageModel;
 
-    Map</* userId */ Object, ChatMemory> chatMemories;
+    Map</* id */ Object, ChatMemory> chatMemories;
     ChatMemoryProvider chatMemoryProvider;
 
     ModerationModel moderationModel;
@@ -34,7 +34,7 @@ class AiServiceContext {
         return chatMemories != null;
     }
 
-    ChatMemory chatMemoryOf(Object userId) {
-        return chatMemories.computeIfAbsent(userId, ignored -> chatMemoryProvider.chatMemoryOf(userId));
+    ChatMemory chatMemory(Object memoryId) {
+        return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
     }
 }

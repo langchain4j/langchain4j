@@ -1,7 +1,6 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.memory.ChatMemory;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -13,12 +12,12 @@ class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messagesToSend;
     private final AiServiceContext context;
-    private final Object userId;
+    private final Object memoryId;
 
-    AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object userId) {
+    AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object memoryId) {
         this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
         this.context = ensureNotNull(context, "context");
-        this.userId = ensureNotNull(userId, "userId");;
+        this.memoryId = ensureNotNull(memoryId, "memoryId");;
         ensureNotNull(context.streamingChatLanguageModel, "streamingChatLanguageModel");
     }
 
@@ -78,7 +77,7 @@ class AiServiceTokenStream implements TokenStream {
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(
                             context,
-                            userId,
+                            memoryId,
                             tokenHandler,
                             completionHandler,
                             errorHandler
