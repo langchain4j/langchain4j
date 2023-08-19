@@ -111,10 +111,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 + "<dependency>\n" +
                 "    <groupId>dev.langchain4j</groupId>\n" +
                 "    <artifactId>langchain4j-milvus</artifactId>\n" +
-                "    <version>0.20.0</version>\n" +
+                "    <version>0.21.0</version>\n" +
                 "</dependency>\n\n"
                 + "Gradle:\n"
-                + "implementation 'dev.langchain4j:langchain4j-milvus:0.20.0'\n";
+                + "implementation 'dev.langchain4j:langchain4j-milvus:0.21.0'\n";
     }
 
 

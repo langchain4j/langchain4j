@@ -27,6 +27,11 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 
 ## News
 
+19 August:
+- [Integration with Chroma](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) by [@kuraleta](https://github.com/kuraleta)
+- Integration with Qwen models (DashScope) by [@jiangsier-xyz](https://github.com/jiangsier-xyz)
+- [Support for persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
+
 10 August:
 - [Integration with Weaviate](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) by [@Heezer](https://github.com/Heezer)
 - [Support for DOC, XLS and PPT document types](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java) by [@oognuyh](https://github.com/oognuyh)
@@ -184,12 +189,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.20.0</version>
+          <version>0.21.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.20.0'
+      implementation 'dev.langchain4j:langchain4j:0.21.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
@@ -240,8 +245,10 @@ Please note that the library is in active development and:
   - Chats (sync + streaming + functions)
   - Completions (sync + streaming)
   - Embeddings
-- [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
+- [Chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
+- [Persistent chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+- [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) with [Chroma](https://www.trychroma.com/)
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/PineconeEmbeddingStoreExample.java) with [Pinecone](https://www.pinecone.io/)
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) with [Weaviate](https://weaviate.io/)
 - [In-memory embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/InMemoryEmbeddingStoreExample.java) (for prototyping and testing)
