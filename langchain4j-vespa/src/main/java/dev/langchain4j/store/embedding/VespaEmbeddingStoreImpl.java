@@ -34,6 +34,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private static final String FIELD_NAME_TEXT_SEGMENT = "text_segment";
   private static final String FIELD_NAME_VECTOR = "vector";
   public static final String FIELD_NAME_DOCUMENT_ID = "documentid";
+  public static final String DEFAULT_RANK_PROFILE = "cosine_similarity";
 
   private final String url;
   private final String keyPath;
@@ -41,6 +42,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final Duration timeout;
   private final String namespace;
   private final String documentType;
+  private final String rankProfile;
   private final boolean avoidDups;
 
   @Builder
@@ -51,6 +53,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     Duration timeout,
     String namespace,
     String documentType,
+    String rankProfile,
     Boolean avoidDups
   ) {
     this.url = url;
@@ -59,6 +62,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
     this.namespace = namespace != null ? namespace : DEFAULT_NAMESPACE;
     this.documentType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
+    this.rankProfile = rankProfile != null ? rankProfile : DEFAULT_RANK_PROFILE;
     this.avoidDups = avoidDups != null ? avoidDups : DEFAULT_AVOID_DUPS;
   }
 
@@ -124,42 +128,43 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    try (CloseableHttpClient httpClient = buildQueryClient()) {
-      String searchQuery = Q
-        .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
-        .from(documentType)
-        .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", 10)))
-        .fix()
-        .hits(maxResults)
-        .ranking("semantic_similarity")
-        .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
-        .build();
-
-      URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
-
-      QueryResponse parsedResponse = Json.fromJson(
-        Request.get(queryUri).execute(httpClient).returnContent().asString(),
-        QueryResponse.class
-      );
-
-      return parsedResponse
-        .getRoot()
-        .getChildren()
-        .stream()
-        .map(VespaEmbeddingStoreImpl::mapResponseItem)
-        .collect(Collectors.toList());
-    } catch (Throwable t) {
-      throw new RuntimeException(t);
-    }
+    return findRelevant(referenceEmbedding, maxResults, 0);
   }
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(
     Embedding referenceEmbedding,
     int maxResults,
-    double minSimilarity
+    double minScore
   ) {
-    return null;
+    try (CloseableHttpClient httpClient = buildQueryClient()) {
+      String searchQuery = Q
+              .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+              .from(documentType)
+              .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", 10)))
+              .fix()
+              .hits(maxResults)
+              .ranking(rankProfile)
+              .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
+              .param("input.query(threshold)", String.valueOf(minScore))
+              .build();
+
+      URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
+
+      QueryResponse parsedResponse = Json.fromJson(
+              Request.get(queryUri).execute(httpClient).returnContent().asString(),
+              QueryResponse.class
+      );
+
+      return parsedResponse
+              .getRoot()
+              .getChildren()
+              .stream()
+              .map(VespaEmbeddingStoreImpl::mapResponseItem)
+              .collect(Collectors.toList());
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
+    }
   }
 
   private String add(String id, Embedding embedding, TextSegment textSegment) {
@@ -167,18 +172,18 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
       jsonFeeder
-              .feedSingle(Json.toJson(buildRecord(id, embedding, textSegment)))
-              .whenComplete(
-                      (
-                              (result, throwable) -> {
-                                if (throwable != null) {
-                                  throw new RuntimeException(throwable);
-                                } else if (Result.Type.success.equals(result.type())) {
-                                  resId.set(result.documentId().toString());
-                                }
-                              }
-                      )
-              );
+        .feedSingle(Json.toJson(buildRecord(id, embedding, textSegment)))
+        .whenComplete(
+          (
+            (result, throwable) -> {
+              if (throwable != null) {
+                throw new RuntimeException(throwable);
+              } else if (Result.Type.success.equals(result.type())) {
+                resId.set(result.documentId().toString());
+              }
+            }
+          )
+        );
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -231,6 +236,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     String text = textSegment != null ? textSegment.text() : null;
     return new Record(documentId.toString(), text, embedding.vectorAsList());
   }
+
   private Record buildRecord(Embedding embedding, TextSegment textSegment) {
     return buildRecord(null, embedding, textSegment);
   }
