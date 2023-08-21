@@ -25,6 +25,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Builder;
 
+/**
+ * This is an internal implementation. Please use WeaviateEmbeddingStore.
+ */
 public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private static final String DEFAULT_CLASS = "Default";

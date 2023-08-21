@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
@@ -11,7 +12,6 @@ import dev.langchain4j.retriever.Retriever;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 class AiServiceContext {
 
@@ -20,8 +20,8 @@ class AiServiceContext {
     ChatLanguageModel chatLanguageModel;
     StreamingChatLanguageModel streamingChatLanguageModel;
 
-    Map</* userId */ Object, ChatMemory> chatMemories;
-    Supplier<ChatMemory> chatMemorySupplier;
+    Map</* id */ Object, ChatMemory> chatMemories;
+    ChatMemoryProvider chatMemoryProvider;
 
     ModerationModel moderationModel;
 
@@ -34,7 +34,7 @@ class AiServiceContext {
         return chatMemories != null;
     }
 
-    ChatMemory chatMemoryOf(Object userId) {
-        return chatMemories.computeIfAbsent(userId, key -> chatMemorySupplier.get());
+    ChatMemory chatMemory(Object memoryId) {
+        return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
     }
 }

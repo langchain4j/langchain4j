@@ -11,4 +11,6 @@ public abstract class ChatMessage {
     public String text() {
         return text;
     }
+
+    public abstract ChatMessageType type();
 }

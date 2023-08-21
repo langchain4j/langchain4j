@@ -1,10 +1,16 @@
 package dev.langchain4j.internal;
 
+import static dev.langchain4j.internal.Utils.quoted;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.UUID;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class UtilsTest {
 
@@ -60,4 +66,19 @@ class UtilsTest {
   void generateUUIDFromNullInputWorks() {
     assertThatExceptionOfType(NullPointerException.class).isThrownBy(() -> Utils.generateUUIDFrom(null));
   }
+
+    @MethodSource
+    @ParameterizedTest
+    void test_quoted(String string, String expected) {
+        assertThat(quoted(string)).isEqualTo(expected);
+    }
+
+    static Stream<Arguments> test_quoted() {
+        return Stream.of(
+                Arguments.of(null, "null"),
+                Arguments.of("", "\"\""),
+                Arguments.of(" ", "\" \""),
+                Arguments.of("hello", "\"hello\"")
+        );
+    }
 }

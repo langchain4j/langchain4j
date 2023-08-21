@@ -43,8 +43,8 @@ public class LocalAiChatModel implements ChatLanguageModel {
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
-                .apiKey("ignored")
-                .url(ensureNotBlank(baseUrl, "baseUrl"))
+                .openAiApiKey("ignored")
+                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

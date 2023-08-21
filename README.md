@@ -18,7 +18,20 @@ This can be achieved thanks to:
     - **Chains** to reduce the need for extensive boilerplate code in common use-cases.
     - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
 
+## Code examples
+
+Please see examples of how LangChain4j can be used in `langchain4j-examples` repo:
+
+- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
+- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
+
 ## News
+
+19 August:
+- Integration with [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) by [@kuraleta](https://github.com/kuraleta)
+- Integration with Qwen models (DashScope) by [@jiangsier-xyz](https://github.com/jiangsier-xyz)
+- [Integration with Chroma](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) by [@kuraleta](https://github.com/kuraleta)
+- [Support for persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 
 10 August:
 - [Integration with Weaviate](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) by [@Heezer](https://github.com/Heezer)
@@ -177,12 +190,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.20.0</version>
+          <version>0.21.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.20.0'
+      implementation 'dev.langchain4j:langchain4j:0.21.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
@@ -201,13 +214,6 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     
     System.out.println(answer.text()); // Hello! How can I assist you today?
     ```
-
-## Code examples
-
-Please see more examples of how LangChain4j can be used:
-
-- [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
-- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## Disclaimer
 
@@ -228,7 +234,7 @@ Please note that the library is in active development and:
     - [With Retriever](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
     - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
     - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
-- Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
+- Integration with [OpenAI](https://platform.openai.com/docs/introduction) and [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) for:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming + functions)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
@@ -240,8 +246,10 @@ Please note that the library is in active development and:
   - Chats (sync + streaming + functions)
   - Completions (sync + streaming)
   - Embeddings
-- [Memory for Chats](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
+- [Chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
+- [Persistent chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 - [Chat with Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+- [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) with [Chroma](https://www.trychroma.com/)
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/PineconeEmbeddingStoreExample.java) with [Pinecone](https://www.pinecone.io/)
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) with [Weaviate](https://weaviate.io/)
 - [In-memory embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/InMemoryEmbeddingStoreExample.java) (for prototyping and testing)

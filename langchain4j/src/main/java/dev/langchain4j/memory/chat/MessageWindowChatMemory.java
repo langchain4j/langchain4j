@@ -1,13 +1,13 @@
 package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -17,62 +17,59 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * This chat memory operates as a sliding window of {@link #maxMessages} messages.
  * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one is discarded.
- * Optionally, a system message can be set.
- * System message will always be retained at the first position (index 0) and will never be removed.
+ * <p>
+ * The state of chat memory is stored in {@link ChatMemoryStore}.
  */
 public class MessageWindowChatMemory implements ChatMemory {
 
     private static final Logger log = LoggerFactory.getLogger(MessageWindowChatMemory.class);
 
+    private final Object id;
     private final Integer maxMessages;
-    private final SystemMessage systemMessage;
-    private final LinkedList<ChatMessage> messages;
+    private final ChatMemoryStore store;
 
     private MessageWindowChatMemory(Builder builder) {
+        this.id = ensureNotNull(builder.id, "id");
         this.maxMessages = ensureNotNull(builder.maxMessages, "maxMessages");
         if (this.maxMessages < 1) {
             throw illegalArgument("maxMessages should be greater than 0");
         }
-        this.systemMessage = builder.systemMessage;
-        this.messages = ensureNotNull(builder.messages, "messages");
-        ensureCapacity();
+        this.store = ensureNotNull(builder.store, "store");
+    }
+
+    @Override
+    public Object id() {
+        return id;
     }
 
     @Override
     public void add(ChatMessage message) {
+        List<ChatMessage> messages = messages();
         messages.add(message);
-        ensureCapacity();
+        ensureCapacity(messages, maxMessages);
+        store.updateMessages(id, messages);
     }
 
     @Override
     public List<ChatMessage> messages() {
-        List<ChatMessage> messages = new ArrayList<>();
-        if (systemMessage != null) {
-            messages.add(systemMessage);
-        }
-        messages.addAll(this.messages);
+        List<ChatMessage> messages = new ArrayList<>(store.getMessages(id));
+        ensureCapacity(messages, maxMessages);
         return messages;
+    }
+
+    private static void ensureCapacity(List<ChatMessage> messages, int maxMessages) {
+        int currentMessageCount = messages.size();
+        while (currentMessageCount > maxMessages) {
+            ChatMessage oldestMessage = messages.remove(0);
+            log.debug("Removing the oldest message to comply with capacity requirements: {}", oldestMessage);
+            currentMessageCount--;
+        }
+        log.debug("Current message count: {}", currentMessageCount);
     }
 
     @Override
     public void clear() {
-        messages.clear();
-    }
-
-    private void ensureCapacity() {
-        int currentMessageCount = currentMessageCount();
-
-        while (currentMessageCount > maxMessages) {
-            ChatMessage oldestMessage = messages.removeFirst();
-            log.debug("Removing the oldest message to comply with capacity requirements: {}", oldestMessage);
-            currentMessageCount--;
-        }
-
-        log.debug("Current message count: {}", currentMessageCount());
-    }
-
-    private int currentMessageCount() {
-        return messages().size();
+        store.deleteMessages(id);
     }
 
     public static Builder builder() {
@@ -81,30 +78,36 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     public static class Builder {
 
+        private Object id = "default";
         private Integer maxMessages;
-        private SystemMessage systemMessage;
-        private LinkedList<ChatMessage> messages = new LinkedList<>();
+        private ChatMemoryStore store = new InMemoryChatMemoryStore();
 
+        /**
+         * @param id The ID of the {@link ChatMemory}.
+         *               If not provided, a "default" will be used.
+         * @return builder
+         */
+        public Builder id(Object id) {
+            this.id = id;
+            return this;
+        }
+
+        /**
+         * @param maxMessages The maximum number of messages to retain.
+         * @return builder
+         */
         public Builder maxMessages(Integer maxMessages) {
             this.maxMessages = maxMessages;
             return this;
         }
 
-        public Builder systemMessage(String systemMessage) {
-            return systemMessage(SystemMessage.from(systemMessage));
-        }
-
-        public Builder systemMessage(SystemMessage systemMessage) {
-            this.systemMessage = systemMessage;
-            return this;
-        }
-
-        public Builder messages(List<ChatMessage> messages) {
-            if (messages == null) {
-                return this;
-            }
-
-            this.messages = new LinkedList<>(messages);
+        /**
+         * @param store The chat memory store responsible for storing the chat memory state.
+         *              If not provided, an {@link InMemoryChatMemoryStore} will be used.
+         * @return builder
+         */
+        public Builder chatMemoryStore(ChatMemoryStore store) {
+            this.store = store;
             return this;
         }
 

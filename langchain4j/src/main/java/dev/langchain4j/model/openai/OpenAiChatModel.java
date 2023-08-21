@@ -16,7 +16,13 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.defaultTimeoutFor;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
 
@@ -36,7 +42,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Tokenizer tokenizer;
 
     @Builder
-    public OpenAiChatModel(String apiKey,
+    public OpenAiChatModel(String baseUrl,
+                           String apiKey,
                            String modelName,
                            Double temperature,
                            Double topP,
@@ -49,19 +56,18 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Boolean logRequests,
                            Boolean logResponses) {
 
+        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            baseUrl = OPENAI_DEMO_URL;
+        }
         modelName = modelName == null ? GPT_3_5_TURBO : modelName;
         temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        String url = OPENAI_URL;
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            url = OPENAI_DEMO_URL;
-        }
-
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
-                .url(url)
+                .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

@@ -35,4 +35,10 @@ public class Utils {
         }
     }
 
+    public static String quoted(String string) {
+        if (string == null) {
+            return "null";
+        }
+        return "\"" + string + "\"";
+    }
 }

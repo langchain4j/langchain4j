@@ -2,6 +2,8 @@ package dev.langchain4j.model.huggingface;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 class TextGenerationRequest {
 
     private final String inputs;
@@ -39,7 +41,7 @@ class TextGenerationRequest {
     @Override
     public String toString() {
         return "TextGenerationRequest {"
-                + " inputs = " + inputs
+                + " inputs = " + quoted(inputs)
                 + ", parameters = " + parameters
                 + ", options = " + options
                 + " }";

@@ -17,7 +17,9 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -33,7 +35,8 @@ public class OpenAiModerationModel implements ModerationModel {
     private final Integer maxRetries;
 
     @Builder
-    public OpenAiModerationModel(String apiKey,
+    public OpenAiModerationModel(String baseUrl,
+                                 String apiKey,
                                  String modelName,
                                  Duration timeout,
                                  Integer maxRetries,
@@ -41,18 +44,17 @@ public class OpenAiModerationModel implements ModerationModel {
                                  Boolean logRequests,
                                  Boolean logResponses) {
 
+        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
+        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
+            baseUrl = OPENAI_DEMO_URL;
+        }
         modelName = modelName == null ? TEXT_MODERATION_LATEST : modelName;
         timeout = timeout == null ? ofSeconds(15) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        String baseUrl = OPENAI_URL;
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
-
         this.client = OpenAiClient.builder()
-                .apiKey(apiKey)
-                .url(baseUrl)
+                .openAiApiKey(apiKey)
+                .baseUrl(baseUrl)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
