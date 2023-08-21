@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import java.util.UUID;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -67,18 +66,18 @@ class UtilsTest {
     assertThatExceptionOfType(NullPointerException.class).isThrownBy(() -> Utils.generateUUIDFrom(null));
   }
 
-    @MethodSource
-    @ParameterizedTest
-    void test_quoted(String string, String expected) {
-        assertThat(quoted(string)).isEqualTo(expected);
-    }
+  @MethodSource
+  @ParameterizedTest
+  void test_quoted(String string, String expected) {
+    assertThat(quoted(string)).isEqualTo(expected);
+  }
 
-    static Stream<Arguments> test_quoted() {
-        return Stream.of(
-                Arguments.of(null, "null"),
-                Arguments.of("", "\"\""),
-                Arguments.of(" ", "\" \""),
-                Arguments.of("hello", "\"hello\"")
-        );
-    }
+  static Stream<Arguments> test_quoted() {
+    return Stream.of(
+      Arguments.of(null, "null"),
+      Arguments.of("", "\"\""),
+      Arguments.of(" ", "\" \""),
+      Arguments.of("hello", "\"hello\"")
+    );
+  }
 }
