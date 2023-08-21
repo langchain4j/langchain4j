@@ -21,11 +21,9 @@
         https://github.com/weaviate/java-client/blob/main/LICENSE
     </description>-->
 
-        <properties>
-            <vespa.version>8.210.20</vespa.version>
-    <!--        <maven.compiler.source>11</maven.compiler.source>-->
-    <!--        <maven.compiler.target>11</maven.compiler.target>-->
-        </properties>
+    <properties>
+        <vespa.version>8.213.13</vespa.version>
+    </properties>
 
     <dependencies>
 
@@ -46,18 +44,21 @@
             <version>${vespa.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
+
+        <!-- following two deps are the workaround, see https://github.com/vespa-engine/vespa/issues/28026. -->
+        <!-- They shall be removed as soon as vespa-client is implemented and integrated to this module. -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5-fluent</artifactId>
+            <version>5.2.1</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk15on</artifactId>
             <version>1.70</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
         </dependency>
 
     </dependencies>

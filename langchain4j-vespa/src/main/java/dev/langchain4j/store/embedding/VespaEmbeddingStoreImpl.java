@@ -17,23 +17,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.Builder;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.fluent.Request;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
+import org.apache.hc.core5.net.URIBuilder;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
   private static final String DEFAULT_NAMESPACE = "namespace";
   // TODO
-  private static final String DEFAULT_DOCUMENT_TYPE = "carrot";
+  private static final String DEFAULT_DOCUMENT_TYPE = "langchain4j";
   private static final boolean DEFAULT_AVOID_DUPS = true;
   // TODO
   private static final String FIELD_NAME_TEXT_SEGMENT = "text_segment";
   private static final String FIELD_NAME_VECTOR = "vector";
+  public static final String FIELD_NAME_DOCUMENT_ID = "documentid";
 
   private final String url;
   private final String keyPath;
@@ -93,7 +95,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
       for (int i = 0; i < embeddings.size(); i++) {
         String recordId = avoidDups && embedded != null ? generateUUIDFrom(embedded.get(i).text()) : randomUUID();
-//        String recordId = Long.toString(i);
         DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
         String text = embedded != null ? embedded.get(i).text() : null;
         //        String json = Json.toJson(new Record(documentId.toString(), embedded.get(i).text(), embeddings.get(i).vectorAsList()));
@@ -148,17 +149,10 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    HttpResponse response;
-    try (
-      CloseableHttpClient httpClient = HttpClients
-        .custom()
-        .setSSLContext(
-          new VespaSslContextBuilder().withCertificateAndKey(Paths.get(certPath), Paths.get(keyPath)).build()
-        )
-        .build()
-    ) {
+    CloseableHttpResponse response;
+    try (CloseableHttpClient httpClient = buildQueryClient()) {
       String searchQuery = Q
-        .select("documentid", FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+        .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
         .from(documentType)
         .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", 10)))
         .fix()
@@ -169,8 +163,12 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
       URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
 
-      response = httpClient.execute(new HttpGet(queryUri));
-      QueryResponse parsedResponse = Json.fromJson(EntityUtils.toString(response.getEntity()), QueryResponse.class);
+      // TODO try with resources?
+      //      response = httpClient.execute(new HttpGet(queryUri));
+      QueryResponse parsedResponse = Json.fromJson(
+        Request.get(queryUri).execute(httpClient).returnContent().asString(),
+        QueryResponse.class
+      );
 
       return parsedResponse
         .getRoot()
@@ -198,6 +196,25 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         FeedClientBuilder.create(URI.create(url)).setCertificate(Paths.get(certPath), Paths.get(keyPath)).build()
       )
       .withTimeout(timeout)
+      .build();
+  }
+
+  private CloseableHttpClient buildQueryClient() throws IOException {
+    return HttpClients
+      .custom()
+      .setConnectionManager(
+        PoolingHttpClientConnectionManagerBuilder
+          .create()
+          .setSSLSocketFactory(
+            SSLConnectionSocketFactoryBuilder
+              .create()
+              .setSslContext(
+                new VespaSslContextBuilder().withCertificateAndKey(Paths.get(certPath), Paths.get(keyPath)).build()
+              )
+              .build()
+          )
+          .build()
+      )
       .build();
   }
 
