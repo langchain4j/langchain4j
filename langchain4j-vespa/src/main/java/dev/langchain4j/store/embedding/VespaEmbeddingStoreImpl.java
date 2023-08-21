@@ -15,11 +15,11 @@ import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
@@ -29,10 +29,8 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
   private static final String DEFAULT_NAMESPACE = "namespace";
-  // TODO
   private static final String DEFAULT_DOCUMENT_TYPE = "langchain4j";
   private static final boolean DEFAULT_AVOID_DUPS = true;
-  // TODO
   private static final String FIELD_NAME_TEXT_SEGMENT = "text_segment";
   private static final String FIELD_NAME_VECTOR = "vector";
   public static final String FIELD_NAME_DOCUMENT_ID = "documentid";
@@ -66,20 +64,22 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public String add(Embedding embedding) {
-    return null;
+    return add(null, embedding, null);
   }
 
   @Override
-  public void add(String id, Embedding embedding) {}
+  public void add(String id, Embedding embedding) {
+    add(id, embedding, null);
+  }
 
   @Override
   public String add(Embedding embedding, TextSegment textSegment) {
-    return null;
+    return add(null, embedding, textSegment);
   }
 
   @Override
   public List<String> addAll(List<Embedding> embeddings) {
-    return null;
+    return addAll(embeddings, null);
   }
 
   @Override
@@ -94,11 +94,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       List<Record> records = new ArrayList<>();
 
       for (int i = 0; i < embeddings.size(); i++) {
-        String recordId = avoidDups && embedded != null ? generateUUIDFrom(embedded.get(i).text()) : randomUUID();
-        DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
-        String text = embedded != null ? embedded.get(i).text() : null;
-        //        String json = Json.toJson(new Record(documentId.toString(), embedded.get(i).text(), embeddings.get(i).vectorAsList()));
-        records.add(new Record(documentId.toString(), text, embeddings.get(i).vectorAsList()));
+        records.add(buildRecord(embeddings.get(i), embedded != null ? embedded.get(i) : null));
       }
 
       jsonFeeder.feedMany(
@@ -106,12 +102,10 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         new JsonFeeder.ResultCallback() {
           @Override
           public void onNextResult(Result result, FeedException error) {
-            if (error == null) {
-              if (Result.Type.success.equals(result.type())) {
-                ids.add(result.documentId().toString());
-              }
-            } else {
+            if (error != null) {
               throw new RuntimeException(error.getMessage());
+            } else if (Result.Type.success.equals(result.type())) {
+              ids.add(result.documentId().toString());
             }
           }
 
@@ -121,25 +115,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
           }
         }
       );
-      //        CompletableFuture<Result> promise = jsonFeeder.feedSingle(json);
-      //        promise.whenComplete(
-      //          (
-      //            (result, throwable) -> {
-      //              if (throwable != null) {
-      //                throw new RuntimeException(throwable);
-      //              } else {
-      //                System.out.printf(
-      //                  "'%s' for document '%s': %s%n",
-      //                  result.type(),
-      //                  result.documentId(),
-      //                  result.resultMessage()
-      //                );
-      //                ids.add(result.documentId().toString());
-      //              }
-      //            }
-      //          )
-      //        );
-
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -149,7 +124,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    CloseableHttpResponse response;
     try (CloseableHttpClient httpClient = buildQueryClient()) {
       String searchQuery = Q
         .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
@@ -163,8 +137,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
       URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
 
-      // TODO try with resources?
-      //      response = httpClient.execute(new HttpGet(queryUri));
       QueryResponse parsedResponse = Json.fromJson(
         Request.get(queryUri).execute(httpClient).returnContent().asString(),
         QueryResponse.class
@@ -188,6 +160,30 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     double minSimilarity
   ) {
     return null;
+  }
+
+  private String add(String id, Embedding embedding, TextSegment textSegment) {
+    AtomicReference<String> resId = new AtomicReference<>();
+
+    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+      jsonFeeder
+              .feedSingle(Json.toJson(buildRecord(id, embedding, textSegment)))
+              .whenComplete(
+                      (
+                              (result, throwable) -> {
+                                if (throwable != null) {
+                                  throw new RuntimeException(throwable);
+                                } else if (Result.Type.success.equals(result.type())) {
+                                  resId.set(result.documentId().toString());
+                                }
+                              }
+                      )
+              );
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+
+    return resId.get();
   }
 
   private JsonFeeder buildJsonFeeder() {
@@ -219,11 +215,23 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   }
 
   private static EmbeddingMatch<TextSegment> mapResponseItem(Record in) {
-    return new EmbeddingMatch(
+    return new EmbeddingMatch<>(
       in.getRelevance(),
       in.getFields().getDocumentId(),
       Embedding.from(in.getFields().getVector().getValues()),
       TextSegment.from(in.getFields().getTextSegment())
     );
+  }
+
+  private Record buildRecord(String id, Embedding embedding, TextSegment textSegment) {
+    String recordId = id != null
+      ? id
+      : avoidDups && textSegment != null ? generateUUIDFrom(textSegment.text()) : randomUUID();
+    DocumentId documentId = DocumentId.of(namespace, documentType, recordId);
+    String text = textSegment != null ? textSegment.text() : null;
+    return new Record(documentId.toString(), text, embedding.vectorAsList());
+  }
+  private Record buildRecord(Embedding embedding, TextSegment textSegment) {
+    return buildRecord(null, embedding, textSegment);
   }
 }
