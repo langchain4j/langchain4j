@@ -11,7 +11,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: SentenceTransformers all-MiniLM-L6-v2
      * <p>
-     * Max tokens: 256 (according to <a href="https://www.sbert.net/docs/pretrained_models.html">sbert</a>), but on practice up to 510 works (however, it is unclear whether there is a degradation in quality)
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 256 tokens.
      * <p>
      * Dimensions: 384
      * <p>
@@ -26,7 +28,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: SentenceTransformers all-MiniLM-L6-v2 quantized (smaller and faster, but provides slightly inferior results)
      * <p>
-     * Max tokens: 256 (according to <a href="https://www.sbert.net/docs/pretrained_models.html">sbert</a>), but on practice up to 510 works (however, it is unclear whether there is a degradation in quality)
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 256 tokens.
      * <p>
      * Dimensions: 384
      * <p>
@@ -41,7 +45,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: BAAI bge-small-en
      * <p>
-     * Max tokens: 510
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 512 tokens long.
      * <p>
      * Dimensions: 384
      * <p>
@@ -56,7 +62,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: BAAI bge-small-en quantized (smaller and faster, but provides slightly inferior results)
      * <p>
-     * Max tokens: 510
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 512 tokens long.
      * <p>
      * Dimensions: 384
      * <p>
@@ -71,7 +79,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: BAAI bge-small-zh (Chinese language)
      * <p>
-     * Max tokens: 510
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 512 tokens long.
      * <p>
      * Dimensions: 512
      * <p>
@@ -86,7 +96,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: BAAI bge-small-zh (Chinese language) quantized (smaller and faster, but provides slightly inferior results)
      * <p>
-     * Max tokens: 510
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 512 tokens long.
      * <p>
      * Dimensions: 512
      * <p>
@@ -101,7 +113,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: Microsoft E5-small-v2
      * <p>
-     * Max tokens: 510
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 512 tokens long.
      * <p>
      * Dimensions: 384
      * <p>
@@ -116,7 +130,9 @@ public enum InProcessEmbeddingModelType {
     /**
      * Model: Microsoft E5-small-v2 quantized (smaller and faster, but provides slightly inferior results)
      * <p>
-     * Max tokens: 510
+     * Maximum length of text (in tokens) that can be embedded at once: unlimited.
+     * However, while you can embed very long texts, the quality of the embedding degrades as the text lengthens.
+     * It is recommended to embed segments of no more than 512 tokens long.
      * <p>
      * Dimensions: 384
      * <p>
