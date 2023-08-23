@@ -52,7 +52,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.modelName = modelName;
         this.temperature = temperature;
