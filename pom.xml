@@ -19,7 +19,8 @@
 
         <!-- model providers -->
         <module>langchain4j-dashscope</module>
-      
+        <module>langchain4j-vertex</module>
+
         <!-- embedding stores -->
         <module>langchain4j-milvus</module>
         <module>langchain4j-pinecone</module>
