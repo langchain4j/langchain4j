@@ -26,4 +26,11 @@ public class Utils {
         }
         return "\"" + string + "\"";
     }
+
+    public static String first(String string, int numberOfChars) {
+        if (string == null) {
+            return null;
+        }
+        return string.length() > numberOfChars ? string.substring(0, numberOfChars) : string;
+    }
 }

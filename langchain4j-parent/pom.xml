@@ -118,6 +118,12 @@
                 <version>2.7.14</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.apache.opennlp</groupId>
+                <artifactId>opennlp-tools</artifactId>
+                <version>1.9.4</version>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>
