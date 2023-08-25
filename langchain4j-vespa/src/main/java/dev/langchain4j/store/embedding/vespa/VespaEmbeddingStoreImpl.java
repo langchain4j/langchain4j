@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.vespa;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -17,6 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -35,6 +38,8 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private static final String FIELD_NAME_VECTOR = "vector";
   public static final String FIELD_NAME_DOCUMENT_ID = "documentid";
   public static final String DEFAULT_RANK_PROFILE = "cosine_similarity";
+  public static final double DEFAULT_MIN_SCORE = 0.0;
+  public static final int DEFAULT_TARGET_HITS = 10;
 
   private final String url;
   private final String keyPath;
@@ -43,6 +48,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final String namespace;
   private final String documentType;
   private final String rankProfile;
+  private final int targetHits;
   private final boolean avoidDups;
 
   @Builder
@@ -54,6 +60,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     String namespace,
     String documentType,
     String rankProfile,
+    Integer targetHits,
     Boolean avoidDups
   ) {
     this.url = url;
@@ -63,6 +70,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     this.namespace = namespace != null ? namespace : DEFAULT_NAMESPACE;
     this.documentType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
     this.rankProfile = rankProfile != null ? rankProfile : DEFAULT_RANK_PROFILE;
+    this.targetHits = targetHits != null ? targetHits : DEFAULT_TARGET_HITS;
     this.avoidDups = avoidDups != null ? avoidDups : DEFAULT_AVOID_DUPS;
   }
 
@@ -128,7 +136,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    return findRelevant(referenceEmbedding, maxResults, 0);
+    return findRelevant(referenceEmbedding, maxResults, DEFAULT_MIN_SCORE);
   }
 
   @Override
@@ -141,7 +149,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       String searchQuery = Q
               .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
               .from(documentType)
-              .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", 10)))
+              .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", targetHits)))
               .fix()
               .hits(maxResults)
               .ranking(rankProfile)
@@ -160,7 +168,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
               .getRoot()
               .getChildren()
               .stream()
-              .map(VespaEmbeddingStoreImpl::mapResponseItem)
+              .map(VespaEmbeddingStoreImpl::toEmbeddingMatch)
               .collect(Collectors.toList());
     } catch (Throwable t) {
       throw new RuntimeException(t);
@@ -219,7 +227,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       .build();
   }
 
-  private static EmbeddingMatch<TextSegment> mapResponseItem(Record in) {
+  private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
     return new EmbeddingMatch<>(
       in.getRelevance(),
       in.getFields().getDocumentId(),

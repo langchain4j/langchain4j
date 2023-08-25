@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.vespa;
 
 import java.util.List;
 
