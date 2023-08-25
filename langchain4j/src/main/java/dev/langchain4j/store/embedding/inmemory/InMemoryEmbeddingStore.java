@@ -1,15 +1,37 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.Comparator.comparingDouble;
 
+/**
+ * An {@link EmbeddingStore} that stores embeddings in memory.
+ * <p>
+ * Uses a brute force approach by iterating over all embeddings to find the best matches.
+ * <p>
+ * This store can be persisted using the {@link #serializeToJson()} and {@link #serializeToFile(Path)} methods.
+ * <p>
+ * It can also be recreated from JSON or a file using the {@link #fromJson(String)} and {@link #fromFile(Path)} methods.
+ *
+ * @param <Embedded> The class of the object that has been embedded.
+ *                   Typically, it is {@link dev.langchain4j.data.segment.TextSegment}.
+ */
 public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
 
     private static class Entry<Embedded> {
@@ -22,6 +44,21 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             this.id = id;
             this.embedding = embedding;
             this.embedded = embedded;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Entry<?> that = (Entry<?>) o;
+            return Objects.equals(this.id, that.id)
+                    && Objects.equals(this.embedding, that.embedding)
+                    && Objects.equals(this.embedded, that.embedded);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, embedding, embedded);
         }
     }
 
@@ -92,5 +129,54 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         result.sort(comparator);
         Collections.reverse(result);
         return result;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        InMemoryEmbeddingStore<?> that = (InMemoryEmbeddingStore<?>) o;
+        return Objects.equals(this.entries, that.entries);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(entries);
+    }
+
+    public String serializeToJson() {
+        return new Gson().toJson(this);
+    }
+
+    public void serializeToFile(Path filePath) {
+        try {
+            String json = serializeToJson();
+            Files.write(filePath, json.getBytes(), CREATE, TRUNCATE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void serializeToFile(String filePath) {
+        serializeToFile(Paths.get(filePath));
+    }
+
+    public static InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
+        Type type = new TypeToken<InMemoryEmbeddingStore<TextSegment>>() {
+        }.getType();
+        return new Gson().fromJson(json, type);
+    }
+
+    public static InMemoryEmbeddingStore<TextSegment> fromFile(Path filePath) {
+        try {
+            String json = new String(Files.readAllBytes(filePath));
+            return fromJson(json);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
+        return fromFile(Paths.get(filePath));
     }
 }
