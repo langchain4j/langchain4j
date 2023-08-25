@@ -40,7 +40,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
