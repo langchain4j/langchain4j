@@ -26,7 +26,6 @@
         <module>langchain4j-weaviate</module>
         <module>langchain4j-vespa</module>
 
-        <module>langchain4j-spring-boot-starter</module>
     </modules>
 
 </project>
