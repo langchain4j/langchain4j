@@ -23,6 +23,9 @@ import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Json.toJson;
 
+/**
+ * Represents a connection to the Vertex LLM with a chat completion interface, such as chat-bison.
+ */
 public class VertexAiChatModel implements ChatLanguageModel {
 
     private final String modelName;
@@ -41,17 +44,13 @@ public class VertexAiChatModel implements ChatLanguageModel {
                       Integer maxOutputTokens,
                       Integer topK,
                       Double topP) {
+
         this.modelName = modelName;
         this.project = project;
         this.location = location;
         this.publisher = publisher;
         this.endpoint = endpoint;
-        this.vertexAiParameters = VertexAiParameters.builder()
-                .temperature(temperature)
-                .maxOutputTokens(maxOutputTokens)
-                .topK(topK)
-                .topP(topP)
-                .build();
+        this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
     }
 
     @Override
@@ -67,10 +66,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
             final EndpointName endpointName =
                     EndpointName.ofProjectLocationPublisherModelName(project, location, publisher, modelName);
 
-            VertexAiInstance vertexAiInstance = VertexAiInstance.builder()
-                    .context(toContext(messages))
-                    .messages(toVertexMessages(messages))
-                    .build();
+            VertexAiInstance vertexAiInstance = new VertexAiInstance(toContext(messages), toVertexMessages(messages));
 
             Value.Builder instanceValue = newBuilder();
             JsonFormat.parser().merge(toJson(vertexAiInstance), instanceValue);
@@ -100,15 +96,6 @@ public class VertexAiChatModel implements ChatLanguageModel {
                 .getFieldsMap()
                 .get("content")
                 .getStringValue();
-    }
-
-    //TODO delete this
-    public static void main(String[] args) {
-        VertexAiChatModel vertexAiChatModel = new VertexAiChatModel("chat-bison@001", "langchain4j", "us-central1", "google",
-                "us-central1-aiplatform.googleapis.com:443", 1.0, 50, 0, 0.0); //TODO defaults
-
-        AiMessage aiMessage = vertexAiChatModel.sendUserMessage("hi, how are you doing?");
-        System.out.println(aiMessage.text());
     }
 
     private static List<VertexAiInstance.Message> toVertexMessages(List<ChatMessage> messages) {

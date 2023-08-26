@@ -4,11 +4,8 @@ class VertexEmbeddingInstance {
 
     private final String content;
 
-    public VertexEmbeddingInstance(String content) {
+    VertexEmbeddingInstance(String content) {
         this.content = content;
     }
 
-    public String content() {
-        return content;
-    }
 }
