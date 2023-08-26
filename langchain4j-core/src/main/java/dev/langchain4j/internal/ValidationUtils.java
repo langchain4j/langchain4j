@@ -22,11 +22,27 @@ public class ValidationUtils {
         return collection;
     }
 
+//    public static String ensureNotEmpty(String string, String name) {
+//        if (string == null || string.isEmpty()) {
+//            throw illegalArgument("%s cannot be null or empty", name);
+//        }
+//
+//        return string;
+//    }
+
     public static String ensureNotBlank(String string, String name) {
         if (string == null || string.trim().isEmpty()) {
             throw illegalArgument("%s cannot be null or blank", name);
         }
 
         return string;
+    }
+
+    public static int ensureGreaterThanZero(Integer i, String name) {
+        if (i == null || i < 1) {
+            throw illegalArgument("%s must be greater than 0", name);
+        }
+
+        return i;
     }
 }

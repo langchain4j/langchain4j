@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -33,10 +33,7 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
-        this.maxTokens = ensureNotNull(builder.maxTokens, "maxTokens");
-        if (this.maxTokens < 1) {
-            throw illegalArgument("maxTokens should be greater than 0");
-        }
+        this.maxTokens = ensureGreaterThanZero(builder.maxTokens, "maxTokens");
         this.tokenizer = ensureNotNull(builder.tokenizer, "tokenizer");
         this.store = ensureNotNull(builder.store, "store");
     }

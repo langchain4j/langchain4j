@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Represents metadata of a Document or a TextSegment.
  * The metadata is stored in a key-value map, where both keys and values are strings.
@@ -21,10 +23,7 @@ public class Metadata {
     }
 
     public Metadata(Map<String, String> metadata) {
-        if (metadata == null) {
-            throw new IllegalArgumentException("metadata cannot be null");
-        }
-        this.metadata = metadata;
+        this.metadata = ensureNotNull(metadata, "metadata");
     }
 
     public String get(String key) {
@@ -36,8 +35,9 @@ public class Metadata {
         return this;
     }
 
-    public void mergeFrom(Metadata other) {
-        this.metadata.putAll(other.metadata);
+    public Metadata remove(String key) {
+        this.metadata.remove(key);
+        return this;
     }
 
     public Metadata copy() {
