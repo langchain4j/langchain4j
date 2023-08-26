@@ -16,10 +16,16 @@
     <packaging>jar</packaging>
 
     <name>LangChain4j integration with Vespa</name>
-    <!-- TODO
-    <description>Uses io.weaviate.client library which has a BSD 3-Clause license:
-        https://github.com/weaviate/java-client/blob/main/LICENSE
-    </description>-->
+    <description>
+        Vespa is is a fully featured search engine and vector database.
+        Integration with LangChain4j uses:
+          - Vespa's client &amp; vespa-feed-client libraries which have Apache License 2.0:
+            https://github.com/vespa-engine/vespa/blob/master/LICENSE
+          - org.apache.httpcomponents.client5.httpclient5-fluent library which has Apache License 2.0:
+            https://github.com/apache/httpcomponents-client/blob/master/LICENSE.txt
+          - org.bouncycastle.bcprov-jdk15on library which uses MIT License:
+            https://github.com/bcgit/bc-java/blob/main/LICENSE.html
+    </description>
 
     <properties>
         <vespa.version>8.213.13</vespa.version>
@@ -63,7 +69,6 @@
 
     </dependencies>
 
-    <!-- TODO
     <licenses>
         <license>
             <name>Apache-2.0</name>
@@ -71,6 +76,6 @@
             <distribution>repo</distribution>
             <comments>A business-friendly OSS license</comments>
         </license>
-    </licenses>-->
+    </licenses>
 
 </project>
