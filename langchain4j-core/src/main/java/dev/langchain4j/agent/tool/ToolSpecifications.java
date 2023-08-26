@@ -23,29 +23,38 @@ public class ToolSpecifications {
     }
 
     public static ToolSpecification toolSpecificationFrom(Method method) {
-        Tool annotation = method.getAnnotation(Tool.class);
+        return _toolSpecificationFrom(method).build();
+    }
 
-        String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-        String description = String.join("\n", annotation.value());
+    public static ToolSpecification toolSpecificationFrom(Method method, String description) {
+        return _toolSpecificationFrom(method).description(description).build();
+    }
+
+    public static ToolSpecification toolSpecificationFrom(Method method, String description, ToolParameters parameters) {
+        return _toolSpecificationFrom(method).description(description).parameters(parameters).build();
+    }
+
+    private static ToolSpecification.Builder _toolSpecificationFrom(Method method) {
+        Tool annotation = method.getAnnotation(Tool.class);
+        String name = annotation == null || isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
+        String description = annotation == null ? null : String.join("\n", annotation.value());
 
         ToolSpecification.Builder builder = ToolSpecification.builder()
                 .name(name)
                 .description(description);
 
         for (Parameter parameter : method.getParameters()) {
-            builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
+            final Class<?> parameterType = parameter.getType();
+            final P parameterAnnotation = parameter.getAnnotation(P.class);
+            final JsonSchemaProperty parameterDescription = parameterAnnotation == null ? null : description(parameterAnnotation.value());
+
+            builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameterType, parameterDescription));
         }
 
-        return builder.build();
+        return builder;
     }
 
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Parameter parameter) {
-
-        Class<?> type = parameter.getType();
-
-        P annotation = parameter.getAnnotation(P.class);
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
-
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
         if (type == String.class) {
             return removeNulls(STRING, description);
         }
