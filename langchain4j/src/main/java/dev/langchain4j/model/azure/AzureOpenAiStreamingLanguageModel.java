@@ -64,7 +64,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.temperature = temperature;
         this.tokenizer = tokenizer;
