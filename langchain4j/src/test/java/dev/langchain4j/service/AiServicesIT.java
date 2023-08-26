@@ -1,9 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -694,6 +691,59 @@ public class AiServicesIT {
         verify(calculator).squareRoot(485906798473894056.0);
         verifyNoMoreInteractions(calculator);
 
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+
+        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
+        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+
+        assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
+        AiMessage aiMessage = (AiMessage) messages.get(1);
+        assertThat(aiMessage.toolExecutionRequest().name()).isEqualTo("squareRoot");
+        assertThat(aiMessage.toolExecutionRequest().arguments())
+                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
+        assertThat(messages.get(1).text()).isNull();
+
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(messages.get(2).text()).isEqualTo("6.97070153193991E8");
+
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
+        assertThat(messages.get(3).text()).contains("6.97");
+
+        verify(chatLanguageModel).sendMessages(
+                singletonList(messages.get(0)),
+                singletonList(ToolSpecification.builder()
+                        .name("squareRoot")
+                        .description("calculates the square root of the provided number")
+                        .addParameter("arg0", NUMBER, JsonSchemaProperty.description("number to operate on"))
+                        .build())
+        );
+
+        // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
+        // This is the current behavior of OpenAI, though it might change in the future.
+        verify(chatLanguageModel).sendMessages(asList(messages.get(0), messages.get(1), messages.get(2)));
+    }
+
+
+    @Test
+    void should_execute_tool_function_then_answer() {
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .toolFunction(Math::sqrt, "calculates the square root of the provided number", ToolParameters.builder()
+                        .addParameter("x", NUMBER, JsonSchemaProperty.description("number to operate on"))
+                        .build())
+                .build();
+
+        String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
+
+        String answer = assistant.chat(userMessage);
+
+        assertThat(answer).contains("6.97");
 
         List<ChatMessage> messages = chatMemory.messages();
         assertThat(messages).hasSize(4);

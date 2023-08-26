@@ -1,9 +1,7 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolExecutor;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.agent.tool.func.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -280,18 +278,137 @@ public class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(List<Object> objectsWithTools) {
-        context.toolSpecifications = new ArrayList<>();
-        context.toolExecutors = new HashMap<>();
-
         for (Object objectWithTool : objectsWithTools) {
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
-                if (method.isAnnotationPresent(Tool.class)) {
-                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
-                    context.toolSpecifications.add(toolSpecification);
-                    context.toolExecutors.put(toolSpecification.name(), new ToolExecutor(objectWithTool, method));
-                }
+                if (!method.isAnnotationPresent(Tool.class)) continue;
+                final ToolExecutor toolExecutor = new ToolExecutor(objectWithTool, method);
+                final ToolSpecification toolSpecification = toolExecutor.toolSpecification();
+
+                context.addToolSpecification(toolSpecification);
+                context.putToolExecutor(toolSpecification.name(), toolExecutor);
             }
         }
+
+        return this;
+    }
+
+    public <TOOL, U1, R> AiServices<T> toolFunction(TOOL tool, ToolFunction<TOOL, U1, R> toolFunction, String description) {
+        final ToolExecutor toolExecutor = toolFunction.wrap(tool);
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <TOOL, U1, R> AiServices<T> toolFunction(TOOL tool, ToolFunction<TOOL, U1, R> toolFunction, String description, ToolParameters toolParameters) {
+        final ToolExecutor toolExecutor = toolFunction.wrap(tool);
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description, toolParameters);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <U, R> AiServices<T> toolFunction(ToolCompanionFunction<U, R> toolFunction, String description) {
+        final ToolExecutor toolExecutor = toolFunction.delegate();
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <U, R> AiServices<T> toolFunction(ToolCompanionFunction<U, R> toolFunction, String description, ToolParameters toolParameters) {
+        final ToolExecutor toolExecutor = toolFunction.delegate();
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description, toolParameters);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <TOOL, U1, U2, R> AiServices<T> toolFunction(TOOL tool, ToolBiFunction<TOOL, U1, U2, R> toolFunction, String description) {
+        final ToolExecutor toolExecutor = toolFunction.wrap(tool);
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <TOOL, U1, U2, R> AiServices<T> toolFunction(TOOL tool, ToolBiFunction<TOOL, U1, U2, R> toolFunction, String description, ToolParameters toolParameters) {
+        final ToolExecutor toolExecutor = toolFunction.wrap(tool);
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description, toolParameters);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <U1, U2, R> AiServices<T> toolFunction(ToolCompanionBiFunction<U1, U2, R> toolFunction, String description) {
+        final ToolExecutor toolExecutor = toolFunction.delegate();
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <U1, U2, R> AiServices<T> toolFunction(ToolCompanionBiFunction<U1, U2, R> toolFunction, String description, ToolParameters toolParameters) {
+        final ToolExecutor toolExecutor = toolFunction.delegate();
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description, toolParameters);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <TOOL, U1, U2, U3, R> AiServices<T> toolFunction(TOOL tool, ToolTiFunction<TOOL, U1, U2, U3, R> toolFunction, String description) {
+        final ToolExecutor toolExecutor = toolFunction.wrap(tool);
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <TOOL, U1, U2, U3, R> AiServices<T> toolFunction(TOOL tool, ToolTiFunction<TOOL, U1, U2, U3, R> toolFunction, String description, ToolParameters toolParameters) {
+        final ToolExecutor toolExecutor = toolFunction.wrap(tool);
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description, toolParameters);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+    public <U1, U2, U3, R> AiServices<T> toolFunction(ToolCompanionTiFunction<U1, U2, U3, R> toolFunction, String description) {
+        final ToolExecutor toolExecutor = toolFunction.delegate();
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
+
+        return this;
+    }
+
+
+    public <U1, U2, U3, R> AiServices<T> toolFunction(ToolCompanionTiFunction<U1, U2, U3, R> toolFunction, String description, ToolParameters toolParameters) {
+        final ToolExecutor toolExecutor = toolFunction.delegate();
+        final ToolSpecification toolSpecification = toolExecutor.toolSpecification(description, toolParameters);
+
+        context.addToolSpecification(toolSpecification);
+        context.putToolExecutor(toolSpecification.name(), toolExecutor);
 
         return this;
     }
@@ -529,7 +646,7 @@ public class AiServices<T> {
 
         UserMessage annotation = method.getAnnotation(UserMessage.class);
         if (annotation != null) {
-            String userMessageTemplate = String.join(annotation.delimiter(), annotation.value()) + outputFormatInstructions;
+            String userMessageTemplate = java.lang.String.join(annotation.delimiter(), annotation.value()) + outputFormatInstructions;
 
             if (userMessageTemplate.contains("{{it}}")) {
                 if (parameters.length != 1) {

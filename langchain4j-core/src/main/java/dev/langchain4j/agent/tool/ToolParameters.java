@@ -3,6 +3,7 @@ package dev.langchain4j.agent.tool;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static java.util.Arrays.asList;
 
 public class ToolParameters {
 
@@ -77,13 +78,29 @@ public class ToolParameters {
             return this;
         }
 
-        public Builder properties(Map<String, Map<String, Object>> properties) {
-            this.properties = properties;
+        public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
+            addParameter(name, asList(jsonSchemaProperties));
             return this;
         }
 
-        public Builder required(List<String> required) {
-            this.required = required;
+        public Builder addParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
+            addOptionalParameter(name, jsonSchemaProperties);
+            this.required.add(name);
+            return this;
+        }
+
+        public Builder addOptionalParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
+            addOptionalParameter(name, asList(jsonSchemaProperties));
+            return this;
+        }
+
+        public Builder addOptionalParameter(String name, Iterable<JsonSchemaProperty> jsonSchemaProperties) {
+            Map<String, Object> jsonSchemaPropertiesMap = new HashMap<>();
+            for (JsonSchemaProperty jsonSchemaProperty : jsonSchemaProperties) {
+                jsonSchemaPropertiesMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
+            }
+
+            this.properties.put(name, jsonSchemaPropertiesMap);
             return this;
         }
 

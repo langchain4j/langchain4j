@@ -10,6 +10,8 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.retriever.Retriever;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,5 +38,21 @@ class AiServiceContext {
 
     ChatMemory chatMemory(Object memoryId) {
         return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
+    }
+
+    synchronized void addToolSpecification(ToolSpecification toolSpecification) {
+        if (toolSpecifications == null) {
+            toolSpecifications = new ArrayList<>();
+        }
+
+        toolSpecifications.add(toolSpecification);
+    }
+
+    synchronized void putToolExecutor(String toolExecutorName, ToolExecutor toolExecutor) {
+        if (toolExecutors == null) {
+            toolExecutors = new HashMap<>();
+        }
+
+        toolExecutors.put(toolExecutorName, toolExecutor);
     }
 }
