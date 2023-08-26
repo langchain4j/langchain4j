@@ -23,8 +23,6 @@
             https://github.com/vespa-engine/vespa/blob/master/LICENSE
           - org.apache.httpcomponents.client5.httpclient5-fluent library which has Apache License 2.0:
             https://github.com/apache/httpcomponents-client/blob/master/LICENSE.txt
-          - org.bouncycastle.bcprov-jdk15on library which uses MIT License:
-            https://github.com/bcgit/bc-java/blob/main/LICENSE.html
     </description>
 
     <properties>
@@ -54,17 +52,12 @@
             <artifactId>lombok</artifactId>
         </dependency>
 
-        <!-- following two deps are the workaround, see https://github.com/vespa-engine/vespa/issues/28026. -->
-        <!-- They shall be removed as soon as vespa-client is implemented and integrated to this module. -->
+        <!-- following dependency is a workaround, see https://github.com/vespa-engine/vespa/issues/28026. -->
+        <!-- It shall be removed as soon as vespa-client is implemented and integrated to this module. -->
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5-fluent</artifactId>
             <version>5.2.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.70</version>
         </dependency>
 
     </dependencies>
