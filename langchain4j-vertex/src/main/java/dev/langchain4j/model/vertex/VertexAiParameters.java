@@ -1,7 +1,5 @@
 package dev.langchain4j.model.vertex;
 
-import java.util.Objects;
-
 class VertexAiParameters {
 
     private final Double temperature;
