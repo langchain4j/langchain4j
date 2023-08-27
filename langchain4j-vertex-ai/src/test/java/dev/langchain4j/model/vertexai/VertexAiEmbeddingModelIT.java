@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertex;
+package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import org.junit.jupiter.api.Disabled;

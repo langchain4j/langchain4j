@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertex;
+package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.message.AiMessage;
 import org.junit.jupiter.api.Disabled;
@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class VertexAiChatModelIT {
 
     @Test
-    @Disabled("To run this test, you must have provide your own endpoint, project and location")
+  //  @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testChatModel() {
         VertexAiChatModel vertexAiChatModel = new VertexAiChatModel(
                 "us-central1-aiplatform.googleapis.com:443",

@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertex;
+package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
@@ -30,11 +30,8 @@ import static java.util.stream.Collectors.toList;
  */
 public class VertexAiChatModel implements ChatLanguageModel {
 
-    private final String endpoint;
-    private final String project;
-    private final String location;
-    private final String publisher;
-    private final String modelName;
+    private final PredictionServiceSettings settings;
+    private final EndpointName endpointName;
     private final VertexAiParameters vertexAiParameters;
     private final Integer maxRetries;
 
@@ -48,26 +45,26 @@ public class VertexAiChatModel implements ChatLanguageModel {
                              Integer topK,
                              Double topP,
                              Integer maxRetries) {
-        this.endpoint = ensureNotBlank(endpoint, "endpoint");
-        this.project = ensureNotBlank(project, "project");
-        this.location = ensureNotBlank(location, "location");
-        this.publisher = ensureNotBlank(publisher, "publisher");
-        this.modelName = ensureNotBlank(modelName, "modelName");
+        try {
+            this.settings = PredictionServiceSettings.newBuilder()
+                    .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
+                    .build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
+                ensureNotBlank(project, "project"),
+                ensureNotBlank(location, "location"),
+                ensureNotBlank(publisher, "publisher"),
+                ensureNotBlank(modelName, "modelName")
+        );
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
         this.maxRetries = maxRetries == null ? 3 : maxRetries;
     }
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
-        try {
-            PredictionServiceSettings predictionServiceSettings = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(endpoint)
-                    .build();
-
-            PredictionServiceClient client = PredictionServiceClient.create(predictionServiceSettings);
-
-            final EndpointName endpointName =
-                    EndpointName.ofProjectLocationPublisherModelName(project, location, publisher, modelName);
+        try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             VertexAiChatInstance vertexAiChatInstance = new VertexAiChatInstance(
                     toContext(messages),

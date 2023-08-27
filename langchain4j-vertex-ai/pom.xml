@@ -11,7 +11,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-vertex</artifactId>
+    <artifactId>langchain4j-vertex-ai</artifactId>
     <packaging>jar</packaging>
 
     <name>LangChain4j integration with Vertex AI</name>

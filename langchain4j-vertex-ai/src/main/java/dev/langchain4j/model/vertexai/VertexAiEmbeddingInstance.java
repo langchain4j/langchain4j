@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertex;
+package dev.langchain4j.model.vertexai;
 
 class VertexAiEmbeddingInstance {
 
