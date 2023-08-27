@@ -63,11 +63,11 @@ public class TokenWindowChatMemory implements ChatMemory {
         while (currentTokenCount > maxTokens) {
             ChatMessage oldestMessage = messages.remove(0);
             int tokenCountOfOldestMessage = tokenizer.estimateTokenCountInMessage(oldestMessage);
-            log.debug("Removing the oldest message ({} tokens) to comply with capacity requirements: {}",
+            log.trace("Removing the oldest message ({} tokens) to comply with capacity requirements: {}",
                     tokenCountOfOldestMessage, oldestMessage);
             currentTokenCount -= tokenCountOfOldestMessage;
         }
-        log.debug("Current token count: {}", currentTokenCount);
+        log.trace("Current token count: {}", currentTokenCount);
     }
 
     @Override
