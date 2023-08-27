@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static dev.langchain4j.internal.Json.toJson;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -24,25 +25,25 @@ import static java.util.stream.Collectors.toList;
  */
 public class VertexAiEmbeddingModel implements EmbeddingModel {
 
-    private final String modelName;
+    private final String endpoint;
     private final String project;
     private final String location;
     private final String publisher;
-    private final String endpoint;
+    private final String modelName;
     private final Integer maxRetries;
 
-    VertexAiEmbeddingModel(String modelName,
+    VertexAiEmbeddingModel(String endpoint,
                            String project,
                            String location,
                            String publisher,
-                           String endpoint,
+                           String modelName,
                            Integer maxRetries) {
 
-        this.modelName = modelName;
+        this.endpoint = endpoint;
         this.project = project;
         this.location = location;
         this.publisher = publisher;
-        this.endpoint = endpoint;
+        this.modelName = modelName;
         this.maxRetries = maxRetries;
     }
 
@@ -75,8 +76,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
 
                 List<Value> instances = singletonList(instanceValue.build());
 
-                PredictResponse response = client.predict(endpointName, instances, ValueConverter.EMPTY_VALUE);
-                //   PredictResponse response = RetryUtils.withRetry(() -> client.predict(endpointName, instances, ValueConverter.EMPTY_VALUE), maxRetries);
+                PredictResponse response = withRetry(() -> client.predict(endpointName, instances, ValueConverter.EMPTY_VALUE), maxRetries);
                 Embedding embedding = Embedding.from(extractContent(response));
 
                 return singletonList(embedding);
@@ -97,6 +97,59 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 .getValuesList()
                 .stream().map(v -> (float) v.getNumberValue())
                 .collect(toList());
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String endpoint;
+        private String project;
+        private String location;
+        private String publisher;
+        private String modelName;
+        private Integer maxRetries;
+
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
+        public Builder project(String project) {
+            this.project = project;
+            return this;
+        }
+
+        public Builder location(String location) {
+            this.location = location;
+            return this;
+        }
+
+        public Builder publisher(String publisher) {
+            this.publisher = publisher;
+            return this;
+        }
+
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public VertexAiEmbeddingModel build() {
+            return new VertexAiEmbeddingModel(
+                    endpoint,
+                    project,
+                    location,
+                    publisher,
+                    modelName,
+                    maxRetries);
+        }
     }
 
 }

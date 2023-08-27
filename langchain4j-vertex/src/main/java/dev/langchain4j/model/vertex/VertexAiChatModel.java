@@ -22,46 +22,49 @@ import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Json.toJson;
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 
 /**
  * Represents a connection to the Vertex LLM with a chat completion interface, such as chat-bison.
  */
 public class VertexAiChatModel implements ChatLanguageModel {
 
-    private final String modelName;
+    private final String endpoint;
     private final String project;
     private final String location;
     private final String publisher;
-    private final String endpoint;
+    private final String modelName;
     private final VertexAiParameters vertexAiParameters;
+    private final Integer maxRetries;
 
-    VertexAiChatModel(String modelName,
+    VertexAiChatModel(String endpoint,
                       String project,
                       String location,
                       String publisher,
-                      String endpoint,
+                      String modelName,
                       Double temperature,
                       Integer maxOutputTokens,
                       Integer topK,
-                      Double topP) {
+                      Double topP,
+                      Integer maxRetries) {
 
-        this.modelName = modelName;
+        this.endpoint = endpoint;
         this.project = project;
         this.location = location;
         this.publisher = publisher;
-        this.endpoint = endpoint;
+        this.modelName = modelName;
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
+        this.maxRetries = maxRetries;
     }
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
-
         try {
             PredictionServiceSettings predictionServiceSettings = PredictionServiceSettings.newBuilder()
                     .setEndpoint(endpoint)
                     .build();
 
-            PredictionServiceClient predictionServiceClient = PredictionServiceClient.create(predictionServiceSettings);
+            PredictionServiceClient client = PredictionServiceClient.create(predictionServiceSettings);
 
             final EndpointName endpointName =
                     EndpointName.ofProjectLocationPublisherModelName(project, location, publisher, modelName);
@@ -76,9 +79,9 @@ public class VertexAiChatModel implements ChatLanguageModel {
             JsonFormat.parser().merge(toJson(vertexAiParameters), parameterValueBuilder);
             Value parameterValue = parameterValueBuilder.build();
 
-            PredictResponse predictResponse = predictionServiceClient.predict(endpointName, instances, parameterValue);
+            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameterValue), maxRetries);
 
-            return aiMessage(extractContent(predictResponse));
+            return aiMessage(extractContent(response));
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -120,6 +123,89 @@ public class VertexAiChatModel implements ChatLanguageModel {
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for Vertex models");
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+        private String endpoint;
+        private String project;
+        private String location;
+        private String publisher;
+        private String modelName;
+
+        private Double temperature;
+        private Integer maxOutputTokens = 200;
+        private Integer topK;
+        private Double topP;
+
+        private Integer maxRetries;
+
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
+        public Builder project(String project) {
+            this.project = project;
+            return this;
+        }
+
+        public Builder location(String location) {
+            this.location = location;
+            return this;
+        }
+
+        public Builder publisher(String publisher) {
+            this.publisher = publisher;
+            return this;
+        }
+
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public Builder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public Builder maxOutputTokens(Integer maxOutputTokens) {
+            this.maxOutputTokens = maxOutputTokens;
+            return this;
+        }
+
+        public Builder topK(Integer topK) {
+            this.topK = topK;
+            return this;
+        }
+
+        public Builder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public VertexAiChatModel build() {
+            return new VertexAiChatModel(
+                    endpoint,
+                    project,
+                    location,
+                    publisher,
+                    modelName,
+                    temperature,
+                    maxOutputTokens,
+                    topK,
+                    topP,
+                    maxRetries);
+        }
     }
 
 }
