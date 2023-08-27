@@ -28,8 +28,9 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 ## News
 
 19 August:
-- [Integration with Chroma](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) by [@kuraleta](https://github.com/kuraleta)
+- Integration with [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) by [@kuraleta](https://github.com/kuraleta)
 - Integration with Qwen models (DashScope) by [@jiangsier-xyz](https://github.com/jiangsier-xyz)
+- [Integration with Chroma](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) by [@kuraleta](https://github.com/kuraleta)
 - [Support for persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 
 10 August:
@@ -233,7 +234,7 @@ Please note that the library is in active development and:
     - [With Retriever](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
     - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
     - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
-- Integration with [OpenAI (ChatGPT)](https://platform.openai.com/docs/introduction) for:
+- Integration with [OpenAI](https://platform.openai.com/docs/introduction) and [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) for:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming + functions)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
