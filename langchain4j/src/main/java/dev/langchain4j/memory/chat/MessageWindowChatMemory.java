@@ -61,10 +61,10 @@ public class MessageWindowChatMemory implements ChatMemory {
         int currentMessageCount = messages.size();
         while (currentMessageCount > maxMessages) {
             ChatMessage oldestMessage = messages.remove(0);
-            log.debug("Removing the oldest message to comply with capacity requirements: {}", oldestMessage);
+            log.trace("Removing the oldest message to comply with capacity requirements: {}", oldestMessage);
             currentMessageCount--;
         }
-        log.debug("Current message count: {}", currentMessageCount);
+        log.trace("Current message count: {}", currentMessageCount);
     }
 
     @Override
