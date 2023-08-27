@@ -17,7 +17,7 @@
 
     <name>LangChain4j integration with Vespa</name>
     <description>
-        Vespa is is a fully featured search engine and vector database.
+        Vespa is a fully featured search engine and vector database.
         Integration with LangChain4j uses:
           - Vespa's client &amp; vespa-feed-client libraries which have Apache License 2.0:
             https://github.com/vespa-engine/vespa/blob/master/LICENSE
@@ -26,7 +26,7 @@
     </description>
 
     <properties>
-        <vespa.version>8.213.13</vespa.version>
+        <vespa.version>8.198.18</vespa.version> <!-- the latest Java 8 version -->
     </properties>
 
     <dependencies>

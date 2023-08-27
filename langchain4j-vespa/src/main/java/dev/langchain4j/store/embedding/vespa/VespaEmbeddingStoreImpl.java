@@ -4,12 +4,18 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 import ai.vespa.client.dsl.A;
+import ai.vespa.client.dsl.Annotation;
+import ai.vespa.client.dsl.NearestNeighbor;
 import ai.vespa.client.dsl.Q;
 import ai.vespa.feed.client.*;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -17,9 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import org.apache.hc.client5.http.fluent.Request;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -140,36 +143,33 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   }
 
   @Override
-  public List<EmbeddingMatch<TextSegment>> findRelevant(
-    Embedding referenceEmbedding,
-    int maxResults,
-    double minScore
-  ) {
+  public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
     try (CloseableHttpClient httpClient = buildQueryClient()) {
       String searchQuery = Q
-              .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
-              .from(documentType)
-              .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", targetHits)))
-              .fix()
-              .hits(maxResults)
-              .ranking(rankProfile)
-              .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
-              .param("input.query(threshold)", String.valueOf(minScore))
-              .build();
+        .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+        .from(documentType)
+        //              .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", targetHits)))
+        .where(buildNearestNeighbor())
+        .fix()
+        .hits(maxResults)
+        .ranking(rankProfile)
+        .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
+        .param("input.query(threshold)", String.valueOf(minScore))
+        .build();
 
       URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
 
       QueryResponse parsedResponse = Json.fromJson(
-              Request.get(queryUri).execute(httpClient).returnContent().asString(),
-              QueryResponse.class
+        Request.get(queryUri).execute(httpClient).returnContent().asString(),
+        QueryResponse.class
       );
 
       return parsedResponse
-              .getRoot()
-              .getChildren()
-              .stream()
-              .map(VespaEmbeddingStoreImpl::toEmbeddingMatch)
-              .collect(Collectors.toList());
+        .getRoot()
+        .getChildren()
+        .stream()
+        .map(VespaEmbeddingStoreImpl::toEmbeddingMatch)
+        .collect(Collectors.toList());
     } catch (Throwable t) {
       throw new RuntimeException(t);
     }
@@ -247,5 +247,18 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private Record buildRecord(Embedding embedding, TextSegment textSegment) {
     return buildRecord(null, embedding, textSegment);
+  }
+
+  private NearestNeighbor buildNearestNeighbor()
+    throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    NearestNeighbor nb = Q.nearestNeighbor(FIELD_NAME_VECTOR, "q");
+
+    // workaround to invoke ai.vespa.client.dsl.NearestNeighbor#annotate,
+    // see https://github.com/vespa-engine/vespa/issues/28029
+    // The bug is fixed in the meantime, but the baseline has been upgraded to Java 11, hence this workaround remains here
+    Method method = NearestNeighbor.class.getDeclaredMethod("annotate", new Class<?>[] { Annotation.class });
+    method.setAccessible(true);
+    method.invoke(nb, A.a("targetHits", targetHits));
+    return nb;
   }
 }
