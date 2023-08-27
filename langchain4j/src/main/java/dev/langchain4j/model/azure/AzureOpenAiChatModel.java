@@ -9,7 +9,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -17,14 +16,14 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
  * Represents a connection to the OpenAI LLM, hosted on Azure, that has a chat completion interface (like gpt-3.5-turbo and gpt-4).
+ * <p>
+ * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -50,7 +49,6 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    @Builder
     public AzureOpenAiChatModel(String baseUrl,
                                 String apiVersion,
                                 String apiKey,
@@ -137,4 +135,132 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String baseUrl;
+        private String apiVersion;
+        private String apiKey;
+        private Tokenizer tokenizer;
+        private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private Double presencePenalty;
+        private Double frequencyPenalty;
+        private Duration timeout;
+        private Integer maxRetries;
+        private Proxy proxy;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
+        /**
+         * Sets the Azure OpenAI base URL. This is a mandatory parameter.
+         *
+         * @param baseUrl The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/openai/deployments/{deployment}
+         * @return builder
+         */
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        /**
+         * Sets the Azure OpenAI API version. This is a mandatory parameter.
+         *
+         * @param apiVersion The Azure OpenAI api version in the format: 2023-05-15
+         * @return builder
+         */
+        public Builder apiVersion(String apiVersion) {
+            this.apiVersion = apiVersion;
+            return this;
+        }
+
+        /**
+         * Sets the Azure OpenAI API key. This is a mandatory parameter.
+         *
+         * @param apiKey The Azure OpenAI API key.
+         * @return builder
+         */
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public Builder tokenizer(Tokenizer tokenizer) {
+            this.tokenizer = tokenizer;
+            return this;
+        }
+
+        public Builder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public Builder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public Builder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
+            return this;
+        }
+
+        public Builder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public Builder proxy(Proxy proxy) {
+            this.proxy = proxy;
+            return this;
+        }
+
+        public Builder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public AzureOpenAiChatModel build() {
+            return new AzureOpenAiChatModel(
+                    baseUrl,
+                    apiVersion,
+                    apiKey,
+                    tokenizer,
+                    temperature,
+                    topP,
+                    maxTokens,
+                    presencePenalty,
+                    frequencyPenalty,
+                    timeout,
+                    maxRetries,
+                    proxy,
+                    logRequests,
+                    logResponses
+            );
+        }
+    }
 }

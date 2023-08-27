@@ -67,7 +67,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.modelName = modelName;
         this.temperature = temperature;

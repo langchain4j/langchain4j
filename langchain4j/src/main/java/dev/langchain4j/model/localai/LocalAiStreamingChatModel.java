@@ -49,7 +49,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
