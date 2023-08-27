@@ -47,7 +47,7 @@ public class VextexAiLanguageModel implements LanguageModel {
         this.publisher = ensureNotBlank(publisher, "publisher");
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
-        this.maxRetries = maxRetries;
+        this.maxRetries = maxRetries == null ? 3 : maxRetries;
     }
 
     @Override

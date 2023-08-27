@@ -49,7 +49,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 ensureNotBlank(publisher, "publisher"),
                 ensureNotBlank(modelName, "modelName")
         );
-        this.maxRetries = maxRetries;
+        this.maxRetries = maxRetries == null ? 3 : maxRetries;
     }
 
     @Override
