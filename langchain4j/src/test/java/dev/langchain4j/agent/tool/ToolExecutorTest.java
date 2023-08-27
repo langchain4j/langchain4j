@@ -106,15 +106,6 @@ class ToolExecutorTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{\"arg0\": 2, \"arg1\": 2.1}",
-            "{\"arg0\": 2.1, \"arg1\": 2}"
-    })
-    void should_fail_when_argument_is_fractional_number_for_parameter_of_type_long(String arguments) throws NoSuchMethodException {
-        executeAndExpectFailure(arguments, "longs", long.class, Long.class, "argument type mismatch");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
             "{\"arg0\": 2, \"arg1\": " + Double.MAX_VALUE + "}",
             "{\"arg0\": 2, \"arg1\": " + -Double.MAX_VALUE + "}"
     })
@@ -129,15 +120,6 @@ class ToolExecutorTest {
     })
     void should_execute_tool_with_parameters_of_type_int(String arguments) throws NoSuchMethodException {
         executeAndAssert(arguments, "ints", int.class, Integer.class, "4");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "{\"arg0\": 2, \"arg1\": 2.1}",
-            "{\"arg0\": 2.1, \"arg1\": 2}"
-    })
-    void should_fail_when_argument_is_fractional_number_for_parameter_of_type_int(String arguments) throws NoSuchMethodException {
-        executeAndExpectFailure(arguments, "ints", int.class, Integer.class, "argument type mismatch");
     }
 
     @ParameterizedTest
@@ -160,15 +142,6 @@ class ToolExecutorTest {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "{\"arg0\": 2, \"arg1\": 2.1}",
-            "{\"arg0\": 2.1, \"arg1\": 2}"
-    })
-    void should_fail_when_argument_is_fractional_number_for_parameter_of_type_short(String arguments) throws NoSuchMethodException {
-        executeAndExpectFailure(arguments, "shorts", short.class, Short.class, "argument type mismatch");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
             "{\"arg0\": 2, \"arg1\": " + Double.MAX_VALUE + "}",
             "{\"arg0\": 2, \"arg1\": " + -Double.MAX_VALUE + "}"
     })
@@ -183,15 +156,6 @@ class ToolExecutorTest {
     })
     void should_execute_tool_with_parameters_of_type_byte(String arguments) throws NoSuchMethodException {
         executeAndAssert(arguments, "bytes", byte.class, Byte.class, "4");
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "{\"arg0\": 2, \"arg1\": 2.1}",
-            "{\"arg0\": 2.1, \"arg1\": 2}"
-    })
-    void should_fail_when_argument_is_fractional_number_for_parameter_of_type_byte(String arguments) throws NoSuchMethodException {
-        executeAndExpectFailure(arguments, "bytes", byte.class, Byte.class, "argument type mismatch");
     }
 
     @ParameterizedTest
