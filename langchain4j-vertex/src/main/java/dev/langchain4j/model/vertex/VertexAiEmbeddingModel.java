@@ -1,11 +1,9 @@
 package dev.langchain4j.model.vertex;
 
-import com.google.cloud.aiplatform.util.ValueConverter;
 import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
 import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
-import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.embedding.Embedding;
@@ -15,35 +13,42 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import java.io.IOException;
 import java.util.List;
 
+import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the Vertex embedding model, such as textembedding-gecko.
+ * Represents a connection to the Vertex AI embedding model, such as textembedding-gecko.
+ * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings">here</a>.
  */
 public class VertexAiEmbeddingModel implements EmbeddingModel {
 
-    private final String endpoint;
-    private final String project;
-    private final String location;
-    private final String publisher;
-    private final String modelName;
+    private final PredictionServiceSettings settings;
+    private final EndpointName endpointName;
     private final Integer maxRetries;
 
-    VertexAiEmbeddingModel(String endpoint,
-                           String project,
-                           String location,
-                           String publisher,
-                           String modelName,
-                           Integer maxRetries) {
-
-        this.endpoint = endpoint;
-        this.project = project;
-        this.location = location;
-        this.publisher = publisher;
-        this.modelName = modelName;
+    public VertexAiEmbeddingModel(String endpoint,
+                                  String project,
+                                  String location,
+                                  String publisher,
+                                  String modelName,
+                                  Integer maxRetries) {
+        try {
+            this.settings = PredictionServiceSettings.newBuilder()
+                    .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
+                    .build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
+                ensureNotBlank(project, "project"),
+                ensureNotBlank(location, "location"),
+                ensureNotBlank(publisher, "publisher"),
+                ensureNotBlank(modelName, "modelName")
+        );
         this.maxRetries = maxRetries;
     }
 
@@ -57,36 +62,25 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     }
 
     private List<Embedding> embedTexts(List<String> texts) {
-        try {
-            PredictionServiceSettings predictionServiceSettings = PredictionServiceSettings.newBuilder()
-                    .setEndpoint(endpoint)
-                    .build();
 
-            try (PredictionServiceClient client = PredictionServiceClient.create(predictionServiceSettings)) {
-                EndpointName endpointName = EndpointName.ofProjectLocationPublisherModelName(project, location, publisher, modelName);
+        try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
-                Value.Builder instanceValue = Value.newBuilder();
-                texts.forEach(content -> {
-                    try {
-                        JsonFormat.parser().merge(toJson(new VertexEmbeddingInstance(content)), instanceValue);
-                    } catch (InvalidProtocolBufferException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
-
-                List<Value> instances = singletonList(instanceValue.build());
-
-                PredictResponse response = withRetry(() -> client.predict(endpointName, instances, ValueConverter.EMPTY_VALUE), maxRetries);
-                Embedding embedding = Embedding.from(extractContent(response));
-
-                return singletonList(embedding);
+            Value.Builder instanceBuilder = Value.newBuilder();
+            for (String text : texts) {
+                JsonFormat.parser().merge(toJson(new VertexAiEmbeddingInstance(text)), instanceBuilder);
             }
-        } catch (IOException e) {
+            List<Value> instances = singletonList(instanceBuilder.build());
+
+            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, EMPTY_VALUE), maxRetries);
+
+            Embedding embedding = Embedding.from(toVector(response));
+            return singletonList(embedding);
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static List<Float> extractContent(PredictResponse predictResponse) {
+    private static List<Float> toVector(PredictResponse predictResponse) {
         return predictResponse.getPredictions(0)
                 .getStructValue()
                 .getFieldsMap()
@@ -95,7 +89,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 .getFieldsOrThrow("values")
                 .getListValue()
                 .getValuesList()
-                .stream().map(v -> (float) v.getNumberValue())
+                .stream()
+                .map(v -> (float) v.getNumberValue())
                 .collect(toList());
     }
 
@@ -104,6 +99,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static class Builder {
+
         private String endpoint;
         private String project;
         private String location;
@@ -151,5 +147,4 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                     maxRetries);
         }
     }
-
 }

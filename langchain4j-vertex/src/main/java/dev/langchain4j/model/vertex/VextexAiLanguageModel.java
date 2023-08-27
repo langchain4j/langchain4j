@@ -15,11 +15,11 @@ import java.util.List;
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
- * Represents a connection to the Vertex LLM with a completion interface, such as text-bison.
- * However, it's recommended to use {@link VertexAiChatModel} instead,
- * as it offers more advanced features like function calling, multi-turn conversations, etc.
+ * Represents a connection to the Vertex AI LLM with a text interface, such as text-bison.
+ * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview">here</a>.
  */
 public class VextexAiLanguageModel implements LanguageModel {
 
@@ -41,12 +41,11 @@ public class VextexAiLanguageModel implements LanguageModel {
                                  Integer topK,
                                  Double topP,
                                  Integer maxRetries) {
-
-        this.endpoint = endpoint;
-        this.project = project;
-        this.location = location;
-        this.publisher = publisher;
-        this.modelName = modelName;
+        this.endpoint = ensureNotBlank(endpoint, "endpoint");
+        this.project = ensureNotBlank(project, "project");
+        this.location = ensureNotBlank(location, "location");
+        this.publisher = ensureNotBlank(publisher, "publisher");
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
         this.maxRetries = maxRetries;
     }
@@ -63,17 +62,17 @@ public class VextexAiLanguageModel implements LanguageModel {
 
             final EndpointName endpointName = EndpointName.ofProjectLocationPublisherModelName(project, location, publisher, modelName);
 
-            VertexAiCompletionInstance vertexAiCompletionInstance = new VertexAiCompletionInstance(text);
+            VertexAiTextInstance vertexAiTextInstance = new VertexAiTextInstance(text);
 
-            Value.Builder instanceValue = newBuilder();
-            JsonFormat.parser().merge(toJson(vertexAiCompletionInstance), instanceValue);
-            List<Value> instances = Collections.singletonList(instanceValue.build());
+            Value.Builder instanceBuilder = newBuilder();
+            JsonFormat.parser().merge(toJson(vertexAiTextInstance), instanceBuilder);
+            List<Value> instances = Collections.singletonList(instanceBuilder.build());
 
-            Value.Builder parameterValueBuilder = Value.newBuilder();
-            JsonFormat.parser().merge(toJson(vertexAiParameters), parameterValueBuilder);
-            Value parameterValue = parameterValueBuilder.build();
+            Value.Builder parametersBuilder = Value.newBuilder();
+            JsonFormat.parser().merge(toJson(vertexAiParameters), parametersBuilder);
+            Value parameters = parametersBuilder.build();
 
-            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameterValue), maxRetries);
+            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
             return extractContent(response);
 
@@ -95,6 +94,7 @@ public class VextexAiLanguageModel implements LanguageModel {
     }
 
     public static class Builder {
+
         private String endpoint;
         private String project;
         private String location;

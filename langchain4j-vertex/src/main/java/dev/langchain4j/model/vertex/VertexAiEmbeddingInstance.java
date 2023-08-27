@@ -1,11 +1,10 @@
 package dev.langchain4j.model.vertex;
 
-class VertexEmbeddingInstance {
+class VertexAiEmbeddingInstance {
 
     private final String content;
 
-    VertexEmbeddingInstance(String content) {
+    VertexAiEmbeddingInstance(String content) {
         this.content = content;
     }
-
 }

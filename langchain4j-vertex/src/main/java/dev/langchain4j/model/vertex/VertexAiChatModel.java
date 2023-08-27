@@ -12,20 +12,21 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.ChatMessageType.AI;
-import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
-import static dev.langchain4j.data.message.ChatMessageType.USER;
+import static dev.langchain4j.data.message.ChatMessageType.*;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the Vertex LLM with a chat completion interface, such as chat-bison.
+ * Represents a connection to the Vertex AI LLM with a chat completion interface, such as chat-bison.
+ * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/chat/chat-prompts">here</a>.
  */
 public class VertexAiChatModel implements ChatLanguageModel {
 
@@ -37,22 +38,21 @@ public class VertexAiChatModel implements ChatLanguageModel {
     private final VertexAiParameters vertexAiParameters;
     private final Integer maxRetries;
 
-    VertexAiChatModel(String endpoint,
-                      String project,
-                      String location,
-                      String publisher,
-                      String modelName,
-                      Double temperature,
-                      Integer maxOutputTokens,
-                      Integer topK,
-                      Double topP,
-                      Integer maxRetries) {
-
-        this.endpoint = endpoint;
-        this.project = project;
-        this.location = location;
-        this.publisher = publisher;
-        this.modelName = modelName;
+    public VertexAiChatModel(String endpoint,
+                             String project,
+                             String location,
+                             String publisher,
+                             String modelName,
+                             Double temperature,
+                             Integer maxOutputTokens,
+                             Integer topK,
+                             Double topP,
+                             Integer maxRetries) {
+        this.endpoint = ensureNotBlank(endpoint, "endpoint");
+        this.project = ensureNotBlank(project, "project");
+        this.location = ensureNotBlank(location, "location");
+        this.publisher = ensureNotBlank(publisher, "publisher");
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
         this.maxRetries = maxRetries;
     }
@@ -69,17 +69,20 @@ public class VertexAiChatModel implements ChatLanguageModel {
             final EndpointName endpointName =
                     EndpointName.ofProjectLocationPublisherModelName(project, location, publisher, modelName);
 
-            VertexAiInstance vertexAiInstance = new VertexAiInstance(toContext(messages), toVertexMessages(messages));
+            VertexAiChatInstance vertexAiChatInstance = new VertexAiChatInstance(
+                    toContext(messages),
+                    toVertexMessages(messages)
+            );
 
-            Value.Builder instanceValue = newBuilder();
-            JsonFormat.parser().merge(toJson(vertexAiInstance), instanceValue);
-            List<Value> instances = Collections.singletonList(instanceValue.build());
+            Value.Builder instanceBuilder = newBuilder();
+            JsonFormat.parser().merge(toJson(vertexAiChatInstance), instanceBuilder);
+            List<Value> instances = singletonList(instanceBuilder.build());
 
-            Value.Builder parameterValueBuilder = Value.newBuilder();
-            JsonFormat.parser().merge(toJson(vertexAiParameters), parameterValueBuilder);
-            Value parameterValue = parameterValueBuilder.build();
+            Value.Builder parametersBuilder = newBuilder();
+            JsonFormat.parser().merge(toJson(vertexAiParameters), parametersBuilder);
+            Value parameters = parametersBuilder.build();
 
-            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameterValue), maxRetries);
+            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
             return aiMessage(extractContent(response));
 
@@ -101,28 +104,28 @@ public class VertexAiChatModel implements ChatLanguageModel {
                 .getStringValue();
     }
 
-    private static List<VertexAiInstance.Message> toVertexMessages(List<ChatMessage> messages) {
+    private static List<VertexAiChatInstance.Message> toVertexMessages(List<ChatMessage> messages) {
         return messages.stream()
-                .filter(chatMessage -> USER == chatMessage.type() || AI == chatMessage.type())
-                .map(chatMessage -> new VertexAiInstance.Message(chatMessage.type().name(), chatMessage.text()))
-                .collect(Collectors.toList());
+                .filter(chatMessage -> chatMessage.type() == USER || chatMessage.type() == AI)
+                .map(chatMessage -> new VertexAiChatInstance.Message(chatMessage.type().name(), chatMessage.text()))
+                .collect(toList());
     }
 
     private static String toContext(List<ChatMessage> messages) {
         return messages.stream()
-                .filter(chatMessage -> SYSTEM == chatMessage.type())
+                .filter(chatMessage -> chatMessage.type() == SYSTEM)
                 .map(ChatMessage::text)
-                .collect(Collectors.joining(","));
+                .collect(joining("\n"));
     }
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        throw new IllegalArgumentException("Tools are currently not supported for Vertex models");
+        throw new IllegalArgumentException("Tools are currently not supported for Vertex AI models");
     }
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new IllegalArgumentException("Tools are currently not supported for Vertex models");
+        throw new IllegalArgumentException("Tools are currently not supported for Vertex AI models");
     }
 
     public static Builder builder() {
@@ -130,6 +133,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     public static class Builder {
+
         private String endpoint;
         private String project;
         private String location;
@@ -207,5 +211,4 @@ public class VertexAiChatModel implements ChatLanguageModel {
                     maxRetries);
         }
     }
-
 }

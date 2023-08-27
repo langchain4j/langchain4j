@@ -16,5 +16,4 @@ class VertexAiParameters {
         this.topK = topK;
         this.topP = topP;
     }
-
 }

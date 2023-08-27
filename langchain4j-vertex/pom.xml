@@ -14,7 +14,7 @@
     <artifactId>langchain4j-vertex</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Vertex</name>
+    <name>LangChain4j integration with Vertex AI</name>
 
     <dependencies>
 

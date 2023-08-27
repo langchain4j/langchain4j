@@ -1,11 +1,10 @@
 package dev.langchain4j.model.vertex;
 
-class VertexAiCompletionInstance {
+class VertexAiTextInstance {
 
     private final String prompt;
 
-    VertexAiCompletionInstance(String prompt) {
+    VertexAiTextInstance(String prompt) {
         this.prompt = prompt;
     }
-
 }
