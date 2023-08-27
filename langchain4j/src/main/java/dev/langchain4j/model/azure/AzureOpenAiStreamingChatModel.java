@@ -78,7 +78,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.temperature = temperature;
         this.topP = topP;
