@@ -74,9 +74,9 @@ public class ToolExecutor {
             if (!argumentsMap.containsKey(parameterName)) continue;
 
             final Class<?> parameterType = parameterTypes[i];
-            final Object argument = argumentsMap.get(parameterName);
+            Object argument = argumentsMap.get(parameterName);
             if (argument instanceof Double) {
-                handleDouble(parameterType, ((Double) argument));
+                argument = handleDouble(parameterType, ((Double) argument));
             }
 
             // todo instanceof CharSequence ?
@@ -96,9 +96,8 @@ public class ToolExecutor {
             log.debug("Tool execution result: {}", result);
             return result;
         } catch (Exception e) {
-            Throwable cause = e.getCause();
-            log.error("Error while executing tool", cause);
-            return cause.getMessage();
+            log.error("Error while executing tool", e);
+            return e.getMessage();
         }
     }
 

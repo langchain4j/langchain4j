@@ -26,6 +26,7 @@ enum ToolDoubleParameterHandlers {
 
     STR(String.class, String::valueOf),
     DOUBLE(Double.class, ToolParameterHandler.identity()),
+    DOUBLE_PRIMITIVE(double.class, DOUBLE::apply),
     FLOAT(Float.class, Double::floatValue) {
         @Override
         protected boolean testDoubleValue(Double value) {
@@ -35,6 +36,7 @@ enum ToolDoubleParameterHandlers {
             return true;
         }
     },
+    FLOAT_PRIMITIVE(float.class, FLOAT::apply),
     LONG(Long.class, Double::longValue) {
         @Override
         protected boolean testDoubleValue(Double value) {
@@ -44,6 +46,7 @@ enum ToolDoubleParameterHandlers {
             return true;
         }
     },
+    LONG_PRIMITIVE(long.class, LONG::apply),
     INTEGER(Integer.class, Double::intValue) {
         @Override
         protected boolean testDoubleValue(Double value) {
@@ -53,6 +56,7 @@ enum ToolDoubleParameterHandlers {
             return true;
         }
     },
+    INTEGER_PRIMITIVE(int.class, INTEGER::apply),
     SHORT(Short.class, Double::shortValue) {
         @Override
         protected boolean testDoubleValue(Double value) {
@@ -62,6 +66,7 @@ enum ToolDoubleParameterHandlers {
             return true;
         }
     },
+    SHORT_PRIMITIVE(short.class, SHORT::apply),
     BYTE(Byte.class, Double::byteValue) {
         @Override
         protected boolean testDoubleValue(Double value) {
@@ -70,7 +75,8 @@ enum ToolDoubleParameterHandlers {
             }
             return true;
         }
-    };
+    },
+    BYTE_PRIMITIVE(byte.class, BYTE::apply);
 
     final Class<?> parameterType;
     final ToolParameterHandler<Double, ?> func;
@@ -93,7 +99,7 @@ enum ToolDoubleParameterHandlers {
      * Only internal processed, make sure `cast` correct type in compile stage strictly.
      */
     @SuppressWarnings("unchecked")
-    private <R> R apply(Double value) {
+    <R> R apply(Double value) {
         if (testDoubleValue(value)) {
             return (R) func.apply(value);
         }
@@ -102,7 +108,7 @@ enum ToolDoubleParameterHandlers {
     }
 
     static final Map<Class<?>, Function<Double, ?>> NUMBER_PARAMETER_HANDLER_MAP = Arrays.stream(ToolDoubleParameterHandlers.values())
-            .collect(Collectors.toMap(it -> it.parameterType, it -> it.func));
+            .collect(Collectors.toMap(it -> it.parameterType, it -> it::apply));
 
     public static Object handleDouble(Class<?> parameterType, Double value) {
         if (!NUMBER_PARAMETER_HANDLER_MAP.containsKey(parameterType)) {
