@@ -30,7 +30,8 @@ public class ValidationUtils {
         return string;
     }
 
-    public static Integer ensureGreaterThanZero(Integer i, String name) {
+
+    public static int ensureGreaterThanZero(Integer i, String name) {
         if (i == null || i <= 0) {
             throw illegalArgument("%s must be greater than zero, but is: %s", name, i);
         }
@@ -38,7 +39,7 @@ public class ValidationUtils {
         return i;
     }
 
-    public static double ensureBetween(Double d, Double min, Double max, String name) {
+    public static double ensureBetween(Double d, double min, double max, String name) {
         if (d == null || d < min || d > max) {
             throw illegalArgument("%s must be between %s and %s, but is: %s", name, min, max, d);
         }
