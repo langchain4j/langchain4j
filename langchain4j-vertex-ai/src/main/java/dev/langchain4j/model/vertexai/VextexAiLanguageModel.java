@@ -57,12 +57,10 @@ public class VextexAiLanguageModel implements LanguageModel {
 
     @Override
     public String process(String text) {
-
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
-            VertexAiTextInstance vertexAiTextInstance = new VertexAiTextInstance(text);
 
             Value.Builder instanceBuilder = newBuilder();
-            JsonFormat.parser().merge(toJson(vertexAiTextInstance), instanceBuilder);
+            JsonFormat.parser().merge(toJson(new VertexAiTextInstance(text)), instanceBuilder);
             List<Value> instances = singletonList(instanceBuilder.build());
 
             Value.Builder parametersBuilder = Value.newBuilder();

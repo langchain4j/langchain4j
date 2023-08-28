@@ -62,7 +62,6 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     }
 
     private List<Embedding> embedTexts(List<String> texts) {
-
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             List<Value> instances = new ArrayList<>();

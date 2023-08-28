@@ -16,7 +16,9 @@ import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.ChatMessageType.*;
+import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
+import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
