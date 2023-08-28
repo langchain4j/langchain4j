@@ -39,8 +39,8 @@ public class DocumentByRegexSplitter extends HierarchicalDocumentSplitter {
     public DocumentByRegexSplitter(String regex,
                                    String joinDelimiter,
                                    int maxSegmentSizeInChars,
-                                   DocumentSplitter childSplitter) {
-        super(maxSegmentSizeInChars, null, childSplitter);
+                                   DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, null, subSplitter);
         this.regex = ensureNotNull(regex, "regex");
         this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
     }
@@ -58,8 +58,8 @@ public class DocumentByRegexSplitter extends HierarchicalDocumentSplitter {
                                    String joinDelimiter,
                                    int maxSegmentSizeInTokens,
                                    Tokenizer tokenizer,
-                                   DocumentSplitter childSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, childSplitter);
+                                   DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
         this.regex = ensureNotNull(regex, "regex");
         this.joinDelimiter = ensureNotNull(joinDelimiter, "joinDelimiter");
     }

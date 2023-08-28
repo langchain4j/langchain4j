@@ -32,16 +32,16 @@ public class DocumentByWordSplitter extends HierarchicalDocumentSplitter {
         super(maxSegmentSizeInChars, null, null);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInChars, DocumentSplitter childSplitter) {
-        super(maxSegmentSizeInChars, null, childSplitter);
+    public DocumentByWordSplitter(int maxSegmentSizeInChars, DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, null, subSplitter);
     }
 
     public DocumentByWordSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer) {
         super(maxSegmentSizeInTokens, tokenizer, null);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter childSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, childSplitter);
+    public DocumentByWordSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
     }
 
     @Override

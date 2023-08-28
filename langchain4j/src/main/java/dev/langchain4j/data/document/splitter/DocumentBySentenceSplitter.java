@@ -37,8 +37,8 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
         this.sentenceDetector = createSentenceDetector();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInChars, DocumentSplitter childSplitter) {
-        super(maxSegmentSizeInChars, null, childSplitter);
+    public DocumentBySentenceSplitter(int maxSegmentSizeInChars, DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, null, subSplitter);
         this.sentenceDetector = createSentenceDetector();
     }
 
@@ -47,8 +47,8 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
         this.sentenceDetector = createSentenceDetector();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter childSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, childSplitter);
+    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
         this.sentenceDetector = createSentenceDetector();
     }
 
