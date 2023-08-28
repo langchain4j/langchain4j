@@ -10,34 +10,16 @@ class VextexAiLanguageModelIT {
     @Test
     @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testLanguageModel() {
-        VextexAiLanguageModel vextexAiLanguageModel = new VextexAiLanguageModel(
-                "us-central1-aiplatform.googleapis.com:443",
-                "langchain4j",
-                "us-central1",
-                "google",
-                "text-bison@001",
-                0.2,
-                50,
-                40,
-                0.95,
-                3);
-
-        String response = vextexAiLanguageModel.process("hi, what is java?");
-
-        assertThat(response).containsIgnoringCase("java");
-        System.out.println(response);
-    }
-
-    @Test
-    @Disabled("To run this test, you must have provide your own endpoint, project and location")
-    void testLanguageModelUseBuilder() {
         VextexAiLanguageModel vextexAiLanguageModel = VextexAiLanguageModel.builder()
                 .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .project("langchain4j")
                 .location("us-central1")
                 .publisher("google")
                 .modelName("text-bison@001")
+                .temperature(0.2)
                 .maxOutputTokens(50)
+                .topK(40)
+                .topP(0.95)
                 .maxRetries(3)
                 .build();
 

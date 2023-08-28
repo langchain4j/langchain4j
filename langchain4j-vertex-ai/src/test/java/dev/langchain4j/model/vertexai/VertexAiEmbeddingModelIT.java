@@ -11,13 +11,14 @@ class VertexAiEmbeddingModelIT {
     @Test
     @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testEmbeddingModel() {
-        VertexAiEmbeddingModel vertexAiEmbeddingModel = new VertexAiEmbeddingModel(
-                "us-central1-aiplatform.googleapis.com:443",
-                "langchain4j",
-                "us-central1",
-                "google",
-                "textembedding-gecko@001",
-                3);
+        VertexAiEmbeddingModel vertexAiEmbeddingModel = VertexAiEmbeddingModel.builder()
+                .endpoint("us-central1-aiplatform.googleapis.com:443")
+                .project("langchain4j")
+                .location("us-central1")
+                .publisher("google")
+                .modelName("textembedding-gecko@001")
+                .maxRetries(3)
+                .build();
 
         Embedding embedding = vertexAiEmbeddingModel.embed("hello world");
 
