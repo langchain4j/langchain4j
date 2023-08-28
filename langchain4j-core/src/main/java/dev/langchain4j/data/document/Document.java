@@ -5,6 +5,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents an unstructured piece of text that usually corresponds to a content of a single file.
@@ -17,8 +19,8 @@ public class Document {
     private final Metadata metadata;
 
     public Document(String text, Metadata metadata) {
-        this.text = text;
-        this.metadata = metadata;
+        this.text = ensureNotBlank(text, "text");
+        this.metadata = ensureNotNull(metadata, "metadata");
     }
 
     public String text() {
@@ -29,8 +31,12 @@ public class Document {
         return metadata;
     }
 
+    public String metadata(String key) {
+        return metadata.get(key);
+    }
+
     public TextSegment toTextSegment() {
-        return TextSegment.from(text, metadata);
+        return TextSegment.from(text, metadata.copy().add("index", 0));
     }
 
     @Override
@@ -51,7 +57,7 @@ public class Document {
     public String toString() {
         return "Document {" +
                 " text = " + quoted(text) +
-                " metadata = " + metadata +
+                " metadata = " + metadata.asMap() +
                 " }";
     }
 
