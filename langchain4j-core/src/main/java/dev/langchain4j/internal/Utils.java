@@ -27,7 +27,7 @@ public class Utils {
         return "\"" + string + "\"";
     }
 
-    public static String first(String string, int numberOfChars) {
+    public static String firstChars(String string, int numberOfChars) {
         if (string == null) {
             return null;
         }

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.langchain4j.internal.Utils.first;
+import static dev.langchain4j.internal.Utils.firstChars;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.lang.String.format;
@@ -76,7 +76,7 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
                         throw new RuntimeException(format(
                                 "The text \"%s...\" (%s %s long) doesn't fit into the maximum segment size (%s %s), " +
                                         "and there is no subSplitter defined to split it further.",
-                                first(part, 30),
+                                firstChars(part, 30),
                                 sizeOf(part), tokenizer == null ? "characters" : "tokens",
                                 maxSegmentSize, tokenizer == null ? "characters" : "tokens"
 
