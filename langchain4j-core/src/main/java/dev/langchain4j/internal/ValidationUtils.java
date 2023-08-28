@@ -29,4 +29,12 @@ public class ValidationUtils {
 
         return string;
     }
+
+    public static int ensureGreaterThanZero(Integer i, String name) {
+        if (i == null || i < 1) {
+            throw illegalArgument("%s must be greater than 0", name);
+        }
+
+        return i;
+    }
 }

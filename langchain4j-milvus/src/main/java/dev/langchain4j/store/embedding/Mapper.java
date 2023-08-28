@@ -52,7 +52,7 @@ class Mapper {
             double score = resultsWrapper.getIDScore(0).get(i).getScore();
             String text = String.valueOf(resultsWrapper.getFieldData(collectionDescription.scalarFieldName(), 0).get(i));
             Embedding embedding = Embedding.from(idsAndVectors.getOrDefault(rowId, Collections.emptyList()));
-            TextSegment textSegment = new TextSegment(text, null);
+            TextSegment textSegment = TextSegment.from(text);
             EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(score, rowId, embedding, textSegment);
             result.add(embeddingMatch);
         }

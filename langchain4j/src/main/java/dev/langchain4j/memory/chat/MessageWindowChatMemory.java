@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -30,10 +30,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
-        this.maxMessages = ensureNotNull(builder.maxMessages, "maxMessages");
-        if (this.maxMessages < 1) {
-            throw illegalArgument("maxMessages should be greater than 0");
-        }
+        this.maxMessages = ensureGreaterThanZero(builder.maxMessages, "maxMessages");
         this.store = ensureNotNull(builder.store, "store");
     }
 
@@ -84,7 +81,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
         /**
          * @param id The ID of the {@link ChatMemory}.
-         *               If not provided, a "default" will be used.
+         *           If not provided, a "default" will be used.
          * @return builder
          */
         public Builder id(Object id) {

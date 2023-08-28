@@ -60,6 +60,6 @@ class CharacterSplitterTest {
 
         assertThatThrownBy(() -> splitter.split(document(documentText)))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Document text should not be null or empty");
+                .hasMessage("text cannot be null or blank");
     }
 }
