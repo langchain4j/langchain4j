@@ -11,13 +11,13 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -65,24 +65,26 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
 
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
-            Value.Builder instanceBuilder = Value.newBuilder();
+            List<Value> instances = new ArrayList<>();
             for (String text : texts) {
+                Value.Builder instanceBuilder = Value.newBuilder();
                 JsonFormat.parser().merge(toJson(new VertexAiEmbeddingInstance(text)), instanceBuilder);
+                instances.add(instanceBuilder.build());
             }
-            List<Value> instances = singletonList(instanceBuilder.build());
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, EMPTY_VALUE), maxRetries);
 
-            Embedding embedding = Embedding.from(toVector(response));
-            return singletonList(embedding);
+            return response.getPredictionsList().stream()
+                    .map(VertexAiEmbeddingModel::toVector)
+                    .map(Embedding::from)
+                    .collect(toList());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static List<Float> toVector(PredictResponse predictResponse) {
-        return predictResponse.getPredictions(0)
-                .getStructValue()
+    private static List<Float> toVector(Value prediction) {
+        return prediction.getStructValue()
                 .getFieldsMap()
                 .get("embeddings")
                 .getStructValue()

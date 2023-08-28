@@ -1,9 +1,14 @@
 package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.List;
+
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VertexAiEmbeddingModelIT {
@@ -20,10 +25,19 @@ class VertexAiEmbeddingModelIT {
                 .maxRetries(3)
                 .build();
 
-        Embedding embedding = vertexAiEmbeddingModel.embed("hello world");
+        List<Embedding> embeddings = vertexAiEmbeddingModel.embedAll(asList(
+                TextSegment.from("hello world"),
+                TextSegment.textSegment("how are you?")
+        ));
 
-        assertThat(embedding.vector().length).isEqualTo(768);
-        System.out.println(embedding);
+        assertThat(embeddings).hasSize(2);
+
+        Embedding embedding1 = embeddings.get(0);
+        assertThat(embedding1.vector()).hasSize(768);
+        System.out.println(Arrays.toString(embedding1.vector()));
+
+        Embedding embedding2 = embeddings.get(1);
+        assertThat(embedding2.vector()).hasSize(768);
+        System.out.println(Arrays.toString(embedding2.vector()));
     }
-
 }
