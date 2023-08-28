@@ -119,6 +119,12 @@
             </dependency>
 
             <dependency>
+                <groupId>org.apache.opennlp</groupId>
+                <artifactId>opennlp-tools</artifactId>
+                <version>1.9.4</version>
+            </dependency>
+
+            <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
                 <version>${project.version}</version>
@@ -278,8 +284,7 @@
                             <scopes>compile,runtime,provided,test</scopes>
                             <acceptableLicenses>
                                 <license>
-                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)
-                                    </name>
+                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)</name>
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
                                 </license>
                                 <license>
