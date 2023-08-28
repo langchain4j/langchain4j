@@ -723,8 +723,13 @@ public class AiServicesIT {
                         .build())
         );
 
-        // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
-        // This is the current behavior of OpenAI, though it might change in the future.
-        verify(chatLanguageModel).sendMessages(asList(messages.get(0), messages.get(1), messages.get(2)));
+        verify(chatLanguageModel).sendMessages(
+                asList(messages.get(0), messages.get(1), messages.get(2)),
+                singletonList(ToolSpecification.builder()
+                        .name("squareRoot")
+                        .description("calculates the square root of the provided number")
+                        .addParameter("arg0", NUMBER, JsonSchemaProperty.description("number to operate on"))
+                        .build())
+        );
     }
 }
