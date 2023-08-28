@@ -4,15 +4,9 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
@@ -128,7 +122,8 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
 
         return labelsWithScores.stream()
                 .filter(it -> it.score >= minScore)
-                .sorted(comparingDouble(labelWithScore -> 1 - labelWithScore.score)) // desc order
+                // sorting in descending order to return highest score first
+                .sorted(comparingDouble(labelWithScore -> 1 - labelWithScore.score))
                 .limit(maxResults)
                 .map(it -> it.label)
                 .collect(toList());
