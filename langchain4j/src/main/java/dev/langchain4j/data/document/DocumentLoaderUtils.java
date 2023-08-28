@@ -11,8 +11,7 @@ class DocumentLoaderUtils {
     static Document load(DocumentSource source, DocumentParser parser) {
         try (InputStream inputStream = source.inputStream()) {
             Document document = parser.parse(inputStream);
-            Metadata sourceMetadata = source.metadata();
-            document.metadata().mergeFrom(sourceMetadata);
+            source.metadata().asMap().forEach((key, value) -> document.metadata().add(key, value));
             return document;
         } catch (Exception e) {
             throw new RuntimeException("Failed to load document", e);

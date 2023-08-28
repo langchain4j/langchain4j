@@ -83,7 +83,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 List<Embedding> embeddings = new ArrayList<>(textSegments.size());
                 for (TextSegment textSegment: textSegments) {
                     List<Embedding> result;
-                    if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata().get(TYPE_KEY))) {
+                    if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata(TYPE_KEY))) {
                         result = embedTexts(Collections.singletonList(textSegment), TextEmbeddingParam.TextType.QUERY);
                     } else {
                         result = embedTexts(Collections.singletonList(textSegment), TextEmbeddingParam.TextType.DOCUMENT);

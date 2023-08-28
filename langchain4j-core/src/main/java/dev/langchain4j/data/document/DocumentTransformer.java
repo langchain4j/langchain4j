@@ -6,7 +6,7 @@ import java.util.Objects;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Defines the interface for transforming a Document.
+ * Defines the interface for transforming a {@link Document}.
  * Implementations can perform a variety of tasks such as transforming, filtering, enriching, etc.
  */
 public interface DocumentTransformer {
@@ -23,7 +23,7 @@ public interface DocumentTransformer {
      * Transforms all the provided documents.
      *
      * @param documents A list of documents to be transformed.
-     * @return A list of transformed documents. The length of this list may be shorter or longer than the original list. Returns an empty list if all documents are filtered out.
+     * @return A list of transformed documents. The length of this list may be shorter or longer than the original list. Returns an empty list if all documents were filtered out.
      */
     default List<Document> transformAll(List<Document> documents) {
         return documents.stream()

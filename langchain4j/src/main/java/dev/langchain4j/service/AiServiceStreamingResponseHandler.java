@@ -93,10 +93,9 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
 
             context.chatMemory(memoryId).add(toolExecutionResultMessage);
 
-            // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
-            // This is the current behavior of OpenAI, though it might change in the future.
             context.streamingChatLanguageModel.sendMessages(
                     context.chatMemory(memoryId).messages(),
+                    context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(context, memoryId, tokenHandler, completionHandler, errorHandler)
             );
         }
