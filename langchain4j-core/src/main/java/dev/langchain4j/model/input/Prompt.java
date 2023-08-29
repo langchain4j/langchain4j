@@ -10,6 +10,7 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Represents a prompt (an input text sent to the LLM).
@@ -21,7 +22,7 @@ public class Prompt {
     private final String text;
 
     public Prompt(String text) {
-        this.text = text;
+        this.text = ensureNotBlank(text, "text");
     }
 
     public String text() {
