@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ToolFunctionTest {
-    static class Subject {
+    private static class Subject {
         public int m1(String a) { return 0; }
         public Integer m1_boxed(String a) { return 0; }
         public Integer m1_byte(byte a) { return 0; }
@@ -166,7 +166,7 @@ public class ToolFunctionTest {
         );
     }
 
-    static class StaticSubject {
+    private static class StaticSubject {
         public static int m1(String a) { return 0; }
         public static Integer m1_boxed(String a) { return 0; }
         public static Integer m1_byte(byte a) { return 0; }

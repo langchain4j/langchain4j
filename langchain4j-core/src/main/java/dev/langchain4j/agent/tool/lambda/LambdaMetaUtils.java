@@ -17,9 +17,9 @@ interface LambdaMetaUtils {
 
     static Method getInstantiatedMethod(MethodType methodType, Class<?> implClass, String implMethodName) {
         try {
-            return implClass.getMethod(implMethodName, methodType.parameterArray());
+            return implClass.getDeclaredMethod(implMethodName, methodType.parameterArray());
         } catch (NoSuchMethodException e) {
-            return searchMethod(implClass.getMethods(), implMethodName, methodType.parameterArray());
+            return searchMethod(implClass.getDeclaredMethods(), implMethodName, methodType.parameterArray());
         } catch (SecurityException e) {
             throw new RuntimeException(e);
         }
