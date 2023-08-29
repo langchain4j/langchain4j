@@ -42,7 +42,7 @@ public class HtmlTextExtractor implements DocumentTransformer {
      * @param metadataCssSelectors A mapping from metadata keys to CSS selectors.
      *                             For example, Mep.of("title", "#page-title") will extract all text from the HTML element
      *                             with id "title" and store it in {@link Metadata} under the key "title".
-     * @param includeLinks         Specifies whether links (<a>) should be included in the extracted text.
+     * @param includeLinks         Specifies whether links should be included in the extracted text.
      */
     public HtmlTextExtractor(String cssSelector, Map<String, String> metadataCssSelectors, boolean includeLinks) {
         this.cssSelector = cssSelector;
