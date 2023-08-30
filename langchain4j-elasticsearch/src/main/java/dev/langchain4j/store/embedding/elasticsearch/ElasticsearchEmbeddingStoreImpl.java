@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
@@ -66,7 +65,6 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
         indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
 
         RestClientBuilder restClientBuilder = RestClient
-                // should we support multi node?
                 .builder(HttpHost.create(serverUrl));
         if (!isNullOrBlank(username)) {
             CredentialsProvider provider = new BasicCredentialsProvider();
@@ -161,14 +159,10 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     }
 
     private void createIndexIfNotExist(int dim) throws IOException {
-        try {
-            BooleanResponse response = client.indices().exists(c -> c.index(indexName));
-            if (!response.value()) {
-                client.indices().create(c -> c.index(indexName)
-                        .mappings(getDefaultMappings(dim)));
-            }
-        } catch (ElasticsearchException e) {
-            log.error("[Encounter unexpect exception when check index exist]", e);
+        BooleanResponse response = client.indices().exists(c -> c.index(indexName));
+        if (!response.value()) {
+            client.indices().create(c -> c.index(indexName)
+                    .mappings(getDefaultMappings(dim)));
         }
     }
 
@@ -208,23 +202,20 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
         }
     }
 
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) {
+    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
+        JsonData queryVector = toJsonData(vector);
         return ScriptScoreQuery.of(q -> q
                 .minScore(minScore)
                 .query(Query.of(qu -> qu.matchAll(m -> m)))
                 .script(s -> s.inline(InlineScript.of(i -> i
                         // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
+                        // divided by 2 to keep score in the range [0, 1]
                         .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
-                        .params("query_vector", toJsonData(vector))))));
+                        .params("query_vector", queryVector)))));
     }
 
-    private <T> JsonData toJsonData(T rawData) {
-        try {
-            return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
-        } catch (JsonProcessingException e) {
-            log.error("[Encounter Json Transfer Exception, data to transfer={}]", rawData, e);
-            return null;
-        }
+    private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
+        return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
     }
 
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {

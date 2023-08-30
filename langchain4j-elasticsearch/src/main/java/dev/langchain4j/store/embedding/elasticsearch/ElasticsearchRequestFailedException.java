@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-public class ElasticsearchRequestFailedException extends RuntimeException {
+class ElasticsearchRequestFailedException extends RuntimeException {
 
     public ElasticsearchRequestFailedException() {
         super();
