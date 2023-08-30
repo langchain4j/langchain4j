@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.22.0-SNAPSHOT</version>
+    <version>0.23.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -116,6 +116,18 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter</artifactId>
                 <version>2.7.14</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.opennlp</groupId>
+                <artifactId>opennlp-tools</artifactId>
+                <version>1.9.4</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+                <version>${project.version}</version>
             </dependency>
 
         </dependencies>
