@@ -16,10 +16,6 @@ import java.util.List;
 
 /**
  * disabled default, because this need local deployment of Elasticsearch
- *
- * <p>to be changed by mockito</p>
- *
- * @author Martin7-1
  */
 @Disabled
 class ElasticsearchEmbeddingStoreImplTest {
@@ -33,26 +29,38 @@ class ElasticsearchEmbeddingStoreImplTest {
 
     @Test
     void testAdd() {
-        String id = store.add(Embedding.from(Arrays.asList(0.50f, 0.85f, 0.760f)), TextSegment.from("test string", Metadata.metadata("field", "value")));
+        // test add without id
+        String id = store.add(Embedding.from(Arrays.asList(0.50f, 0.85f, 0.760f, 0.24f)),
+                TextSegment.from("test string", Metadata.metadata("field", "value")));
         System.out.println("id=" + id);
-        store.add(Utils.randomUUID(), Embedding.from(Arrays.asList(0.80f, 0.45f, 0.89f)));
 
-        // test add All Method
+        // test add with id
+        String selfId = Utils.randomUUID();
+        store.add(selfId, Embedding.from(Arrays.asList(0.80f, 0.45f, 0.89f, 0.24f)));
+        System.out.println("id=" + selfId);
+    }
+
+    @Test
+    void testAddAll() {
+        // test add All Method without embedded
         List<String> ids = store.addAll(Arrays.asList(
                 Embedding.from(Arrays.asList(0.3f, 0.87f, 0.90f, 0.24f)),
-                Embedding.from(Arrays.asList(0.54f, 0.34f, 0.67f, 0.24f, 0.55f)),
+                Embedding.from(Arrays.asList(0.54f, 0.34f, 0.67f, 0.24f)),
                 Embedding.from(Arrays.asList(0.80f, 0.45f, 0.779f, 0.5556f))
         ));
         System.out.println("ids=" + ids);
-        store.addAll(Arrays.asList(
+
+        // test add all method with embedded
+        ids = store.addAll(Arrays.asList(
                 Embedding.from(Arrays.asList(0.3f, 0.87f, 0.90f, 0.24f)),
-                Embedding.from(Arrays.asList(0.54f, 0.34f, 0.67f, 0.24f, 0.55f)),
+                Embedding.from(Arrays.asList(0.54f, 0.34f, 0.67f, 0.24f)),
                 Embedding.from(Arrays.asList(0.80f, 0.45f, 0.779f, 0.5556f))
         ), Arrays.asList(
                 TextSegment.from("testString1", Metadata.metadata("field1", "value1")),
                 TextSegment.from("testString2", Metadata.metadata("field2", "value2")),
-                TextSegment.from("testingString3", null)
+                TextSegment.from("testingString3", Metadata.metadata("field3", "value3"))
         ));
+        System.out.println("ids=" + ids);
     }
 
     @Test
@@ -76,7 +84,7 @@ class ElasticsearchEmbeddingStoreImplTest {
 
     @Test
     void testFindRelevant() {
-        List<EmbeddingMatch<TextSegment>> res = store.findRelevant(Embedding.from(Arrays.asList(0.80f, 0.70f, 0.90f)), 5);
-        System.out.println(res);
+        List<EmbeddingMatch<TextSegment>> res = store.findRelevant(Embedding.from(Arrays.asList(0.80f, 0.70f, 0.90f, 0.55f)), 5);
+        res.forEach(System.out::println);
     }
 }

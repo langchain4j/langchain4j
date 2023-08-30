@@ -3,7 +3,6 @@ package dev.langchain4j.data.embedding;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Represents a dense vector embedding of a text.
@@ -32,8 +31,8 @@ public class Embedding {
         return list;
     }
 
-    public int length() {
-        return Optional.ofNullable(vector).map(v -> v.length).orElse(0);
+    public int dimensions() {
+        return vector.length;
     }
 
     @Override

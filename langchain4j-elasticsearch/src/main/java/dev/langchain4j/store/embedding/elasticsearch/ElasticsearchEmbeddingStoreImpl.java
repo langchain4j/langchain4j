@@ -10,11 +10,14 @@ import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
+import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
+import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
+import co.elastic.clients.transport.endpoints.BooleanResponse;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,8 +48,6 @@ import static dev.langchain4j.internal.Utils.*;
 
 /**
  * Elastic Embedding Store Implementation
- *
- * @author Martin7-1
  */
 public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
@@ -126,28 +127,15 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
         try {
             // Use Script Score and cosineSimilarity to calculate
             // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
-            ScriptScoreQuery scriptScoreQuery = ScriptScoreQuery.of(q -> q
-                    .minScore((float) minScore)
-                    .query(Query.of(qu -> qu.matchAll(m -> m)))
-                    .script(s -> s.inline(InlineScript.of(i -> i
-                            // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
-                            .source("cosineSimilarity(params.query_vector, 'vector') + 1.0")
-                            .params("query_vector", toJsonData(referenceEmbedding.vector()))))));
+            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
             SearchResponse<Document> response = client.search(
                     SearchRequest.of(s -> s.query(n -> n.scriptScore(scriptScoreQuery)).size(maxResults)), Document.class);
 
-            return response.hits().hits().stream()
-                    .map(hit -> Optional.ofNullable(hit.source()).map(document -> new EmbeddingMatch<>(hit.score(), hit.id(),
-                                    new Embedding(document.getVector()),
-                                    new TextSegment(document.getText(), Optional.ofNullable(document.getMetadata()).map(Metadata::new).orElse(null))))
-                            .orElse(null)).collect(Collectors.toList());
+            return toEmbeddingMatch(response);
         } catch (IOException e) {
             log.error("[ElasticSearch encounter I/O Exception]", e);
-        } catch (ElasticsearchException e) {
-            log.error("[ElasticSearch Exception]", e);
+            throw new ElasticsearchRequestFailedException(e.getMessage());
         }
-
-        return new ArrayList<>();
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -163,26 +151,24 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
         ValidationUtils.ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         try {
-            createIndexIfNotExist(embeddings.get(0).length());
+            createIndexIfNotExist(embeddings.get(0).dimensions());
 
             bulk(ids, embeddings, embedded);
         } catch (IOException e) {
             log.error("[ElasticSearch encounter I/O Exception]", e);
-        } catch (ElasticsearchException e) {
-            log.error("[ElasticSearch Exception]", e);
+            throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
 
     private void createIndexIfNotExist(int dim) throws IOException {
         try {
-            client.indices().get(c -> c.index(indexName));
-        } catch (ElasticsearchException e) {
-            if (String.format("no such index [%s]", indexName).equals(e.response().error().reason())) {
+            BooleanResponse response = client.indices().exists(c -> c.index(indexName));
+            if (!response.value()) {
                 client.indices().create(c -> c.index(indexName)
                         .mappings(getDefaultMappings(dim)));
-            } else {
-                log.error("[Encounter unexpect exception when check index exist]", e);
             }
+        } catch (ElasticsearchException e) {
+            log.error("[Encounter unexpect exception when check index exist]", e);
         }
     }
 
@@ -212,7 +198,24 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
                     .document(document)));
         }
 
-        client.bulk(bulkBuilder.build());
+        BulkResponse response = client.bulk(bulkBuilder.build());
+        if (response.errors()) {
+            for (BulkResponseItem item : response.items()) {
+                if (item.error() != null) {
+                    throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
+                }
+            }
+        }
+    }
+
+    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) {
+        return ScriptScoreQuery.of(q -> q
+                .minScore(minScore)
+                .query(Query.of(qu -> qu.matchAll(m -> m)))
+                .script(s -> s.inline(InlineScript.of(i -> i
+                        // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
+                        .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
+                        .params("query_vector", toJsonData(vector))))));
     }
 
     private <T> JsonData toJsonData(T rawData) {
@@ -222,5 +225,14 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
             log.error("[Encounter Json Transfer Exception, data to transfer={}]", rawData, e);
             return null;
         }
+    }
+
+    private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {
+        return response.hits().hits().stream()
+                .map(hit -> Optional.ofNullable(hit.source())
+                        .map(document -> new EmbeddingMatch<>(hit.score(), hit.id(), new Embedding(document.getVector()),
+                                // TextSegment ensure that must have text and metadata
+                                document.getText() == null ? null : new TextSegment(document.getText(), new Metadata(document.getMetadata()))))
+                        .orElse(null)).collect(Collectors.toList());
     }
 }
