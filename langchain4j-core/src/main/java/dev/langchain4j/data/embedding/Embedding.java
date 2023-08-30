@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Represents a dense vector embedding of a text.
  * This class encapsulates a float array that captures the "meaning" or semantic information of the text.
@@ -16,7 +18,7 @@ public class Embedding {
     private final float[] vector;
 
     public Embedding(float[] vector) {
-        this.vector = vector;
+        this.vector = ensureNotNull(vector, "vector");
     }
 
     public float[] vector() {

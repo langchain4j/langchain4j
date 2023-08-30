@@ -13,8 +13,8 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonMap;
 
 /**
@@ -32,9 +32,14 @@ public class PromptTemplate {
     private final Mustache mustache;
     private final Clock clock;
 
-    private PromptTemplate(Mustache mustache, Clock clock) {
-        this.mustache = mustache;
-        this.clock = clock;
+    public PromptTemplate(String template) {
+        this(template, Clock.systemDefaultZone());
+    }
+
+    PromptTemplate(String template, Clock clock) {
+        StringReader stringReader = new StringReader(ensureNotBlank(template, "template"));
+        this.mustache = MUSTACHE_FACTORY.compile(stringReader, "template");
+        this.clock = ensureNotNull(clock, "clock");
     }
 
     /**
@@ -68,16 +73,6 @@ public class PromptTemplate {
     }
 
     public static PromptTemplate from(String template) {
-        return from(template, Clock.systemDefaultZone());
-    }
-
-    static PromptTemplate from(String template, Clock clock) {
-        if (isNullOrBlank(template)) {
-            throw illegalArgument("Prompt template cannot be null or empty");
-        }
-        return new PromptTemplate(
-                MUSTACHE_FACTORY.compile(new StringReader(template), "template"),
-                clock
-        );
+        return new PromptTemplate(template);
     }
 }

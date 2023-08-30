@@ -27,6 +27,13 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 
 ## News
 
+29 August:
+- Offline [text classification with embeddings](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/classification/EmbeddingModelTextClassifierExample.java)
+- Integration with [Google Vertex AI](https://cloud.google.com/vertex-ai) by [@kuraleta](https://github.com/kuraleta)
+- Reworked [document splitters](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/data/document/splitter/DocumentSplitters.java)
+- In-memory embedding store can now be easily persisted
+- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.22.0)
+
 19 August:
 - Integration with [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) by [@kuraleta](https://github.com/kuraleta)
 - Integration with Qwen models (DashScope) by [@jiangsier-xyz](https://github.com/jiangsier-xyz)
@@ -190,12 +197,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j</artifactId>
-          <version>0.21.0</version>
+          <version>0.22.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.21.0'
+      implementation 'dev.langchain4j:langchain4j:0.22.0'
       ```
 
 2. Import your OpenAI/HuggingFace API key:
@@ -238,6 +245,10 @@ Please note that the library is in active development and:
     - [Chats](https://platform.openai.com/docs/guides/chat) (sync + streaming + functions)
     - [Completions](https://platform.openai.com/docs/guides/completion) (sync + streaming)
     - [Embeddings](https://platform.openai.com/docs/guides/embeddings)
+- Integration with [Google Vertex AI](https://cloud.google.com/vertex-ai) for:
+    - [Chats](https://cloud.google.com/vertex-ai/docs/generative-ai/chat/chat-prompts)
+    - [Completions](https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview)
+    - [Embeddings](https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings)
 - Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
     - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
@@ -252,16 +263,15 @@ Please note that the library is in active development and:
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) with [Chroma](https://www.trychroma.com/)
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/PineconeEmbeddingStoreExample.java) with [Pinecone](https://www.pinecone.io/)
 - [Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) with [Weaviate](https://weaviate.io/)
-- [In-memory embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/InMemoryEmbeddingStoreExample.java) (for prototyping and testing)
+- [In-memory embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/InMemoryEmbeddingStoreExample.java) (can be persisted)
 - [Structured outputs](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - [Prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/PromptTemplateExamples.java)
 - [Structured prompt templates](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StructuredPromptTemplateExamples.java)
 - [Streaming of LLM responses](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/StreamingExamples.java)
 - [Loading txt, pdf, doc, xls and ppt documents from the file system and via URL](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)
 - [Splitting documents into segments](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java):
-    - by paragraph
-    - by sentence
-    - by character count
+    - by paragraphs, lines, sentences, words, etc
+    - recursively
 - Token count estimation (so that you can predict how much you will pay)
 
 ## Coming soon:

@@ -92,11 +92,11 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
                         + "<dependency>\n" +
                         "    <groupId>dev.langchain4j</groupId>\n" +
                         "    <artifactId>langchain4j-embeddings-%s</artifactId>\n" +
-                        "    <version>0.21.0</version>\n" +
+                        "    <version>0.22.0</version>\n" +
                         "</dependency>\n"
                         + "\n"
                         + "Gradle:\n"
-                        + "implementation 'dev.langchain4j:langchain4j-embeddings-%s:0.21.0'\n",
+                        + "implementation 'dev.langchain4j:langchain4j-embeddings-%s:0.22.0'\n",
                 type.name(),
                 type.name().replace("_", "-").toLowerCase(),
                 type.name().replace("_", "-").toLowerCase()
@@ -110,11 +110,11 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
                 + "<dependency>\n" +
                 "    <groupId>dev.langchain4j</groupId>\n" +
                 "    <artifactId>langchain4j-embeddings</artifactId>\n" +
-                "    <version>0.21.0</version>\n" +
+                "    <version>0.22.0</version>\n" +
                 "</dependency>\n"
                 + "\n"
                 + "Gradle:\n"
-                + "implementation 'dev.langchain4j:langchain4j-embeddings:0.21.0'\n";
+                + "implementation 'dev.langchain4j:langchain4j-embeddings:0.22.0'\n";
     }
 
     @Override
