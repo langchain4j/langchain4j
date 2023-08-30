@@ -20,7 +20,7 @@ class TextDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("TXT");
+        assertThat(document.metadata("document_type")).isEqualTo("TXT");
     }
 
     @Test
@@ -32,6 +32,6 @@ class TextDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("TXT");
+        assertThat(document.metadata("document_type")).isEqualTo("TXT");
     }
 }

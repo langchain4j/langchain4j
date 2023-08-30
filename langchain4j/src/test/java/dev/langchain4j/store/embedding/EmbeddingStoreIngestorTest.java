@@ -5,6 +5,7 @@ import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import org.junit.jupiter.api.Test;
 
@@ -23,16 +24,24 @@ class EmbeddingStoreIngestorTest {
         Document secondDocument = Document.from("Second sentence. Third sentence.");
         List<Document> documents = asList(firstDocument, secondDocument);
 
-        DocumentTransformer transformer = mock(DocumentTransformer.class);
-        when(transformer.transformAll(documents)).thenReturn(documents);
+        DocumentTransformer documentTransformer = mock(DocumentTransformer.class);
+        when(documentTransformer.transformAll(documents)).thenReturn(documents);
 
-        DocumentSplitter splitter = mock(DocumentSplitter.class);
+        DocumentSplitter documentSplitter = mock(DocumentSplitter.class);
         List<TextSegment> segments = asList(
                 textSegment("First sentence."),
                 textSegment("Second sentence."),
                 textSegment("Third sentence.")
         );
-        when(splitter.splitAll(documents)).thenReturn(segments);
+        when(documentSplitter.splitAll(documents)).thenReturn(segments);
+
+        TextSegmentTransformer textSegmentTransformer = mock(TextSegmentTransformer.class);
+        List<TextSegment> transformedSegments = asList(
+                textSegment("Transformed first sentence."),
+                textSegment("Transformed second sentence."),
+                textSegment("Transformed third sentence.")
+        );
+        when(textSegmentTransformer.transformAll(segments)).thenReturn(transformedSegments);
 
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         List<Embedding> embeddings = asList(
@@ -40,13 +49,14 @@ class EmbeddingStoreIngestorTest {
                 Embedding.from(new float[]{2}),
                 Embedding.from(new float[]{3})
         );
-        when(embeddingModel.embedAll(segments)).thenReturn(embeddings);
+        when(embeddingModel.embedAll(transformedSegments)).thenReturn(embeddings);
 
         EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
 
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .transformer(transformer)
-                .splitter(splitter)
+                .documentTransformer(documentTransformer)
+                .documentSplitter(documentSplitter)
+                .textSegmentTransformer(textSegmentTransformer)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
                 .build();
@@ -55,16 +65,19 @@ class EmbeddingStoreIngestorTest {
         ingestor.ingest(documents);
 
 
-        verify(transformer).transformAll(documents);
-        verifyNoMoreInteractions(transformer);
+        verify(documentTransformer).transformAll(documents);
+        verifyNoMoreInteractions(documentTransformer);
 
-        verify(splitter).splitAll(documents);
-        verifyNoMoreInteractions(splitter);
+        verify(documentSplitter).splitAll(documents);
+        verifyNoMoreInteractions(documentSplitter);
 
-        verify(embeddingModel).embedAll(segments);
+        verify(textSegmentTransformer).transformAll(segments);
+        verifyNoMoreInteractions(textSegmentTransformer);
+
+        verify(embeddingModel).embedAll(transformedSegments);
         verifyNoMoreInteractions(embeddingModel);
 
-        verify(embeddingStore).addAll(embeddings, segments);
+        verify(embeddingStore).addAll(embeddings, transformedSegments);
         verifyNoMoreInteractions(embeddingStore);
     }
 }

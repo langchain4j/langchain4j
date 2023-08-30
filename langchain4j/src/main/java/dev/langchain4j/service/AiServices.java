@@ -519,7 +519,10 @@ public class AiServices<T> {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
-                        AiMessage aiMessage = context.chatLanguageModel.sendMessages(messages, context.toolSpecifications);
+                        AiMessage aiMessage = context.chatLanguageModel.sendMessages(
+                                messages,
+                                context.toolSpecifications
+                        );
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -543,9 +546,10 @@ public class AiServices<T> {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
                             chatMemory.add(toolExecutionResultMessage);
 
-                            // This time, tools are not sent because, at this point, the LLM cannot call another tool; it should respond to the user.
-                            // This is the current behavior of OpenAI, though it might change in the future.
-                            aiMessage = context.chatLanguageModel.sendMessages(chatMemory.messages());
+                            aiMessage = context.chatLanguageModel.sendMessages(
+                                    chatMemory.messages(),
+                                    context.toolSpecifications
+                            );
                         }
 
                         return ServiceOutputParser.parse(aiMessage, method.getReturnType());

@@ -1,10 +1,7 @@
 package dev.langchain4j.model.localai;
 
 import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Delta;
-import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.ai4j.openai4j.chat.*;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -49,7 +46,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = temperature;
@@ -103,7 +100,11 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
     private static void handle(ChatCompletionResponse partialResponse,
                                StreamingResponseHandler handler) {
-        Delta delta = partialResponse.choices().get(0).delta();
+        List<ChatCompletionChoice> choices = partialResponse.choices();
+        if (choices == null || choices.isEmpty()) {
+            return;
+        }
+        Delta delta = choices.get(0).delta();
         String content = delta.content();
         FunctionCall functionCall = delta.functionCall();
         if (content != null) {

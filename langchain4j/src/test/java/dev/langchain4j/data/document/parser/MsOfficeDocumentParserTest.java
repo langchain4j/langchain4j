@@ -1,20 +1,16 @@
 package dev.langchain4j.data.document.parser;
 
-import java.io.InputStream;
-
-
-import org.junit.jupiter.api.Test;
-
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
+import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.data.document.DocumentType.PPT;
-import static dev.langchain4j.data.document.DocumentType.XLS;
-import static dev.langchain4j.data.document.DocumentType.DOC;
+import java.io.InputStream;
+
+import static dev.langchain4j.data.document.DocumentType.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class MsOfficeDocumentParserTest {
-    
+
     @Test
     void should_parse_ppt_file() {
 
@@ -24,7 +20,7 @@ public class MsOfficeDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("PPT");
+        assertThat(document.metadata("document_type")).isEqualTo("PPT");
     }
 
     @Test
@@ -36,7 +32,7 @@ public class MsOfficeDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("PPT");
+        assertThat(document.metadata("document_type")).isEqualTo("PPT");
     }
 
     @Test
@@ -48,7 +44,7 @@ public class MsOfficeDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("DOC");
+        assertThat(document.metadata("document_type")).isEqualTo("DOC");
     }
 
     @Test
@@ -60,7 +56,7 @@ public class MsOfficeDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("DOC");
+        assertThat(document.metadata("document_type")).isEqualTo("DOC");
     }
 
     @Test
@@ -72,7 +68,7 @@ public class MsOfficeDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("XLS");
+        assertThat(document.metadata("document_type")).isEqualTo("XLS");
     }
 
     @Test
@@ -84,6 +80,6 @@ public class MsOfficeDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
-        assertThat(document.metadata().get("document_type")).isEqualTo("XLS");
+        assertThat(document.metadata("document_type")).isEqualTo("XLS");
     }
 }

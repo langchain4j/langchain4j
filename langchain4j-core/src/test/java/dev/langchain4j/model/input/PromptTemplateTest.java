@@ -51,7 +51,7 @@ class PromptTemplateTest {
 
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}} and now is {{current_time}}", clock);
+        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and now is {{current_time}}", clock);
 
         Prompt prompt = promptTemplate.apply("Klaus");
 
@@ -63,7 +63,7 @@ class PromptTemplateTest {
 
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}} and now is {{current_date_time}}", clock);
+        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and now is {{current_date_time}}", clock);
 
         Prompt prompt = promptTemplate.apply("Klaus");
 
