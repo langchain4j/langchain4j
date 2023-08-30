@@ -31,7 +31,6 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 - Offline [text classification with embeddings](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/classification/EmbeddingModelTextClassifierExample.java)
 - Integration with [Google Vertex AI](https://cloud.google.com/vertex-ai) by [@kuraleta](https://github.com/kuraleta)
 - Reworked [document splitters](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/data/document/splitter/DocumentSplitters.java)
-- In-process embedding models can now embed longer texts
 - In-memory embedding store can now be easily persisted
 - [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.22.0)
 
