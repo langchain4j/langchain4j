@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -16,18 +17,12 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.defaultTimeoutFor;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a connection to the OpenAI LLM with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  */
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
@@ -87,23 +82,23 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
-        return sendMessages(messages, null, null);
+    public Result<AiMessage> generate(List<ChatMessage> messages) {
+        return generate(messages, null, null);
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return sendMessages(messages, toolSpecifications, null);
+    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return generate(messages, toolSpecifications, null);
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return sendMessages(messages, singletonList(toolSpecification), toolSpecification);
+    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
-    private AiMessage sendMessages(List<ChatMessage> messages,
-                                   List<ToolSpecification> toolSpecifications,
-                                   ToolSpecification toolThatMustBeExecuted
+    private Result<AiMessage> generate(List<ChatMessage> messages,
+                                       List<ToolSpecification> toolSpecifications,
+                                       ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
@@ -125,7 +120,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return aiMessageFrom(response);
+        return Result.from(aiMessageFrom(response));
     }
 
     @Override

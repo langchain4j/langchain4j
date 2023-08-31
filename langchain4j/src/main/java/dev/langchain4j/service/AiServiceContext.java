@@ -17,8 +17,8 @@ class AiServiceContext {
 
     Class<?> aiServiceClass;
 
-    ChatLanguageModel chatLanguageModel;
-    StreamingChatLanguageModel streamingChatLanguageModel;
+    ChatLanguageModel chatModel;
+    StreamingChatLanguageModel streamingChatModel;
 
     Map</* id */ Object, ChatMemory> chatMemories;
     ChatMemoryProvider chatMemoryProvider;

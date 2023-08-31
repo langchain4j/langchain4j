@@ -3,6 +3,7 @@ package dev.langchain4j.model.inprocess;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Result;
 
 import java.lang.reflect.Constructor;
 import java.nio.file.Path;
@@ -118,7 +119,7 @@ public class InProcessEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public List<Embedding> embedAll(List<TextSegment> textSegments) {
+    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         return implementation.embedAll(textSegments);
     }
 }

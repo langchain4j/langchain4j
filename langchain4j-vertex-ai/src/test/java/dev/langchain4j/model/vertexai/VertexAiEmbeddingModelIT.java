@@ -28,7 +28,7 @@ class VertexAiEmbeddingModelIT {
         List<Embedding> embeddings = vertexAiEmbeddingModel.embedAll(asList(
                 TextSegment.from("hello world"),
                 TextSegment.textSegment("how are you?")
-        ));
+        )).get();
 
         assertThat(embeddings).hasSize(2);
 

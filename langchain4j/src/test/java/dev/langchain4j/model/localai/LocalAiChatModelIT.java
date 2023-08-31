@@ -21,9 +21,9 @@ class LocalAiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        AiMessage answer = model.sendUserMessage("Say 'hello'");
+        String answer = model.generate("Say 'hello'");
 
-        assertThat(answer.text()).containsIgnoringCase("hello");
+        assertThat(answer).containsIgnoringCase("hello");
         System.out.println(answer);
     }
 }

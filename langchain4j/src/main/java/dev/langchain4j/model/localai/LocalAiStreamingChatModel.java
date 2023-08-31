@@ -55,24 +55,24 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
-        sendMessages(messages, null, null, handler);
+    public void generate(List<ChatMessage> messages, StreamingResponseHandler handler) {
+        generate(messages, null, null, handler);
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
-        sendMessages(messages, toolSpecifications, null, handler);
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
+        generate(messages, toolSpecifications, null, handler);
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler) {
-        sendMessages(messages, singletonList(toolSpecification), toolSpecification, handler);
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler) {
+        generate(messages, singletonList(toolSpecification), toolSpecification, handler);
     }
 
-    private void sendMessages(List<ChatMessage> messages,
-                              List<ToolSpecification> toolSpecifications,
-                              ToolSpecification toolThatMustBeExecuted,
-                              StreamingResponseHandler handler
+    private void generate(List<ChatMessage> messages,
+                          List<ToolSpecification> toolSpecifications,
+                          ToolSpecification toolThatMustBeExecuted,
+                          StreamingResponseHandler handler
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)

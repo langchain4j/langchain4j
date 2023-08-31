@@ -62,7 +62,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         chatMemory.add(userMessage);
 
-        AiMessage answer = chatLanguageModel.sendMessages(chatMemory.messages());
+        AiMessage answer = chatLanguageModel.generate(chatMemory.messages()).get();
 
         chatMemory.add(answer);
 

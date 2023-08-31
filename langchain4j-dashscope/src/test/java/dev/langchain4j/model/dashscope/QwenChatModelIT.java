@@ -21,7 +21,7 @@ public class QwenChatModelIT {
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
-        AiMessage answer = model.sendMessages(QwenTestHelper.chatMessages());
+        AiMessage answer = model.generate(QwenTestHelper.chatMessages()).get();
         assertThat(answer.text()).containsIgnoringCase("rain");
     }
 }

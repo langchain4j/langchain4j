@@ -55,8 +55,13 @@ class ServiceOutputParser {
         OUTPUT_PARSERS.put(LocalDateTime.class, new LocalDateTimeOutputParser());
     }
 
-    static Object parse(AiMessage aiMessage, Class<?> returnType) {
+    static Object parse(Result<AiMessage> result, Class<?> returnType) {
 
+        if (returnType == Result.class) {
+            return result;
+        }
+
+        AiMessage aiMessage = result.get();
         if (returnType == AiMessage.class) {
             return aiMessage;
         }
@@ -86,7 +91,8 @@ class ServiceOutputParser {
 
         if (returnType == String.class
                 || returnType == AiMessage.class
-                || returnType == TokenStream.class) {
+                || returnType == TokenStream.class
+                || returnType == Result.class) {
             return "";
         }
 

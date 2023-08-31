@@ -8,6 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.output.Result;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -17,11 +18,10 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
-import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the OpenAI embedding model, hosted on Azure (like text-embedding-ada-002).
+ * Represents an OpenAI embedding model, hosted on Azure, such as text-embedding-ada-002.
  * <p>
  * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
  * <p>
@@ -79,11 +79,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
      * @return A list of corresponding embeddings.
      */
     @Override
-    public List<Embedding> embedAll(List<TextSegment> textSegments) {
-
-        if (textSegments.isEmpty()) {
-            return emptyList();
-        }
+    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
@@ -92,7 +88,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         return embedTexts(texts);
     }
 
-    private List<Embedding> embedTexts(List<String> texts) {
+    private Result<List<Embedding>> embedTexts(List<String> texts) {
 
         List<Embedding> embeddings = new ArrayList<>();
 
@@ -112,7 +108,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                     .collect(toList()));
         }
 
-        return embeddings;
+        return Result.from(embeddings);
     }
 
     @Override

@@ -11,49 +11,53 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Result;
 
 import java.util.List;
 import java.util.Optional;
 
+import static dev.langchain4j.model.dashscope.QwenParamHelper.toQwenPrompt;
+
 public class QwenChatModel implements ChatLanguageModel {
-    protected final Generation gen;
+
     protected final String apiKey;
     protected final String modelName;
     protected final Double topP;
     protected final Double topK;
     protected final Boolean enableSearch;
     protected final Integer seed;
+    protected final Generation generation;
 
-    protected QwenChatModel(String apiKey,
-                            String modelName,
-                            Double topP,
-                            Double topK,
-                            Boolean enableSearch,
-                            Integer seed) {
-
+    public QwenChatModel(String apiKey,
+                         String modelName,
+                         Double topP,
+                         Double topK,
+                         Boolean enableSearch,
+                         Integer seed) {
         this.apiKey = apiKey;
         this.modelName = modelName;
         this.topP = topP;
         this.topK = topK;
         this.enableSearch = enableSearch;
         this.seed = seed;
-        gen = new Generation();
+        this.generation = new Generation();
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
-        return AiMessage.aiMessage(sendMessage(QwenParamHelper.toQwenPrompt(messages)));
+    public Result<AiMessage> generate(List<ChatMessage> messages) {
+        String generatedText = generateWithFallback(toQwenPrompt(messages));
+        return Result.from(AiMessage.from(generatedText));
     }
 
-    protected String sendMessage(String prompt) {
-        GenerationResult result = doSendMessage(prompt);
+    private String generateWithFallback(String prompt) {
+        GenerationResult result = doGenerate(prompt);
         return Optional.of(result)
-                    .map(GenerationResult::getOutput)
-                    .map(GenerationOutput::getText)
-                    .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]");
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getText)
+                .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]");
     }
 
-    protected GenerationResult doSendMessage(String prompt) {
+    private GenerationResult doGenerate(String prompt) {
         QwenParam param = QwenParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -63,28 +67,29 @@ public class QwenChatModel implements ChatLanguageModel {
                 .seed(seed)
                 .prompt(prompt)
                 .build();
-
         try {
-            return gen.call(param);
+            return generation.call(param);
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     public static Builder builder() {
         return new Builder();
     }
+
     public static class Builder {
+
         protected String apiKey;
         protected String modelName;
         protected Double topP;

@@ -91,7 +91,7 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
         this.exampleEmbeddingsByLabel = new HashMap<>();
         examplesByLabel.forEach((label, examples) ->
                 exampleEmbeddingsByLabel.put(label, examples.stream()
-                        .map(embeddingModel::embed)
+                        .map(example -> embeddingModel.embed(example).get())
                         .collect(toList()))
         );
 
@@ -103,7 +103,7 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
     @Override
     public List<E> classify(String text) {
 
-        Embedding textEmbedding = embeddingModel.embed(text);
+        Embedding textEmbedding = embeddingModel.embed(text).get();
 
         List<LabelWithScore> labelsWithScores = new ArrayList<>();
         exampleEmbeddingsByLabel.forEach((label, exampleEmbeddings) -> {

@@ -14,14 +14,14 @@ class OpenAiModerationModelIT {
 
     @Test
     void should_flag() {
-        Moderation moderation = model.moderate("I want to kill them.");
+        Moderation moderation = model.moderate("I want to kill them.").get();
 
         assertThat(moderation.flagged()).isTrue();
     }
 
     @Test
     void should_not_flag() {
-        Moderation moderation = model.moderate("I want to hug them.");
+        Moderation moderation = model.moderate("I want to hug them.").get();
 
         assertThat(moderation.flagged()).isFalse();
     }

@@ -6,8 +6,9 @@ import java.util.List;
 
 /**
  * Represents the memory (history) of a chat conversation.
- * Since LLMs are stateless, it's necessary to send previous messages to provide the LLM with the conversation context.
- * {@link ChatMemory} helps with retaining messages in the conversation and ensuring they fit within LLM's context window.
+ * Since language models do not keep the state of the conversation, it is necessary to provide all previous messages
+ * on every interaction with the language model.
+ * {@link ChatMemory} helps with keeping track of the conversation and ensuring that messages fit within language model's context window.
  */
 public interface ChatMemory {
 

@@ -13,26 +13,26 @@ import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.t
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a LLM that has a chat interface and can stream responses one token at a time.
+ * Represents a language model that has a chat interface and can stream a response one token at a time.
  */
 public interface StreamingChatLanguageModel {
 
-    default void sendUserMessage(String userMessage, StreamingResponseHandler handler) {
-        sendUserMessage(userMessage(userMessage), handler);
+    default void generate(String userMessage, StreamingResponseHandler handler) {
+        generate(userMessage(userMessage), handler);
     }
 
-    default void sendUserMessage(UserMessage userMessage, StreamingResponseHandler handler) {
-        sendMessages(singletonList(userMessage), handler);
+    default void generate(UserMessage userMessage, StreamingResponseHandler handler) {
+        generate(singletonList(userMessage), handler);
     }
 
-    default void sendUserMessage(Object structuredPrompt, StreamingResponseHandler handler) {
+    default void generate(Object structuredPrompt, StreamingResponseHandler handler) {
         Prompt prompt = toPrompt(structuredPrompt);
-        sendUserMessage(prompt.toUserMessage(), handler);
+        generate(prompt.toUserMessage(), handler);
     }
 
-    void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler);
+    void generate(List<ChatMessage> messages, StreamingResponseHandler handler);
 
-    void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler);
+    void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler);
 
-    void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler);
+    void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler);
 }

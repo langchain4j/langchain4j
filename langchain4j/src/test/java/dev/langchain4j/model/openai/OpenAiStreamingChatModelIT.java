@@ -26,7 +26,7 @@ class OpenAiStreamingChatModelIT {
 
         CompletableFuture<String> future = new CompletableFuture<>();
 
-        model.sendUserMessage(
+        model.generate(
                 "What is the capital of Germany?",
                 new StreamingResponseHandler() {
 
@@ -69,7 +69,7 @@ class OpenAiStreamingChatModelIT {
 
         CompletableFuture<String> future = new CompletableFuture<>();
 
-        model.sendMessages(
+        model.generate(
                 singletonList(userMessage),
                 singletonList(toolSpecification),
                 new StreamingResponseHandler() {

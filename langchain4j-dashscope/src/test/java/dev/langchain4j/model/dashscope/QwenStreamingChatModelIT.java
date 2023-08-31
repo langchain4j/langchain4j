@@ -14,6 +14,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class QwenStreamingChatModelIT {
+
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#chatModelNameProvider")
     public void should_send_messages_and_receive_response(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
@@ -27,20 +28,23 @@ public class QwenStreamingChatModelIT {
                 .build();
 
         CompletableFuture<String> future = new CompletableFuture<>();
-        model.sendMessages(
+        model.generate(
                 QwenTestHelper.chatMessages(),
                 new StreamingResponseHandler() {
                     final StringBuilder answerBuilder = new StringBuilder();
+
                     @Override
                     public void onNext(String partialResult) {
                         answerBuilder.append(partialResult);
                         System.out.println("onPartialResult: '" + partialResult + "'");
                     }
+
                     @Override
                     public void onComplete() {
                         future.complete(answerBuilder.toString());
                         System.out.println("onComplete");
                     }
+
                     @Override
                     public void onError(Throwable error) {
                         future.completeExceptionally(error);

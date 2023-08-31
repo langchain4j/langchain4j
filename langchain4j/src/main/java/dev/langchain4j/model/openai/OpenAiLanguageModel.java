@@ -6,6 +6,7 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -17,7 +18,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents a connection to the OpenAI LLM with a completion interface, such as text-davinci-003.
+ * Represents an OpenAI language model with a completion interface, such as text-davinci-003.
  * However, it's recommended to use {@link OpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  */
@@ -64,17 +65,17 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public String process(String text) {
+    public Result<String> generate(String prompt) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
-                .prompt(text)
+                .prompt(prompt)
                 .temperature(temperature)
                 .build();
 
         CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
-        return response.text();
+        return Result.from(response.text());
     }
 
     @Override

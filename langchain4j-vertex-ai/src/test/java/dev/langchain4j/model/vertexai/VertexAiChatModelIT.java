@@ -1,6 +1,7 @@
 package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,7 @@ class VertexAiChatModelIT {
                 .maxRetries(3)
                 .build();
 
-        AiMessage aiMessage = vertexAiChatModel.sendUserMessage("hi, how are you doing?");
+        AiMessage aiMessage = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?")).get();
 
         assertThat(aiMessage).isNotNull();
         System.out.println(aiMessage.text());

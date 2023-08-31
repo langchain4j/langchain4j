@@ -9,6 +9,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -17,16 +18,14 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the OpenAI moderation model, such as text-moderation-latest.
+ * Represents an OpenAI moderation model, such as text-moderation-latest.
  */
 public class OpenAiModerationModel implements ModerationModel {
 
@@ -68,11 +67,11 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Moderation moderate(String text) {
+    public Result<Moderation> moderate(String text) {
         return moderateInternal(singletonList(text));
     }
 
-    private Moderation moderateInternal(List<String> inputs) {
+    private Result<Moderation> moderateInternal(List<String> inputs) {
 
         ModerationRequest request = ModerationRequest.builder()
                 .model(modelName)
@@ -84,31 +83,31 @@ public class OpenAiModerationModel implements ModerationModel {
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {
             if (moderationResult.isFlagged()) {
-                return Moderation.flagged(inputs.get(i));
+                return Result.from(Moderation.flagged(inputs.get(i)));
             }
             i++;
         }
 
-        return Moderation.notFlagged();
+        return Result.from(Moderation.notFlagged());
     }
 
     @Override
-    public Moderation moderate(Prompt prompt) {
+    public Result<Moderation> moderate(Prompt prompt) {
         return moderate(prompt.text());
     }
 
     @Override
-    public Moderation moderate(Object structuredPrompt) {
+    public Result<Moderation> moderate(Object structuredPrompt) {
         return moderate(toPrompt(structuredPrompt));
     }
 
     @Override
-    public Moderation moderate(ChatMessage message) {
+    public Result<Moderation> moderate(ChatMessage message) {
         return moderate(message.text());
     }
 
     @Override
-    public Moderation moderate(List<ChatMessage> messages) {
+    public Result<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
                 .map(ChatMessage::text)
                 .collect(toList());
@@ -117,7 +116,7 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Moderation moderate(TextSegment textSegment) {
+    public Result<Moderation> moderate(TextSegment textSegment) {
         return moderate(textSegment.text());
     }
 

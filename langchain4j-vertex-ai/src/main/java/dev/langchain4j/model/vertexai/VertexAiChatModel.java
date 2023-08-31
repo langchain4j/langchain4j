@@ -10,15 +10,13 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Result;
 
 import java.io.IOException;
 import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.ChatMessageType.AI;
-import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
-import static dev.langchain4j.data.message.ChatMessageType.USER;
+import static dev.langchain4j.data.message.ChatMessageType.*;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -27,7 +25,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the Vertex AI LLM with a chat completion interface, such as chat-bison.
+ * Represents a Google Vertex AI language model with a chat completion interface, such as chat-bison.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/chat/chat-prompts">here</a>.
  */
 public class VertexAiChatModel implements ChatLanguageModel {
@@ -65,7 +63,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
+    public Result<AiMessage> generate(List<ChatMessage> messages) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             VertexAiChatInstance vertexAiChatInstance = new VertexAiChatInstance(
@@ -83,7 +81,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
-            return aiMessage(extractContent(response));
+            return Result.from(AiMessage.from(extractContent(response)));
 
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -118,12 +116,12 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new IllegalArgumentException("Tools are currently not supported for Vertex AI models");
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for Vertex AI models");
     }
 

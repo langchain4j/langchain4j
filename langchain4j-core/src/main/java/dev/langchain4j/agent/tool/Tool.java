@@ -7,7 +7,7 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Java methods annotated with @Tool are considered tools that LLM can use.
+ * Java methods annotated with @Tool are considered tools that language model can use.
  */
 @Retention(RUNTIME)
 @Target({METHOD})
@@ -20,7 +20,7 @@ public @interface Tool {
 
     /**
      * Description of the tool.
-     * It should be clear and descriptive to allow LLM to understand the tool's purpose and its intended use.
+     * It should be clear and descriptive to allow language model to understand the tool's purpose and its intended use.
      */
     String[] value() default "";
 }

@@ -17,8 +17,9 @@ class AiServiceTokenStream implements TokenStream {
     AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object memoryId) {
         this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
         this.context = ensureNotNull(context, "context");
-        this.memoryId = ensureNotNull(memoryId, "memoryId");;
-        ensureNotNull(context.streamingChatLanguageModel, "streamingChatLanguageModel");
+        this.memoryId = ensureNotNull(memoryId, "memoryId");
+        ;
+        ensureNotNull(context.streamingChatModel, "streamingChatModel");
     }
 
     @Override
@@ -72,7 +73,7 @@ class AiServiceTokenStream implements TokenStream {
         @Override
         public void start() {
 
-            context.streamingChatLanguageModel.sendMessages(
+            context.streamingChatModel.generate(
                     messagesToSend,
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(

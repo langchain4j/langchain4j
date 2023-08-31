@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class QwenTestHelper {
+
     public static Stream<Arguments> chatModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_V1),

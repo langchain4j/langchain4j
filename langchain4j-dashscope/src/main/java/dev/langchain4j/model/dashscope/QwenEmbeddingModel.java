@@ -6,6 +6,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Result;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,18 +14,23 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.DOCUMENT;
+import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.QUERY;
+
 public class QwenEmbeddingModel implements EmbeddingModel {
+
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
     public static final String TYPE_DOCUMENT = "document";
+
     private final String apiKey;
     private final String modelName;
     private final TextEmbedding embedding;
 
-    protected QwenEmbeddingModel(String apiKey, String modelName) {
+    public QwenEmbeddingModel(String apiKey, String modelName) {
         this.apiKey = apiKey;
         this.modelName = modelName;
-        embedding = new TextEmbedding();
+        this.embedding = new TextEmbedding();
     }
 
     private boolean containsDocuments(List<TextSegment> textSegments) {
@@ -68,29 +74,29 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public List<Embedding> embedAll(List<TextSegment> textSegments) {
+    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         boolean queries = containsQueries(textSegments);
 
         if (!queries) {
             // default all documents
-            return embedTexts(textSegments, TextEmbeddingParam.TextType.DOCUMENT);
+            return Result.from(embedTexts(textSegments, DOCUMENT));
         } else {
             boolean documents = containsDocuments(textSegments);
             if (!documents) {
-                return embedTexts(textSegments, TextEmbeddingParam.TextType.QUERY);
+                return Result.from(embedTexts(textSegments, QUERY));
             } else {
                 // This is a mixed collection of queries and documents. Embed one by one.
                 List<Embedding> embeddings = new ArrayList<>(textSegments.size());
-                for (TextSegment textSegment: textSegments) {
+                for (TextSegment textSegment : textSegments) {
                     List<Embedding> result;
                     if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata(TYPE_KEY))) {
-                        result = embedTexts(Collections.singletonList(textSegment), TextEmbeddingParam.TextType.QUERY);
+                        result = embedTexts(Collections.singletonList(textSegment), QUERY);
                     } else {
-                        result = embedTexts(Collections.singletonList(textSegment), TextEmbeddingParam.TextType.DOCUMENT);
+                        result = embedTexts(Collections.singletonList(textSegment), DOCUMENT);
                     }
                     embeddings.addAll(result);
                 }
-                return embeddings;
+                return Result.from(embeddings);
             }
         }
     }
@@ -98,7 +104,9 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     public static Builder builder() {
         return new Builder();
     }
+
     public static class Builder {
+
         private String apiKey;
         private String modelName;
 

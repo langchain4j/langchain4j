@@ -18,7 +18,7 @@ class HuggingFaceEmbeddingModelIT {
 
     @Test
     void should_embed_one_text() {
-        Embedding embedding = model.embed("hello");
+        Embedding embedding = model.embed("hello").get();
 
         assertThat(embedding.vector()).hasSize(384);
     }
@@ -28,7 +28,7 @@ class HuggingFaceEmbeddingModelIT {
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello"),
                 textSegment("how are you?")
-        ));
+        )).get();
 
         assertThat(embeddings).hasSize(2);
         assertThat(embeddings.get(0).vector()).hasSize(384);

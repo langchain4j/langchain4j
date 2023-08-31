@@ -49,11 +49,11 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     @Override
-    public void process(String text, StreamingResponseHandler handler) {
+    public void generate(String prompt, StreamingResponseHandler handler) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
-                .prompt(text)
+                .prompt(prompt)
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)

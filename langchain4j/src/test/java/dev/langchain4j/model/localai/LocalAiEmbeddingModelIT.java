@@ -20,7 +20,7 @@ class LocalAiEmbeddingModelIT {
                 .logResponses(true)
                 .build();
 
-        Embedding embedding = model.embed("hello");
+        Embedding embedding = model.embed("hello").get();
 
         assertThat(embedding.vector()).hasSize(384);
     }

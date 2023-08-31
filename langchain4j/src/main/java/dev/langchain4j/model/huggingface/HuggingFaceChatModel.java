@@ -4,11 +4,11 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Result;
 
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
 import static java.util.stream.Collectors.joining;
@@ -47,7 +47,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
+    public Result<AiMessage> generate(List<ChatMessage> messages) {
 
         TextGenerationRequest request = TextGenerationRequest.builder()
                 .inputs(messages.stream()
@@ -65,16 +65,16 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
 
         TextGenerationResponse textGenerationResponse = client.chat(request);
 
-        return aiMessage(textGenerationResponse.generatedText());
+        return Result.from(AiMessage.from(textGenerationResponse.generatedText()));
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
     }
 

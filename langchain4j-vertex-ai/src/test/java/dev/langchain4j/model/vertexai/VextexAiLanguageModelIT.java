@@ -23,7 +23,7 @@ class VextexAiLanguageModelIT {
                 .maxRetries(3)
                 .build();
 
-        String response = vextexAiLanguageModel.process("hi, what is java?");
+        String response = vextexAiLanguageModel.generate("hi, what is java?").get();
 
         assertThat(response).containsIgnoringCase("java");
         System.out.println(response);

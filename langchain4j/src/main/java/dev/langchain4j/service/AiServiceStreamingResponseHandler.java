@@ -93,7 +93,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
 
             context.chatMemory(memoryId).add(toolExecutionResultMessage);
 
-            context.streamingChatLanguageModel.sendMessages(
+            context.streamingChatModel.generate(
                     context.chatMemory(memoryId).messages(),
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(context, memoryId, tokenHandler, completionHandler, errorHandler)

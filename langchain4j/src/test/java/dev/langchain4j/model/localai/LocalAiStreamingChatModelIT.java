@@ -27,7 +27,7 @@ class LocalAiStreamingChatModelIT {
         CompletableFuture<String> future = new CompletableFuture<>();
         StringBuilder answerBuilder = new StringBuilder();
 
-        model.sendUserMessage("Say 'hello'", new StreamingResponseHandler() {
+        model.generate("Say 'hello'", new StreamingResponseHandler() {
 
             @Override
             public void onNext(String token) {
