@@ -1,10 +1,9 @@
 package dev.langchain4j.store.embedding.vespa;
 
 import com.google.gson.annotations.SerializedName;
-
 import java.util.List;
 
-public class Record {
+class Record {
 
   private String id;
   private Double relevance;
@@ -43,8 +42,10 @@ public class Record {
 
     @SerializedName("documentid")
     private String documentId;
+
     @SerializedName("text_segment")
     private String textSegment;
+
     private Vector vector;
 
     public Fields(String textSegment, List<Float> vector) {
