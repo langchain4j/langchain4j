@@ -148,7 +148,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
       String searchQuery = Q
         .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
         .from(documentType)
-        //              .where(Q.nearestNeighbor(FIELD_NAME_VECTOR, "q").annotate(A.a("targetHits", targetHits)))
         .where(buildNearestNeighbor())
         .fix()
         .hits(maxResults)

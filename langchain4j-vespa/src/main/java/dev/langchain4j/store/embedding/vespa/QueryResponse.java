@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.vespa;
 
 import java.util.List;
 
-public class QueryResponse {
+class QueryResponse {
 
   private RootNode root;
 
