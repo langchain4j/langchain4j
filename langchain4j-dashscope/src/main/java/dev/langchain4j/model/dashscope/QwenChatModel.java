@@ -46,6 +46,14 @@ public class QwenChatModel implements ChatLanguageModel {
     }
 
     protected String sendMessage(String prompt) {
+        GenerationResult result = doSendMessage(prompt);
+        return Optional.of(result)
+                    .map(GenerationResult::getOutput)
+                    .map(GenerationOutput::getText)
+                    .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]");
+    }
+
+    protected GenerationResult doSendMessage(String prompt) {
         QwenParam param = QwenParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -57,11 +65,7 @@ public class QwenChatModel implements ChatLanguageModel {
                 .build();
 
         try {
-            GenerationResult result = gen.call(param);
-            return Optional.of(result)
-                    .map(GenerationResult::getOutput)
-                    .map(GenerationOutput::getText)
-                    .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]");
+            return gen.call(param);
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
