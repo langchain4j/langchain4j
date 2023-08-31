@@ -3,16 +3,12 @@ package dev.langchain4j.agent.tool.lambda;
 import java.lang.invoke.MethodType;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Method;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 
 interface LambdaMetaUtils {
 
     static <T extends AccessibleObject> T setAccessible(T object) {
-        return AccessController.doPrivileged((PrivilegedAction<T>) () -> {
-            object.setAccessible(true);
-            return object;
-        });
+        object.setAccessible(true);
+        return object;
     }
 
     static Method getInstantiatedMethod(MethodType methodType, Class<?> implClass, String implMethodName) {
