@@ -15,7 +15,7 @@ public class QwenStreamingLanguageModel extends QwenStreamingChatModel implement
 
     @Override
     public void process(String text, StreamingResponseHandler handler) {
-        sendMessage(text, handler);
+        sendMessage(text, null, handler);
     }
 
     public static Builder builder() {

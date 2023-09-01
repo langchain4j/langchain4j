@@ -13,7 +13,7 @@ public class QwenLanguageModel extends QwenChatModel implements LanguageModel {
     }
     @Override
     public String process(String text) {
-        return sendMessage(text);
+        return sendMessage(text, null);
     }
 
     public static Builder builder() {
