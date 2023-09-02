@@ -19,14 +19,14 @@ public class QwenChatModel implements ChatLanguageModel {
     protected final String apiKey;
     protected final String modelName;
     protected final Double topP;
-    protected final Double topK;
+    protected final Integer topK;
     protected final Boolean enableSearch;
     protected final Integer seed;
 
     protected QwenChatModel(String apiKey,
                             String modelName,
                             Double topP,
-                            Double topK,
+                            Integer topK,
                             Boolean enableSearch,
                             Integer seed) {
 
@@ -85,7 +85,7 @@ public class QwenChatModel implements ChatLanguageModel {
         protected String apiKey;
         protected String modelName;
         protected Double topP;
-        protected Double topK;
+        protected Integer topK;
         protected Boolean enableSearch;
         protected Integer seed;
 
@@ -104,7 +104,7 @@ public class QwenChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }

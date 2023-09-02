@@ -17,7 +17,7 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
     protected QwenStreamingChatModel(String apiKey,
                                      String modelName,
                                      Double topP,
-                                     Double topK,
+                                     Integer topK,
                                      Boolean enableSearch,
                                      Integer seed) {
         super(apiKey, modelName, topP, topK, enableSearch, seed);
@@ -92,7 +92,7 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
             return (Builder) super.topP(topP);
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             return (Builder) super.topK(topK);
         }
 

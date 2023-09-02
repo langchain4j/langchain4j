@@ -8,9 +8,9 @@ import com.alibaba.dashscope.common.Role;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import org.apache.commons.collections4.CollectionUtils;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -42,7 +42,7 @@ public class QwenHelper {
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)
-                .filter(CollectionUtils::isNotEmpty)
+                .filter(choices -> !choices.isEmpty())
                 .map(choices -> choices.get(0))
                 .map(Choice::getMessage)
                 .map(Message::getContent)
