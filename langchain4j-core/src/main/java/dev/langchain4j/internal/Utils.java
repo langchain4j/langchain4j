@@ -4,12 +4,17 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
 import java.util.UUID;
 
 public class Utils {
 
   public static boolean isNullOrBlank(String string) {
     return string == null || string.trim().isEmpty();
+  }
+
+  public static boolean isCollectionEmpty(Collection<?> collection) {
+    return collection == null || collection.isEmpty();
   }
 
   public static String repeat(String string, int times) {

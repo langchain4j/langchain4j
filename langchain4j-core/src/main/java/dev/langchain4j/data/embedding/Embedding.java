@@ -33,6 +33,10 @@ public class Embedding {
         return list;
     }
 
+    public int dimensions() {
+        return vector.length;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
