@@ -17,6 +17,22 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <openai4j.version>0.9.0</openai4j.version>
+        <jtokkit.version>0.6.1</jtokkit.version>
+        <lombok.version>1.18.28</lombok.version>
+        <pdfbox.version>2.0.29</pdfbox.version>
+        <jsoup.veresion>1.16.1</jsoup.veresion>
+        <mustache.version>0.9.10</mustache.version>
+        <slf4j-api.version>2.0.7</slf4j-api.version>
+        <gson.version>2.10.1</gson.version>
+        <junit.version>5.9.3</junit.version>
+        <mockito.version>4.11.0</mockito.version>
+        <assertj.version>3.24.2</assertj.version>
+        <tinylog.version>2.6.2</tinylog.version>
+        <spring-boot.version>2.7.14</spring-boot.version>
+        <snakeyaml.version>2.0</snakeyaml.version>
+        <elastic.version>8.9.0</elastic.version>
+        <jackson.version>2.12.7.1</jackson.version>
     </properties>
 
     <dependencyManagement>
@@ -25,97 +41,121 @@
             <dependency>
                 <groupId>dev.ai4j</groupId>
                 <artifactId>openai4j</artifactId>
-                <version>0.9.0</version>
+                <version>${openai4j.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.knuddels</groupId>
                 <artifactId>jtokkit</artifactId>
-                <version>0.6.1</version>
+                <version>${jtokkit.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
-                <version>1.18.28</version>
+                <version>${lombok.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.apache.pdfbox</groupId>
                 <artifactId>pdfbox</artifactId>
-                <version>2.0.29</version>
+                <version>${pdfbox.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.jsoup</groupId>
                 <artifactId>jsoup</artifactId>
-                <version>1.16.1</version>
+                <version>${jsoup.veresion}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.github.spullara.mustache.java</groupId>
                 <artifactId>compiler</artifactId>
-                <version>0.9.10</version>
+                <version>${mustache.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>2.0.7</version>
+                <version>${slf4j-api.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
-                <version>2.10.1</version>
+                <version>${gson.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-engine</artifactId>
-                <version>5.9.3</version>
+                <version>${junit.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter-params</artifactId>
-                <version>5.9.3</version>
+                <version>${junit.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
-                <version>4.11.0</version>
+                <version>${mockito.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-junit-jupiter</artifactId>
-                <version>4.11.0</version>
+                <version>${mockito.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
-                <version>3.24.2</version>
+                <version>${assertj.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.tinylog</groupId>
                 <artifactId>tinylog-impl</artifactId>
-                <version>2.6.2</version>
+                <version>${tinylog.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.tinylog</groupId>
                 <artifactId>slf4j-tinylog</artifactId>
-                <version>2.6.2</version>
+                <version>${tinylog.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter</artifactId>
-                <version>2.7.14</version>
+                <version>${spring-boot.version}</version>
+                <exclusions>
+                    <!-- due to vulnerabilities -->
+                    <exclusion>
+                        <groupId>org.yaml</groupId>
+                        <artifactId>snakeyaml</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.yaml</groupId>
+                <artifactId>snakeyaml</artifactId>
+                <version>${snakeyaml.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>co.elastic.clients</groupId>
+                <artifactId>elasticsearch-java</artifactId>
+                <version>${elastic.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
 
             <dependency>
