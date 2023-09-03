@@ -1,48 +1,115 @@
 package dev.langchain4j.model.dashscope;
 
+import com.alibaba.dashscope.aigc.generation.Generation;
+import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.aigc.generation.models.QwenParam;
+import com.alibaba.dashscope.exception.InputRequiredException;
+import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.output.Result;
 
-public class QwenLanguageModel extends QwenChatModel implements LanguageModel {
+import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
+import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS_V1;
+
+public class QwenLanguageModel implements LanguageModel {
+
+    protected final String apiKey;
+    protected final String modelName;
+    protected final Double topP;
+    protected final Integer topK;
+    protected final Boolean enableSearch;
+    protected final Integer seed;
+    protected final Generation generation;
+
     protected QwenLanguageModel(String apiKey,
                                 String modelName,
                                 Double topP,
                                 Integer topK,
                                 Boolean enableSearch,
                                 Integer seed) {
-        super(apiKey, modelName, topP, topK, enableSearch, seed);
+        this.apiKey = apiKey;
+        this.modelName = modelName;
+        this.topP = topP;
+        this.topK = topK;
+        this.enableSearch = enableSearch;
+        this.seed = seed;
+        this.generation = new Generation();
     }
+
     @Override
-    public String process(String text) {
-        return sendMessage(text, null);
+    public Result<String> generate(String prompt) {
+        try {
+            QwenParam param = QwenParam.builder()
+                    .apiKey(apiKey)
+                    .model(modelName)
+                    .topP(topP)
+                    .topK(topK)
+                    .enableSearch(enableSearch)
+                    .seed(seed)
+                    .prompt(prompt)
+                    .resultFormat(MESSAGE)
+                    .build();
+
+            GenerationResult generationResult = generation.call(param);
+            String answer = answerFrom(generationResult);
+
+            return Result.from(answer);
+        } catch (NoApiKeyException | InputRequiredException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static Builder builder() {
         return new Builder();
     }
 
-    public static class Builder extends QwenChatModel.Builder {
+    public static class Builder {
+
+        protected String apiKey;
+        protected String modelName;
+        protected Double topP;
+        protected Integer topK;
+        protected Boolean enableSearch;
+        protected Integer seed;
+
         public Builder apiKey(String apiKey) {
-            return (Builder) super.apiKey(apiKey);
+            this.apiKey = apiKey;
+            return this;
         }
 
         public Builder modelName(String modelName) {
-            return (Builder) super.modelName(modelName);
+            this.modelName = modelName;
+            return this;
         }
 
         public Builder topP(Double topP) {
-            return (Builder) super.topP(topP);
+            this.topP = topP;
+            return this;
         }
 
         public Builder topK(Integer topK) {
-            return (Builder) super.topK(topK);
+            this.topK = topK;
+            return this;
         }
 
         public Builder enableSearch(Boolean enableSearch) {
-            return (Builder) super.enableSearch(enableSearch);
+            this.enableSearch = enableSearch;
+            return this;
         }
 
         public Builder seed(Integer seed) {
-            return (Builder) super.seed(seed);
+            this.seed = seed;
+            return this;
+        }
+
+        protected void ensureOptions() {
+            if (isNullOrBlank(apiKey)) {
+                throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
+            }
+            modelName = isNullOrBlank(modelName) ? QWEN_PLUS_V1 : modelName;
+            enableSearch = enableSearch != null && enableSearch;
         }
 
         public QwenLanguageModel build() {

@@ -3,7 +3,6 @@ package dev.langchain4j.model.dashscope;
 import com.alibaba.dashscope.aigc.generation.Generation;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
-import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -11,17 +10,23 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Result;
 
 import java.util.List;
 
+import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
+import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
+import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
+
 public class QwenChatModel implements ChatLanguageModel {
-    protected final Generation gen;
+
     protected final String apiKey;
     protected final String modelName;
     protected final Double topP;
     protected final Integer topK;
     protected final Boolean enableSearch;
     protected final Integer seed;
+    protected final Generation generation;
 
     protected QwenChatModel(String apiKey,
                             String modelName,
@@ -29,59 +34,54 @@ public class QwenChatModel implements ChatLanguageModel {
                             Integer topK,
                             Boolean enableSearch,
                             Integer seed) {
-
         this.apiKey = apiKey;
         this.modelName = modelName;
         this.topP = topP;
         this.topK = topK;
         this.enableSearch = enableSearch;
         this.seed = seed;
-        gen = new Generation();
+        this.generation = new Generation();
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
-        return AiMessage.aiMessage(sendMessage(null, QwenHelper.toQwenMessages(messages)));
-    }
-
-    protected String sendMessage(String prompt, List<Message> messages) {
-        return QwenHelper.answerFrom(doSendMessage(prompt, messages));
-    }
-
-    protected GenerationResult doSendMessage(String prompt, List<Message> messages) {
-        QwenParam param = QwenParam.builder()
-                .apiKey(apiKey)
-                .model(modelName)
-                .topP(topP)
-                .topK(topK)
-                .enableSearch(enableSearch)
-                .seed(seed)
-                .prompt(prompt)
-                .messages(messages)
-                .resultFormat(QwenParam.ResultFormat.MESSAGE)
-                .build();
-
+    public Result<AiMessage> generate(List<ChatMessage> messages) {
         try {
-            return gen.call(param);
+            QwenParam param = QwenParam.builder()
+                    .apiKey(apiKey)
+                    .model(modelName)
+                    .topP(topP)
+                    .topK(topK)
+                    .enableSearch(enableSearch)
+                    .seed(seed)
+                    .messages(toQwenMessages(messages))
+                    .resultFormat(MESSAGE)
+                    .build();
+
+            GenerationResult generationResult = generation.call(param);
+            String answer = answerFrom(generationResult);
+
+            return Result.from(AiMessage.from(answer));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     public static Builder builder() {
         return new Builder();
     }
+
     public static class Builder {
+
         protected String apiKey;
         protected String modelName;
         protected Double topP;
