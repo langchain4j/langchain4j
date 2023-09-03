@@ -6,14 +6,14 @@ public class QwenLanguageModel extends QwenChatModel implements LanguageModel {
     protected QwenLanguageModel(String apiKey,
                                 String modelName,
                                 Double topP,
-                                Double topK,
+                                Integer topK,
                                 Boolean enableSearch,
                                 Integer seed) {
         super(apiKey, modelName, topP, topK, enableSearch, seed);
     }
     @Override
     public String process(String text) {
-        return sendMessage(text);
+        return sendMessage(text, null);
     }
 
     public static Builder builder() {
@@ -33,7 +33,7 @@ public class QwenLanguageModel extends QwenChatModel implements LanguageModel {
             return (Builder) super.topP(topP);
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             return (Builder) super.topK(topK);
         }
 
