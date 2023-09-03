@@ -8,7 +8,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class QwenLanguageModelIT {
-
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#chatModelNameProvider")
     public void should_send_messages_and_receive_response(String modelName) {
@@ -20,6 +19,8 @@ public class QwenLanguageModelIT {
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
-        assertThat(model.generate("Please say 'hello' to me").get()).containsIgnoringCase("hello");
+        String answer = model.process("Please say 'hello' to me");
+        System.out.println(answer);
+        assertThat(answer).containsIgnoringCase("hello");
     }
 }

@@ -30,6 +30,11 @@ public class ValidationUtils {
         return string;
     }
 
+    public static void ensureTrue(boolean expression, String msg) {
+        if (!expression) {
+            throw illegalArgument(msg);
+        }
+    }
 
     public static int ensureGreaterThanZero(Integer i, String name) {
         if (i == null || i <= 0) {

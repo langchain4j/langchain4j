@@ -2,6 +2,7 @@ package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
+import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
@@ -12,21 +13,22 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 import java.util.List;
 
-import static dev.langchain4j.model.dashscope.QwenParamHelper.toQwenPrompt;
-
 public class QwenStreamingChatModel extends QwenChatModel implements StreamingChatLanguageModel {
-
-    public QwenStreamingChatModel(String apiKey,
-                                  String modelName,
-                                  Double topP,
-                                  Double topK,
-                                  Boolean enableSearch,
-                                  Integer seed) {
+    protected QwenStreamingChatModel(String apiKey,
+                                     String modelName,
+                                     Double topP,
+                                     Integer topK,
+                                     Boolean enableSearch,
+                                     Integer seed) {
         super(apiKey, modelName, topP, topK, enableSearch, seed);
     }
 
     @Override
-    public void generate(List<ChatMessage> messages, StreamingResponseHandler handler) {
+    public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
+        sendMessage(null, QwenHelper.toQwenMessages(messages), handler);
+    }
+
+    protected void sendMessage(String rawPrompt, List<Message> messages, StreamingResponseHandler handler) {
         QwenParam param = QwenParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -34,20 +36,21 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
                 .topK(topK)
                 .enableSearch(enableSearch)
                 .seed(seed)
-                .prompt(toQwenPrompt(messages))
+                .prompt(rawPrompt)
+                .messages(messages)
+                .resultFormat(QwenParam.ResultFormat.MESSAGE)
                 .build();
+
         try {
-            generation.call(param, new ResultCallback<GenerationResult>() {
+            gen.streamCall(param, new ResultCallback<GenerationResult>() {
                 @Override
                 public void onEvent(GenerationResult result) {
-                    handler.onNext(result.getOutput().getText());
+                    handler.onNext(QwenHelper.answerFrom(result));
                 }
-
                 @Override
                 public void onComplete() {
                     handler.onComplete();
                 }
-
                 @Override
                 public void onError(Exception e) {
                     handler.onError(e);
@@ -59,17 +62,17 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
     }
 
     @Override
-    public void generate(List<ChatMessage> messages,
-                         List<ToolSpecification> toolSpecifications,
-                         StreamingResponseHandler handler) {
-        throw new IllegalArgumentException("Tools are currently not supported for Qwen models");
+    public void sendMessages(List<ChatMessage> messages,
+                             List<ToolSpecification> toolSpecifications,
+                             StreamingResponseHandler handler) {
+        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     @Override
-    public void generate(List<ChatMessage> messages,
-                         ToolSpecification toolSpecification,
-                         StreamingResponseHandler handler) {
-        throw new IllegalArgumentException("Tools are currently not supported for Qwen models");
+    public void sendMessages(List<ChatMessage> messages,
+                             ToolSpecification toolSpecification,
+                             StreamingResponseHandler handler) {
+        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     public static Builder builder() {
@@ -77,7 +80,6 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
     }
 
     public static class Builder extends QwenChatModel.Builder {
-
         public Builder apiKey(String apiKey) {
             return (Builder) super.apiKey(apiKey);
         }
@@ -90,7 +92,7 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
             return (Builder) super.topP(topP);
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             return (Builder) super.topK(topK);
         }
 
