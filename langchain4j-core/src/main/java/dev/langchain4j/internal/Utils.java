@@ -5,6 +5,13 @@ import java.util.UUID;
 
 public class Utils {
 
+    public static <T> T getOrDefault(T t, T defaultValue) {
+        if (t != null) {
+            return t;
+        }
+        return defaultValue;
+    }
+
     public static boolean isNullOrBlank(String string) {
         return string == null || string.trim().isEmpty();
     }

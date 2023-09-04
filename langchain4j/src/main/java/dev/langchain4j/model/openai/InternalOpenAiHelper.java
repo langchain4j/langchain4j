@@ -1,19 +1,37 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.*;
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.Function;
+import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.ai4j.openai4j.chat.Message;
+import dev.ai4j.openai4j.chat.Role;
+import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
-import static dev.ai4j.openai4j.chat.Role.*;
+import static dev.ai4j.openai4j.chat.Role.ASSISTANT;
+import static dev.ai4j.openai4j.chat.Role.FUNCTION;
+import static dev.ai4j.openai4j.chat.Role.SYSTEM;
+import static dev.ai4j.openai4j.chat.Role.USER;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -125,6 +143,25 @@ public class InternalOpenAiHelper {
                     .build();
 
             return aiMessage(toolExecutionRequest);
+        }
+    }
+
+    public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
+        return new TokenUsage(openAiUsage.promptTokens(), openAiUsage.completionTokens());
+    }
+
+    public static FinishReason finishReasonFrom(String openAiFinishReason) {
+        switch (openAiFinishReason) {
+            case "stop":
+                return STOP;
+            case "length":
+                return LENGTH;
+            case "function_call":
+                return TOOL_EXECUTION;
+            case "content_filter":
+                return CONTENT_FILTER;
+            default:
+                return null;
         }
     }
 }

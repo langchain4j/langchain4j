@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.completion.CompletionChoice;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.Tokenizer;
@@ -13,6 +14,8 @@ import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -84,7 +87,12 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
-        return Result.from(response.text());
+        CompletionChoice completionChoice = response.choices().get(0);
+        return Result.from(
+                completionChoice.text(),
+                tokenUsageFrom(response.usage()),
+                finishReasonFrom(completionChoice.finishReason())
+        );
     }
 
     @Override

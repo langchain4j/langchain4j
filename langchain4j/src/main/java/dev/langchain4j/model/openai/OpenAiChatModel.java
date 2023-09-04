@@ -17,7 +17,15 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.defaultTimeoutFor;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
 
@@ -120,7 +128,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return Result.from(aiMessageFrom(response));
+        return Result.from(
+                aiMessageFrom(response),
+                tokenUsageFrom(response.usage()),
+                finishReasonFrom(response.choices().get(0).finishReason())
+        );
     }
 
     @Override

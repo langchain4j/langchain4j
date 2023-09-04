@@ -10,6 +10,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -79,7 +80,15 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                     .map(Embedding::from)
                     .collect(toList());
 
-            return Result.from(embeddings);
+            int inputTokenCount = 0;
+            for (Value value : response.getPredictionsList()) {
+                inputTokenCount += extractTokenCount(value);
+            }
+
+            return Result.from(
+                    embeddings,
+                    new TokenUsage(inputTokenCount)
+            );
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -96,6 +105,19 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 .stream()
                 .map(v -> (float) v.getNumberValue())
                 .collect(toList());
+    }
+
+    private static int extractTokenCount(Value value) {
+        return (int) value.getStructValue()
+                .getFieldsMap()
+                .get("embeddings")
+                .getStructValue()
+                .getFieldsMap()
+                .get("statistics")
+                .getStructValue()
+                .getFieldsMap()
+                .get("token_count")
+                .getNumberValue();
     }
 
     public static Builder builder() {

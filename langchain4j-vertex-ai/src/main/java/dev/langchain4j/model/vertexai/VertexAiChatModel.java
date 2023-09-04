@@ -11,12 +11,15 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
 import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
-import static dev.langchain4j.data.message.ChatMessageType.*;
+import static dev.langchain4j.data.message.ChatMessageType.AI;
+import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
+import static dev.langchain4j.data.message.ChatMessageType.USER;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -81,8 +84,13 @@ public class VertexAiChatModel implements ChatLanguageModel {
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
-            return Result.from(AiMessage.from(extractContent(response)));
-
+            return Result.from(
+                    AiMessage.from(extractContent(response)),
+                    new TokenUsage(
+                            extractTokenCount(response, "inputTokenCount"),
+                            extractTokenCount(response, "outputTokenCount")
+                    )
+            );
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -99,6 +107,20 @@ public class VertexAiChatModel implements ChatLanguageModel {
                 .getFieldsMap()
                 .get("content")
                 .getStringValue();
+    }
+
+    static int extractTokenCount(PredictResponse predictResponse, String fieldName) {
+        return (int) predictResponse.getMetadata()
+                .getStructValue()
+                .getFieldsMap()
+                .get("tokenMetadata")
+                .getStructValue()
+                .getFieldsMap()
+                .get(fieldName)
+                .getStructValue()
+                .getFieldsMap()
+                .get("totalTokens")
+                .getNumberValue();
     }
 
     private static List<VertexAiChatInstance.Message> toVertexMessages(List<ChatMessage> messages) {

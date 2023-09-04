@@ -9,6 +9,7 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -37,6 +38,8 @@ import static java.util.stream.Collectors.toList;
  * <p>
  */
 public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
+
+    private static final int BATCH_SIZE = 16;
 
     private final OpenAiClient client;
     private final Integer maxRetries;
@@ -92,10 +95,10 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
         List<Embedding> embeddings = new ArrayList<>();
 
-        int batchSize = 16;
-        for (int i = 0; i < texts.size(); i += batchSize) {
+        int inputTokenCount = 0;
+        for (int i = 0; i < texts.size(); i += BATCH_SIZE) {
 
-            List<String> batch = texts.subList(i, Math.min(i + batchSize, texts.size()));
+            List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
 
             EmbeddingRequest request = EmbeddingRequest.builder()
                     .input(batch)
@@ -106,9 +109,14 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             embeddings.addAll(response.data().stream()
                     .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                     .collect(toList()));
+
+            inputTokenCount += response.usage().promptTokens();
         }
 
-        return Result.from(embeddings);
+        return Result.from(
+                embeddings,
+                new TokenUsage(inputTokenCount)
+        );
     }
 
     @Override

@@ -2,6 +2,8 @@ package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +14,7 @@ class VertexAiChatModelIT {
     @Test
     @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testChatModel() {
+
         VertexAiChatModel vertexAiChatModel = VertexAiChatModel.builder()
                 .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .project("langchain4j")
@@ -25,10 +28,16 @@ class VertexAiChatModelIT {
                 .maxRetries(3)
                 .build();
 
-        AiMessage aiMessage = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?")).get();
+        Result<AiMessage> result = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        System.out.println(result.get().text());
 
-        assertThat(aiMessage).isNotNull();
-        System.out.println(aiMessage.text());
+        assertThat(result.get().text()).isNotBlank();
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
+        assertThat(tokenUsage.totalTokenCount()).isGreaterThan(8);
+
+        assertThat(result.finishReason()).isNull();
     }
-
 }

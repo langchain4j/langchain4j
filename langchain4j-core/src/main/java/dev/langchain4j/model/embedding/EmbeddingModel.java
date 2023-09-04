@@ -19,7 +19,11 @@ public interface EmbeddingModel {
 
     default Result<Embedding> embed(TextSegment textSegment) {
         Result<List<Embedding>> result = embedAll(singletonList(textSegment));
-        return Result.from(result.get().get(0));
+        return Result.from(
+                result.get().get(0),
+                result.tokenUsage(),
+                result.finishReason()
+        );
     }
 
     Result<List<Embedding>> embedAll(List<TextSegment> textSegments);

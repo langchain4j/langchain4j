@@ -17,7 +17,11 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
@@ -128,7 +132,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return Result.from(aiMessageFrom(response));
+        return Result.from(
+                aiMessageFrom(response),
+                tokenUsageFrom(response.usage()),
+                finishReasonFrom(response.choices().get(0).finishReason())
+        );
     }
 
     @Override

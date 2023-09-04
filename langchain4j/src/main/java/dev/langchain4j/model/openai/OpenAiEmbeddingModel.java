@@ -16,7 +16,10 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -88,7 +91,10 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .collect(toList());
 
-        return Result.from(embeddings);
+        return Result.from(
+                embeddings,
+                tokenUsageFrom(response.usage())
+        );
     }
 
     @Override

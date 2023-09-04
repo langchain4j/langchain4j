@@ -8,6 +8,7 @@ import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
 import java.util.List;
@@ -16,6 +17,7 @@ import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.vertexai.VertexAiChatModel.extractTokenCount;
 import static java.util.Collections.singletonList;
 
 /**
@@ -70,7 +72,13 @@ public class VextexAiLanguageModel implements LanguageModel {
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
-            return Result.from(extractContent(response));
+            return Result.from(
+                    extractContent(response),
+                    new TokenUsage(
+                            extractTokenCount(response, "inputTokenCount"),
+                            extractTokenCount(response, "outputTokenCount")
+                    )
+            );
 
         } catch (IOException e) {
             throw new RuntimeException(e);
