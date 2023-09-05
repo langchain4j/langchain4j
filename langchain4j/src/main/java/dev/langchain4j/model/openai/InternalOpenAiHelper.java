@@ -148,6 +148,9 @@ public class InternalOpenAiHelper {
     }
 
     public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
+        if (openAiUsage == null) {
+            return null;
+        }
         return new TokenUsage(
                 getOrDefault(openAiUsage.promptTokens(), 0),
                 getOrDefault(openAiUsage.completionTokens(), 0),
