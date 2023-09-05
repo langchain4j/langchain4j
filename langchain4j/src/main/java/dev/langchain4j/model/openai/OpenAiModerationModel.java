@@ -17,8 +17,9 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -94,11 +95,6 @@ public class OpenAiModerationModel implements ModerationModel {
     @Override
     public Result<Moderation> moderate(Prompt prompt) {
         return moderate(prompt.text());
-    }
-
-    @Override
-    public Result<Moderation> moderate(Object structuredPrompt) {
-        return moderate(toPrompt(structuredPrompt));
     }
 
     @Override

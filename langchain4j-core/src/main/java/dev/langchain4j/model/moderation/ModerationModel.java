@@ -13,8 +13,6 @@ public interface ModerationModel {
 
     Result<Moderation> moderate(Prompt prompt);
 
-    Result<Moderation> moderate(Object structuredPrompt);
-
     Result<Moderation> moderate(ChatMessage message);
 
     Result<Moderation> moderate(List<ChatMessage> messages);
