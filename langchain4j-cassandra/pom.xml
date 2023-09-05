@@ -14,15 +14,15 @@
     </parent>
 
     <properties>
-        <astra-sdk.version>0.6.8-SNAPSHOT</astra-sdk.version>
+        <astra-sdk.version>0.6.8</astra-sdk.version>
     </properties>
 
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>${project.version}</version>
+            <artifactId>langchain4j</artifactId>
+            <version>${parent.version}</version>
         </dependency>
 
         <dependency>
@@ -51,12 +51,6 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>1.4.8</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>0.22.0</version>
             <scope>test</scope>
         </dependency>
 

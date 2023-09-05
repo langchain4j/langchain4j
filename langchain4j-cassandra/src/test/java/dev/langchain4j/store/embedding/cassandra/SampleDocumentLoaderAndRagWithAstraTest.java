@@ -20,10 +20,9 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +35,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_00
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.joining;
 
-public class EmbeddingStoreAstraTest {
+public class SampleDocumentLoaderAndRagWithAstraTest {
 
     private static String astraToken;
     private static String databaseId;
@@ -50,7 +49,8 @@ public class EmbeddingStoreAstraTest {
     }
 
     @Test
-    public void embeddedAstraTest() {
+    @Disabled("To run you need both OpenAi and Astra keys")
+    public void shouldRagWithOpenAiAndAstra() {
         // Given
         Assertions.assertNotNull(openAIKey);
         Assertions.assertNotNull(databaseId);
@@ -60,7 +60,7 @@ public class EmbeddingStoreAstraTest {
 
         // Parsing input file
         Document document = FileSystemDocumentLoader
-                .loadDocument(Objects.requireNonNull(EmbeddingStoreAstraTest.class
+                .loadDocument(Objects.requireNonNull(SampleDocumentLoaderAndRagWithAstraTest.class
                                 .getClassLoader()
                                 .getResource("story-about-happy-carrot.txt"))
                                 .getFile());
@@ -83,10 +83,6 @@ public class EmbeddingStoreAstraTest {
                 .table("langchain4j", "table_story")
                 .vectorDimension(1536)
                 .build();
-
-        // Ingest method 1
-        //List<TextSegment> segments = splitter.split(document);
-        // embeddingStore.addAll(embeddingModel.embedAll(segments), segments);
 
         // Ingest method 2
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()

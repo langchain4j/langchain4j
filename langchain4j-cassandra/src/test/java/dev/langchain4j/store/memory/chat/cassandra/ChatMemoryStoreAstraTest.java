@@ -8,6 +8,7 @@ import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -36,6 +37,7 @@ public class ChatMemoryStoreAstraTest {
     }
 
     @Test
+    @Disabled("To run you need Astra keys")
     public void chatMemoryAstraTest() {
         // Given
         Assertions.assertNotNull(openAIKey);
