@@ -2,38 +2,35 @@ package dev.langchain4j.model.output;
 
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 public class TokenUsage {
 
-    private final Integer inputTokenCount;
-    private final Integer outputTokenCount;
-    private final Integer totalTokenCount;
+    private final int inputTokenCount;
+    private final int outputTokenCount;
+    private final int totalTokenCount;
 
-    public TokenUsage(Integer inputTokenCount) {
-        this(inputTokenCount, null);
+    public TokenUsage(int inputTokenCount) {
+        this(inputTokenCount, 0);
     }
 
-    public TokenUsage(Integer inputTokenCount, Integer outputTokenCount) {
-        this(inputTokenCount, outputTokenCount, inputTokenCount + getOrDefault(outputTokenCount, 0));
+    public TokenUsage(int inputTokenCount, int outputTokenCount) {
+        this(inputTokenCount, outputTokenCount, inputTokenCount + outputTokenCount);
     }
 
-    public TokenUsage(Integer inputTokenCount, Integer outputTokenCount, Integer totalTokenCount) {
-        this.inputTokenCount = ensureNotNull(inputTokenCount, "inputTokenCount");
+    public TokenUsage(int inputTokenCount, int outputTokenCount, int totalTokenCount) {
+        this.inputTokenCount = inputTokenCount;
         this.outputTokenCount = outputTokenCount;
-        this.totalTokenCount = ensureNotNull(totalTokenCount, "totalTokenCount");
+        this.totalTokenCount = totalTokenCount;
     }
 
-    public Integer inputTokenCount() {
+    public int inputTokenCount() {
         return inputTokenCount;
     }
 
-    public Integer outputTokenCount() {
+    public int outputTokenCount() {
         return outputTokenCount;
     }
 
-    public Integer totalTokenCount() {
+    public int totalTokenCount() {
         return totalTokenCount;
     }
 
@@ -43,12 +40,13 @@ public class TokenUsage {
         if (o == null || getClass() != o.getClass()) return false;
         TokenUsage that = (TokenUsage) o;
         return Objects.equals(this.inputTokenCount, that.inputTokenCount)
-                && Objects.equals(this.outputTokenCount, that.outputTokenCount);
+                && Objects.equals(this.outputTokenCount, that.outputTokenCount)
+                && Objects.equals(this.totalTokenCount, that.totalTokenCount);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(inputTokenCount, outputTokenCount);
+        return Objects.hash(inputTokenCount, outputTokenCount, totalTokenCount);
     }
 
     @Override

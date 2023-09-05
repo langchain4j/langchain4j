@@ -26,6 +26,7 @@ import static dev.ai4j.openai4j.chat.Role.FUNCTION;
 import static dev.ai4j.openai4j.chat.Role.SYSTEM;
 import static dev.ai4j.openai4j.chat.Role.USER;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
@@ -147,7 +148,11 @@ public class InternalOpenAiHelper {
     }
 
     public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
-        return new TokenUsage(openAiUsage.promptTokens(), openAiUsage.completionTokens());
+        return new TokenUsage(
+                getOrDefault(openAiUsage.promptTokens(), 0),
+                getOrDefault(openAiUsage.completionTokens(), 0),
+                getOrDefault(openAiUsage.totalTokens(), 0)
+        );
     }
 
     public static FinishReason finishReasonFrom(String openAiFinishReason) {
