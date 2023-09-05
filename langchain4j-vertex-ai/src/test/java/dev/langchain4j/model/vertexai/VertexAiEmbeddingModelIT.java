@@ -47,7 +47,7 @@ class VertexAiEmbeddingModelIT {
 
         TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);
-        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0);
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(6);
 
         assertThat(result.finishReason()).isNull();

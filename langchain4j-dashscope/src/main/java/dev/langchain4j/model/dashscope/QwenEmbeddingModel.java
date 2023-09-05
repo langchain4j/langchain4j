@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.DOCUMENT;
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.QUERY;
+import static java.util.Collections.singletonList;
 
 public class QwenEmbeddingModel implements EmbeddingModel {
 
@@ -90,9 +91,9 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 for (TextSegment textSegment : textSegments) {
                     List<Embedding> result;
                     if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata(TYPE_KEY))) {
-                        result = embedTexts(Collections.singletonList(textSegment), QUERY);
+                        result = embedTexts(singletonList(textSegment), QUERY);
                     } else {
-                        result = embedTexts(Collections.singletonList(textSegment), DOCUMENT);
+                        result = embedTexts(singletonList(textSegment), DOCUMENT);
                     }
                     embeddings.addAll(result);
                 }

@@ -13,7 +13,7 @@ import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
 
 public class QwenStreamingLanguageModel extends QwenLanguageModel implements StreamingLanguageModel {
 
-    protected QwenStreamingLanguageModel(String apiKey,
+    public QwenStreamingLanguageModel(String apiKey,
                                          String modelName,
                                          Double topP,
                                          Integer topK,

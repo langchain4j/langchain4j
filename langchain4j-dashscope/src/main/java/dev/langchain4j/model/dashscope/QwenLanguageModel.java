@@ -23,7 +23,7 @@ public class QwenLanguageModel implements LanguageModel {
     protected final Integer seed;
     protected final Generation generation;
 
-    protected QwenLanguageModel(String apiKey,
+    public QwenLanguageModel(String apiKey,
                                 String modelName,
                                 Double topP,
                                 Integer topK,

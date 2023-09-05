@@ -18,7 +18,7 @@ import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
 
 public class QwenStreamingChatModel extends QwenChatModel implements StreamingChatLanguageModel {
 
-    protected QwenStreamingChatModel(String apiKey,
+    public QwenStreamingChatModel(String apiKey,
                                      String modelName,
                                      Double topP,
                                      Integer topK,

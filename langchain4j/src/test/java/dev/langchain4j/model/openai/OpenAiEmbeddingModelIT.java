@@ -21,7 +21,7 @@ class OpenAiEmbeddingModelIT {
 
         TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
-        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0);
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
 
         assertThat(result.finishReason()).isNull();
