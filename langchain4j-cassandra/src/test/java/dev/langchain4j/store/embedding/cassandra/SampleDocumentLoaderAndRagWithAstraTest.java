@@ -42,6 +42,7 @@ public class SampleDocumentLoaderAndRagWithAstraTest {
     private static String openAIKey;
 
     @BeforeAll
+    @Disabled("To run you need Astra keys")
     public static void setupEnvironment() throws InterruptedException {
         astraToken  = readToken();
         databaseId  = setupDatabase("langchain4j", "langchain4j");
