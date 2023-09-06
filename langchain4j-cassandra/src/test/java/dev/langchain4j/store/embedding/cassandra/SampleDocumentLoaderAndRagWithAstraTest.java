@@ -19,7 +19,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -37,21 +36,14 @@ import static java.util.stream.Collectors.joining;
 
 public class SampleDocumentLoaderAndRagWithAstraTest {
 
-    private static String astraToken;
-    private static String databaseId;
-    private static String openAIKey;
-
-    @BeforeAll
-    @Disabled("To run you need Astra keys")
-    public static void setupEnvironment() throws InterruptedException {
-        astraToken  = readToken();
-        databaseId  = setupDatabase("langchain4j", "langchain4j");
-        openAIKey   = System.getenv("OPENAI_API_KEY");
-    }
-
     @Test
     @Disabled("To run you need both OpenAi and Astra keys")
-    public void shouldRagWithOpenAiAndAstra() {
+    public void shouldRagWithOpenAiAndAstra() throws InterruptedException {
+        // Initialization
+        String astraToken  = readToken();
+        String databaseId  = setupDatabase("langchain4j", "langchain4j");
+        String openAIKey   = System.getenv("OPENAI_API_KEY");
+
         // Given
         Assertions.assertNotNull(openAIKey);
         Assertions.assertNotNull(databaseId);

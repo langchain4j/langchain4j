@@ -25,21 +25,15 @@ import static java.time.Duration.ofSeconds;
  */
 public class ChatMemoryStoreAstraTest {
 
-    private static String astraToken;
-    private static String databaseId;
-    private static String openAIKey;
-
-    @BeforeAll
-    @Disabled("To run you need Astra keys")
-    public static void setupEnvironment() throws InterruptedException {
-        astraToken  = readToken();
-        databaseId  = setupDatabase("langchain4j", "langchain4j");
-        openAIKey   = System.getenv("OPENAI_API_KEY");
-    }
-
     @Test
     @Disabled("To run you need Astra keys")
-    public void chatMemoryAstraTest() {
+    public void chatMemoryAstraTest() throws InterruptedException {
+        // Initialization
+        String astraToken  = readToken();
+        String databaseId  = setupDatabase("langchain4j", "langchain4j");
+        String openAIKey   = System.getenv("OPENAI_API_KEY");
+
+
         // Given
         Assertions.assertNotNull(openAIKey);
         Assertions.assertNotNull(databaseId);
