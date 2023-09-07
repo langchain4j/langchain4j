@@ -3,14 +3,12 @@ package dev.langchain4j.store.embedding;
 public class RelevanceScore {
 
     /**
-     * Calculates the relevance score between two vectors using cosine similarity.
+     * Converts cosine similarity into relevance score.
      *
-     * @param a first vector
-     * @param b second vector
-     * @return score in the range [0, 1], where 0 indicates no relevance and 1 indicates full relevance
+     * @param cosineSimilarity Cosine similarity in the range [-1..1] where -1 is not relevant and 1 is relevant.
+     * @return Relevance score in the range [0..1] where 0 is not relevant and 1 is relevant.
      */
-    public static double cosine(float[] a, float[] b) {
-        double cosineSimilarity = Similarity.cosine(a, b);
-        return 1 - (1 - cosineSimilarity) / 2;
+    public static double fromCosineSimilarity(double cosineSimilarity) {
+        return (cosineSimilarity + 1) / 2;
     }
 }
