@@ -11,6 +11,7 @@ public enum DocumentType {
     XLS("xls", "xlsx"),
     PPT("ppt", "pptx");
 
+
     private final Iterable<String> supportedExtensions;
 
     DocumentType(String... supportedExtensions) {
