@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.vespa;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.buildQueryClient;
+import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInstance;
 
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.Annotation;
@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URI;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -26,10 +27,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.SneakyThrows;
-import org.apache.hc.core5.net.URIBuilder;
 import retrofit2.Call;
 import retrofit2.Response;
-import retrofit2.Retrofit;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
@@ -45,8 +44,8 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   public static final int DEFAULT_TARGET_HITS = 10;
 
   private final String url;
-  private final String keyPath;
-  private final String certPath;
+  private final Path keyPath;
+  private final Path certPath;
   private final Duration timeout;
   private final String namespace;
   private final String documentType;
@@ -67,8 +66,8 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     Boolean avoidDups
   ) {
     this.url = url;
-    this.keyPath = keyPath;
-    this.certPath = certPath;
+    this.keyPath = Paths.get(keyPath);
+    this.certPath = Paths.get(certPath);
     this.timeout = timeout != null ? timeout : DEFAULT_TIMEOUT;
     this.namespace = namespace != null ? namespace : DEFAULT_NAMESPACE;
     this.documentType = documentType != null ? documentType : DEFAULT_DOCUMENT_TYPE;
@@ -146,8 +145,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   @SneakyThrows
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
     try {
-      Retrofit retrofit = buildQueryClient(url, Paths.get(certPath), Paths.get(keyPath));
-      VespaQueryApi apiService = retrofit.create(VespaQueryApi.class);
+      VespaQueryApi queryService = createInstance(url, certPath, keyPath);
 
       String searchQuery = Q
         .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
@@ -160,8 +158,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         .param("input.query(threshold)", String.valueOf(minScore))
         .build();
 
-      //            Call<QueryResponse> call = apiService.search("select documentid, text_segment, vector from langchain4j where true");
-      Call<QueryResponse> call = apiService.search(searchQuery);
+      Call<QueryResponse> call = queryService.search(searchQuery);
 
       Response<QueryResponse> response = call.execute();
       if (response.isSuccessful()) {
@@ -206,31 +203,10 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
   private JsonFeeder buildJsonFeeder() {
     return JsonFeeder
-      .builder(
-        FeedClientBuilder.create(URI.create(url)).setCertificate(Paths.get(certPath), Paths.get(keyPath)).build()
-      )
+      .builder(FeedClientBuilder.create(URI.create(url)).setCertificate(certPath, keyPath).build())
       .withTimeout(timeout)
       .build();
   }
-
-  //    private CloseableHttpClient buildQueryClient() throws IOException {
-  //        return HttpClients
-  //                .custom()
-  //                .setConnectionManager(
-  //                        PoolingHttpClientConnectionManagerBuilder
-  //                                .create()
-  //                                .setSSLSocketFactory(
-  //                                        SSLConnectionSocketFactoryBuilder
-  //                                                .create()
-  //                                                .setSslContext(
-  //                                                        new VespaSslContextBuilder().withCertificateAndKey(Paths.get(certPath), Paths.get(keyPath)).build()
-  //                                                )
-  //                                                .build()
-  //                                )
-  //                                .build()
-  //                )
-  //                .build();
-  //    }
 
   private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
     return new EmbeddingMatch<>(

@@ -14,7 +14,6 @@ import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import javax.net.ssl.*;
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -40,7 +39,7 @@ class VespaQueryClient {
 
   static final BouncyCastleProvider bcProvider = new BouncyCastleProvider();
 
-  public static Retrofit buildQueryClient(String baseUrl, Path certificate, Path privateKey) throws IOException {
+  public static VespaQueryApi createInstance(String baseUrl, Path certificate, Path privateKey) throws IOException {
     try {
       KeyStore keystore = KeyStore.getInstance("PKCS12");
       keystore.load(null);
@@ -72,11 +71,13 @@ class VespaQueryClient {
         })
         .build();
 
-      return new Retrofit.Builder()
+      Retrofit retrofit = new Retrofit.Builder()
         .baseUrl(baseUrl)
         .client(client)
         .addConverterFactory(GsonConverterFactory.create(new GsonBuilder().create()))
         .build();
+
+      return retrofit.create(VespaQueryApi.class);
     } catch (GeneralSecurityException e) {
       throw new IOException(e);
     }
