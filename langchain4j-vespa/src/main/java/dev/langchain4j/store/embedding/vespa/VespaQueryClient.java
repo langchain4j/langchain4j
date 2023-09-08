@@ -1,15 +1,24 @@
 // Copyright Yahoo. Licensed under the terms of the Apache 2.0 license. See LICENSE in the project root.
 package dev.langchain4j.store.embedding.vespa;
 
+import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.*;
+import java.security.GeneralSecurityException;
+import java.security.KeyFactory;
+import java.security.KeyStore;
+import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import javax.net.ssl.*;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
@@ -19,129 +28,64 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * This Workaround is needed because of <a href="https://github.com/vespa-engine/vespa/issues/28026">this request</a>.
  * It will be redundant as soon as vespa-client is implemented. This class is copied from <code>vespa-feed-client</code>.
  * BouncyCastle integration for creating a {@link SSLContext} instance from PEM encoded material
  */
-class VespaSslContextBuilder {
+class VespaQueryClient {
 
   static final BouncyCastleProvider bcProvider = new BouncyCastleProvider();
 
-  private Path certificateFile;
-  private Path privateKeyFile;
-  private Path caCertificatesFile;
-  private Collection<X509Certificate> certificate;
-  private PrivateKey privateKey;
-  private Collection<X509Certificate> caCertificates;
-
-  VespaSslContextBuilder withCertificateAndKey(Path certificate, Path privateKey) {
-    this.certificateFile = certificate;
-    this.privateKeyFile = privateKey;
-    return this;
-  }
-
-  VespaSslContextBuilder withCertificateAndKey(Collection<X509Certificate> certificate, PrivateKey privateKey) {
-    this.certificate = certificate;
-    this.privateKey = privateKey;
-    return this;
-  }
-
-  VespaSslContextBuilder withCaCertificates(Path caCertificates) {
-    this.caCertificatesFile = caCertificates;
-    return this;
-  }
-
-  VespaSslContextBuilder withCaCertificates(Collection<X509Certificate> caCertificates) {
-    this.caCertificates = caCertificates;
-    return this;
-  }
-
-  SSLContext build() throws IOException {
+  public static Retrofit buildQueryClient(String baseUrl, Path certificate, Path privateKey) throws IOException {
     try {
       KeyStore keystore = KeyStore.getInstance("PKCS12");
       keystore.load(null);
-      if (hasCertificateFile()) {
-        keystore.setKeyEntry("cert", privateKey(privateKeyFile), new char[0], certificates(certificateFile));
-      } else if (hasCertificateInstance()) {
-        keystore.setKeyEntry("cert", privateKey, new char[0], certificate.toArray(new Certificate[0]));
-      }
-      if (hasCaCertificateFile()) {
-        addCaCertificates(keystore, Arrays.asList(certificates(caCertificatesFile)));
-      } else if (hasCaCertificateInstance()) {
-        addCaCertificates(keystore, caCertificates);
-      }
+      keystore.setKeyEntry("cert", privateKey(privateKey), new char[0], certificates(certificate));
       // Protocol version must be equal to TlsContext.SSL_CONTEXT_VERSION or higher
       SSLContext sslContext = SSLContext.getInstance("TLSv1.3");
-      sslContext.init(
-        createKeyManagers(keystore).orElse(null),
-        createTrustManagers(keystore).orElse(null),
-        /*Default secure random algorithm*/null
-      );
-      return sslContext;
-    } catch (GeneralSecurityException e) {
-      throw new IOException(e);
-    }
-  }
-
-  X509TrustManager buildTm() throws IOException {
-    try {
-      KeyStore keystore = KeyStore.getInstance("PKCS12");
-      keystore.load(null);
-      if (hasCertificateFile()) {
-        keystore.setKeyEntry("cert", privateKey(privateKeyFile), new char[0], certificates(certificateFile));
-      } else if (hasCertificateInstance()) {
-        keystore.setKeyEntry("cert", privateKey, new char[0], certificate.toArray(new Certificate[0]));
-      }
+      sslContext.init(createKeyManagers(keystore), null, /*Default secure random algorithm*/null);
 
       TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(
         TrustManagerFactory.getDefaultAlgorithm()
       );
       trustManagerFactory.init(keystore);
 
-      return (X509TrustManager) trustManagerFactory.getTrustManagers()[0];
+      OkHttpClient client = new OkHttpClient.Builder()
+        .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagerFactory.getTrustManagers()[0])
+        .addInterceptor(chain -> {
+          // trick to format the query URL exactly how Vespa expects it (search/?query),
+          // see https://docs.vespa.ai/en/reference/query-language-reference.html
+          Request request = chain.request();
+          HttpUrl url = request
+            .url()
+            .newBuilder()
+            .removePathSegment(1)
+            .addPathSegment("")
+            .encodedQuery(request.url().encodedPathSegments().get(1))
+            .build();
+          request = request.newBuilder().url(url).build();
+          return chain.proceed(request);
+        })
+        .build();
+
+      return new Retrofit.Builder()
+        .baseUrl(baseUrl)
+        .client(client)
+        .addConverterFactory(GsonConverterFactory.create(new GsonBuilder().create()))
+        .build();
     } catch (GeneralSecurityException e) {
       throw new IOException(e);
     }
   }
 
-  private boolean hasCertificateFile() {
-    return certificateFile != null && privateKeyFile != null;
-  }
-
-  private boolean hasCertificateInstance() {
-    return certificate != null && privateKey != null;
-  }
-
-  private boolean hasCaCertificateFile() {
-    return caCertificatesFile != null;
-  }
-
-  private boolean hasCaCertificateInstance() {
-    return caCertificates != null;
-  }
-
-  private Optional<KeyManager[]> createKeyManagers(KeyStore keystore) throws GeneralSecurityException {
-    if (!hasCertificateInstance() && !hasCertificateFile()) return Optional.empty();
+  private static KeyManager[] createKeyManagers(KeyStore keystore) throws GeneralSecurityException {
     KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
     kmf.init(keystore, new char[0]);
-    return Optional.of(kmf.getKeyManagers());
-  }
-
-  private Optional<TrustManager[]> createTrustManagers(KeyStore keystore) throws GeneralSecurityException {
-    if (!hasCaCertificateInstance() && !hasCaCertificateFile()) return Optional.empty();
-    TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-    tmf.init(keystore);
-    return Optional.of(tmf.getTrustManagers());
-  }
-
-  private static void addCaCertificates(KeyStore keystore, Collection<? extends Certificate> certificates)
-    throws KeyStoreException {
-    int i = 0;
-    for (Certificate cert : certificates) {
-      keystore.setCertificateEntry("ca-cert-" + ++i, cert);
-    }
+    return kmf.getKeyManagers();
   }
 
   private static Certificate[] certificates(Path file) throws IOException, GeneralSecurityException {

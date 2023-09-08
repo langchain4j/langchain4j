@@ -2,13 +2,13 @@ package dev.langchain4j.store.embedding.vespa;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.buildQueryClient;
 
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.Annotation;
 import ai.vespa.client.dsl.NearestNeighbor;
 import ai.vespa.client.dsl.Q;
 import ai.vespa.feed.client.*;
-import com.google.gson.GsonBuilder;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
@@ -26,14 +26,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.SneakyThrows;
-import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
 import org.apache.hc.core5.net.URIBuilder;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
@@ -149,50 +145,20 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   @Override
   @SneakyThrows
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-    //        try (CloseableHttpClient httpClient = buildQueryClient()) {
-    String searchQuery = Q
-      .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
-      .from(documentType)
-      .where(buildNearestNeighbor())
-      .fix()
-      .hits(maxResults)
-      .ranking(rankProfile)
-      .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
-      .param("input.query(threshold)", String.valueOf(minScore))
-      .build();
-
-    URI queryUri = new URIBuilder(url).setPath("search/").setCustomQuery(searchQuery).build();
-    //
-    //            QueryResponse parsedResponse = Json.fromJson(
-    //                    Request.get(queryUri).execute(httpClient).returnContent().asString(),
-    //                    QueryResponse.class
-    //            );
-    //
-    //            return parsedResponse
-    //                    .getRoot()
-    //                    .getChildren()
-    //                    .stream()
-    //                    .map(VespaEmbeddingStoreImpl::toEmbeddingMatch)
-    //                    .collect(Collectors.toList());
-    //        } catch (Throwable t) {
-    //            throw new RuntimeException(t);
-    //        }
-
     try {
-      Retrofit retrofit = buildQueryClient();
+      Retrofit retrofit = buildQueryClient(url, Paths.get(certPath), Paths.get(keyPath));
       VespaQueryApi apiService = retrofit.create(VespaQueryApi.class);
 
-      searchQuery =
-        Q
-          .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
-          .from(documentType)
-          .where(buildNearestNeighbor())
-          .fix()
-          .hits(maxResults)
-          .ranking(rankProfile)
-          .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
-          .param("input.query(threshold)", String.valueOf(minScore))
-          .build();
+      String searchQuery = Q
+        .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
+        .from(documentType)
+        .where(buildNearestNeighbor())
+        .fix()
+        .hits(maxResults)
+        .ranking(rankProfile)
+        .param("input.query(q)", Json.toJson(referenceEmbedding.vectorAsList()))
+        .param("input.query(threshold)", String.valueOf(minScore))
+        .build();
 
       //            Call<QueryResponse> call = apiService.search("select documentid, text_segment, vector from langchain4j where true");
       Call<QueryResponse> call = apiService.search(searchQuery);
@@ -265,35 +231,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   //                )
   //                .build();
   //    }
-
-  private Retrofit buildQueryClient() throws IOException {
-    VespaSslContextBuilder context = new VespaSslContextBuilder()
-      .withCertificateAndKey(Paths.get(certPath), Paths.get(keyPath));
-
-    OkHttpClient client = new OkHttpClient.Builder()
-      .sslSocketFactory(context.build().getSocketFactory(), context.buildTm())
-      .addInterceptor(chain -> {
-        // trick to format the query URL exactly how Vespa expects it (search/?query),
-        // see https://docs.vespa.ai/en/reference/query-language-reference.html
-        Request request = chain.request();
-        HttpUrl url = request
-          .url()
-          .newBuilder()
-          .removePathSegment(1)
-          .addPathSegment("")
-          .encodedQuery(request.url().encodedPathSegments().get(1))
-          .build();
-        request = request.newBuilder().url(url).build();
-        return chain.proceed(request);
-      })
-      .build();
-
-    return new Retrofit.Builder()
-      .baseUrl(url)
-      .client(client)
-      .addConverterFactory(GsonConverterFactory.create(new GsonBuilder().create()))
-      .build();
-  }
 
   private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
     return new EmbeddingMatch<>(
