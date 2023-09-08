@@ -38,6 +38,12 @@
         </dependency>
 
         <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>com.yahoo.vespa</groupId>
             <artifactId>vespa-feed-client</artifactId>
             <version>${vespa.version}</version>
