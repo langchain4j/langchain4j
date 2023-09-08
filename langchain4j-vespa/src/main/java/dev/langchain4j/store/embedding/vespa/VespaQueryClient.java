@@ -39,7 +39,7 @@ class VespaQueryClient {
 
   static final BouncyCastleProvider bcProvider = new BouncyCastleProvider();
 
-  public static VespaQueryApi createInstance(String baseUrl, Path certificate, Path privateKey) throws IOException {
+  public static VespaQueryApi createInstance(String baseUrl, Path certificate, Path privateKey) {
     try {
       KeyStore keystore = KeyStore.getInstance("PKCS12");
       keystore.load(null);
@@ -78,8 +78,8 @@ class VespaQueryClient {
         .build();
 
       return retrofit.create(VespaQueryApi.class);
-    } catch (GeneralSecurityException e) {
-      throw new IOException(e);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
     }
   }
 

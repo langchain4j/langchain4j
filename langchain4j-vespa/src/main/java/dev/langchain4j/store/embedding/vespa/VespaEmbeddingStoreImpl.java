@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.SneakyThrows;
-import retrofit2.Call;
 import retrofit2.Response;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
@@ -52,6 +51,9 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final String rankProfile;
   private final int targetHits;
   private final boolean avoidDups;
+
+  private JsonFeeder jsonFeeder;
+  private VespaQueryApi queryApi;
 
   @Builder
   public VespaEmbeddingStoreImpl(
@@ -104,7 +106,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     List<String> ids = new ArrayList<>();
 
-    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+    try (JsonFeeder jsonFeeder = getJsonFeeder()) {
       List<Record> records = new ArrayList<>();
 
       for (int i = 0; i < embeddings.size(); i++) {
@@ -145,8 +147,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   @SneakyThrows
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
     try {
-      VespaQueryApi queryService = createInstance(url, certPath, keyPath);
-
       String searchQuery = Q
         .select(FIELD_NAME_DOCUMENT_ID, FIELD_NAME_TEXT_SEGMENT, FIELD_NAME_VECTOR)
         .from(documentType)
@@ -158,9 +158,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
         .param("input.query(threshold)", String.valueOf(minScore))
         .build();
 
-      Call<QueryResponse> call = queryService.search(searchQuery);
-
-      Response<QueryResponse> response = call.execute();
+      Response<QueryResponse> response = getQueryApi().search(searchQuery).execute();
       if (response.isSuccessful()) {
         QueryResponse parsedResponse = response.body();
         return parsedResponse
@@ -180,7 +178,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private String add(String id, Embedding embedding, TextSegment textSegment) {
     AtomicReference<String> resId = new AtomicReference<>();
 
-    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
+    try (JsonFeeder jsonFeeder = getJsonFeeder()) {
       jsonFeeder
         .feedSingle(Json.toJson(buildRecord(id, embedding, textSegment)))
         .whenComplete(
@@ -201,11 +199,22 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     return resId.get();
   }
 
-  private JsonFeeder buildJsonFeeder() {
-    return JsonFeeder
-      .builder(FeedClientBuilder.create(URI.create(url)).setCertificate(certPath, keyPath).build())
-      .withTimeout(timeout)
-      .build();
+  private JsonFeeder getJsonFeeder() {
+    if (jsonFeeder == null) {
+      jsonFeeder =
+        JsonFeeder
+          .builder(FeedClientBuilder.create(URI.create(url)).setCertificate(certPath, keyPath).build())
+          .withTimeout(timeout)
+          .build();
+    }
+    return jsonFeeder;
+  }
+
+  private VespaQueryApi getQueryApi() {
+    if (queryApi == null) {
+      queryApi = createInstance(url, certPath, keyPath);
+    }
+    return queryApi;
   }
 
   private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Record in) {
