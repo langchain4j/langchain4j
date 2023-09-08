@@ -27,6 +27,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.SneakyThrows;
+import retrofit2.Call;
 import retrofit2.Response;
 
 public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
@@ -52,7 +53,6 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private final int targetHits;
   private final boolean avoidDups;
 
-  private JsonFeeder jsonFeeder;
   private VespaQueryApi queryApi;
 
   @Builder
@@ -106,7 +106,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     List<String> ids = new ArrayList<>();
 
-    try (JsonFeeder jsonFeeder = getJsonFeeder()) {
+    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
       List<Record> records = new ArrayList<>();
 
       for (int i = 0; i < embeddings.size(); i++) {
@@ -178,7 +178,7 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private String add(String id, Embedding embedding, TextSegment textSegment) {
     AtomicReference<String> resId = new AtomicReference<>();
 
-    try (JsonFeeder jsonFeeder = getJsonFeeder()) {
+    try (JsonFeeder jsonFeeder = buildJsonFeeder()) {
       jsonFeeder
         .feedSingle(Json.toJson(buildRecord(id, embedding, textSegment)))
         .whenComplete(
@@ -199,15 +199,11 @@ public class VespaEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     return resId.get();
   }
 
-  private JsonFeeder getJsonFeeder() {
-    if (jsonFeeder == null) {
-      jsonFeeder =
-        JsonFeeder
-          .builder(FeedClientBuilder.create(URI.create(url)).setCertificate(certPath, keyPath).build())
-          .withTimeout(timeout)
-          .build();
-    }
-    return jsonFeeder;
+  private JsonFeeder buildJsonFeeder() {
+    return JsonFeeder
+      .builder(FeedClientBuilder.create(URI.create(url)).setCertificate(certPath, keyPath).build())
+      .withTimeout(timeout)
+      .build();
   }
 
   private VespaQueryApi getQueryApi() {
