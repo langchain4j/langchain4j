@@ -7,7 +7,7 @@ public class QwenStreamingLanguageModel extends QwenStreamingChatModel implement
     protected QwenStreamingLanguageModel(String apiKey,
                                          String modelName,
                                          Double topP,
-                                         Double topK,
+                                         Integer topK,
                                          Boolean enableSearch,
                                          Integer seed) {
         super(apiKey, modelName, topP, topK, enableSearch, seed);
@@ -15,7 +15,7 @@ public class QwenStreamingLanguageModel extends QwenStreamingChatModel implement
 
     @Override
     public void process(String text, StreamingResponseHandler handler) {
-        sendMessage(text, handler);
+        sendMessage(text, null, handler);
     }
 
     public static Builder builder() {
@@ -35,7 +35,7 @@ public class QwenStreamingLanguageModel extends QwenStreamingChatModel implement
             return (Builder) super.topP(topP);
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             return (Builder) super.topK(topK);
         }
 

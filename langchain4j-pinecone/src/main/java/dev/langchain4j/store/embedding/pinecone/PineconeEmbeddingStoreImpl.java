@@ -4,6 +4,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
@@ -176,9 +177,10 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
                 .get(METADATA_TEXT_SEGMENT);
 
         Embedding embedding = Embedding.from(vector.getValuesList());
+        double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
 
         return new EmbeddingMatch<>(
-                RelevanceScore.cosine(embedding.vector(), referenceEmbedding.vector()),
+                RelevanceScore.fromCosineSimilarity(cosineSimilarity),
                 vector.getId(),
                 embedding,
                 textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue())

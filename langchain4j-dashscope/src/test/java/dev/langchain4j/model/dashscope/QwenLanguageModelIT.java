@@ -19,6 +19,8 @@ public class QwenLanguageModelIT {
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
-        assertThat(model.process("Please say 'hello' to me")).containsIgnoringCase("hello");
+        String answer = model.process("Please say 'hello' to me");
+        System.out.println(answer);
+        assertThat(answer).containsIgnoringCase("hello");
     }
 }
