@@ -32,7 +32,7 @@ class OpenAiStreamingChatModelIT {
     @Test
     void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
 
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
 
         model.generate("What is the capital of Germany?", new StreamingResponseHandler<AiMessage>() {
@@ -48,26 +48,27 @@ class OpenAiStreamingChatModelIT {
             @Override
             public void onComplete(Result<AiMessage> result) {
                 System.out.println("onComplete: '" + result + "'");
-                future.complete(answerBuilder.toString());
+                futureAnswer.complete(answerBuilder.toString());
                 futureResult.complete(result);
             }
 
             @Override
             public void onError(Throwable error) {
-                future.completeExceptionally(error);
+                futureAnswer.completeExceptionally(error);
                 futureResult.completeExceptionally(error);
             }
         });
 
-        String answer = future.get(30, SECONDS);
+        String answer = futureAnswer.get(30, SECONDS);
         Result<AiMessage> result = futureResult.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
         assertThat(result.get().text()).isEqualTo(answer);
 
         assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(14);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
-        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(15);
+        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(result.tokenUsage().totalTokenCount())
+                .isEqualTo(result.tokenUsage().inputTokenCount() + result.tokenUsage().outputTokenCount());
 
         assertThat(result.finishReason()).isEqualTo(STOP);
     }
@@ -84,30 +85,30 @@ class OpenAiStreamingChatModelIT {
 
         UserMessage userMessage = userMessage("Two plus two?");
 
-        CompletableFuture<Result<AiMessage>> future = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
 
         model.generate(singletonList(userMessage), singletonList(toolSpecification), new StreamingResponseHandler<AiMessage>() {
 
             @Override
-            public void onNext(String partialResult) {
-                System.out.println("onPartialResult: '" + partialResult + "'");
+            public void onNext(String token) {
+                System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
-                future.completeExceptionally(e);
+                futureResult.completeExceptionally(e);
             }
 
             @Override
             public void onComplete(Result<AiMessage> result) {
                 System.out.println("onComplete: '" + result + "'");
-                future.complete(result);
+                futureResult.complete(result);
             }
 
             @Override
             public void onError(Throwable error) {
-                future.completeExceptionally(error);
+                futureResult.completeExceptionally(error);
             }
         });
 
-        Result<AiMessage> result = future.get(30, SECONDS);
+        Result<AiMessage> result = futureResult.get(30, SECONDS);
 
         AiMessage aiMessage = result.get();
         assertThat(aiMessage.text()).isNull();
@@ -117,8 +118,9 @@ class OpenAiStreamingChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(50);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
-        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(51);
+        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(result.tokenUsage().totalTokenCount())
+                .isEqualTo(result.tokenUsage().inputTokenCount() + result.tokenUsage().outputTokenCount());
 
         assertThat(result.finishReason()).isEqualTo(TOOL_EXECUTION);
     }

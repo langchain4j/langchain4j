@@ -10,21 +10,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiLanguageModelIT {
 
+    LanguageModel model = OpenAiLanguageModel.builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
-        LanguageModel model = OpenAiLanguageModel.withApiKey(System.getenv("OPENAI_API_KEY"));
-        String prompt = "hello, how are you?";
+        String prompt = "Hello, how are you?";
 
         Result<String> result = model.generate(prompt);
-        System.out.println(result.get());
 
         assertThat(result.get()).isNotBlank();
 
         TokenUsage tokenUsage = result.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
-        assertThat(tokenUsage.totalTokenCount()).isGreaterThan(7);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(result.finishReason()).isEqualTo(STOP);
     }

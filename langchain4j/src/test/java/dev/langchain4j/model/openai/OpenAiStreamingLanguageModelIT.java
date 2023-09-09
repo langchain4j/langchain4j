@@ -24,7 +24,7 @@ class OpenAiStreamingLanguageModelIT {
     @Test
     void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
 
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Result<String>> futureResult = new CompletableFuture<>();
 
         model.generate("What is the capital of Germany?", new StreamingResponseHandler<String>() {
@@ -40,18 +40,18 @@ class OpenAiStreamingLanguageModelIT {
             @Override
             public void onComplete(Result<String> result) {
                 System.out.println("onComplete: '" + result + "'");
-                future.complete(answerBuilder.toString());
+                futureAnswer.complete(answerBuilder.toString());
                 futureResult.complete(result);
             }
 
             @Override
             public void onError(Throwable error) {
-                future.completeExceptionally(error);
+                futureAnswer.completeExceptionally(error);
                 futureResult.completeExceptionally(error);
             }
         });
 
-        String answer = future.get(30, SECONDS);
+        String answer = futureAnswer.get(30, SECONDS);
         Result<String> result = futureResult.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");

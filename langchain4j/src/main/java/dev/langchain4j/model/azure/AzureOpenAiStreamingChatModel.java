@@ -120,15 +120,19 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .presencePenalty(presencePenalty)
                 .frequencyPenalty(frequencyPenalty);
 
-        int inputTokenCount = tokenizer == null ? 0 : tokenizer.estimateTokenCountInMessages(messages);
+        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             requestBuilder.functions(toFunctions(toolSpecifications));
-            inputTokenCount += tokenizer == null ? 0 : tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
+            if (tokenizer != null) {
+                inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
+            }
         }
         if (toolThatMustBeExecuted != null) {
             requestBuilder.functionCall(toolThatMustBeExecuted.name());
-            inputTokenCount += tokenizer == null ? 0 : tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
+            if (tokenizer != null) {
+                inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
+            }
         }
 
         ChatCompletionRequest request = requestBuilder.build();

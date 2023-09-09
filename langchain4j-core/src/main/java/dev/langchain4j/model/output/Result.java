@@ -4,6 +4,12 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * Represents the result of an interaction with a language model.
+ * Contains the generated content, token usage statistics, and the reason for completion.
+ *
+ * @param <T> The type of content returned by the language model.
+ */
 public class Result<T> {
 
     private final T result;

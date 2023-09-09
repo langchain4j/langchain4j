@@ -81,7 +81,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .temperature(temperature)
                 .build();
 
-        int inputTokenCount = tokenizer == null ? 0 : tokenizer.estimateTokenCountInText(prompt);
+        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
         OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(inputTokenCount);
 
         client.completion(request)

@@ -1,6 +1,9 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -18,7 +21,6 @@ class AiServiceTokenStream implements TokenStream {
         this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
-        ;
         ensureNotNull(context.streamingChatModel, "streamingChatModel");
     }
 
@@ -28,7 +30,7 @@ class AiServiceTokenStream implements TokenStream {
         return new OnCompleteOrOnError() {
 
             @Override
-            public OnError onComplete(Runnable completionHandler) {
+            public OnError onComplete(Consumer<Result<AiMessage>> completionHandler) {
 
                 return new OnError() {
 
@@ -59,11 +61,11 @@ class AiServiceTokenStream implements TokenStream {
     private class AiServiceOnStart implements OnStart {
 
         private final Consumer<String> tokenHandler;
-        private final Runnable completionHandler;
+        private final Consumer<Result<AiMessage>> completionHandler;
         private final Consumer<Throwable> errorHandler;
 
         private AiServiceOnStart(Consumer<String> tokenHandler,
-                                 Runnable completionHandler,
+                                 Consumer<Result<AiMessage>> completionHandler,
                                  Consumer<Throwable> errorHandler) {
             this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
             this.completionHandler = completionHandler;
@@ -81,7 +83,8 @@ class AiServiceTokenStream implements TokenStream {
                             memoryId,
                             tokenHandler,
                             completionHandler,
-                            errorHandler
+                            errorHandler,
+                            new TokenUsage()
                     )
             );
         }

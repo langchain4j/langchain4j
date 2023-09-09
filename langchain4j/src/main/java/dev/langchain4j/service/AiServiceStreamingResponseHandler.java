@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +15,7 @@ import java.util.function.Consumer;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * Handles response from LLM for AI Service that is streamed token-by-token.
+ * Handles response from a language model for AI Service that is streamed token-by-token.
  * Handles both regular (text) responses and responses with the request to execute a tool.
  */
 class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMessage> {
@@ -25,25 +26,30 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     private final Object memoryId;
 
     private final Consumer<String> tokenHandler;
-    private final Runnable completionHandler;
+    private final Consumer<Result<AiMessage>> completionHandler;
     private final Consumer<Throwable> errorHandler;
+
+    private final TokenUsage tokenUsage;
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
                                       Consumer<String> tokenHandler,
-                                      Runnable completionHandler,
-                                      Consumer<Throwable> errorHandler) {
+                                      Consumer<Result<AiMessage>> completionHandler,
+                                      Consumer<Throwable> errorHandler,
+                                      TokenUsage tokenUsage) {
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
 
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
         this.completionHandler = completionHandler;
         this.errorHandler = errorHandler;
+
+        this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
     }
 
     @Override
-    public void onNext(String partialResult) {
-        tokenHandler.accept(partialResult);
+    public void onNext(String token) {
+        tokenHandler.accept(token);
     }
 
     @Override
@@ -67,11 +73,22 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
             context.streamingChatModel.generate(
                     context.chatMemory(memoryId).messages(),
                     context.toolSpecifications,
-                    new AiServiceStreamingResponseHandler(context, memoryId, tokenHandler, completionHandler, errorHandler)
+                    new AiServiceStreamingResponseHandler(
+                            context,
+                            memoryId,
+                            tokenHandler,
+                            completionHandler,
+                            errorHandler,
+                            tokenUsage.add(result.tokenUsage())
+                    )
             );
         } else {
-            if (completionHandler != null) { // TODO
-                completionHandler.run();
+            if (completionHandler != null) {
+                completionHandler.accept(Result.from(
+                        result.get(),
+                        tokenUsage.add(result.tokenUsage()),
+                        result.finishReason())
+                );
             }
         }
     }

@@ -9,11 +9,13 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.output.Result;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -34,17 +36,29 @@ public class StreamingAiServicesIT {
         Assistant assistant = AiServices.create(Assistant.class, streamingChatModel);
 
         StringBuilder answerBuilder = new StringBuilder();
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
 
         assistant.chat("What is the capital of Germany?")
                 .onNext(answerBuilder::append)
-                .onComplete(() -> future.complete(answerBuilder.toString()))
-                .onError(future::completeExceptionally)
+                .onComplete(result -> {
+                    futureAnswer.complete(answerBuilder.toString());
+                    futureResult.complete(result);
+                })
+                .onError(futureAnswer::completeExceptionally)
                 .start();
 
-        String answer = future.get(30, SECONDS);
+        String answer = futureAnswer.get(30, SECONDS);
+        Result<AiMessage> result = futureResult.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
+        assertThat(result.get().text()).isEqualTo(answer);
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(14);
+        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(15);
+
+        assertThat(result.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -59,31 +73,29 @@ public class StreamingAiServicesIT {
 
 
         String firstUserMessage = "Hi, my name is Klaus";
-        StringBuilder firstAnswerBuilder = new StringBuilder();
-        CompletableFuture<String> firstFuture = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> firstResultFuture = new CompletableFuture<>();
 
         assistant.chat(firstUserMessage)
-                .onNext(firstAnswerBuilder::append)
-                .onComplete(() -> firstFuture.complete(firstAnswerBuilder.toString()))
-                .onError(firstFuture::completeExceptionally)
+                .onNext(System.out::println)
+                .onComplete(firstResultFuture::complete)
+                .onError(firstResultFuture::completeExceptionally)
                 .start();
 
-        String firstAnswer = firstFuture.get(30, SECONDS);
-        assertThat(firstAnswer).contains("Klaus");
+        Result<AiMessage> firstResult = firstResultFuture.get(30, SECONDS);
+        assertThat(firstResult.get().text()).contains("Klaus");
 
 
         String secondUserMessage = "What is my name?";
-        StringBuilder secondAnswerBuilder = new StringBuilder();
-        CompletableFuture<String> secondFuture = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> secondResultFuture = new CompletableFuture<>();
 
         assistant.chat(secondUserMessage)
-                .onNext(secondAnswerBuilder::append)
-                .onComplete(() -> secondFuture.complete(secondAnswerBuilder.toString()))
-                .onError(secondFuture::completeExceptionally)
+                .onNext(System.out::println)
+                .onComplete(secondResultFuture::complete)
+                .onError(secondResultFuture::completeExceptionally)
                 .start();
 
-        String secondAnswer = secondFuture.get(30, SECONDS);
-        assertThat(secondAnswer).contains("Klaus");
+        Result<AiMessage> secondResult = secondResultFuture.get(30, SECONDS);
+        assertThat(secondResult.get().text()).contains("Klaus");
 
 
         List<ChatMessage> messages = chatMemory.messages();
@@ -93,13 +105,13 @@ public class StreamingAiServicesIT {
         assertThat(messages.get(0).text()).isEqualTo(firstUserMessage);
 
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(1).text()).isEqualTo(firstAnswer);
+        assertThat(messages.get(1)).isEqualTo(firstResult.get());
 
         assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
         assertThat(messages.get(2).text()).isEqualTo(secondUserMessage);
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3).text()).isEqualTo(secondAnswer);
+        assertThat(messages.get(3)).isEqualTo(secondResult.get());
     }
 
     static class Calculator {
@@ -124,18 +136,30 @@ public class StreamingAiServicesIT {
                 .build();
 
         StringBuilder answerBuilder = new StringBuilder();
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
         assistant.chat(userMessage)
                 .onNext(answerBuilder::append)
-                .onComplete(() -> future.complete(answerBuilder.toString()))
-                .onError(future::completeExceptionally)
+                .onComplete(result -> {
+                    futureAnswer.complete(answerBuilder.toString());
+                    futureResult.complete(result);
+                })
+                .onError(futureAnswer::completeExceptionally)
                 .start();
 
-        String answer = future.get(30, SECONDS);
+        String answer = futureAnswer.get(30, SECONDS);
+        Result<AiMessage> result = futureResult.get(30, SECONDS);
 
         assertThat(answer).contains("6.97");
+        assertThat(result.get().text()).isEqualTo(answer);
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(147);
+        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(148);
+
+        assertThat(result.finishReason()).isEqualTo(STOP);
 
 
         verify(calculator).squareRoot(485906798473894056.0);

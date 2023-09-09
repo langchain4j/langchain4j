@@ -2,36 +2,58 @@ package dev.langchain4j.model.output;
 
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+
 public class TokenUsage {
 
-    private final int inputTokenCount;
-    private final int outputTokenCount;
-    private final int totalTokenCount;
+    private final Integer inputTokenCount;
+    private final Integer outputTokenCount;
+    private final Integer totalTokenCount;
 
-    public TokenUsage(int inputTokenCount) {
-        this(inputTokenCount, 0);
+    public TokenUsage() {
+        this(null);
     }
 
-    public TokenUsage(int inputTokenCount, int outputTokenCount) {
-        this(inputTokenCount, outputTokenCount, inputTokenCount + outputTokenCount);
+    public TokenUsage(Integer inputTokenCount) {
+        this(inputTokenCount, null);
     }
 
-    public TokenUsage(int inputTokenCount, int outputTokenCount, int totalTokenCount) {
+    public TokenUsage(Integer inputTokenCount, Integer outputTokenCount) {
+        this(inputTokenCount, outputTokenCount, sum(inputTokenCount, outputTokenCount));
+    }
+
+    public TokenUsage(Integer inputTokenCount, Integer outputTokenCount, Integer totalTokenCount) {
         this.inputTokenCount = inputTokenCount;
         this.outputTokenCount = outputTokenCount;
         this.totalTokenCount = totalTokenCount;
     }
 
-    public int inputTokenCount() {
+    public Integer inputTokenCount() {
         return inputTokenCount;
     }
 
-    public int outputTokenCount() {
+    public Integer outputTokenCount() {
         return outputTokenCount;
     }
 
-    public int totalTokenCount() {
+    public Integer totalTokenCount() {
         return totalTokenCount;
+    }
+
+    public TokenUsage add(TokenUsage that) {
+        return new TokenUsage(
+                sum(this.inputTokenCount, that.inputTokenCount),
+                sum(this.outputTokenCount, that.outputTokenCount),
+                sum(this.totalTokenCount, that.totalTokenCount)
+        );
+    }
+
+    private static Integer sum(Integer first, Integer second) {
+        if (first == null && second == null) {
+            return null;
+        }
+
+        return getOrDefault(first, 0) + getOrDefault(second, 0);
     }
 
     @Override

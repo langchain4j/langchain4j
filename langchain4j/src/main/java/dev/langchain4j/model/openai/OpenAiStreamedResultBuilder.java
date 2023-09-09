@@ -21,12 +21,12 @@ public class OpenAiStreamedResultBuilder {
     private final StringBuilder toolNameBuilder = new StringBuilder();
     private final StringBuilder toolArgumentsBuilder = new StringBuilder();
 
-    private final int inputTokenCount;
+    private final Integer inputTokenCount;
     private int outputTokenCount;
 
     private String finishReason;
 
-    public OpenAiStreamedResultBuilder(int inputTokenCount) {
+    public OpenAiStreamedResultBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
     }
 

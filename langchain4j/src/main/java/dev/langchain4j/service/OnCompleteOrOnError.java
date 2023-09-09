@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.Result;
 
 import java.util.function.Consumer;
@@ -12,7 +13,7 @@ public interface OnCompleteOrOnError {
      * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return the next step of the step-builder
      */
-    OnError onComplete(Runnable completionHandler); // TODO
+    OnError onComplete(Consumer<Result<AiMessage>> completionHandler);
 
     /**
      * The provided consumer will be invoked when an error occurs during streaming.

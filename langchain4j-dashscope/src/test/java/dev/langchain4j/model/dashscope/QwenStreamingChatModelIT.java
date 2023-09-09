@@ -37,9 +37,9 @@ public class QwenStreamingChatModelIT {
             private final StringBuilder answerBuilder = new StringBuilder();
 
             @Override
-            public void onNext(String partialResult) {
-                answerBuilder.append(partialResult);
-                System.out.println("onPartialResult: '" + partialResult + "'");
+            public void onNext(String token) {
+                answerBuilder.append(token);
+                System.out.println("onNext: '" + token + "'");
             }
 
             @Override
