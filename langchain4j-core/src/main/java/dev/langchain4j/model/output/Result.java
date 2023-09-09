@@ -60,11 +60,11 @@ public class Result<T> {
         return new Result<>(result);
     }
 
-    public static <T> Result<T> from(T result, TokenUsage tokenUsage, FinishReason finishReason) {
-        return new Result<>(result, tokenUsage, finishReason);
-    }
-
     public static <T> Result<T> from(T result, TokenUsage tokenUsage) {
         return new Result<>(result, tokenUsage, null);
+    }
+
+    public static <T> Result<T> from(T result, TokenUsage tokenUsage, FinishReason finishReason) {
+        return new Result<>(result, tokenUsage, finishReason);
     }
 }

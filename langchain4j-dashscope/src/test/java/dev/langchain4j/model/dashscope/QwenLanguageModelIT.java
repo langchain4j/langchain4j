@@ -15,12 +15,14 @@ public class QwenLanguageModelIT {
         if (Utils.isNullOrBlank(apiKey)) {
             return;
         }
+
         LanguageModel model = QwenLanguageModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
         String answer = model.generate("Please say 'hello' to me").get();
         System.out.println(answer);
+
         assertThat(answer).containsIgnoringCase("hello");
     }
 }

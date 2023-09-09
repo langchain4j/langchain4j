@@ -1,7 +1,9 @@
 package dev.langchain4j.model.localai;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Result;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +29,7 @@ class LocalAiStreamingChatModelIT {
         CompletableFuture<String> future = new CompletableFuture<>();
         StringBuilder answerBuilder = new StringBuilder();
 
-        model.generate("Say 'hello'", new StreamingResponseHandler() {
+        model.generate("Say 'hello'", new StreamingResponseHandler<AiMessage>() {
 
             @Override
             public void onNext(String token) {
@@ -35,8 +37,8 @@ class LocalAiStreamingChatModelIT {
             }
 
             @Override
-            public void onComplete() {
-                future.complete(answerBuilder.toString());
+            public void onComplete(Result<AiMessage> result) {
+                future.complete(answerBuilder.toString()); // TODO
             }
 
             @Override

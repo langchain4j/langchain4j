@@ -3,6 +3,7 @@ package dev.langchain4j.model.dashscope;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.output.Result;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -22,36 +23,37 @@ public class QwenStreamingLanguageModelIT {
         if (Utils.isNullOrBlank(apiKey)) {
             return;
         }
+
         StreamingLanguageModel model = QwenStreamingLanguageModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
 
         CompletableFuture<String> future = new CompletableFuture<>();
-        model.generate(
-                "Please say 'hello' to me",
-                new StreamingResponseHandler() {
-                    final StringBuilder answerBuilder = new StringBuilder();
+        model.generate("Please say 'hello' to me", new StreamingResponseHandler<String>() {
 
-                    @Override
-                    public void onNext(String partialResult) {
-                        answerBuilder.append(partialResult);
-                        System.out.println("onPartialResult: '" + partialResult + "'");
-                    }
+            private final StringBuilder answerBuilder = new StringBuilder();
 
-                    @Override
-                    public void onComplete() {
-                        future.complete(answerBuilder.toString());
-                        System.out.println("onComplete");
-                    }
+            @Override
+            public void onNext(String partialResult) {
+                answerBuilder.append(partialResult);
+                System.out.println("onPartialResult: '" + partialResult + "'");
+            }
 
-                    @Override
-                    public void onError(Throwable error) {
-                        future.completeExceptionally(error);
-                    }
-                });
+            @Override
+            public void onComplete(Result<String> result) {
+                future.complete(answerBuilder.toString());
+                System.out.println("onComplete: '" + result + "'");
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
 
         String answer = future.get(30, SECONDS);
+
         assertThat(answer).containsIgnoringCase("hello");
     }
 }

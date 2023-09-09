@@ -11,9 +11,9 @@ import dev.langchain4j.model.input.Prompt;
  */
 public interface StreamingLanguageModel {
 
-    void generate(String prompt, StreamingResponseHandler handler);
+    void generate(String prompt, StreamingResponseHandler<String> handler);
 
-    default void generate(Prompt prompt, StreamingResponseHandler handler) {
+    default void generate(Prompt prompt, StreamingResponseHandler<String> handler) {
         generate(prompt.text(), handler);
     }
 }

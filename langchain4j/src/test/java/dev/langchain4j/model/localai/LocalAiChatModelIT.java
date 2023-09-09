@@ -1,6 +1,5 @@
 package dev.langchain4j.model.localai;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;

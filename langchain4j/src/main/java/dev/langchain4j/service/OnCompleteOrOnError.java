@@ -1,19 +1,21 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.model.output.Result;
+
 import java.util.function.Consumer;
 
 public interface OnCompleteOrOnError {
 
     /**
-     * The provided Runnable will be invoked when LLM finishes streaming.
+     * The provided consumer will be invoked when a language model finishes streaming a response.
      *
-     * @param completionHandler lambda that will be invoked when LLM finishes streaming
+     * @param completionHandler lambda that will be invoked when language model finishes streaming
      * @return the next step of the step-builder
      */
-    OnError onComplete(Runnable completionHandler);
+    OnError onComplete(Runnable completionHandler); // TODO
 
     /**
-     * The provided Consumer will be invoked when an error occurs during streaming.
+     * The provided consumer will be invoked when an error occurs during streaming.
      *
      * @param errorHandler lambda that will be invoked when an error occurs
      * @return the next step of the step-builder

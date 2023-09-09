@@ -1,9 +1,12 @@
 package dev.langchain4j.model.openai;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Result;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -12,51 +15,65 @@ import java.util.concurrent.TimeoutException;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiStreamingChatModelIT {
 
-    StreamingChatLanguageModel model
-            = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+    StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
     @Test
     void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
 
         CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
 
-        model.generate(
-                "What is the capital of Germany?",
-                new StreamingResponseHandler() {
+        model.generate("What is the capital of Germany?", new StreamingResponseHandler<AiMessage>() {
 
-                    final StringBuilder answerBuilder = new StringBuilder();
+            private final StringBuilder answerBuilder = new StringBuilder();
 
-                    @Override
-                    public void onNext(String partialResult) {
-                        answerBuilder.append(partialResult);
-                        System.out.println("onPartialResult: '" + partialResult + "'");
-                    }
+            @Override
+            public void onNext(String token) {
+                System.out.println("onNext: '" + token + "'");
+                answerBuilder.append(token);
+            }
 
-                    @Override
-                    public void onComplete() {
-                        future.complete(answerBuilder.toString());
-                        System.out.println("onComplete");
-                    }
+            @Override
+            public void onComplete(Result<AiMessage> result) {
+                System.out.println("onComplete: '" + result + "'");
+                future.complete(answerBuilder.toString());
+                futureResult.complete(result);
+            }
 
-                    @Override
-                    public void onError(Throwable error) {
-                        future.completeExceptionally(error);
-                    }
-                });
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+                futureResult.completeExceptionally(error);
+            }
+        });
 
         String answer = future.get(30, SECONDS);
+        Result<AiMessage> result = futureResult.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
+        assertThat(result.get().text()).isEqualTo(answer);
+
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(14);
+        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(15);
+
+        assertThat(result.finishReason()).isEqualTo(STOP);
     }
 
     @Test
-    void should_stream_tool_execution_request() throws Exception {
+    void should_return_tool_execution_request() throws Exception {
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name("calculator")
@@ -67,47 +84,42 @@ class OpenAiStreamingChatModelIT {
 
         UserMessage userMessage = userMessage("Two plus two?");
 
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<Result<AiMessage>> future = new CompletableFuture<>();
 
-        model.generate(
-                singletonList(userMessage),
-                singletonList(toolSpecification),
-                new StreamingResponseHandler() {
+        model.generate(singletonList(userMessage), singletonList(toolSpecification), new StreamingResponseHandler<AiMessage>() {
 
-                    final StringBuilder answerBuilder = new StringBuilder();
+            @Override
+            public void onNext(String partialResult) {
+                System.out.println("onPartialResult: '" + partialResult + "'");
+                Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
+                future.completeExceptionally(e);
+            }
 
-                    @Override
-                    public void onNext(String partialResult) {
-                        answerBuilder.append(partialResult);
-                        System.out.println("onPartialResult: '" + partialResult + "'");
-                    }
+            @Override
+            public void onComplete(Result<AiMessage> result) {
+                System.out.println("onComplete: '" + result + "'");
+                future.complete(result);
+            }
 
-                    @Override
-                    public void onToolName(String name) {
-                        answerBuilder.append(name);
-                        System.out.println("onToolName: '" + name + "'");
-                    }
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
 
-                    @Override
-                    public void onToolArguments(String arguments) {
-                        answerBuilder.append(arguments);
-                        System.out.println("onToolArguments: '" + arguments + "'");
-                    }
+        Result<AiMessage> result = future.get(30, SECONDS);
 
-                    @Override
-                    public void onComplete() {
-                        future.complete(answerBuilder.toString());
-                        System.out.println("onComplete");
-                    }
+        AiMessage aiMessage = result.get();
+        assertThat(aiMessage.text()).isNull();
 
-                    @Override
-                    public void onError(Throwable error) {
-                        future.completeExceptionally(error);
-                    }
-                });
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequest();
+        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        String answer = future.get(30, SECONDS);
+        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(50);
+        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(51);
 
-        assertThat(answer).isEqualToIgnoringWhitespace("calculator {\"first\": 2, \"second\": 2}");
+        assertThat(result.finishReason()).isEqualTo(TOOL_EXECUTION);
     }
 }

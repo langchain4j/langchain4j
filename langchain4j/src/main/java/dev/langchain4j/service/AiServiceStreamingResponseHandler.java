@@ -2,22 +2,22 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.output.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.function.Consumer;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Handles response from LLM for AI Service that is streamed token-by-token.
  * Handles both regular (text) responses and responses with the request to execute a tool.
  */
-class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
+class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMessage> {
 
     private final Logger log = LoggerFactory.getLogger(AiServiceStreamingResponseHandler.class);
 
@@ -27,10 +27,6 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
     private final Consumer<String> tokenHandler;
     private final Runnable completionHandler;
     private final Consumer<Throwable> errorHandler;
-
-    private final StringBuilder answerBuilder;
-    private final StringBuilder toolNameBuilder;
-    private final StringBuilder toolArgumentsBuilder;
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
@@ -43,53 +39,28 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
         this.completionHandler = completionHandler;
         this.errorHandler = errorHandler;
-
-        this.answerBuilder = new StringBuilder();
-        this.toolNameBuilder = new StringBuilder();
-        this.toolArgumentsBuilder = new StringBuilder();
     }
 
     @Override
     public void onNext(String partialResult) {
-        answerBuilder.append(partialResult);
         tokenHandler.accept(partialResult);
     }
 
     @Override
-    public void onToolName(String name) {
-        toolNameBuilder.append(name);
-    }
+    public void onComplete(Result<AiMessage> result) {
 
-    @Override
-    public void onToolArguments(String arguments) {
-        toolArgumentsBuilder.append(arguments);
-    }
+        if (context.hasChatMemory()) {
+            context.chatMemory(memoryId).add(result.get());
+        }
 
-    @Override
-    public void onComplete() {
-
-        String toolName = toolNameBuilder.toString();
-
-        if (toolName.isEmpty()) {
-            if (context.hasChatMemory()) {
-                context.chatMemory(memoryId).add(aiMessage(answerBuilder.toString()));
-            }
-            if (completionHandler != null) {
-                completionHandler.run();
-            }
-        } else {
-
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(toolName)
-                    .arguments(toolArgumentsBuilder.toString())
-                    .build();
-
-            context.chatMemory(memoryId).add(aiMessage(toolExecutionRequest));
-
-            ToolExecutor toolExecutor = context.toolExecutors.get(toolName); // TODO what if no such tool?
+        ToolExecutionRequest toolExecutionRequest = result.get().toolExecutionRequest();
+        if (toolExecutionRequest != null) {
+            ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
             String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
-            ToolExecutionResultMessage toolExecutionResultMessage
-                    = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
+            ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                    toolExecutionRequest.name(),
+                    toolExecutionResult
+            );
 
             context.chatMemory(memoryId).add(toolExecutionResultMessage);
 
@@ -98,6 +69,10 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler {
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(context, memoryId, tokenHandler, completionHandler, errorHandler)
             );
+        } else {
+            if (completionHandler != null) { // TODO
+                completionHandler.run();
+            }
         }
     }
 

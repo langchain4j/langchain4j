@@ -33,7 +33,9 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         Embedding embedding = model.embed("hello").get();
+
         assertThat(embedding.vector()).isNotEmpty();
     }
 
@@ -44,6 +46,7 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello"),
                 textSegment("how are you?")
@@ -61,6 +64,7 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello", Metadata.from(QwenEmbeddingModel.TYPE_KEY, QwenEmbeddingModel.TYPE_QUERY)),
                 textSegment("how are you?", Metadata.from(QwenEmbeddingModel.TYPE_KEY, QwenEmbeddingModel.TYPE_QUERY))
@@ -78,6 +82,7 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello", Metadata.from(QwenEmbeddingModel.TYPE_KEY, QwenEmbeddingModel.TYPE_QUERY)),
                 textSegment("how are you?")

@@ -2,8 +2,11 @@ package dev.langchain4j.model.localai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.openai.OpenAiStreamedResultBuilder;
+import dev.langchain4j.model.output.Result;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -49,7 +52,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     @Override
-    public void generate(String prompt, StreamingResponseHandler handler) {
+    public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
@@ -59,14 +62,24 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
+        OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(0);
+
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    String partialResponseText = partialResponse.text();
-                    if (partialResponseText != null) {
-                        handler.onNext(partialResponseText);
+                    resultBuilder.append(partialResponse);
+                    String token = partialResponse.text();
+                    if (token != null) {
+                        handler.onNext(token);
                     }
                 })
-                .onComplete(handler::onComplete)
+                .onComplete(() -> {
+                    Result<AiMessage> result = resultBuilder.build();
+                    handler.onComplete(Result.from(
+                            result.get().text(),
+                            result.tokenUsage(),
+                            result.finishReason()
+                    ));
+                })
                 .onError(handler::onError)
                 .execute();
     }

@@ -2,11 +2,14 @@ package dev.langchain4j.model.azure;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiStreamedResultBuilder;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.output.Result;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -71,21 +74,32 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     }
 
     @Override
-    public void generate(String prompt, StreamingResponseHandler handler) {
+    public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .prompt(prompt)
                 .temperature(temperature)
                 .build();
 
+        int inputTokenCount = tokenizer == null ? 0 : tokenizer.estimateTokenCountInText(prompt);
+        OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(inputTokenCount);
+
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    String partialResponseText = partialResponse.text();
-                    if (partialResponseText != null) {
-                        handler.onNext(partialResponseText);
+                    resultBuilder.append(partialResponse);
+                    String token = partialResponse.text();
+                    if (token != null) {
+                        handler.onNext(token);
                     }
                 })
-                .onComplete(handler::onComplete)
+                .onComplete(() -> {
+                    Result<AiMessage> result = resultBuilder.build();
+                    handler.onComplete(Result.from(
+                            result.get().text(),
+                            result.tokenUsage(),
+                            result.finishReason()
+                    ));
+                })
                 .onError(handler::onError)
                 .execute();
     }
