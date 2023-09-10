@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -43,9 +43,9 @@ public class QwenStreamingChatModelIT {
             }
 
             @Override
-            public void onComplete(Result<AiMessage> result) {
+            public void onComplete(Response<AiMessage> response) {
                 future.complete(answerBuilder.toString());
-                System.out.println("onComplete: '" + result + "'");
+                System.out.println("onComplete: '" + response + "'");
             }
 
             @Override

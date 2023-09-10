@@ -2,7 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
@@ -30,7 +30,7 @@ class AiServiceTokenStream implements TokenStream {
         return new OnCompleteOrOnError() {
 
             @Override
-            public OnError onComplete(Consumer<Result<AiMessage>> completionHandler) {
+            public OnError onComplete(Consumer<Response<AiMessage>> completionHandler) {
 
                 return new OnError() {
 
@@ -61,11 +61,11 @@ class AiServiceTokenStream implements TokenStream {
     private class AiServiceOnStart implements OnStart {
 
         private final Consumer<String> tokenHandler;
-        private final Consumer<Result<AiMessage>> completionHandler;
+        private final Consumer<Response<AiMessage>> completionHandler;
         private final Consumer<Throwable> errorHandler;
 
         private AiServiceOnStart(Consumer<String> tokenHandler,
-                                 Consumer<Result<AiMessage>> completionHandler,
+                                 Consumer<Response<AiMessage>> completionHandler,
                                  Consumer<Throwable> errorHandler) {
             this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
             this.completionHandler = completionHandler;

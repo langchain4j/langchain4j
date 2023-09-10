@@ -20,10 +20,9 @@ class LocalAiLanguageModelIT {
                 .logResponses(true)
                 .build();
 
-        String answer = model.generate("Say 'hello'").get();
+        String answer = model.generate("Say 'hello'").content();
 
         assertThat(answer).containsIgnoringCase("hello");
         System.out.println(answer);
     }
-
 }

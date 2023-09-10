@@ -6,7 +6,7 @@ import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -39,7 +39,7 @@ public class QwenLanguageModel implements LanguageModel {
     }
 
     @Override
-    public Result<String> generate(String prompt) {
+    public Response<String> generate(String prompt) {
         try {
             QwenParam param = QwenParam.builder()
                     .apiKey(apiKey)
@@ -55,7 +55,7 @@ public class QwenLanguageModel implements LanguageModel {
             GenerationResult generationResult = generation.call(param);
             String answer = answerFrom(generationResult);
 
-            return Result.from(answer);
+            return Response.from(answer);
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }

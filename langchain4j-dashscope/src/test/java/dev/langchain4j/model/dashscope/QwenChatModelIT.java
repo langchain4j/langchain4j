@@ -23,7 +23,7 @@ public class QwenChatModelIT {
                 .modelName(modelName)
                 .build();
 
-        AiMessage answer = model.generate(QwenTestHelper.chatMessages()).get();
+        AiMessage answer = model.generate(QwenTestHelper.chatMessages()).content();
         System.out.println(answer.text());
 
         assertThat(answer.text()).containsIgnoringCase("rain");

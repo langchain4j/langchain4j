@@ -23,7 +23,7 @@ class HuggingFaceLanguageModelIT {
                 .waitForModel(true)
                 .build();
 
-        String answer = model.generate("What is the capital of the USA?").get();
+        String answer = model.generate("What is the capital of the USA?").content();
 
         assertThat(answer).containsIgnoringCase("Washington");
         System.out.println(answer);

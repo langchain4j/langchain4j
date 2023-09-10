@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
@@ -45,19 +45,19 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
 
             generation.streamCall(param, new ResultCallback<GenerationResult>() {
 
-                private final StringBuilder resultBuilder = new StringBuilder();
+                private final StringBuilder responseBuilder = new StringBuilder();
 
                 @Override
                 public void onEvent(GenerationResult result) {
                     String token = answerFrom(result);
-                    resultBuilder.append(token);
+                    responseBuilder.append(token);
                     handler.onNext(token);
                 }
 
                 @Override
                 public void onComplete() {
-                    AiMessage aiMessage = AiMessage.from(resultBuilder.toString());
-                    handler.onComplete(Result.from(aiMessage));
+                    AiMessage aiMessage = AiMessage.from(responseBuilder.toString());
+                    handler.onComplete(Response.from(aiMessage));
                 }
 
                 @Override

@@ -6,7 +6,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -49,7 +49,7 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
@@ -66,6 +66,6 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .collect(toList());
 
-        return Result.from(embeddings);
+        return Response.from(embeddings);
     }
 }

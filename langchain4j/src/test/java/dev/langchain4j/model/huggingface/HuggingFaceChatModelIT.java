@@ -29,7 +29,7 @@ class HuggingFaceChatModelIT {
         AiMessage aiMessage = model.generate(
                 systemMessage("You are a good friend of mine, who likes to answer with jokes"),
                 userMessage("Hey Bro, what are you doing?")
-        ).get();
+        ).content();
 
         assertThat(aiMessage.text()).isNotBlank();
         System.out.println(aiMessage.text());

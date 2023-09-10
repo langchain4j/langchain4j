@@ -18,7 +18,7 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.retriever.Retriever;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -403,7 +403,7 @@ public class AiServices<T> {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
-                        Result<AiMessage> result = context.chatModel.generate(messages, context.toolSpecifications);
+                        Response<AiMessage> response = context.chatModel.generate(messages, context.toolSpecifications);
 
                         verifyModerationIfNeeded(moderationFuture);
 
@@ -411,10 +411,10 @@ public class AiServices<T> {
                         while (true) { // TODO limit number of cycles
 
                             if (context.hasChatMemory()) {
-                                context.chatMemory(memoryId).add(result.get());
+                                context.chatMemory(memoryId).add(response.content());
                             }
 
-                            toolExecutionRequest = result.get().toolExecutionRequest();
+                            toolExecutionRequest = response.content().toolExecutionRequest();
                             if (toolExecutionRequest == null) {
                                 break;
                             }
@@ -427,17 +427,17 @@ public class AiServices<T> {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
                             chatMemory.add(toolExecutionResultMessage);
 
-                            result = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
+                            response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
                         }
 
-                        return ServiceOutputParser.parse(result, method.getReturnType());
+                        return ServiceOutputParser.parse(response, method.getReturnType());
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
                         if (method.isAnnotationPresent(Moderate.class)) {
                             return executor.submit(() -> {
                                 List<ChatMessage> messagesToModerate = removeToolMessages(messages);
-                                return context.moderationModel.moderate(messagesToModerate).get();
+                                return context.moderationModel.moderate(messagesToModerate).content();
                             });
                         }
                         return null;

@@ -9,7 +9,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -37,28 +37,28 @@ public class StreamingAiServicesIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
         assistant.chat("What is the capital of Germany?")
                 .onNext(answerBuilder::append)
-                .onComplete(result -> {
+                .onComplete(response -> {
                     futureAnswer.complete(answerBuilder.toString());
-                    futureResult.complete(result);
+                    futureResponse.complete(response);
                 })
                 .onError(futureAnswer::completeExceptionally)
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Result<AiMessage> result = futureResult.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
-        assertThat(result.get().text()).isEqualTo(answer);
+        assertThat(response.content().text()).isEqualTo(answer);
 
-        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(14);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
-        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(15);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(14);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(15);
 
-        assertThat(result.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -73,7 +73,7 @@ public class StreamingAiServicesIT {
 
 
         String firstUserMessage = "Hi, my name is Klaus";
-        CompletableFuture<Result<AiMessage>> firstResultFuture = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> firstResultFuture = new CompletableFuture<>();
 
         assistant.chat(firstUserMessage)
                 .onNext(System.out::println)
@@ -81,12 +81,12 @@ public class StreamingAiServicesIT {
                 .onError(firstResultFuture::completeExceptionally)
                 .start();
 
-        Result<AiMessage> firstResult = firstResultFuture.get(30, SECONDS);
-        assertThat(firstResult.get().text()).contains("Klaus");
+        Response<AiMessage> firstResponse = firstResultFuture.get(30, SECONDS);
+        assertThat(firstResponse.content().text()).contains("Klaus");
 
 
         String secondUserMessage = "What is my name?";
-        CompletableFuture<Result<AiMessage>> secondResultFuture = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> secondResultFuture = new CompletableFuture<>();
 
         assistant.chat(secondUserMessage)
                 .onNext(System.out::println)
@@ -94,8 +94,8 @@ public class StreamingAiServicesIT {
                 .onError(secondResultFuture::completeExceptionally)
                 .start();
 
-        Result<AiMessage> secondResult = secondResultFuture.get(30, SECONDS);
-        assertThat(secondResult.get().text()).contains("Klaus");
+        Response<AiMessage> secondResponse = secondResultFuture.get(30, SECONDS);
+        assertThat(secondResponse.content().text()).contains("Klaus");
 
 
         List<ChatMessage> messages = chatMemory.messages();
@@ -105,13 +105,13 @@ public class StreamingAiServicesIT {
         assertThat(messages.get(0).text()).isEqualTo(firstUserMessage);
 
         assertThat(messages.get(1)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(1)).isEqualTo(firstResult.get());
+        assertThat(messages.get(1)).isEqualTo(firstResponse.content());
 
         assertThat(messages.get(2)).isInstanceOf(UserMessage.class);
         assertThat(messages.get(2).text()).isEqualTo(secondUserMessage);
 
         assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3)).isEqualTo(secondResult.get());
+        assertThat(messages.get(3)).isEqualTo(secondResponse.content());
     }
 
     static class Calculator {
@@ -137,29 +137,29 @@ public class StreamingAiServicesIT {
 
         StringBuilder answerBuilder = new StringBuilder();
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
         assistant.chat(userMessage)
                 .onNext(answerBuilder::append)
-                .onComplete(result -> {
+                .onComplete(response -> {
                     futureAnswer.complete(answerBuilder.toString());
-                    futureResult.complete(result);
+                    futureResponse.complete(response);
                 })
                 .onError(futureAnswer::completeExceptionally)
                 .start();
 
         String answer = futureAnswer.get(30, SECONDS);
-        Result<AiMessage> result = futureResult.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("6.97");
-        assertThat(result.get().text()).isEqualTo(answer);
+        assertThat(response.content().text()).isEqualTo(answer);
 
-        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(147);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
-        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(148);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(147);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(148);
 
-        assertThat(result.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
 
 
         verify(calculator).squareRoot(485906798473894056.0);

@@ -10,7 +10,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
@@ -66,7 +66,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages) {
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             VertexAiChatInstance vertexAiChatInstance = new VertexAiChatInstance(
@@ -84,7 +84,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
-            return Result.from(
+            return Response.from(
                     AiMessage.from(extractContent(response)),
                     new TokenUsage(
                             extractTokenCount(response, "inputTokenCount"),
@@ -138,12 +138,12 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new IllegalArgumentException("Tools are currently not supported for Vertex AI models");
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for Vertex AI models");
     }
 

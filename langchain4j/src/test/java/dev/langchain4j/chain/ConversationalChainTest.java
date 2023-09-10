@@ -3,7 +3,7 @@ package dev.langchain4j.chain;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
@@ -23,7 +23,7 @@ public class ConversationalChainTest {
         // Given
         ChatLanguageModel chatLanguageModel = mock(ChatLanguageModel.class);
         String aiMessage = "Hi there";
-        when(chatLanguageModel.generate(anyList())).thenReturn(Result.from(aiMessage(aiMessage)));
+        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(aiMessage)));
 
         ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
 

@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -25,7 +25,7 @@ class OpenAiStreamingLanguageModelIT {
     void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Result<String>> futureResult = new CompletableFuture<>();
+        CompletableFuture<Response<String>> futureResponse = new CompletableFuture<>();
 
         model.generate("What is the capital of Germany?", new StreamingResponseHandler<String>() {
 
@@ -38,29 +38,29 @@ class OpenAiStreamingLanguageModelIT {
             }
 
             @Override
-            public void onComplete(Result<String> result) {
-                System.out.println("onComplete: '" + result + "'");
+            public void onComplete(Response<String> response) {
+                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
-                futureResult.complete(result);
+                futureResponse.complete(response);
             }
 
             @Override
             public void onError(Throwable error) {
                 futureAnswer.completeExceptionally(error);
-                futureResult.completeExceptionally(error);
+                futureResponse.completeExceptionally(error);
             }
         });
 
         String answer = futureAnswer.get(30, SECONDS);
-        Result<String> result = futureResult.get(30, SECONDS);
+        Response<String> response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
-        assertThat(result.get()).isEqualTo(answer);
+        assertThat(response.content()).isEqualTo(answer);
 
-        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(7);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(1);
-        assertThat(result.tokenUsage().totalTokenCount()).isGreaterThan(8);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(1);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(8);
 
-        assertThat(result.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 }

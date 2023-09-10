@@ -8,7 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -69,7 +69,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
@@ -78,7 +78,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         return embedTexts(texts);
     }
 
-    private Result<List<Embedding>> embedTexts(List<String> texts) {
+    private Response<List<Embedding>> embedTexts(List<String> texts) {
 
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(texts)
@@ -91,7 +91,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .collect(toList());
 
-        return Result.from(
+        return Response.from(
                 embeddings,
                 tokenUsageFrom(response.usage())
         );

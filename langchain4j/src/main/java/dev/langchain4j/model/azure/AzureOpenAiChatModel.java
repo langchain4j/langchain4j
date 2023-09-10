@@ -9,7 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -95,23 +95,23 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages) {
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
         return generate(messages, null, null);
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         return generate(messages, toolSpecifications, null);
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
-    private Result<AiMessage> generate(List<ChatMessage> messages,
-                                       List<ToolSpecification> toolSpecifications,
-                                       ToolSpecification toolThatMustBeExecuted
+    private Response<AiMessage> generate(List<ChatMessage> messages,
+                                         List<ToolSpecification> toolSpecifications,
+                                         ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .messages(toOpenAiMessages(messages))
@@ -132,7 +132,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return Result.from(
+        return Response.from(
                 aiMessageFrom(response),
                 tokenUsageFrom(response.usage()),
                 finishReasonFrom(response.choices().get(0).finishReason())

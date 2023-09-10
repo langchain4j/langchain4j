@@ -1,7 +1,7 @@
 package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 
@@ -42,7 +42,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     @Override
-    public Result<String> generate(String prompt) {
+    public Response<String> generate(String prompt) {
 
         TextGenerationRequest request = TextGenerationRequest.builder()
                 .inputs(prompt)
@@ -58,7 +58,7 @@ public class HuggingFaceLanguageModel implements LanguageModel {
 
         TextGenerationResponse response = client.generate(request);
 
-        return Result.from(response.generatedText());
+        return Response.from(response.generatedText());
     }
 
     public static Builder builder() {

@@ -2,7 +2,7 @@ package dev.langchain4j.model.embedding;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
@@ -13,18 +13,18 @@ import static java.util.Collections.singletonList;
  */
 public interface EmbeddingModel {
 
-    default Result<Embedding> embed(String text) {
+    default Response<Embedding> embed(String text) {
         return embed(TextSegment.from(text));
     }
 
-    default Result<Embedding> embed(TextSegment textSegment) {
-        Result<List<Embedding>> result = embedAll(singletonList(textSegment));
-        return Result.from(
-                result.get().get(0),
-                result.tokenUsage(),
-                result.finishReason()
+    default Response<Embedding> embed(TextSegment textSegment) {
+        Response<List<Embedding>> response = embedAll(singletonList(textSegment));
+        return Response.from(
+                response.content().get(0),
+                response.tokenUsage(),
+                response.finishReason()
         );
     }
 
-    Result<List<Embedding>> embedAll(List<TextSegment> textSegments);
+    Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
 }

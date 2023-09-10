@@ -7,7 +7,7 @@ import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
@@ -59,7 +59,7 @@ public class VextexAiLanguageModel implements LanguageModel {
     }
 
     @Override
-    public Result<String> generate(String prompt) {
+    public Response<String> generate(String prompt) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             Value.Builder instanceBuilder = newBuilder();
@@ -72,7 +72,7 @@ public class VextexAiLanguageModel implements LanguageModel {
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
-            return Result.from(
+            return Response.from(
                     extractContent(response),
                     new TokenUsage(
                             extractTokenCount(response, "inputTokenCount"),

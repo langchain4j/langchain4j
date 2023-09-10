@@ -10,8 +10,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiStreamedResultBuilder;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -97,16 +97,16 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(0);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(0);
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
-                    resultBuilder.append(partialResponse);
+                    responseBuilder.append(partialResponse);
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Result<AiMessage> result = resultBuilder.build();
-                    handler.onComplete(result);
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(response);
                 })
                 .onError(handler::onError)
                 .execute();

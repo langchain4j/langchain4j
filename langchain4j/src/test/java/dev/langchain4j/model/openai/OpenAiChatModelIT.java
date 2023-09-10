@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -20,17 +20,17 @@ class OpenAiChatModelIT {
         ChatLanguageModel model = OpenAiChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Result<AiMessage> result = model.generate(userMessage);
-        System.out.println(result.get().text());
+        Response<AiMessage> response = model.generate(userMessage);
+        System.out.println(response);
 
-        assertThat(result.get().text()).isNotBlank();
+        assertThat(response.content().text()).isNotBlank();
 
-        TokenUsage tokenUsage = result.tokenUsage();
+        TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount()).isGreaterThan(14);
 
-        assertThat(result.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -42,16 +42,16 @@ class OpenAiChatModelIT {
                 .build();
         UserMessage userMessage = userMessage("hello, how are you?");
 
-        Result<AiMessage> result = model.generate(userMessage);
-        System.out.println(result.get().text());
+        Response<AiMessage> response = model.generate(userMessage);
+        System.out.println(response);
 
-        assertThat(result.get().text()).isNotBlank();
+        assertThat(response.content().text()).isNotBlank();
 
-        TokenUsage tokenUsage = result.tokenUsage();
+        TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(3);
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(16);
 
-        assertThat(result.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 }

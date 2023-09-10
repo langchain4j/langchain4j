@@ -3,19 +3,19 @@ package dev.langchain4j.model.moderation;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
 public interface ModerationModel {
 
-    Result<Moderation> moderate(String text);
+    Response<Moderation> moderate(String text);
 
-    Result<Moderation> moderate(Prompt prompt);
+    Response<Moderation> moderate(Prompt prompt);
 
-    Result<Moderation> moderate(ChatMessage message);
+    Response<Moderation> moderate(ChatMessage message);
 
-    Result<Moderation> moderate(List<ChatMessage> messages);
+    Response<Moderation> moderate(List<ChatMessage> messages);
 
-    Result<Moderation> moderate(TextSegment textSegment);
+    Response<Moderation> moderate(TextSegment textSegment);
 }

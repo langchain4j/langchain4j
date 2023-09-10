@@ -6,7 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -33,7 +33,7 @@ class OpenAiStreamingChatModelIT {
     void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
         model.generate("What is the capital of Germany?", new StreamingResponseHandler<AiMessage>() {
 
@@ -46,31 +46,31 @@ class OpenAiStreamingChatModelIT {
             }
 
             @Override
-            public void onComplete(Result<AiMessage> result) {
-                System.out.println("onComplete: '" + result + "'");
+            public void onComplete(Response<AiMessage> response) {
+                System.out.println("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
-                futureResult.complete(result);
+                futureResponse.complete(response);
             }
 
             @Override
             public void onError(Throwable error) {
                 futureAnswer.completeExceptionally(error);
-                futureResult.completeExceptionally(error);
+                futureResponse.completeExceptionally(error);
             }
         });
 
         String answer = futureAnswer.get(30, SECONDS);
-        Result<AiMessage> result = futureResult.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
         assertThat(answer).contains("Berlin");
-        assertThat(result.get().text()).isEqualTo(answer);
+        assertThat(response.content().text()).isEqualTo(answer);
 
-        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(14);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(result.tokenUsage().totalTokenCount())
-                .isEqualTo(result.tokenUsage().inputTokenCount() + result.tokenUsage().outputTokenCount());
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(14);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount())
+                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
 
-        assertThat(result.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
@@ -85,7 +85,7 @@ class OpenAiStreamingChatModelIT {
 
         UserMessage userMessage = userMessage("Two plus two?");
 
-        CompletableFuture<Result<AiMessage>> futureResult = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
         model.generate(singletonList(userMessage), singletonList(toolSpecification), new StreamingResponseHandler<AiMessage>() {
 
@@ -93,35 +93,35 @@ class OpenAiStreamingChatModelIT {
             public void onNext(String token) {
                 System.out.println("onNext: '" + token + "'");
                 Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
-                futureResult.completeExceptionally(e);
+                futureResponse.completeExceptionally(e);
             }
 
             @Override
-            public void onComplete(Result<AiMessage> result) {
-                System.out.println("onComplete: '" + result + "'");
-                futureResult.complete(result);
+            public void onComplete(Response<AiMessage> response) {
+                System.out.println("onComplete: '" + response + "'");
+                futureResponse.complete(response);
             }
 
             @Override
             public void onError(Throwable error) {
-                futureResult.completeExceptionally(error);
+                futureResponse.completeExceptionally(error);
             }
         });
 
-        Result<AiMessage> result = futureResult.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
-        AiMessage aiMessage = result.get();
+        AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequest();
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        assertThat(result.tokenUsage().inputTokenCount()).isEqualTo(50);
-        assertThat(result.tokenUsage().outputTokenCount()).isGreaterThan(0);
-        assertThat(result.tokenUsage().totalTokenCount())
-                .isEqualTo(result.tokenUsage().inputTokenCount() + result.tokenUsage().outputTokenCount());
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(50);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount())
+                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
 
-        assertThat(result.finishReason()).isEqualTo(TOOL_EXECUTION);
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
     }
 }

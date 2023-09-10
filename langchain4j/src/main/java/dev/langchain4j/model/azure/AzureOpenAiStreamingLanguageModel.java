@@ -7,9 +7,9 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiStreamedResultBuilder;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.output.Response;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -82,22 +82,22 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .build();
 
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
-        OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(inputTokenCount);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    resultBuilder.append(partialResponse);
+                    responseBuilder.append(partialResponse);
                     String token = partialResponse.text();
                     if (token != null) {
                         handler.onNext(token);
                     }
                 })
                 .onComplete(() -> {
-                    Result<AiMessage> result = resultBuilder.build();
-                    handler.onComplete(Result.from(
-                            result.get().text(),
-                            result.tokenUsage(),
-                            result.finishReason()
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(Response.from(
+                            response.content().text(),
+                            response.tokenUsage(),
+                            response.finishReason()
                     ));
                 })
                 .onError(handler::onError)

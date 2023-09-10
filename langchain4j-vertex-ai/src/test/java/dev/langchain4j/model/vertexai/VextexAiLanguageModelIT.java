@@ -1,6 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -25,16 +25,16 @@ class VextexAiLanguageModelIT {
                 .maxRetries(3)
                 .build();
 
-        Result<String> result = vextexAiLanguageModel.generate("hi, what is java?");
+        Response<String> response = vextexAiLanguageModel.generate("hi, what is java?");
 
-        assertThat(result.get()).containsIgnoringCase("java");
-        System.out.println(result.get());
+        assertThat(response.content()).containsIgnoringCase("java");
+        System.out.println(response);
 
-        TokenUsage tokenUsage = result.tokenUsage();
+        TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount()).isGreaterThan(7);
 
-        assertThat(result.finishReason()).isNull();
+        assertThat(response.finishReason()).isNull();
     }
 }

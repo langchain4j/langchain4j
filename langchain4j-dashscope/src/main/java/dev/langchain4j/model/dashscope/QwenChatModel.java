@@ -10,7 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
@@ -44,7 +44,7 @@ public class QwenChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages) {
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
         try {
             QwenParam param = QwenParam.builder()
                     .apiKey(apiKey)
@@ -60,19 +60,19 @@ public class QwenChatModel implements ChatLanguageModel {
             GenerationResult generationResult = generation.call(param);
             String answer = answerFrom(generationResult);
 
-            return Result.from(AiMessage.from(answer));
+            return Response.from(AiMessage.from(answer));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     @Override
-    public Result<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 

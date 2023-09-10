@@ -2,7 +2,7 @@ package dev.langchain4j.model.localai;
 
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -25,8 +25,8 @@ class LocalAiStreamingLanguageModelIT {
                 .logResponses(true)
                 .build();
 
-        CompletableFuture<String> future = new CompletableFuture<>();
         StringBuilder answerBuilder = new StringBuilder();
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
 
         model.generate("Say 'hello'", new StreamingResponseHandler<String>() {
 
@@ -36,17 +36,17 @@ class LocalAiStreamingLanguageModelIT {
             }
 
             @Override
-            public void onComplete(Result<String> result) {
-                future.complete(answerBuilder.toString()); // TODO
+            public void onComplete(Response<String> response) {
+                futureAnswer.complete(answerBuilder.toString());
             }
 
             @Override
             public void onError(Throwable error) {
-                future.completeExceptionally(error);
+                futureAnswer.completeExceptionally(error);
             }
         });
 
-        String answer = future.get(30, SECONDS);
+        String answer = futureAnswer.get(30, SECONDS);
 
         assertThat(answer).containsIgnoringCase("hello");
     }

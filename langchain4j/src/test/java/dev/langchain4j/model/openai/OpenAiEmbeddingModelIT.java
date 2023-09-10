@@ -2,7 +2,7 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -15,15 +15,16 @@ class OpenAiEmbeddingModelIT {
     @Test
     void should_embed_and_return_token_usage() {
 
-        Result<Embedding> result = model.embed("hello world");
+        Response<Embedding> response = model.embed("hello world");
+        System.out.println(response);
 
-        assertThat(result.get().vector()).hasSize(1536);
+        assertThat(response.content().vector()).hasSize(1536);
 
-        TokenUsage tokenUsage = result.tokenUsage();
+        TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
 
-        assertThat(result.finishReason()).isNull();
+        assertThat(response.finishReason()).isNull();
     }
 }

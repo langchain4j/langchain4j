@@ -12,7 +12,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -121,16 +121,16 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(inputTokenCount);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
-                    resultBuilder.append(partialResponse);
+                    responseBuilder.append(partialResponse);
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Result<AiMessage> result = resultBuilder.build();
-                    handler.onComplete(result);
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(response);
                 })
                 .onError(handler::onError)
                 .execute();

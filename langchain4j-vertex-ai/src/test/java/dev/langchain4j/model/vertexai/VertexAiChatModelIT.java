@@ -2,7 +2,7 @@ package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -28,16 +28,16 @@ class VertexAiChatModelIT {
                 .maxRetries(3)
                 .build();
 
-        Result<AiMessage> result = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
-        System.out.println(result.get().text());
+        Response<AiMessage> response = vertexAiChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        System.out.println(response);
 
-        assertThat(result.get().text()).isNotBlank();
+        assertThat(response.content().text()).isNotBlank();
 
-        TokenUsage tokenUsage = result.tokenUsage();
+        TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount()).isGreaterThan(8);
 
-        assertThat(result.finishReason()).isNull();
+        assertThat(response.finishReason()).isNull();
     }
 }

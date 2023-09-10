@@ -9,7 +9,7 @@ import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
@@ -55,7 +55,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
                 .collect(toList());
@@ -63,7 +63,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         return embedTexts(texts);
     }
 
-    private Result<List<Embedding>> embedTexts(List<String> texts) {
+    private Response<List<Embedding>> embedTexts(List<String> texts) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             List<Value> instances = new ArrayList<>();
@@ -85,7 +85,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 inputTokenCount += extractTokenCount(value);
             }
 
-            return Result.from(
+            return Response.from(
                     embeddings,
                     new TokenUsage(inputTokenCount)
             );

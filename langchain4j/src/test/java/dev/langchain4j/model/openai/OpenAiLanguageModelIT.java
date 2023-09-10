@@ -1,7 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
@@ -21,16 +21,17 @@ class OpenAiLanguageModelIT {
 
         String prompt = "Hello, how are you?";
 
-        Result<String> result = model.generate(prompt);
+        Response<String> response = model.generate(prompt);
+        System.out.println(response);
 
-        assertThat(result.get()).isNotBlank();
+        assertThat(response.content()).isNotBlank();
 
-        TokenUsage tokenUsage = result.tokenUsage();
+        TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(result.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 }

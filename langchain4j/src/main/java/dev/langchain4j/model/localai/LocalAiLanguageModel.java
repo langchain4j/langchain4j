@@ -4,7 +4,7 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -55,7 +55,7 @@ public class LocalAiLanguageModel implements LanguageModel {
     }
 
     @Override
-    public Result<String> generate(String prompt) {
+    public Response<String> generate(String prompt) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
@@ -67,6 +67,6 @@ public class LocalAiLanguageModel implements LanguageModel {
 
         CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
-        return Result.from(response.text());
+        return Response.from(response.text());
     }
 }

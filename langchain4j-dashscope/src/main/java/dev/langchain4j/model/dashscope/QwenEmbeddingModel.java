@@ -6,7 +6,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,16 +75,16 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     }
 
     @Override
-    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         boolean queries = containsQueries(textSegments);
 
         if (!queries) {
             // default all documents
-            return Result.from(embedTexts(textSegments, DOCUMENT));
+            return Response.from(embedTexts(textSegments, DOCUMENT));
         } else {
             boolean documents = containsDocuments(textSegments);
             if (!documents) {
-                return Result.from(embedTexts(textSegments, QUERY));
+                return Response.from(embedTexts(textSegments, QUERY));
             } else {
                 // This is a mixed collection of queries and documents. Embed one by one.
                 List<Embedding> embeddings = new ArrayList<>(textSegments.size());
@@ -97,7 +97,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                     }
                     embeddings.addAll(result);
                 }
-                return Result.from(embeddings);
+                return Response.from(embeddings);
             }
         }
     }

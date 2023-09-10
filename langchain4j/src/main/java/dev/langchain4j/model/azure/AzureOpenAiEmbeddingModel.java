@@ -8,7 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.net.Proxy;
@@ -82,7 +82,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
      * @return A list of corresponding embeddings.
      */
     @Override
-    public Result<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
@@ -91,7 +91,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         return embedTexts(texts);
     }
 
-    private Result<List<Embedding>> embedTexts(List<String> texts) {
+    private Response<List<Embedding>> embedTexts(List<String> texts) {
 
         List<Embedding> embeddings = new ArrayList<>();
 
@@ -113,7 +113,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             inputTokenCount += response.usage().promptTokens();
         }
 
-        return Result.from(
+        return Response.from(
                 embeddings,
                 new TokenUsage(inputTokenCount)
         );

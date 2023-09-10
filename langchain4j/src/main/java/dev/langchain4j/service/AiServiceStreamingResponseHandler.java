@@ -5,7 +5,7 @@ import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +26,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     private final Object memoryId;
 
     private final Consumer<String> tokenHandler;
-    private final Consumer<Result<AiMessage>> completionHandler;
+    private final Consumer<Response<AiMessage>> completionHandler;
     private final Consumer<Throwable> errorHandler;
 
     private final TokenUsage tokenUsage;
@@ -34,7 +34,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
                                       Consumer<String> tokenHandler,
-                                      Consumer<Result<AiMessage>> completionHandler,
+                                      Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       TokenUsage tokenUsage) {
         this.context = ensureNotNull(context, "context");
@@ -53,13 +53,13 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     }
 
     @Override
-    public void onComplete(Result<AiMessage> result) {
+    public void onComplete(Response<AiMessage> response) {
 
         if (context.hasChatMemory()) {
-            context.chatMemory(memoryId).add(result.get());
+            context.chatMemory(memoryId).add(response.content());
         }
 
-        ToolExecutionRequest toolExecutionRequest = result.get().toolExecutionRequest();
+        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
         if (toolExecutionRequest != null) {
             ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
             String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
@@ -79,15 +79,15 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                             tokenHandler,
                             completionHandler,
                             errorHandler,
-                            tokenUsage.add(result.tokenUsage())
+                            tokenUsage.add(response.tokenUsage())
                     )
             );
         } else {
             if (completionHandler != null) {
-                completionHandler.accept(Result.from(
-                        result.get(),
-                        tokenUsage.add(result.tokenUsage()),
-                        result.finishReason())
+                completionHandler.accept(Response.from(
+                        response.content(),
+                        tokenUsage.add(response.tokenUsage()),
+                        response.finishReason())
                 );
             }
         }

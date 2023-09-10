@@ -20,7 +20,7 @@ public class QwenLanguageModelIT {
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
-        String answer = model.generate("Please say 'hello' to me").get();
+        String answer = model.generate("Please say 'hello' to me").content();
         System.out.println(answer);
 
         assertThat(answer).containsIgnoringCase("hello");

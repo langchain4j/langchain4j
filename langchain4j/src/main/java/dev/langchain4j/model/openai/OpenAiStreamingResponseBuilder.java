@@ -8,14 +8,14 @@ import dev.ai4j.openai4j.completion.CompletionChoice;
 import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
 
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 
-public class OpenAiStreamedResultBuilder {
+public class OpenAiStreamingResponseBuilder {
 
     private final StringBuilder contentBuilder = new StringBuilder();
     private final StringBuilder toolNameBuilder = new StringBuilder();
@@ -26,7 +26,7 @@ public class OpenAiStreamedResultBuilder {
 
     private String finishReason;
 
-    public OpenAiStreamedResultBuilder(Integer inputTokenCount) {
+    public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
     }
 
@@ -103,11 +103,11 @@ public class OpenAiStreamedResultBuilder {
         }
     }
 
-    public Result<AiMessage> build() {
+    public Response<AiMessage> build() {
 
         String content = contentBuilder.toString();
         if (!content.isEmpty()) {
-            return Result.from(
+            return Response.from(
                     AiMessage.from(content),
                     new TokenUsage(inputTokenCount, outputTokenCount),
                     finishReasonFrom(finishReason)
@@ -116,7 +116,7 @@ public class OpenAiStreamedResultBuilder {
 
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
-            return Result.from(
+            return Response.from(
                     AiMessage.from(ToolExecutionRequest.builder()
                             .name(toolName)
                             .arguments(toolArgumentsBuilder.toString())

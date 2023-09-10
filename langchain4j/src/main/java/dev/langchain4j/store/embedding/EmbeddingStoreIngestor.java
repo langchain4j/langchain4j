@@ -59,7 +59,7 @@ public class EmbeddingStoreIngestor {
         if (textSegmentTransformer != null) {
             segments = textSegmentTransformer.transformAll(segments);
         }
-        List<Embedding> embeddings = embeddingModel.embedAll(segments).get();
+        List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
         embeddingStore.addAll(embeddings, segments);
     }
 

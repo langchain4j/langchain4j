@@ -9,7 +9,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -68,11 +68,11 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Result<Moderation> moderate(String text) {
+    public Response<Moderation> moderate(String text) {
         return moderateInternal(singletonList(text));
     }
 
-    private Result<Moderation> moderateInternal(List<String> inputs) {
+    private Response<Moderation> moderateInternal(List<String> inputs) {
 
         ModerationRequest request = ModerationRequest.builder()
                 .model(modelName)
@@ -84,26 +84,26 @@ public class OpenAiModerationModel implements ModerationModel {
         int i = 0;
         for (ModerationResult moderationResult : response.results()) {
             if (moderationResult.isFlagged()) {
-                return Result.from(Moderation.flagged(inputs.get(i)));
+                return Response.from(Moderation.flagged(inputs.get(i)));
             }
             i++;
         }
 
-        return Result.from(Moderation.notFlagged());
+        return Response.from(Moderation.notFlagged());
     }
 
     @Override
-    public Result<Moderation> moderate(Prompt prompt) {
+    public Response<Moderation> moderate(Prompt prompt) {
         return moderate(prompt.text());
     }
 
     @Override
-    public Result<Moderation> moderate(ChatMessage message) {
+    public Response<Moderation> moderate(ChatMessage message) {
         return moderate(message.text());
     }
 
     @Override
-    public Result<Moderation> moderate(List<ChatMessage> messages) {
+    public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
                 .map(ChatMessage::text)
                 .collect(toList());
@@ -112,7 +112,7 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Result<Moderation> moderate(TextSegment textSegment) {
+    public Response<Moderation> moderate(TextSegment textSegment) {
         return moderate(textSegment.text());
     }
 

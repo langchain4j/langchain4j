@@ -5,8 +5,8 @@ import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.openai.OpenAiStreamedResultBuilder;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -62,22 +62,22 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        OpenAiStreamedResultBuilder resultBuilder = new OpenAiStreamedResultBuilder(0);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(0);
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    resultBuilder.append(partialResponse);
+                    responseBuilder.append(partialResponse);
                     String token = partialResponse.text();
                     if (token != null) {
                         handler.onNext(token);
                     }
                 })
                 .onComplete(() -> {
-                    Result<AiMessage> result = resultBuilder.build();
-                    handler.onComplete(Result.from(
-                            result.get().text(),
-                            result.tokenUsage(),
-                            result.finishReason()
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(Response.from(
+                            response.content().text(),
+                            response.tokenUsage(),
+                            response.finishReason()
                     ));
                 })
                 .onError(handler::onError)

@@ -3,7 +3,7 @@ package dev.langchain4j.model.dashscope;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -41,9 +41,9 @@ public class QwenStreamingLanguageModelIT {
             }
 
             @Override
-            public void onComplete(Result<String> result) {
+            public void onComplete(Response<String> response) {
                 future.complete(answerBuilder.toString());
-                System.out.println("onComplete: '" + result + "'");
+                System.out.println("onComplete: '" + response + "'");
             }
 
             @Override

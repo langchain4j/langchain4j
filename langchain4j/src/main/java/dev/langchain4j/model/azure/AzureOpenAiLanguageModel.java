@@ -7,7 +7,7 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.output.Result;
+import dev.langchain4j.model.output.Response;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -78,7 +78,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     }
 
     @Override
-    public Result<String> generate(String prompt) {
+    public Response<String> generate(String prompt) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .prompt(prompt)
@@ -88,7 +88,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
         CompletionChoice completionChoice = response.choices().get(0);
-        return Result.from(
+        return Response.from(
                 completionChoice.text(),
                 tokenUsageFrom(response.usage()),
                 finishReasonFrom(completionChoice.finishReason())
