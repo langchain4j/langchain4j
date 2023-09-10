@@ -50,4 +50,8 @@ public class UrlSource implements DocumentSource {
             throw new RuntimeException(e);
         }
     }
+
+    public URL getUrl() {
+        return url;
+    }
 }
