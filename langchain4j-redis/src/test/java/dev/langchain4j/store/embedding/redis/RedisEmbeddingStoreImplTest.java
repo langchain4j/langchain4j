@@ -68,4 +68,17 @@ class RedisEmbeddingStoreImplTest {
         List<EmbeddingMatch<TextSegment>> res = store.findRelevant(Embedding.from(Arrays.asList(0.80f, 0.45f, 0.89f, 0.24f)), 5);
         res.forEach(System.out::println);
     }
+
+    @Test
+    void testScore() {
+        String id = store.add(Embedding.from(Arrays.asList(0.50f, 0.85f, 0.760f, 0.24f)),
+                TextSegment.from("test string", Metadata.metadata("field", "value")));
+        System.out.println("id=" + id);
+
+        // use the same embedding to search
+        List<EmbeddingMatch<TextSegment>> res = store.findRelevant(Embedding.from(Arrays.asList(0.50f, 0.85f, 0.760f, 0.24f)), 1);
+        res.forEach(System.out::println);
+
+        // the result embeddingMatch score is 5.96046447754E-8, but expected is 1 because they are same vectors.
+    }
 }
