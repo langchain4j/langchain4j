@@ -27,7 +27,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     public RedisEmbeddingStore(String serverUrl, Integer dimension) {
         try {
             implementation = loadDynamically(
-                    "dev.langchain4j.store.embedding.elasticsearch.ElasticsearchEmbeddingStoreImpl",
+                    "dev.langchain4j.store.embedding.redis.RedisEmbeddingStoreImpl",
                     serverUrl, dimension
             );
         } catch (ClassNotFoundException e) {
