@@ -44,10 +44,10 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 + "<dependency>\n" +
                 "    <groupId>dev.langchain4j</groupId>\n" +
                 "    <artifactId>langchain4j-elasticsearch</artifactId>\n" +
-                "    <version>0.20.0</version>\n" +
+                "    <version>0.22.0</version>\n" +
                 "</dependency>\n\n"
                 + "Gradle:\n"
-                + "implementation 'dev.langchain4j:langchain4j-elasticsearch:0.20.0'\n";
+                + "implementation 'dev.langchain4j:langchain4j-elasticsearch:0.22.0'\n";
     }
 
     private static EmbeddingStore<TextSegment> loadDynamically(String implementationClassName, String serverUrl, String username, String password, String apiKey, String indexName) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
