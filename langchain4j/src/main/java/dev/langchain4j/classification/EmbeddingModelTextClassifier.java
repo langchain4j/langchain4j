@@ -2,11 +2,18 @@ package dev.langchain4j.classification;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
@@ -111,7 +118,8 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
             double meanScore = 0;
             double maxScore = 0;
             for (Embedding exampleEmbedding : exampleEmbeddings) {
-                double score = RelevanceScore.cosine(textEmbedding.vector(), exampleEmbedding.vector());
+                double cosineSimilarity = CosineSimilarity.between(textEmbedding, exampleEmbedding);
+                double score = RelevanceScore.fromCosineSimilarity(cosineSimilarity);
                 meanScore += score;
                 maxScore = Math.max(score, maxScore);
             }

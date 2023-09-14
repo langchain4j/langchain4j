@@ -1,9 +1,9 @@
 package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.Generation;
-import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
+import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -13,21 +13,20 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 
 import java.util.List;
-import java.util.Optional;
 
 public class QwenChatModel implements ChatLanguageModel {
     protected final Generation gen;
     protected final String apiKey;
     protected final String modelName;
     protected final Double topP;
-    protected final Double topK;
+    protected final Integer topK;
     protected final Boolean enableSearch;
     protected final Integer seed;
 
     protected QwenChatModel(String apiKey,
                             String modelName,
                             Double topP,
-                            Double topK,
+                            Integer topK,
                             Boolean enableSearch,
                             Integer seed) {
 
@@ -42,18 +41,14 @@ public class QwenChatModel implements ChatLanguageModel {
 
     @Override
     public AiMessage sendMessages(List<ChatMessage> messages) {
-        return AiMessage.aiMessage(sendMessage(QwenParamHelper.toQwenPrompt(messages)));
+        return AiMessage.aiMessage(sendMessage(null, QwenHelper.toQwenMessages(messages)));
     }
 
-    protected String sendMessage(String prompt) {
-        GenerationResult result = doSendMessage(prompt);
-        return Optional.of(result)
-                    .map(GenerationResult::getOutput)
-                    .map(GenerationOutput::getText)
-                    .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]");
+    protected String sendMessage(String prompt, List<Message> messages) {
+        return QwenHelper.answerFrom(doSendMessage(prompt, messages));
     }
 
-    protected GenerationResult doSendMessage(String prompt) {
+    protected GenerationResult doSendMessage(String prompt, List<Message> messages) {
         QwenParam param = QwenParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -62,6 +57,8 @@ public class QwenChatModel implements ChatLanguageModel {
                 .enableSearch(enableSearch)
                 .seed(seed)
                 .prompt(prompt)
+                .messages(messages)
+                .resultFormat(QwenParam.ResultFormat.MESSAGE)
                 .build();
 
         try {
@@ -88,7 +85,7 @@ public class QwenChatModel implements ChatLanguageModel {
         protected String apiKey;
         protected String modelName;
         protected Double topP;
-        protected Double topK;
+        protected Integer topK;
         protected Boolean enableSearch;
         protected Integer seed;
 
@@ -107,7 +104,7 @@ public class QwenChatModel implements ChatLanguageModel {
             return this;
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
@@ -126,11 +123,8 @@ public class QwenChatModel implements ChatLanguageModel {
             if (Utils.isNullOrBlank(apiKey)) {
                 throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
             }
-            modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.QWEN_V1 : modelName;
-            topP = topP == null ? 0.8 : topP;
-            topK = topK == null ? 100.0 : topK;
-            enableSearch = enableSearch == null ? Boolean.FALSE : enableSearch;
-            seed = seed == null ? 1234 : seed;
+            modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.QWEN_PLUS_V1 : modelName;
+            enableSearch = enableSearch != null && enableSearch;
         }
 
         public QwenChatModel build() {

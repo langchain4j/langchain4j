@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
@@ -13,7 +14,12 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.nio.file.StandardOpenOption.CREATE;
@@ -116,7 +122,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
         for (Entry<Embedded> entry : entries) {
-            double score = RelevanceScore.cosine(entry.embedding.vector(), referenceEmbedding.vector());
+            double cosineSimilarity = CosineSimilarity.between(entry.embedding, referenceEmbedding);
+            double score = RelevanceScore.fromCosineSimilarity(cosineSimilarity);
             if (score >= minScore) {
                 matches.add(new EmbeddingMatch<>(score, entry.id, entry.embedding, entry.embedded));
                 if (matches.size() > maxResults) {

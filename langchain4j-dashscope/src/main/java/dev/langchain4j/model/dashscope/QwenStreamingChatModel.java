@@ -2,6 +2,7 @@ package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
+import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
@@ -16,7 +17,7 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
     protected QwenStreamingChatModel(String apiKey,
                                      String modelName,
                                      Double topP,
-                                     Double topK,
+                                     Integer topK,
                                      Boolean enableSearch,
                                      Integer seed) {
         super(apiKey, modelName, topP, topK, enableSearch, seed);
@@ -24,10 +25,10 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
 
     @Override
     public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
-        sendMessage(QwenParamHelper.toQwenPrompt(messages), handler);
+        sendMessage(null, QwenHelper.toQwenMessages(messages), handler);
     }
 
-    protected void sendMessage(String prompt, StreamingResponseHandler handler) {
+    protected void sendMessage(String rawPrompt, List<Message> messages, StreamingResponseHandler handler) {
         QwenParam param = QwenParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -35,14 +36,16 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
                 .topK(topK)
                 .enableSearch(enableSearch)
                 .seed(seed)
-                .prompt(prompt)
+                .prompt(rawPrompt)
+                .messages(messages)
+                .resultFormat(QwenParam.ResultFormat.MESSAGE)
                 .build();
 
         try {
-            gen.call(param, new ResultCallback<GenerationResult>() {
+            gen.streamCall(param, new ResultCallback<GenerationResult>() {
                 @Override
                 public void onEvent(GenerationResult result) {
-                    handler.onNext(result.getOutput().getText());
+                    handler.onNext(QwenHelper.answerFrom(result));
                 }
                 @Override
                 public void onComplete() {
@@ -89,7 +92,7 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
             return (Builder) super.topP(topP);
         }
 
-        public Builder topK(Double topK) {
+        public Builder topK(Integer topK) {
             return (Builder) super.topK(topK);
         }
 
