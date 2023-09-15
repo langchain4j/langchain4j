@@ -7,6 +7,8 @@ import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.IOException;
 import java.util.List;
@@ -15,10 +17,11 @@ import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.vertexai.VertexAiChatModel.extractTokenCount;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a connection to the Vertex AI LLM with a text interface, such as text-bison.
+ * Represents a Google Vertex AI language model with a text interface, such as text-bison.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview">here</a>.
  */
 public class VextexAiLanguageModel implements LanguageModel {
@@ -56,11 +59,11 @@ public class VextexAiLanguageModel implements LanguageModel {
     }
 
     @Override
-    public String process(String text) {
+    public Response<String> generate(String prompt) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
             Value.Builder instanceBuilder = newBuilder();
-            JsonFormat.parser().merge(toJson(new VertexAiTextInstance(text)), instanceBuilder);
+            JsonFormat.parser().merge(toJson(new VertexAiTextInstance(prompt)), instanceBuilder);
             List<Value> instances = singletonList(instanceBuilder.build());
 
             Value.Builder parametersBuilder = Value.newBuilder();
@@ -69,7 +72,13 @@ public class VextexAiLanguageModel implements LanguageModel {
 
             PredictResponse response = withRetry(() -> client.predict(endpointName, instances, parameters), maxRetries);
 
-            return extractContent(response);
+            return Response.from(
+                    extractContent(response),
+                    new TokenUsage(
+                            extractTokenCount(response, "inputTokenCount"),
+                            extractTokenCount(response, "outputTokenCount")
+                    )
+            );
 
         } catch (IOException e) {
             throw new RuntimeException(e);

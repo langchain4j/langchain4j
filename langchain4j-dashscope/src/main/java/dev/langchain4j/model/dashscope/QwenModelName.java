@@ -4,6 +4,7 @@ package dev.langchain4j.model.dashscope;
  * The LLMs provided by Alibaba Cloud, performs better than most LLMs in Asia languages.
  */
 public class QwenModelName {
+
     // Use with QwenChatModel and QwenLanguageModel
     public static final String QWEN_V1 = "qwen-v1";  // Qwen base model, 4k context.
     public static final String QWEN_PLUS_V1 = "qwen-plus-v1";  // Qwen plus model, 8k context.

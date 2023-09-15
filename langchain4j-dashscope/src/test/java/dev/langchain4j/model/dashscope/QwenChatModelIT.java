@@ -17,12 +17,15 @@ public class QwenChatModelIT {
         if (Utils.isNullOrBlank(apiKey)) {
             return;
         }
+
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey)
                 .modelName(modelName)
                 .build();
-        AiMessage answer = model.sendMessages(QwenTestHelper.chatMessages());
+
+        AiMessage answer = model.generate(QwenTestHelper.chatMessages()).content();
         System.out.println(answer.text());
+
         assertThat(answer.text()).containsIgnoringCase("rain");
     }
 }
