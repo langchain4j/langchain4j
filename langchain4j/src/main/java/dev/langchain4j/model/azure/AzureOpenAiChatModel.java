@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.output.Response;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -16,12 +17,16 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a connection to the OpenAI LLM, hosted on Azure, that has a chat completion interface (like gpt-3.5-turbo and gpt-4).
+ * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
  * <p>
  * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
  * <p>
@@ -90,23 +95,23 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
-        return sendMessages(messages, null, null);
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
+        return generate(messages, null, null);
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return sendMessages(messages, toolSpecifications, null);
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return generate(messages, toolSpecifications, null);
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return sendMessages(messages, singletonList(toolSpecification), toolSpecification);
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
-    private AiMessage sendMessages(List<ChatMessage> messages,
-                                   List<ToolSpecification> toolSpecifications,
-                                   ToolSpecification toolThatMustBeExecuted
+    private Response<AiMessage> generate(List<ChatMessage> messages,
+                                         List<ToolSpecification> toolSpecifications,
+                                         ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .messages(toOpenAiMessages(messages))
@@ -127,7 +132,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return aiMessageFrom(response);
+        return Response.from(
+                aiMessageFrom(response),
+                tokenUsageFrom(response.usage()),
+                finishReasonFrom(response.choices().get(0).finishReason())
+        );
     }
 
     @Override

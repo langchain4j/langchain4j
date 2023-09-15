@@ -62,11 +62,11 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         chatMemory.add(userMessage);
 
-        AiMessage answer = chatLanguageModel.sendMessages(chatMemory.messages());
+        AiMessage aiMessage = chatLanguageModel.generate(chatMemory.messages()).content();
 
-        chatMemory.add(answer);
+        chatMemory.add(aiMessage);
 
-        return answer.text();
+        return aiMessage.text();
     }
 
     private static String format(List<TextSegment> relevantSegments) {

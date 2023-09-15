@@ -1,10 +1,13 @@
 package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.chat.*;
+import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -14,6 +17,7 @@ import static dev.ai4j.openai4j.chat.Role.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
+import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -125,6 +129,32 @@ public class InternalOpenAiHelper {
                     .build();
 
             return aiMessage(toolExecutionRequest);
+        }
+    }
+
+    public static TokenUsage tokenUsageFrom(Usage openAiUsage) {
+        if (openAiUsage == null) {
+            return null;
+        }
+        return new TokenUsage(
+                openAiUsage.promptTokens(),
+                openAiUsage.completionTokens(),
+                openAiUsage.totalTokens()
+        );
+    }
+
+    public static FinishReason finishReasonFrom(String openAiFinishReason) {
+        switch (openAiFinishReason) {
+            case "stop":
+                return STOP;
+            case "length":
+                return LENGTH;
+            case "function_call":
+                return TOOL_EXECUTION;
+            case "content_filter":
+                return CONTENT_FILTER;
+            default:
+                return null;
         }
     }
 }

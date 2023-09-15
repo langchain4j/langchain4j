@@ -4,41 +4,44 @@ import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.common.Message;
-import com.alibaba.dashscope.common.Role;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-public class QwenHelper {
-    public static List<Message> toQwenMessages(List<ChatMessage> messages) {
+import static com.alibaba.dashscope.common.Role.ASSISTANT;
+import static com.alibaba.dashscope.common.Role.SYSTEM;
+import static com.alibaba.dashscope.common.Role.USER;
+import static java.util.stream.Collectors.toList;
+
+class QwenHelper {
+
+    static List<Message> toQwenMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(QwenHelper::toQwenMessage)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
-    public static Message toQwenMessage(ChatMessage message) {
+    static Message toQwenMessage(ChatMessage message) {
         return Message.builder()
                 .role(roleFrom(message))
                 .content(message.text())
                 .build();
     }
 
-    public static String roleFrom(ChatMessage message) {
+    static String roleFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
-            return Role.ASSISTANT.getValue();
+            return ASSISTANT.getValue();
         } else if (message instanceof SystemMessage) {
-            return Role.SYSTEM.getValue();
+            return SYSTEM.getValue();
         } else {
-            return Role.USER.getValue();
+            return USER.getValue();
         }
     }
 
-    public static String answerFrom(GenerationResult result) {
+    static String answerFrom(GenerationResult result) {
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)

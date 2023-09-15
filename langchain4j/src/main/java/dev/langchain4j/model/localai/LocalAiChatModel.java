@@ -7,6 +7,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -60,23 +61,23 @@ public class LocalAiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages) {
-        return sendMessages(messages, null, null);
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
+        return generate(messages, null, null);
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return sendMessages(messages, toolSpecifications, null);
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return generate(messages, toolSpecifications, null);
     }
 
     @Override
-    public AiMessage sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return sendMessages(messages, singletonList(toolSpecification), toolSpecification);
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return generate(messages, singletonList(toolSpecification), toolSpecification);
     }
 
-    private AiMessage sendMessages(List<ChatMessage> messages,
-                                   List<ToolSpecification> toolSpecifications,
-                                   ToolSpecification toolThatMustBeExecuted
+    private Response<AiMessage> generate(List<ChatMessage> messages,
+                                         List<ToolSpecification> toolSpecifications,
+                                         ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
@@ -96,6 +97,6 @@ public class LocalAiChatModel implements ChatLanguageModel {
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return aiMessageFrom(response);
+        return Response.from(aiMessageFrom(response));
     }
 }

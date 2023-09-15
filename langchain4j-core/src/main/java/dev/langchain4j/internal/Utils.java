@@ -9,6 +9,10 @@ import java.util.UUID;
 
 public class Utils {
 
+  public static <T> T getOrDefault(T value, T defaultValue) {
+    return value != null ? value : defaultValue;
+  }
+
   public static boolean isNullOrBlank(String string) {
     return string == null || string.trim().isEmpty();
   }

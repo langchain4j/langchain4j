@@ -14,6 +14,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class QwenEmbeddingModelIT {
+
     private EmbeddingModel getModel(String modelName) {
         String apiKey = QwenTestHelper.apiKey();
         if (Utils.isNullOrBlank(apiKey)) {
@@ -24,6 +25,7 @@ public class QwenEmbeddingModelIT {
                 .modelName(modelName)
                 .build();
     }
+
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#embeddingModelNameProvider")
     void should_embed_one_text(String modelName) {
@@ -31,7 +33,9 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
-        Embedding embedding = model.embed("hello");
+
+        Embedding embedding = model.embed("hello").content();
+
         assertThat(embedding.vector()).isNotEmpty();
     }
 
@@ -42,10 +46,11 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello"),
                 textSegment("how are you?")
-        ));
+        )).content();
 
         assertThat(embeddings).hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotEmpty();
@@ -59,10 +64,11 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello", Metadata.from(QwenEmbeddingModel.TYPE_KEY, QwenEmbeddingModel.TYPE_QUERY)),
                 textSegment("how are you?", Metadata.from(QwenEmbeddingModel.TYPE_KEY, QwenEmbeddingModel.TYPE_QUERY))
-        ));
+        )).content();
 
         assertThat(embeddings).hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotEmpty();
@@ -76,10 +82,11 @@ public class QwenEmbeddingModelIT {
         if (model == null) {
             return;
         }
+
         List<Embedding> embeddings = model.embedAll(asList(
                 textSegment("hello", Metadata.from(QwenEmbeddingModel.TYPE_KEY, QwenEmbeddingModel.TYPE_QUERY)),
                 textSegment("how are you?")
-        ));
+        )).content();
 
         assertThat(embeddings).hasSize(2);
         assertThat(embeddings.get(0).vector()).isNotEmpty();
