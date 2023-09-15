@@ -31,21 +31,17 @@ public class QwenStreamingChatModelIT {
                 .modelName(modelName)
                 .build();
 
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
         model.generate(chatMessages(), new StreamingResponseHandler<AiMessage>() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
             @Override
             public void onNext(String token) {
-                answerBuilder.append(token);
                 System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<AiMessage> response) {
-                future.complete(answerBuilder.toString());
-                System.out.println("onComplete: '" + response + "'");
+                future.complete(response);
+                System.out.println("onComplete: '" + response.content().text() + "'");
             }
 
             @Override
@@ -54,8 +50,9 @@ public class QwenStreamingChatModelIT {
             }
         });
 
-        String answer = future.get(30, SECONDS);
+        Response<AiMessage> response = future.get(30, SECONDS);
+        System.out.println(response);
 
-        assertThat(answer).containsIgnoringCase("rain");
+        assertThat(response.content().text()).containsIgnoringCase("rain");
     }
 }
