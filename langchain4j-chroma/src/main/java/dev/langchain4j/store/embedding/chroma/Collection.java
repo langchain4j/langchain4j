@@ -19,5 +19,4 @@ class Collection {
     public Map<String, String> metadata() {
         return metadata;
     }
-
 }
