@@ -13,14 +13,21 @@ public class DocumentSplitters {
      * then words, and then characters until they fit into a segment.
      *
      * @param maxSegmentSizeInTokens The maximum size of the segment, defined in tokens.
+     * @param maxOverlapSizeInTokens The maximum size of the overlap, defined in tokens.
+     *                               Only full sentences are considered for the overlap.
      * @param tokenizer              The tokenizer that is used to count tokens in the text.
      * @return recursive document splitter
      */
-    public static DocumentSplitter recursive(int maxSegmentSizeInTokens, Tokenizer tokenizer) {
-        return new DocumentByParagraphSplitter(maxSegmentSizeInTokens, tokenizer,
-                new DocumentByLineSplitter(maxSegmentSizeInTokens, tokenizer,
-                        new DocumentBySentenceSplitter(maxSegmentSizeInTokens, tokenizer,
-                                new DocumentByWordSplitter(maxSegmentSizeInTokens, tokenizer))));
+    public static DocumentSplitter recursive(int maxSegmentSizeInTokens,
+                                             int maxOverlapSizeInTokens,
+                                             Tokenizer tokenizer) {
+        return new DocumentByParagraphSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
+                new DocumentByLineSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
+                        new DocumentBySentenceSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer,
+                                new DocumentByWordSplitter(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer)
+                        )
+                )
+        );
     }
 
     /**
@@ -30,10 +37,12 @@ public class DocumentSplitters {
      * If some paragraphs are too long, they are recursively split into lines, then sentences,
      * then words, and then characters until they fit into a segment.
      *
-     * @param maxSegmentSizeInChars The maximum size of the segment, defined in characters.
+     * @param maxSegmentSizeInChars  The maximum size of the segment, defined in characters.
+     * @param maxOverlapSizeInTokens The maximum size of the overlap, defined in characters.
+     *                               Only full sentences are considered for the overlap.
      * @return recursive document splitter
      */
-    public static DocumentSplitter recursive(int maxSegmentSizeInChars) {
-        return recursive(maxSegmentSizeInChars, null);
+    public static DocumentSplitter recursive(int maxSegmentSizeInChars, int maxOverlapSizeInTokens) {
+        return recursive(maxSegmentSizeInChars, maxOverlapSizeInTokens, null);
     }
 }

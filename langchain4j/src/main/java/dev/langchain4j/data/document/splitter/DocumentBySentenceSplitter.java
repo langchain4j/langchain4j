@@ -32,23 +32,31 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
     private final SentenceDetectorME sentenceDetector;
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInChars) {
-        super(maxSegmentSizeInChars, null, null);
+    public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
+                                      int maxOverlapSizeInChars) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
         this.sentenceDetector = createSentenceDetector();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInChars, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, null, subSplitter);
+    public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
+                                      int maxOverlapSizeInChars,
+                                      DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
         this.sentenceDetector = createSentenceDetector();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, tokenizer, null);
+    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
+                                      int maxOverlapSizeInTokens,
+                                      Tokenizer tokenizer) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
         this.sentenceDetector = createSentenceDetector();
     }
 
-    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
+    public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
+                                      int maxOverlapSizeInTokens,
+                                      Tokenizer tokenizer,
+                                      DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
         this.sentenceDetector = createSentenceDetector();
     }
 
@@ -73,6 +81,6 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return new DocumentByWordSplitter(maxSegmentSize, tokenizer);
+        return new DocumentByWordSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
     }
 }
