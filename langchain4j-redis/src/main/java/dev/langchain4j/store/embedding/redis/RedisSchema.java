@@ -22,7 +22,6 @@ public class RedisSchema {
     private static final String JSON_PATH_PREFIX = "$.";
     private static final VectorField.VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = VectorField.VectorAlgorithm.HNSW;
     private static final MetricType DEFAULT_METRIC_TYPE = MetricType.COSINE;
-    private static final DataType DEFAULT_DATA_TYPE = DataType.FLOAT32;
 
     /* Redis schema field settings */
 
@@ -44,13 +43,6 @@ public class RedisSchema {
     private int dimension;
     @Builder.Default
     private MetricType metricType = DEFAULT_METRIC_TYPE;
-    /**
-     * only support FLOAT32
-     *
-     * @see dev.langchain4j.data.embedding.Embedding
-     */
-    @Builder.Default
-    private DataType dataType = DataType.FLOAT32;
 
     public RedisSchema(int dimension) {
         this.dimension = dimension;
@@ -60,7 +52,7 @@ public class RedisSchema {
         Map<String, Object> vectorAttrs = new HashMap<>();
         vectorAttrs.put("DIM", dimension);
         vectorAttrs.put("DISTANCE_METRIC", metricType.name());
-        vectorAttrs.put("TYPE", dataType.name());
+        vectorAttrs.put("TYPE", "FLOAT32");
         vectorAttrs.put("INITIAL_CAP", 5);
         List<SchemaField> fields = new ArrayList<>();
         fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName).as(scalarFieldName).weight(1.0));
