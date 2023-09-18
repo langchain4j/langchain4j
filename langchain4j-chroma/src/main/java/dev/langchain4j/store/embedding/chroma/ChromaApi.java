@@ -1,11 +1,7 @@
 package dev.langchain4j.store.embedding.chroma;
 
 import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.GET;
-import retrofit2.http.Headers;
-import retrofit2.http.POST;
-import retrofit2.http.Path;
+import retrofit2.http.*;
 
 interface ChromaApi {
 
@@ -24,5 +20,4 @@ interface ChromaApi {
     @POST("/api/v1/collections/{collection_id}/query")
     @Headers({"Content-Type: application/json"})
     Call<QueryResponse> queryCollection(@Path("collection_id") String collectionId, @Body QueryRequest queryRequest);
-
 }

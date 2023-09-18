@@ -8,7 +8,7 @@ import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.internal.Utils.quoted;
 
 /**
- * Represents a response message from an AI (LLM).
+ * Represents a response message from an AI (language model).
  * The message can contain either a textual response or a request to execute a tool.
  * In the case of tool execution, the response to this message should be a {@link ToolExecutionResultMessage}.
  */

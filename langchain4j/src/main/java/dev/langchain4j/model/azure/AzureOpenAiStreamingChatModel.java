@@ -1,13 +1,19 @@
 package dev.langchain4j.model.azure;
 
 import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.chat.*;
+import dev.ai4j.openai4j.chat.ChatCompletionChoice;
+import dev.ai4j.openai4j.chat.ChatCompletionRequest;
+import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import dev.ai4j.openai4j.chat.Delta;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.output.Response;
 
 import java.net.Proxy;
 import java.time.Duration;
@@ -20,8 +26,8 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a connection to the OpenAI LLM, hosted on Azure, that has a chat completion interface (like gpt-3.5-turbo and gpt-4).
- * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <p>
  * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
  * <p>
@@ -86,24 +92,24 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, StreamingResponseHandler handler) {
-        sendMessages(messages, null, null, handler);
+    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, null, null, handler);
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler handler) {
-        sendMessages(messages, toolSpecifications, null, handler);
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, toolSpecifications, null, handler);
     }
 
     @Override
-    public void sendMessages(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler handler) {
-        sendMessages(messages, singletonList(toolSpecification), toolSpecification, handler);
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, singletonList(toolSpecification), toolSpecification, handler);
     }
 
-    private void sendMessages(List<ChatMessage> messages,
-                              List<ToolSpecification> toolSpecifications,
-                              ToolSpecification toolThatMustBeExecuted,
-                              StreamingResponseHandler handler
+    private void generate(List<ChatMessage> messages,
+                          List<ToolSpecification> toolSpecifications,
+                          ToolSpecification toolThatMustBeExecuted,
+                          StreamingResponseHandler<AiMessage> handler
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .stream(true)
@@ -114,39 +120,48 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .presencePenalty(presencePenalty)
                 .frequencyPenalty(frequencyPenalty);
 
+        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
+
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             requestBuilder.functions(toFunctions(toolSpecifications));
+            if (tokenizer != null) {
+                inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
+            }
         }
         if (toolThatMustBeExecuted != null) {
             requestBuilder.functionCall(toolThatMustBeExecuted.name());
+            if (tokenizer != null) {
+                inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
+            }
         }
 
         ChatCompletionRequest request = requestBuilder.build();
 
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
+
         client.chatCompletion(request)
-                .onPartialResponse(partialResponse -> handle(partialResponse, handler))
-                .onComplete(handler::onComplete)
+                .onPartialResponse(partialResponse -> {
+                    responseBuilder.append(partialResponse);
+                    handle(partialResponse, handler);
+                })
+                .onComplete(() -> {
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(response);
+                })
                 .onError(handler::onError)
                 .execute();
     }
 
     private static void handle(ChatCompletionResponse partialResponse,
-                               StreamingResponseHandler handler) {
+                               StreamingResponseHandler<AiMessage> handler) {
         List<ChatCompletionChoice> choices = partialResponse.choices();
         if (choices == null || choices.isEmpty()) {
             return;
         }
         Delta delta = choices.get(0).delta();
         String content = delta.content();
-        FunctionCall functionCall = delta.functionCall();
         if (content != null) {
             handler.onNext(content);
-        } else if (functionCall != null) {
-            if (functionCall.name() != null) {
-                handler.onToolName(functionCall.name());
-            } else if (functionCall.arguments() != null) {
-                handler.onToolArguments(functionCall.arguments());
-            }
         }
     }
 

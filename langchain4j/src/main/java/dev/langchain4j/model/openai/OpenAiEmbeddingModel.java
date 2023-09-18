@@ -8,6 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -18,12 +19,13 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Represents a connection to the OpenAI embedding model, such as text-embedding-ada-002.
+ * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
 public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
@@ -67,7 +69,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     @Override
-    public List<Embedding> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()
                 .map(TextSegment::text)
@@ -76,7 +78,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         return embedTexts(texts);
     }
 
-    private List<Embedding> embedTexts(List<String> texts) {
+    private Response<List<Embedding>> embedTexts(List<String> texts) {
 
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(texts)
@@ -85,9 +87,14 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
 
         EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
 
-        return response.data().stream()
+        List<Embedding> embeddings = response.data().stream()
                 .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
                 .collect(toList());
+
+        return Response.from(
+                embeddings,
+                tokenUsageFrom(response.usage())
+        );
     }
 
     @Override

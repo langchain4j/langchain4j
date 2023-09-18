@@ -2,8 +2,11 @@ package dev.langchain4j.model.localai;
 
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
+import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -49,24 +52,34 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     @Override
-    public void process(String text, StreamingResponseHandler handler) {
+    public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
-                .prompt(text)
+                .prompt(prompt)
                 .temperature(temperature)
                 .topP(topP)
                 .maxTokens(maxTokens)
                 .build();
 
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(0);
+
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
-                    String partialResponseText = partialResponse.text();
-                    if (partialResponseText != null) {
-                        handler.onNext(partialResponseText);
+                    responseBuilder.append(partialResponse);
+                    String token = partialResponse.text();
+                    if (token != null) {
+                        handler.onNext(token);
                     }
                 })
-                .onComplete(handler::onComplete)
+                .onComplete(() -> {
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(Response.from(
+                            response.content().text(),
+                            response.tokenUsage(),
+                            response.finishReason()
+                    ));
+                })
                 .onError(handler::onError)
                 .execute();
     }

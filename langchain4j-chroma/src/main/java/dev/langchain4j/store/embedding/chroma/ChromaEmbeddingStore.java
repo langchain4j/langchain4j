@@ -204,5 +204,4 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         Map<String, String> metadata = queryResponse.metadatas().get(0).get(i);
         return text == null ? null : TextSegment.from(text, metadata == null ? null : new Metadata(metadata));
     }
-
 }
