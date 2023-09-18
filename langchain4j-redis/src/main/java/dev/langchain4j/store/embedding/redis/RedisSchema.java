@@ -2,9 +2,13 @@ package dev.langchain4j.store.embedding.redis;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import redis.clients.jedis.search.Schema;
+import redis.clients.jedis.search.schemafields.SchemaField;
+import redis.clients.jedis.search.schemafields.TextField;
+import redis.clients.jedis.search.schemafields.VectorField;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,7 +19,8 @@ import java.util.Map;
 public class RedisSchema {
 
     public static final String SCORE_FIELD_NAME = "vector_score";
-    private static final Schema.VectorField.VectorAlgo DEFAULT_VECTOR_ALGORITHM = Schema.VectorField.VectorAlgo.HNSW;
+    private static final String JSON_PATH_PREFIX = "$.";
+    private static final VectorField.VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = VectorField.VectorAlgorithm.HNSW;
     private static final MetricType DEFAULT_METRIC_TYPE = MetricType.COSINE;
     private static final DataType DEFAULT_DATA_TYPE = DataType.FLOAT32;
 
@@ -30,12 +35,12 @@ public class RedisSchema {
     @Builder.Default
     private String scalarFieldName = "text";
     @Builder.Default
-    private String metadataFieldName = "metadata";
+    private List<String> metadataFieldsName = new ArrayList<>();
 
     /* Vector field settings */
 
     @Builder.Default
-    private Schema.VectorField.VectorAlgo vectorAlgorithm = DEFAULT_VECTOR_ALGORITHM;
+    private VectorField.VectorAlgorithm vectorAlgorithm = DEFAULT_VECTOR_ALGORITHM;
     private int dimension;
     @Builder.Default
     private MetricType metricType = DEFAULT_METRIC_TYPE;
@@ -51,16 +56,27 @@ public class RedisSchema {
         this.dimension = dimension;
     }
 
-    public Schema toSchema() {
+    public SchemaField[] toSchemaFields() {
         Map<String, Object> vectorAttrs = new HashMap<>();
         vectorAttrs.put("DIM", dimension);
-        vectorAttrs.put("DISTANCE_METRIC", metricType.getName());
-        vectorAttrs.put("TYPE", dataType.getName());
+        vectorAttrs.put("DISTANCE_METRIC", metricType.name());
+        vectorAttrs.put("TYPE", dataType.name());
         vectorAttrs.put("INITIAL_CAP", 5);
-        return new Schema()
-                .addTextField(scalarFieldName, 1.0)
-                .addTextField("metadata", 1.0)
-                .addVectorField(vectorFieldName, vectorAlgorithm, vectorAttrs);
+        List<SchemaField> fields = new ArrayList<>();
+        fields.add(TextField.of(JSON_PATH_PREFIX + scalarFieldName).as(scalarFieldName).weight(1.0));
+        fields.add(VectorField.builder()
+                .fieldName(JSON_PATH_PREFIX + vectorFieldName)
+                .algorithm(vectorAlgorithm)
+                .attributes(vectorAttrs)
+                .as(vectorFieldName)
+                .build());
+
+        if (metadataFieldsName != null && !metadataFieldsName.isEmpty()) {
+            for (String metadataFieldName : metadataFieldsName) {
+                fields.add(TextField.of(JSON_PATH_PREFIX + metadataFieldName).as(metadataFieldName).weight(1.0));
+            }
+        }
+        return fields.toArray(new SchemaField[0]);
     }
 
     public String getIndexName() {
@@ -79,7 +95,7 @@ public class RedisSchema {
         return scalarFieldName;
     }
 
-    public String getMetadataFieldName() {
-        return metadataFieldName;
+    public List<String> getMetadataFieldsName() {
+        return metadataFieldsName;
     }
 }

@@ -349,7 +349,7 @@
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
                                 </license>
                                 <license>
-                                    <name>(The MIT License|MIT License)</name>
+                                    <name>(The MIT License|MIT License|MIT)</name>
                                     <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
                                 </license>
                                 <license>

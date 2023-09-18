@@ -5,19 +5,6 @@ package dev.langchain4j.store.embedding.redis;
  */
 public enum DataType {
 
-    /**
-     * only support FLOAT32
-     */
-    FLOAT32("FLOAT32"),
-    FLOAT64("FLOAT64");
-
-    private final String name;
-
-    DataType(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
+    FLOAT32,
+    FLOAT64
 }

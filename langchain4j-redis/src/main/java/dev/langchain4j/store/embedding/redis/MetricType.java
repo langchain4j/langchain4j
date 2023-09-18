@@ -5,17 +5,16 @@ package dev.langchain4j.store.embedding.redis;
  */
 public enum MetricType {
 
-    COSINE("COSINE"),
-    IP("IP"),
-    L2("L2");
-
-    private final String name;
-
-    MetricType(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
+    /**
+     * cosine similarity
+     */
+    COSINE,
+    /**
+     * inner product
+     */
+    IP,
+    /**
+     * euclidean distance
+     */
+    L2
 }

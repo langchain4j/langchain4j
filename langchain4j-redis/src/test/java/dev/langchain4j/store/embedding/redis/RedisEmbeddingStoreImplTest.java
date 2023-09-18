@@ -19,7 +19,8 @@ import java.util.List;
 @Disabled
 class RedisEmbeddingStoreImplTest {
 
-    private final EmbeddingStore<TextSegment> store = new RedisEmbeddingStoreImpl("http://localhost:6379", 4);
+    private final EmbeddingStore<TextSegment> store = new RedisEmbeddingStoreImpl("localhost", 6379,
+            "default", "password", 4, Collections.singletonList("field"));
 
     @Test
     void testAdd() {
@@ -50,9 +51,9 @@ class RedisEmbeddingStoreImplTest {
                 Embedding.from(Arrays.asList(0.54f, 0.34f, 0.67f, 0.24f)),
                 Embedding.from(Arrays.asList(0.80f, 0.45f, 0.779f, 0.5556f))
         ), Arrays.asList(
-                TextSegment.from("testString1", Metadata.metadata("field1", "value1")),
-                TextSegment.from("testString2", Metadata.metadata("field2", "value2")),
-                TextSegment.from("testingString3", Metadata.metadata("field3", "value3"))
+                TextSegment.from("testString1", Metadata.metadata("field", "value1")),
+                TextSegment.from("testString2", Metadata.metadata("field", "value2")),
+                TextSegment.from("testingString3", Metadata.metadata("field", "value3"))
         ));
         System.out.println("ids=" + ids);
     }

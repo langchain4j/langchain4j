@@ -9,6 +9,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Represents a <a href="https://redis.io/">Redis</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
@@ -21,14 +23,20 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Creates an instance of RedisEmbeddingStore
      *
-     * @param serverUrl Redis Stack Server URL.
-     * @param dimension vector dimension
+     * @param host               Redis Stack Server host
+     * @param port               Redis Stack Server Port
+     * @param user               Redis Stack username
+     * @param password           Redis Stack password
+     * @param dimension          vector dimension
+     * @param metadataFieldsName metadata fields name
      */
-    public RedisEmbeddingStore(String serverUrl, Integer dimension) {
+    public RedisEmbeddingStore(String host, Integer port, String user, String password, Integer dimension, List<String> metadataFieldsName) {
+        ensureNotNull(port, "port");
+        ensureNotNull(dimension, "dimension");
         try {
             implementation = loadDynamically(
                     "dev.langchain4j.store.embedding.redis.RedisEmbeddingStoreImpl",
-                    serverUrl, dimension
+                    host, port, user, password, dimension, metadataFieldsName
             );
         } catch (ClassNotFoundException e) {
             throw new RuntimeException(getMessage(), e);
@@ -49,11 +57,12 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                 + "implementation 'dev.langchain4j:langchain4j-redis:0.22.0'\n";
     }
 
-    private static EmbeddingStore<TextSegment> loadDynamically(String implementationClassName, String url, int dimension) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    private static EmbeddingStore<TextSegment> loadDynamically(String implementationClassName, String host, int port,
+                                                               String user, String password, int dimension, List<String> metadataFieldsName) throws ClassNotFoundException, NoSuchMethodException, InstantiationException, IllegalAccessException, InvocationTargetException {
         Class<?> implementationClass = Class.forName(implementationClassName);
-        Class<?>[] constructorParameterTypes = new Class<?>[]{String.class, Integer.class};
+        Class<?>[] constructorParameterTypes = new Class<?>[]{String.class, Integer.class, String.class, String.class, Integer.class, List.class};
         Constructor<?> constructor = implementationClass.getConstructor(constructorParameterTypes);
-        return (EmbeddingStore<TextSegment>) constructor.newInstance(url, dimension);
+        return (EmbeddingStore<TextSegment>) constructor.newInstance(host, port, user, password, dimension, metadataFieldsName);
     }
 
     public static Builder builder() {
@@ -97,14 +106,42 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public static class Builder {
 
-        private String url;
+        private String host;
+        private Integer port;
+        private String user;
+        private String password;
         private Integer dimension;
+        private List<String> metadataFieldsName;
 
         /**
-         * @param url Redis Stack Server URL
+         * @param host Redis Stack host
          */
-        public Builder url(String url) {
-            this.url = url;
+        public Builder host(String host) {
+            this.host = host;
+            return this;
+        }
+
+        /**
+         * @param port Redis Stack port
+         */
+        public Builder port(Integer port) {
+            this.port = port;
+            return this;
+        }
+
+        /**
+         * @param user Redis Stack username
+         */
+        public Builder user(String user) {
+            this.user = user;
+            return this;
+        }
+
+        /**
+         * @param password Redis Stack password
+         */
+        public Builder password(String password) {
+            this.password = password;
             return this;
         }
 
@@ -117,8 +154,16 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * @param metadataFieldsName metadata fields name
+         */
+        public Builder metadataFieldsName(List<String> metadataFieldsName) {
+            this.metadataFieldsName = metadataFieldsName;
+            return this;
+        }
+
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(url, dimension);
+            return new RedisEmbeddingStore(host, port, user, password, dimension, metadataFieldsName);
         }
     }
 }
