@@ -23,6 +23,7 @@ class AddEmbeddingsRequest {
     }
 
     public static class Builder {
+
         private List<String> ids = new ArrayList<>();
         private List<float[]> embeddings = new ArrayList<>();
         private List<String> documents = new ArrayList<>();
@@ -60,5 +61,4 @@ class AddEmbeddingsRequest {
             return new AddEmbeddingsRequest(this);
         }
     }
-
 }

@@ -15,5 +15,4 @@ class QueryRequest {
         this.queryEmbeddings = singletonList(queryEmbedding);
         this.nResults = nResults;
     }
-
 }

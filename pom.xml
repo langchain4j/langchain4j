@@ -22,6 +22,7 @@
         <module>langchain4j-vertex-ai</module>
 
         <!-- embedding stores -->
+        <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-pinecone</module>
