@@ -34,7 +34,7 @@ class DocumentBySentenceSplitterTest {
                 metadata("document", "0")
         );
 
-        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize);
+        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
@@ -64,7 +64,7 @@ class DocumentBySentenceSplitterTest {
                 metadata("document", "0")
         );
 
-        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize);
+        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
@@ -95,7 +95,7 @@ class DocumentBySentenceSplitterTest {
                 metadata("document", "0")
         );
 
-        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize);
+        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
@@ -153,7 +153,7 @@ class DocumentBySentenceSplitterTest {
 
         int maxSegmentSize = 26;
         OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
-        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, tokenizer);
+        DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0, tokenizer);
 
         List<TextSegment> segments = splitter.split(document);
 

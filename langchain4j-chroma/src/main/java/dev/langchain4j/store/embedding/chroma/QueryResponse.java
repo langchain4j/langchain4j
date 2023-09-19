@@ -30,5 +30,4 @@ class QueryResponse {
     public List<List<Double>> distances() {
         return distances;
     }
-
 }
