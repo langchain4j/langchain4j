@@ -14,9 +14,7 @@ class CreateCollectionRequest {
     CreateCollectionRequest(String name) {
         this.name = name;
         HashMap<String, String> metadata = new HashMap<>();
-        //Currently, only cosine distance is supported
         metadata.put("hnsw:space", "cosine");
         this.metadata = metadata;
     }
-
 }
