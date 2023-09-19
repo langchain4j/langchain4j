@@ -28,6 +28,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
@@ -47,6 +48,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Builder
     public OpenAiChatModel(String baseUrl,
                            String apiKey,
+                           String azureApiKey,
+                           String apiVersion,
                            String modelName,
                            Double temperature,
                            Double topP,
@@ -68,8 +71,15 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        this.client = OpenAiClient.builder()
-                .openAiApiKey(apiKey)
+        final OpenAiClient.Builder builder = OpenAiClient.builder();
+        if (!isNullOrBlank(apiKey)) {
+            builder.openAiApiKey(apiKey);
+        } else if (!isNullOrBlank(azureApiKey)) {
+            builder.azureApiKey(azureApiKey);
+        }
+
+        this.client = builder
+                .apiVersion(apiVersion)
                 .baseUrl(baseUrl)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)

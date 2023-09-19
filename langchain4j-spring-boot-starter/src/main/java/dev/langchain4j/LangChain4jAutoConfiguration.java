@@ -42,11 +42,19 @@ public class LangChain4jAutoConfiguration {
 
             case OPEN_AI:
                 OpenAi openAi = properties.getChatModel().getOpenAi();
-                if (openAi == null || isNullOrBlank(openAi.getApiKey())) {
-                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.openai.api-key' property");
+                OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder();
+
+                if (openAi != null && !isNullOrBlank(openAi.getApiKey())) {
+                    builder.apiKey(openAi.getApiKey());
+                } if (openAi != null && !isNullOrBlank(openAi.getAzureApiKey())) {
+                    builder.azureApiKey(openAi.getAzureApiKey());
+                } else {
+                    throw illegalConfiguration("\n\nPlease define either 'langchain4j.chat-model.openai.api-key' or 'langchain4j.chat-model.openai.azure-api-key' properties");
                 }
-                return OpenAiChatModel.builder()
-                        .apiKey(openAi.getApiKey())
+
+                return builder
+                        .baseUrl(openAi.getBaseUrl())
+                        .apiVersion(openAi.getApiVersion())
                         .modelName(openAi.getModelName())
                         .temperature(openAi.getTemperature())
                         .topP(openAi.getTopP())

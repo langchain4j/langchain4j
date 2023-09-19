@@ -3,8 +3,10 @@ package dev.langchain4j;
 import java.time.Duration;
 
 class OpenAi {
-
+    private String baseUrl;
+    private String apiVersion;
     private String apiKey;
+    private String azureApiKey;
     private String modelName;
     private Double temperature;
     private Double topP;
@@ -16,12 +18,36 @@ class OpenAi {
     private Boolean logRequests;
     private Boolean logResponses;
 
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
+    public String getApiVersion() {
+        return apiVersion;
+    }
+
+    public void setApiVersion(String apiVersion) {
+        this.apiVersion = apiVersion;
+    }
+
     public String getApiKey() {
         return apiKey;
     }
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getAzureApiKey() {
+        return azureApiKey;
+    }
+
+    public void setAzureApiKey(String azureApiKey) {
+        this.azureApiKey = azureApiKey;
     }
 
     public String getModelName() {
