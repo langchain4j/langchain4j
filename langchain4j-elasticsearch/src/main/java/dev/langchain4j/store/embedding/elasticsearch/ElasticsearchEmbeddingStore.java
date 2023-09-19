@@ -26,7 +26,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import lombok.Builder;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -40,35 +39,50 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 
 /**
- * Elastic Embedding Store Implementation
+ * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
+ * Current implementation assumes the index uses the cosine distance metric.
  */
-public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
+public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(ElasticsearchEmbeddingStoreImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(ElasticsearchEmbeddingStore.class);
+
     private final ElasticsearchClient client;
     private final String indexName;
     private final ObjectMapper objectMapper;
 
-    @Builder
-    public ElasticsearchEmbeddingStoreImpl(String serverUrl,
-                                           String username,
-                                           String password,
-                                           String apiKey,
-                                           String indexName) {
+    /**
+     * Creates an instance of ElasticsearchEmbeddingStore.
+     *
+     * @param serverUrl Elasticsearch Server URL
+     * @param apiKey    Elasticsearch API key
+     * @param userName  Elasticsearch userName
+     * @param password  Elasticsearch password
+     * @param indexName The name of the Elasticsearch index
+     */
+    public ElasticsearchEmbeddingStore(String serverUrl,
+                                       String apiKey,
+                                       String userName,
+                                       String password,
+                                       String indexName) {
         serverUrl = ValidationUtils.ensureNotNull(serverUrl, "serverUrl");
         indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
 
         RestClientBuilder restClientBuilder = RestClient
                 .builder(HttpHost.create(serverUrl));
-        if (!isNullOrBlank(username)) {
+        if (!isNullOrBlank(userName)) {
             CredentialsProvider provider = new BasicCredentialsProvider();
-            provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(username, password));
+            provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
             restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
         }
         if (!isNullOrBlank(apiKey)) {
@@ -81,6 +95,66 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
         this.client = new ElasticsearchClient(transport);
         this.indexName = indexName;
         objectMapper = new ObjectMapper();
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String serverUrl;
+        private String apiKey;
+        private String userName;
+        private String password;
+        private String indexName;
+
+        /**
+         * @param serverUrl Elasticsearch Server URL
+         */
+        public Builder serverUrl(String serverUrl) {
+            this.serverUrl = serverUrl;
+            return this;
+        }
+
+        /**
+         * @param apiKey Elasticsearch API key
+         * @return builder
+         */
+        public Builder apikey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * @param userName Elasticsearch userName
+         * @return builder
+         */
+        public Builder userName(String userName) {
+            this.userName = userName;
+            return this;
+        }
+
+        /**
+         * @param password Elasticsearch password
+         * @return builder
+         */
+        public Builder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        /**
+         * @param indexName The name of the Elasticsearch index
+         */
+        public Builder indexName(String indexName) {
+            this.indexName = indexName;
+            return this;
+        }
+
+        public ElasticsearchEmbeddingStore build() {
+            return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+        }
     }
 
     @Override
@@ -106,7 +180,7 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
-                .collect(Collectors.toList());
+                .collect(toList());
         addAllInternal(ids, embeddings, null);
         return ids;
     }
@@ -115,7 +189,7 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream()
                 .map(ignored -> randomUUID())
-                .collect(Collectors.toList());
+                .collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
     }
@@ -137,7 +211,7 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(Collections.singletonList(id), Collections.singletonList(embedding), embedded == null ? null : Collections.singletonList(embedded));
+        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
@@ -145,8 +219,8 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
             log.info("[do not add empty embeddings to elasticsearch]");
             return;
         }
-        ValidationUtils.ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ValidationUtils.ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
+        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
+        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         try {
             createIndexIfNotExist(embeddings.get(0).dimensions());
@@ -167,7 +241,6 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     }
 
     private TypeMapping getDefaultMappings(int dim) {
-        // do this like LangChain do
         Map<String, Property> properties = new HashMap<>(4);
         properties.put("text", Property.of(p -> p.text(TextProperty.of(t -> t))));
         properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dim)))));
@@ -221,9 +294,14 @@ public class ElasticsearchEmbeddingStoreImpl implements EmbeddingStore<TextSegme
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> new EmbeddingMatch<>(hit.score(), hit.id(), new Embedding(document.getVector()),
-                                // TextSegment ensure that must have text and metadata
-                                document.getText() == null ? null : new TextSegment(document.getText(), new Metadata(document.getMetadata()))))
-                        .orElse(null)).collect(Collectors.toList());
+                        .map(document -> new EmbeddingMatch<>(
+                                hit.score(),
+                                hit.id(),
+                                new Embedding(document.getVector()),
+                                document.getText() == null
+                                        ? null
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
+                        )).orElse(null))
+                .collect(toList());
     }
 }
