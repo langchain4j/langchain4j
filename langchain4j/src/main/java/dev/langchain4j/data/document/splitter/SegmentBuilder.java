@@ -22,12 +22,8 @@ class SegmentBuilder {
     }
 
     boolean hasSpaceFor(String text) {
-        return hasSpaceFor(text, joinSeparator);
-    }
-
-    boolean hasSpaceFor(String text, String separator) {
         if (isNotEmpty()) {
-            return sizeOf(segmentBuilder.toString()) + sizeOf(separator) + sizeOf(text) <= maxSegmentSize;
+            return sizeOf(segmentBuilder.toString()) + sizeOf(joinSeparator) + sizeOf(text) <= maxSegmentSize;
         } else {
             return sizeOf(text) <= maxSegmentSize;
         }
@@ -38,14 +34,18 @@ class SegmentBuilder {
     }
 
     void append(String text) {
-        append(text, joinSeparator);
-    }
-
-    void append(String text, String separator) {
-        if (segmentBuilder.length() > 0) {
-            segmentBuilder.append(separator);
+        if (isNotEmpty()) {
+            segmentBuilder.append(joinSeparator);
         }
         segmentBuilder.append(text);
+    }
+
+    void prepend(String text) {
+        if (isNotEmpty()) {
+            segmentBuilder.insert(0, text + joinSeparator);
+        } else {
+            segmentBuilder.insert(0, text);
+        }
     }
 
     boolean isNotEmpty() {

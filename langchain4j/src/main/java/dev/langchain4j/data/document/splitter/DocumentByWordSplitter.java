@@ -28,20 +28,28 @@ import dev.langchain4j.model.Tokenizer;
  */
 public class DocumentByWordSplitter extends HierarchicalDocumentSplitter {
 
-    public DocumentByWordSplitter(int maxSegmentSizeInChars) {
-        super(maxSegmentSizeInChars, null, null);
+    public DocumentByWordSplitter(int maxSegmentSizeInChars,
+                                  int maxOverlapSizeInChars) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInChars, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, null, subSplitter);
+    public DocumentByWordSplitter(int maxSegmentSizeInChars,
+                                  int maxOverlapSizeInChars,
+                                  DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, tokenizer, null);
+    public DocumentByWordSplitter(int maxSegmentSizeInTokens,
+                                  int maxOverlapSizeInTokens,
+                                  Tokenizer tokenizer) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
     }
 
-    public DocumentByWordSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
+    public DocumentByWordSplitter(int maxSegmentSizeInTokens,
+                                  int maxOverlapSizeInTokens,
+                                  Tokenizer tokenizer,
+                                  DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
     }
 
     @Override
@@ -56,6 +64,6 @@ public class DocumentByWordSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return new DocumentByCharacterSplitter(maxSegmentSize, tokenizer);
+        return new DocumentByCharacterSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
     }
 }
