@@ -51,4 +51,12 @@ public class ValidationUtils {
 
         return d;
     }
+
+    public static int ensureBetween(Integer i, int min, int max, String name) {
+        if (i == null || i < min || i > max) {
+            throw illegalArgument("%s must be between %s and %s, but is: %s", name, min, max, i);
+        }
+
+        return i;
+    }
 }

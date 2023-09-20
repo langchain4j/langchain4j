@@ -28,20 +28,28 @@ import dev.langchain4j.model.Tokenizer;
  */
 public class DocumentByParagraphSplitter extends HierarchicalDocumentSplitter {
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInChars) {
-        super(maxSegmentSizeInChars, null, null);
+    public DocumentByParagraphSplitter(int maxSegmentSizeInChars,
+                                       int maxOverlapSizeInChars) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
     }
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInChars, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, null, subSplitter);
+    public DocumentByParagraphSplitter(int maxSegmentSizeInChars,
+                                       int maxOverlapSizeInChars,
+                                       DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, tokenizer, null);
+    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
     }
 
-    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
+    public DocumentByParagraphSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer,
+                                       DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
     }
 
     @Override
@@ -56,6 +64,6 @@ public class DocumentByParagraphSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     protected DocumentSplitter defaultSubSplitter() {
-        return new DocumentBySentenceSplitter(maxSegmentSize, tokenizer);
+        return new DocumentBySentenceSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
     }
 }

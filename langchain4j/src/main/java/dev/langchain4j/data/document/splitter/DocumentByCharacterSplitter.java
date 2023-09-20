@@ -19,20 +19,28 @@ import dev.langchain4j.model.Tokenizer;
  */
 public class DocumentByCharacterSplitter extends HierarchicalDocumentSplitter {
 
-    public DocumentByCharacterSplitter(int maxSegmentSizeInChars) {
-        super(maxSegmentSizeInChars, null, null);
+    public DocumentByCharacterSplitter(int maxSegmentSizeInChars,
+                                       int maxOverlapSizeInChars) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
     }
 
-    public DocumentByCharacterSplitter(int maxSegmentSizeInChars, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInChars, null, subSplitter);
+    public DocumentByCharacterSplitter(int maxSegmentSizeInChars,
+                                       int maxOverlapSizeInChars,
+                                       DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
     }
 
-    public DocumentByCharacterSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer) {
-        super(maxSegmentSizeInTokens, tokenizer, null);
+    public DocumentByCharacterSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
     }
 
-    public DocumentByCharacterSplitter(int maxSegmentSizeInTokens, Tokenizer tokenizer, DocumentSplitter subSplitter) {
-        super(maxSegmentSizeInTokens, tokenizer, subSplitter);
+    public DocumentByCharacterSplitter(int maxSegmentSizeInTokens,
+                                       int maxOverlapSizeInTokens,
+                                       Tokenizer tokenizer,
+                                       DocumentSplitter subSplitter) {
+        super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
     }
 
     @Override

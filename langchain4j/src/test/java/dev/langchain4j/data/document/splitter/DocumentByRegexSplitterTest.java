@@ -24,7 +24,7 @@ class DocumentByRegexSplitterTest {
         Document document = Document.from(text, metadata("document", "0"));
 
         int maxSegmentSize = 5;
-        DocumentSplitter splitter = new DocumentByRegexSplitter(separator, separator, maxSegmentSize);
+        DocumentSplitter splitter = new DocumentByRegexSplitter(separator, separator, maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
@@ -43,7 +43,7 @@ class DocumentByRegexSplitterTest {
         Document document = Document.from("one two three", metadata("document", "0"));
 
         int maxSegmentSize = 10;
-        DocumentSplitter splitter = new DocumentByRegexSplitter(" ", "\n", maxSegmentSize);
+        DocumentSplitter splitter = new DocumentByRegexSplitter(" ", "\n", maxSegmentSize, 0);
 
         List<TextSegment> segments = splitter.split(document);
 
@@ -64,8 +64,8 @@ class DocumentByRegexSplitterTest {
         );
 
         int maxSegmentSize = 15;
-        DocumentSplitter subSplitter = new DocumentByWordSplitter(maxSegmentSize);
-        DocumentSplitter splitter = new DocumentByRegexSplitter("\n", "\n", maxSegmentSize, subSplitter);
+        DocumentSplitter subSplitter = new DocumentByWordSplitter(maxSegmentSize, 0);
+        DocumentSplitter splitter = new DocumentByRegexSplitter("\n", "\n", maxSegmentSize, 0, subSplitter);
 
         List<TextSegment> segments = splitter.split(document);
 
