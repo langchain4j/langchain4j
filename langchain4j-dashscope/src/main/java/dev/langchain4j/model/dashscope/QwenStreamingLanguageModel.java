@@ -5,6 +5,7 @@ import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -37,20 +38,25 @@ public class QwenStreamingLanguageModel extends QwenLanguageModel implements Str
                     .resultFormat(MESSAGE)
                     .build();
 
+            QwenStreamingResponseBuilder responseBuilder = new QwenStreamingResponseBuilder();
+
             generation.streamCall(param, new ResultCallback<GenerationResult>() {
-
-                private final StringBuilder responseBuilder = new StringBuilder();
-
                 @Override
                 public void onEvent(GenerationResult result) {
-                    String token = answerFrom(result);
-                    responseBuilder.append(token);
-                    handler.onNext(token);
+                    String delta = responseBuilder.append(result);
+                    if (delta != null) {
+                        handler.onNext(delta);
+                    }
                 }
 
                 @Override
                 public void onComplete() {
-                    handler.onComplete(Response.from(responseBuilder.toString()));
+                    Response<AiMessage> response = responseBuilder.build();
+                    handler.onComplete(Response.from(
+                            response.content().text(),
+                            response.tokenUsage(),
+                            response.finishReason()
+                    ));
                 }
 
                 @Override
