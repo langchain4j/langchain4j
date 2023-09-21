@@ -7,6 +7,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,7 +51,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 .anyMatch(Utils::isNullOrBlank);
     }
 
-    private List<Embedding> embedTexts(List<TextSegment> textSegments, TextEmbeddingParam.TextType textType) {
+    private Response<List<Embedding>> embedTexts(List<TextSegment> textSegments, TextEmbeddingParam.TextType textType) {
         TextEmbeddingParam param = TextEmbeddingParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -60,7 +61,10 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                         .collect(Collectors.toList()))
                 .build();
         try {
-            return Optional.of(embedding.call(param))
+            TextEmbeddingResult generationResult = embedding.call(param);
+            // total_tokens are the same as input_tokens in the embedding model
+            TokenUsage usage = new TokenUsage(generationResult.getUsage().getTotalTokens());
+            List<Embedding> embeddings = Optional.of(generationResult)
                     .map(TextEmbeddingResult::getOutput)
                     .map(TextEmbeddingOutput::getEmbeddings)
                     .orElse(Collections.emptyList())
@@ -69,6 +73,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                     .map(doubleList -> doubleList.stream().map(Double::floatValue).collect(Collectors.toList()))
                     .map(Embedding::from)
                     .collect(Collectors.toList());
+            return Response.from(embeddings, usage);
         } catch (NoApiKeyException e) {
             throw new RuntimeException(e);
         }
@@ -80,24 +85,33 @@ public class QwenEmbeddingModel implements EmbeddingModel {
 
         if (!queries) {
             // default all documents
-            return Response.from(embedTexts(textSegments, DOCUMENT));
+            return embedTexts(textSegments, DOCUMENT);
         } else {
             boolean documents = containsDocuments(textSegments);
             if (!documents) {
-                return Response.from(embedTexts(textSegments, QUERY));
+                return embedTexts(textSegments, QUERY);
             } else {
                 // This is a mixed collection of queries and documents. Embed one by one.
                 List<Embedding> embeddings = new ArrayList<>(textSegments.size());
+                Integer tokens = null;
                 for (TextSegment textSegment : textSegments) {
-                    List<Embedding> result;
+                    Response<List<Embedding>> result;
                     if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata(TYPE_KEY))) {
                         result = embedTexts(singletonList(textSegment), QUERY);
                     } else {
                         result = embedTexts(singletonList(textSegment), DOCUMENT);
                     }
-                    embeddings.addAll(result);
+                    embeddings.addAll(result.content());
+                    if (result.tokenUsage() == null) {
+                        continue;
+                    }
+                    if (tokens == null) {
+                        tokens = result.tokenUsage().inputTokenCount();
+                    } else {
+                        tokens += result.tokenUsage().inputTokenCount();
+                    }
                 }
-                return Response.from(embeddings);
+                return Response.from(embeddings, new TokenUsage(tokens));
             }
         }
     }

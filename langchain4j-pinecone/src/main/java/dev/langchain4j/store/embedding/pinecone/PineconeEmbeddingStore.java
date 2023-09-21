@@ -13,7 +13,6 @@ import io.pinecone.PineconeClientConfig;
 import io.pinecone.PineconeConnection;
 import io.pinecone.PineconeConnectionConfig;
 import io.pinecone.proto.*;
-import lombok.Builder;
 
 import java.util.Collection;
 import java.util.List;
@@ -24,9 +23,10 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * This is an internal implementation. Please use PineconeEmbeddingStore.
+ * Represents a <a href="https://www.pinecone.io/">Pinecone</a> index as an embedding store.
+ * Current implementation assumes the index uses the cosine distance metric.
  */
-public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
+public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
     private static final String METADATA_TEXT_SEGMENT = "text_segment"; // do not change, will break backward compatibility!
@@ -34,12 +34,21 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     private final PineconeConnection connection;
     private final String nameSpace;
 
-    @Builder
-    public PineconeEmbeddingStoreImpl(String apiKey,
-                                      String environment,
-                                      String projectId,
-                                      String index,
-                                      String nameSpace) {
+    /**
+     * Creates an instance of PineconeEmbeddingStore.
+     *
+     * @param apiKey      The Pinecone API key.
+     * @param environment The environment (e.g., "northamerica-northeast1-gcp").
+     * @param projectId   The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
+     *                    The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
+     * @param index       The name of the index (e.g., "test").
+     * @param nameSpace   (Optional) Namespace. If not provided, "default" will be used.
+     */
+    public PineconeEmbeddingStore(String apiKey,
+                                  String environment,
+                                  String projectId,
+                                  String index,
+                                  String nameSpace) {
 
         PineconeClientConfig configuration = new PineconeClientConfig()
                 .withApiKey(apiKey)
@@ -185,5 +194,63 @@ public class PineconeEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
                 embedding,
                 textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue())
         );
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String apiKey;
+        private String environment;
+        private String projectId;
+        private String index;
+        private String nameSpace;
+
+        /**
+         * @param apiKey The Pinecone API key.
+         */
+        public Builder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * @param environment The environment (e.g., "northamerica-northeast1-gcp").
+         */
+        public Builder environment(String environment) {
+            this.environment = environment;
+            return this;
+        }
+
+        /**
+         * @param projectId The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
+         *                  The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
+         */
+        public Builder projectId(String projectId) {
+            this.projectId = projectId;
+            return this;
+        }
+
+        /**
+         * @param index The name of the index (e.g., "test").
+         */
+        public Builder index(String index) {
+            this.index = index;
+            return this;
+        }
+
+        /**
+         * @param nameSpace (Optional) Namespace. If not provided, "default" will be used.
+         */
+        public Builder nameSpace(String nameSpace) {
+            this.nameSpace = nameSpace;
+            return this;
+        }
+
+        public PineconeEmbeddingStore build() {
+            return new PineconeEmbeddingStore(apiKey, environment, projectId, index, nameSpace);
+        }
     }
 }

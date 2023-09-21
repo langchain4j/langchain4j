@@ -1,10 +1,10 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.milvus;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.store.embedding.milvus.MilvusCollectionDescription;
-import dev.langchain4j.store.embedding.milvus.MilvusOperationsParams;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.ConnectParam;
 import io.milvus.param.dml.InsertParam;
@@ -15,28 +15,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.CollectionOperationsExecutor.*;
-import static dev.langchain4j.store.embedding.CollectionRequestBuilder.buildSearchRequest;
-import static dev.langchain4j.store.embedding.Generator.generateRandomIds;
-import static dev.langchain4j.store.embedding.Mapper.*;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.*;
+import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildSearchRequest;
+import static dev.langchain4j.store.embedding.milvus.Generator.generateRandomIds;
+import static dev.langchain4j.store.embedding.milvus.Mapper.*;
 import static java.util.Collections.singletonList;
 
-public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
+/**
+ * Data type of the data to insert must match the schema of the collection, otherwise Milvus will raise exception.
+ * Also, the number of the dimensions in the vector produced by your embedding service must match vector field in Milvus DB.
+ * Meaning if your embedding service returns n-dimensional array (e.g. 384-dimensional) the vector field in Milvus DB
+ * must also be 384-dimensional.
+ */
+public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private MilvusServiceClient milvusClient;
-    private MilvusCollectionDescription collectionDescription;
-    private MilvusOperationsParams operationsParams;
+    private final MilvusServiceClient milvusClient;
+    private final MilvusCollectionDescription collectionDescription;
+    private final MilvusOperationsParams operationsParams;
 
-    public MilvusEmbeddingStoreImpl(String host,
-                                    int port,
-                                    String databaseName,
-                                    String uri,
-                                    String token,
-                                    boolean secure,
-                                    String username,
-                                    String password,
-                                    MilvusCollectionDescription collectionDescription,
-                                    MilvusOperationsParams operationsParams) {
+    public MilvusEmbeddingStore(String host,
+                                int port,
+                                String databaseName,
+                                String uri,
+                                String token,
+                                boolean secure,
+                                String username,
+                                String password,
+                                MilvusCollectionDescription collectionDescription,
+                                MilvusOperationsParams operationsParams) {
 
         ConnectParam connectParam = ConnectParam.newBuilder()
                 .withHost(host)
@@ -47,14 +53,9 @@ public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
                 .secure(secure)
                 .withAuthorization(username, password).build();
         this.milvusClient = new MilvusServiceClient(connectParam);
-
-        ensureNotNull(collectionDescription, "MilvusCollectionDescription");
-        this.collectionDescription = collectionDescription;
-
-        ensureNotNull(operationsParams, "MilvusOperationsParams");
-        this.operationsParams = operationsParams;
+        this.collectionDescription = ensureNotNull(collectionDescription, "collectionDescription");
+        this.operationsParams = ensureNotNull(operationsParams, "operationsParams");
     }
-
 
     public String add(Embedding embedding) {
         String id = Utils.randomUUID();
@@ -115,6 +116,4 @@ public class MilvusEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
         flush(milvusClient, collectionDescription.collectionName());
     }
-
-
 }

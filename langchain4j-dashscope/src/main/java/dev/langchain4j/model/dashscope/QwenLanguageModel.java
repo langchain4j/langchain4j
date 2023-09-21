@@ -10,8 +10,8 @@ import dev.langchain4j.model.output.Response;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
-import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS_V1;
+import static dev.langchain4j.model.dashscope.QwenHelper.*;
+import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;
 
 public class QwenLanguageModel implements LanguageModel {
 
@@ -24,11 +24,11 @@ public class QwenLanguageModel implements LanguageModel {
     protected final Generation generation;
 
     public QwenLanguageModel(String apiKey,
-                                String modelName,
-                                Double topP,
-                                Integer topK,
-                                Boolean enableSearch,
-                                Integer seed) {
+                             String modelName,
+                             Double topP,
+                             Integer topK,
+                             Boolean enableSearch,
+                             Integer seed) {
         this.apiKey = apiKey;
         this.modelName = modelName;
         this.topP = topP;
@@ -53,9 +53,9 @@ public class QwenLanguageModel implements LanguageModel {
                     .build();
 
             GenerationResult generationResult = generation.call(param);
-            String answer = answerFrom(generationResult);
 
-            return Response.from(answer);
+            return Response.from(answerFrom(generationResult),
+                    tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
@@ -108,7 +108,7 @@ public class QwenLanguageModel implements LanguageModel {
             if (isNullOrBlank(apiKey)) {
                 throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
             }
-            modelName = isNullOrBlank(modelName) ? QWEN_PLUS_V1 : modelName;
+            modelName = isNullOrBlank(modelName) ? QWEN_PLUS : modelName;
             enableSearch = enableSearch != null && enableSearch;
         }
 
