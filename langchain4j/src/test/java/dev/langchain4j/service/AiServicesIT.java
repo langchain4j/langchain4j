@@ -504,28 +504,28 @@ public class AiServicesIT {
         String firstUserMessage = "Hello, my name is Klaus";
         String firstAiMessage = chatWithMemory.chatWithSystemMessage(firstUserMessage);
 
-        verify(chatMemory).add(systemMessage(systemMessage));
-        verify(chatMemory).add(userMessage(firstUserMessage));
         verify(chatLanguageModel).generate(asList(
                 systemMessage(systemMessage),
                 userMessage(firstUserMessage)
         ), NO_TOOLS);
-        verify(chatMemory).add(aiMessage(firstAiMessage));
 
         String secondUserMessage = "What is my name?";
         String secondAiMessage = chatWithMemory.chatWithSystemMessage(secondUserMessage);
         assertThat(secondAiMessage).contains("Klaus");
 
-        verify(chatMemory).add(userMessage(secondUserMessage));
         verify(chatLanguageModel).generate(asList(
                 systemMessage(systemMessage),
                 userMessage(firstUserMessage),
                 aiMessage(firstAiMessage),
-
                 userMessage(secondUserMessage)
         ), NO_TOOLS);
+
+        verify(chatMemory, times(2)).add(systemMessage(systemMessage));
+        verify(chatMemory).add(userMessage(firstUserMessage));
+        verify(chatMemory).add(aiMessage(firstAiMessage));
+        verify(chatMemory).add(userMessage(secondUserMessage));
         verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory, times(9)).messages();
+        verify(chatMemory, times(8)).messages();
     }
 
     @Test
@@ -540,31 +540,31 @@ public class AiServicesIT {
         String firstUserMessage = "Hello, my name is Klaus";
         String firstAiMessage = chatWithMemory.chatWithSystemMessage(firstUserMessage);
 
-        verify(chatMemory).add(systemMessage(firstSystemMessage));
-        verify(chatMemory).add(userMessage(firstUserMessage));
         verify(chatLanguageModel).generate(asList(
                 systemMessage(firstSystemMessage),
                 userMessage(firstUserMessage)
         ), NO_TOOLS);
-        verify(chatMemory).add(aiMessage(firstAiMessage));
+
 
         String secondSystemMessage = "You are funny assistant";
         String secondUserMessage = "What is my name?";
         String secondAiMessage = chatWithMemory.chatWithAnotherSystemMessage(secondUserMessage);
         assertThat(secondAiMessage).contains("Klaus");
 
-        verify(chatMemory).add(systemMessage(secondSystemMessage));
-        verify(chatMemory).add(userMessage(secondUserMessage));
         verify(chatLanguageModel).generate(asList(
-                systemMessage(firstSystemMessage),
                 userMessage(firstUserMessage),
                 aiMessage(firstAiMessage),
-
                 systemMessage(secondSystemMessage),
                 userMessage(secondUserMessage)
         ), NO_TOOLS);
+
+        verify(chatMemory).add(systemMessage(firstSystemMessage));
+        verify(chatMemory).add(userMessage(firstUserMessage));
+        verify(chatMemory).add(aiMessage(firstAiMessage));
         verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory, times(10)).messages();
+        verify(chatMemory).add(systemMessage(secondSystemMessage));
+        verify(chatMemory).add(userMessage(secondUserMessage));
+        verify(chatMemory, times(8)).messages();
     }
 
 

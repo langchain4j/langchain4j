@@ -43,21 +43,20 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
                     .resultFormat(MESSAGE)
                     .build();
 
+            QwenStreamingResponseBuilder responseBuilder = new QwenStreamingResponseBuilder();
+
             generation.streamCall(param, new ResultCallback<GenerationResult>() {
-
-                private final StringBuilder responseBuilder = new StringBuilder();
-
                 @Override
                 public void onEvent(GenerationResult result) {
-                    String token = answerFrom(result);
-                    responseBuilder.append(token);
-                    handler.onNext(token);
+                    String delta = responseBuilder.append(result);
+                    if (delta != null) {
+                        handler.onNext(delta);
+                    }
                 }
 
                 @Override
                 public void onComplete() {
-                    AiMessage aiMessage = AiMessage.from(responseBuilder.toString());
-                    handler.onComplete(Response.from(aiMessage));
+                    handler.onComplete(responseBuilder.build());
                 }
 
                 @Override
