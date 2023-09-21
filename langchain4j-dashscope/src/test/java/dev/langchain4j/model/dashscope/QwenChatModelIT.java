@@ -3,6 +3,7 @@ package dev.langchain4j.model.dashscope;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -23,9 +24,9 @@ public class QwenChatModelIT {
                 .modelName(modelName)
                 .build();
 
-        AiMessage answer = model.generate(QwenTestHelper.chatMessages()).content();
-        System.out.println(answer.text());
+        Response<AiMessage> response = model.generate(QwenTestHelper.chatMessages());
+        System.out.println(response);
 
-        assertThat(answer.text()).containsIgnoringCase("rain");
+        assertThat(response.content().text()).containsIgnoringCase("rain");
     }
 }

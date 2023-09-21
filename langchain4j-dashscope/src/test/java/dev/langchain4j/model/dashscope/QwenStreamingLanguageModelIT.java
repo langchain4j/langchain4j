@@ -1,5 +1,6 @@
 package dev.langchain4j.model.dashscope;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
@@ -17,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class QwenStreamingLanguageModelIT {
 
     @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#chatModelNameProvider")
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#languageModelNameProvider")
     public void should_send_messages_and_receive_response(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
         String apiKey = QwenTestHelper.apiKey();
         if (Utils.isNullOrBlank(apiKey)) {
@@ -29,21 +30,17 @@ public class QwenStreamingLanguageModelIT {
                 .modelName(modelName)
                 .build();
 
-        CompletableFuture<String> future = new CompletableFuture<>();
+        CompletableFuture<Response<String>> future = new CompletableFuture<>();
         model.generate("Please say 'hello' to me", new StreamingResponseHandler<String>() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
             @Override
             public void onNext(String token) {
-                answerBuilder.append(token);
                 System.out.println("onNext: '" + token + "'");
             }
 
             @Override
             public void onComplete(Response<String> response) {
-                future.complete(answerBuilder.toString());
-                System.out.println("onComplete: '" + response + "'");
+                future.complete(response);
+                System.out.println("onComplete: '" + response.content() + "'");
             }
 
             @Override
@@ -52,8 +49,9 @@ public class QwenStreamingLanguageModelIT {
             }
         });
 
-        String answer = future.get(30, SECONDS);
+        Response<String> response = future.get(30, SECONDS);
+        System.out.println(response);
 
-        assertThat(answer).containsIgnoringCase("hello");
+        assertThat(response.content()).containsIgnoringCase("hello");
     }
 }
