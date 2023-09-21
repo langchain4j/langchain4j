@@ -1,17 +1,19 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 public class MilvusOperationsParams {
 
     /**
      * Possible options: STRONG, BOUNDED or EVENTUALLY.
      */
-    private ConsistencyLevel consistencyLevel;
+    private final ConsistencyLevel consistencyLevel;
 
     /**
      * Possible options: L2 or IP.
      * Metric types for binary vectors are not supported at the moment
      */
-    private MetricType metricType;
+    private final MetricType metricType;
 
     /**
      * During a similarity search in Milvus, the vector value is not returned.
@@ -19,11 +21,11 @@ public class MilvusOperationsParams {
      * Enabling this query may impact the performance of the search.
      * The default value is set to 'false'.
      */
-    private boolean queryForVectorOnSearch;
+    private final boolean queryForVectorOnSearch;
 
     public MilvusOperationsParams(ConsistencyLevel consistencyLevel, MetricType metricType, boolean queryForVectorOnSearch) {
-        this.consistencyLevel = consistencyLevel;
-        this.metricType = metricType;
+        this.consistencyLevel = ensureNotNull(consistencyLevel, "consistencyLevel");
+        this.metricType = ensureNotNull(metricType, "metricType");
         this.queryForVectorOnSearch = queryForVectorOnSearch;
     }
 
@@ -38,5 +40,4 @@ public class MilvusOperationsParams {
     public boolean queryForVectorOnSearch() {
         return queryForVectorOnSearch;
     }
-
 }

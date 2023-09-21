@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.milvus;
 
 class RequestToMilvusFailedException extends RuntimeException {
 
@@ -13,5 +13,4 @@ class RequestToMilvusFailedException extends RuntimeException {
     public RequestToMilvusFailedException(String message, Throwable cause) {
         super(message, cause);
     }
-
 }

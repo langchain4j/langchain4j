@@ -4,5 +4,4 @@ public enum MetricType {
 
     L2,
     IP
-
 }
