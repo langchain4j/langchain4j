@@ -384,7 +384,7 @@ public class AiServices<T> {
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
-                            systemMessage.ifPresent(it -> addIfNeeded(it, chatMemory));
+                            systemMessage.ifPresent(chatMemory::add);
                             chatMemory.add(userMessage);
                         }
 
@@ -460,22 +460,6 @@ public class AiServices<T> {
                             } catch (InterruptedException | ExecutionException e) {
                                 throw new RuntimeException(e);
                             }
-                        }
-                    }
-
-                    private void addIfNeeded(ChatMessage systemMessage, ChatMemory chatMemory) { // TODO move to memory?
-                        boolean shouldAddSystemMessage = true;
-                        List<ChatMessage> messages = chatMemory.messages();
-                        for (int i = messages.size() - 1; i >= 0; i--) {
-                            if (messages.get(i) instanceof dev.langchain4j.data.message.SystemMessage) {
-                                if (messages.get(i).equals(systemMessage)) {
-                                    shouldAddSystemMessage = false;
-                                }
-                                break;
-                            }
-                        }
-                        if (shouldAddSystemMessage) {
-                            chatMemory.add(systemMessage);
                         }
                     }
                 });
