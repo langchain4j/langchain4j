@@ -26,9 +26,10 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 
 /**
- * This is an internal implementation. Please use WeaviateEmbeddingStore.
+ * Represents the <a href="https://weaviate.io/">Weaviate</a> vector database.
+ * Current implementation assumes the cosine distance metric is used.
  */
-public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
+public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   private static final String DEFAULT_CLASS = "Default";
   private static final Double DEFAULT_MIN_CERTAINTY = 0.0;
@@ -42,8 +43,21 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
   private boolean avoidDups;
   private String consistencyLevel;
 
+  /**
+   * Creates a new WeaviateEmbeddingStore instance.
+   *
+   * @param apiKey           your Weaviate API key
+   * @param scheme           the scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
+   * @param host             the host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
+   *                         Find in under Details of your Weaviate cluster.
+   * @param objectClass      the object class you want to store, e.g. "MyGreatClass"
+   * @param avoidDups        if true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
+   *                         provided text segment, which avoids duplicated entries in DB.
+   *                         If false, then random ID will be generated.
+   * @param consistencyLevel Consistency level: ONE, QUORUM (default) or ALL. Find more details <a href="https://weaviate.io/developers/weaviate/concepts/replication-architecture/consistency#tunable-write-consistency">here</a>.
+   */
   @Builder
-  public WeaviateEmbeddingStoreImpl(
+  public WeaviateEmbeddingStore(
     String apiKey,
     String scheme,
     String host,
@@ -68,6 +82,14 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     return id;
   }
 
+  /**
+   * Adds a new embedding with provided ID to the store.
+   *
+   * @param id        the ID of the embedding to add in UUID format, since it's Weaviate requirement.
+   *                  See <a href="https://weaviate.io/developers/weaviate/manage-data/create#id">Weaviate docs</a> and
+   *                  <a href="https://en.wikipedia.org/wiki/Universally_unique_identifier">UUID on Wikipedia</a>
+   * @param embedding the embedding to add
+   */
   @Override
   public void add(String id, Embedding embedding) {
     addAll(singletonList(id), singletonList(embedding), null);
@@ -88,11 +110,19 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
     return addAll(null, embeddings, embedded);
   }
 
+  /**
+   * {@inheritDoc}
+   * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
+   */
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
     return findRelevant(referenceEmbedding, maxResults, DEFAULT_MIN_CERTAINTY);
   }
 
+  /**
+   * {@inheritDoc}
+   * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
+   */
   @Override
   public List<EmbeddingMatch<TextSegment>> findRelevant(
     Embedding referenceEmbedding,
@@ -144,7 +174,7 @@ public class WeaviateEmbeddingStoreImpl implements EmbeddingStore<TextSegment> {
 
     List<Map<String, ?>> resItems = ((Map.Entry<String, List<Map<String, ?>>>) resItemsPart.get()).getValue();
 
-    return resItems.stream().map(WeaviateEmbeddingStoreImpl::toEmbeddingMatch).collect(Collectors.toList());
+    return resItems.stream().map(WeaviateEmbeddingStore::toEmbeddingMatch).collect(Collectors.toList());
   }
 
   private List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
