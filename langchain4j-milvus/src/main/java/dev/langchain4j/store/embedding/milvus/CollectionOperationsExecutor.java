@@ -1,6 +1,5 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.milvus;
 
-import dev.langchain4j.store.embedding.milvus.MilvusCollectionDescription;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.grpc.FlushResponse;
 import io.milvus.grpc.MutationResult;
@@ -18,39 +17,39 @@ import io.milvus.response.SearchResultsWrapper;
 
 import java.util.List;
 
-import static dev.langchain4j.store.embedding.CollectionRequestBuilder.*;
+import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
 
 class CollectionOperationsExecutor {
 
-    public static void flush(MilvusServiceClient milvusClient, String collectionName) {
+    static void flush(MilvusServiceClient milvusClient, String collectionName) {
         FlushParam request = buildFlushRequest(collectionName);
         R<FlushResponse> response = milvusClient.flush(request);
         checkResponseNotFailed(response);
     }
 
-    public static void insert(MilvusServiceClient milvusClient, List<InsertParam.Field> fields, String collectionName) {
+    static void insert(MilvusServiceClient milvusClient, List<InsertParam.Field> fields, String collectionName) {
         InsertParam request = buildInsertRequest(fields, collectionName);
         R<MutationResult> response = milvusClient.insert(request);
         checkResponseNotFailed(response);
     }
 
-    public static void loadCollectionInMemory(MilvusServiceClient milvusClient, String collectionName) {
+    static void loadCollectionInMemory(MilvusServiceClient milvusClient, String collectionName) {
         LoadCollectionParam request = buildLoadCollectionInMemoryRequest(collectionName);
         R<RpcStatus> response = milvusClient.loadCollection(request);
         checkResponseNotFailed(response);
     }
 
-    public static SearchResultsWrapper search(MilvusServiceClient milvusClient, SearchParam searchRequest) {
+    static SearchResultsWrapper search(MilvusServiceClient milvusClient, SearchParam searchRequest) {
         R<SearchResults> response = milvusClient.search(searchRequest);
         checkResponseNotFailed(response);
 
         return new SearchResultsWrapper(response.getData().getResults());
     }
 
-    public static QueryResultsWrapper queryForVectors(MilvusServiceClient milvusClient,
-                                                     MilvusCollectionDescription collectionDescription,
-                                                     List<String> rowIds,
-                                                     String consistencyLevel) {
+    static QueryResultsWrapper queryForVectors(MilvusServiceClient milvusClient,
+                                               MilvusCollectionDescription collectionDescription,
+                                               List<String> rowIds,
+                                               String consistencyLevel) {
         QueryParam request = buildQueryRequest(rowIds, collectionDescription, consistencyLevel);
         R<QueryResults> response = milvusClient.query(request);
         checkResponseNotFailed(response);
@@ -66,6 +65,4 @@ class CollectionOperationsExecutor {
             throw new RequestToMilvusFailedException(message, response.getException());
         }
     }
-
-
 }

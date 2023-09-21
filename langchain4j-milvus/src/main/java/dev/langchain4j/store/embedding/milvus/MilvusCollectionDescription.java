@@ -4,16 +4,15 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class MilvusCollectionDescription {
 
-    private String collectionName;
-    private String idFieldName;
-    private String vectorFieldName;
-    private String scalarFieldName;
+    private final String collectionName;
+    private final String idFieldName;
+    private final String vectorFieldName;
+    private final String scalarFieldName;
 
     public MilvusCollectionDescription(String collectionName,
                                        String idFieldName,
                                        String vectorFieldName,
                                        String scalarFieldName) {
-
         this.collectionName = ensureNotBlank(collectionName, "collectionName");
         this.idFieldName = ensureNotBlank(idFieldName, "idFieldName");
         this.vectorFieldName = ensureNotBlank(vectorFieldName, "vectorFieldName");
@@ -41,6 +40,7 @@ public class MilvusCollectionDescription {
     }
 
     public static class MilvusCollectionDescriptionBuilder {
+
         private String collectionName;
         private String idFieldName;
         private String vectorFieldName;
@@ -72,11 +72,5 @@ public class MilvusCollectionDescription {
         public MilvusCollectionDescription build() {
             return new MilvusCollectionDescription(this.collectionName, this.idFieldName, this.vectorFieldName, this.scalarFieldName);
         }
-
-        public String toString() {
-            return "MilvusCollectionDescription.MilvusCollectionDescriptionBuilder(collectionName=" + this.collectionName + ", idFieldName=" + this.idFieldName + ", vectorFieldName=" + this.vectorFieldName + ", scalarFieldName=" + this.scalarFieldName + ")";
-        }
-
     }
-
 }

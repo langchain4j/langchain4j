@@ -5,5 +5,4 @@ public enum ConsistencyLevel {
     STRONG,
     BOUNDED,
     EVENTUALLY
-
 }

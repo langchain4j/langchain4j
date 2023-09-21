@@ -1,9 +1,8 @@
-package dev.langchain4j.store.embedding;
+package dev.langchain4j.store.embedding.milvus;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.milvus.MilvusCollectionDescription;
-import dev.langchain4j.store.embedding.milvus.MilvusOperationsParams;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.param.MetricType;
 import io.milvus.response.QueryResultsWrapper;
@@ -13,35 +12,34 @@ import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.store.embedding.CollectionOperationsExecutor.queryForVectors;
-import static dev.langchain4j.store.embedding.Generator.generateEmptyScalars;
+import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.queryForVectors;
+import static dev.langchain4j.store.embedding.milvus.Generator.generateEmptyScalars;
 
 class Mapper {
 
-    public static List<List<Float>> toVectors(List<Embedding> embeddings) {
+    static List<List<Float>> toVectors(List<Embedding> embeddings) {
         return embeddings.stream()
                 .map(Embedding::vectorAsList)
                 .collect(Collectors.toList());
     }
 
-    public static List<String> toScalars(List<TextSegment> textSegments, int size) {
+    static List<String> toScalars(List<TextSegment> textSegments, int size) {
         boolean noScalars = textSegments == null || textSegments.isEmpty();
 
         return noScalars ? generateEmptyScalars(size) : textSegmentsToScalars(textSegments);
     }
 
-
-    public static List<String> textSegmentsToScalars(List<TextSegment> textSegments) {
+    static List<String> textSegmentsToScalars(List<TextSegment> textSegments) {
         return textSegments.stream()
                 .map(TextSegment::text)
                 .collect(Collectors.toList());
     }
 
-    public static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(MilvusServiceClient milvusClient,
-                                                                       SearchResultsWrapper resultsWrapper,
-                                                                       MilvusCollectionDescription collectionDescription,
-                                                                       MilvusOperationsParams operationsParams,
-                                                                       double minSimilarity) {
+    static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(MilvusServiceClient milvusClient,
+                                                                SearchResultsWrapper resultsWrapper,
+                                                                MilvusCollectionDescription collectionDescription,
+                                                                MilvusOperationsParams operationsParams,
+                                                                double minSimilarity) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(collectionDescription.idFieldName()).getFieldData();
         Map<String, List<Float>> idsAndVectors = getVectors(milvusClient, collectionDescription, rowIds, operationsParams);
@@ -84,7 +82,6 @@ class Mapper {
         }
     }
 
-
     private static Map<String, List<Float>> getVectors(MilvusServiceClient milvusClient,
                                                        MilvusCollectionDescription collectionDescription,
                                                        List<String> rowIds,
@@ -108,5 +105,4 @@ class Mapper {
             return Collections.emptyMap();
         }
     }
-
 }
