@@ -20,6 +20,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one is discarded.
  * <p>
+ * Once added, a {@link SystemMessage} is always retained.
+ * Only one {@link SystemMessage} can be held at a time.
+ * If a new {@link SystemMessage} with the same content is added, it is ignored.
+ * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
+ * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore}.
  */
 public class MessageWindowChatMemory implements ChatMemory {

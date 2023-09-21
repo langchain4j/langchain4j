@@ -22,6 +22,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If there isn't enough space for a new message, the oldest one (or multiple) is discarded.
  * Messages are indivisible. If a message doesn't fit, it's discarded completely.
  * <p>
+ * Once added, a {@link SystemMessage} is always retained.
+ * Only one {@link SystemMessage} can be held at a time.
+ * If a new {@link SystemMessage} with the same content is added, it is ignored.
+ * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
+ * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore}.
  */
 public class TokenWindowChatMemory implements ChatMemory {
