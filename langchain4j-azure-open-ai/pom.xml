@@ -11,19 +11,12 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-spring-boot-starter</artifactId>
+    <artifactId>langchain4j-azure-open-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>langchain4j-spring-boot-starter</name>
-    <description>Spring Boot Starter for LangChain4j</description>
+    <name>LangChain4j integration with Azure OpenAI</name>
 
     <dependencies>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${project.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -32,22 +25,31 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-local-ai</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-hugging-face</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
         </dependency>
-
     </dependencies>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
 
 </project>

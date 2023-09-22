@@ -11,22 +11,10 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-vespa</artifactId>
+    <artifactId>langchain4j-hugging-face</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Vespa</name>
-    <description>
-        Vespa is a fully featured search engine and vector database.
-        Integration with LangChain4j uses:
-        - Vespa's client &amp; vespa-feed-client libraries which have Apache License 2.0:
-        https://github.com/vespa-engine/vespa/blob/master/LICENSE
-        - org.apache.httpcomponents.client5.httpclient5-fluent library which has Apache License 2.0:
-        https://github.com/apache/httpcomponents-client/blob/master/LICENSE.txt
-    </description>
-
-    <properties>
-        <vespa.version>8.190.2</vespa.version> <!-- the latest Java 8 version -->
-    </properties>
+    <name>LangChain4j integration with Hugging Face</name>
 
     <dependencies>
 
@@ -34,18 +22,6 @@
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.yahoo.vespa</groupId>
-            <artifactId>client</artifactId>
-            <version>${vespa.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.yahoo.vespa</groupId>
-            <artifactId>vespa-feed-client</artifactId>
-            <version>${vespa.version}</version>
         </dependency>
 
         <dependency>
@@ -64,6 +40,23 @@
             <scope>provided</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-params</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <licenses>
