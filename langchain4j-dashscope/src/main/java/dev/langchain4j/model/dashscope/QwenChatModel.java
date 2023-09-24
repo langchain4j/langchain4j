@@ -15,8 +15,7 @@ import dev.langchain4j.model.output.Response;
 import java.util.List;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
-import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
-import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
+import static dev.langchain4j.model.dashscope.QwenHelper.*;
 
 public class QwenChatModel implements ChatLanguageModel {
 
@@ -60,7 +59,8 @@ public class QwenChatModel implements ChatLanguageModel {
             GenerationResult generationResult = generation.call(param);
             String answer = answerFrom(generationResult);
 
-            return Response.from(AiMessage.from(answer));
+            return Response.from(AiMessage.from(answer),
+                    tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
@@ -123,7 +123,7 @@ public class QwenChatModel implements ChatLanguageModel {
             if (Utils.isNullOrBlank(apiKey)) {
                 throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
             }
-            modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.QWEN_PLUS_V1 : modelName;
+            modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.QWEN_PLUS : modelName;
             enableSearch = enableSearch != null && enableSearch;
         }
 

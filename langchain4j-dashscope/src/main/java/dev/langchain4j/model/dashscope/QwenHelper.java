@@ -3,10 +3,13 @@ package dev.langchain4j.model.dashscope;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.aigc.generation.GenerationUsage;
 import com.alibaba.dashscope.common.Message;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +17,8 @@ import java.util.Optional;
 import static com.alibaba.dashscope.common.Role.ASSISTANT;
 import static com.alibaba.dashscope.common.Role.SYSTEM;
 import static com.alibaba.dashscope.common.Role.USER;
+import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static java.util.stream.Collectors.toList;
 
 class QwenHelper {
@@ -53,6 +58,32 @@ class QwenHelper {
                 .orElseGet(() -> Optional.of(result)
                         .map(GenerationResult::getOutput)
                         .map(GenerationOutput::getText)
-                        .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]"));
+                        .orElse(""));
+    }
+
+    static TokenUsage tokenUsageFrom(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getUsage)
+                .map(usage -> new TokenUsage(usage.getInputTokens(), usage.getOutputTokens()))
+                .orElse(new TokenUsage(null, null));
+    }
+
+    static FinishReason finishReasonFrom(GenerationResult result) {
+        String finishReason = Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getFinishReason)
+                .orElse("");
+
+        switch (finishReason) {
+            case "stop":
+                return STOP;
+            case "length":
+                return LENGTH;
+            default:
+                return null;
+        }
     }
 }

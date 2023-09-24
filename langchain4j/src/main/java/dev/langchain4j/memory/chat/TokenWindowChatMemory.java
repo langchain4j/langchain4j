@@ -1,6 +1,7 @@
 package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -19,6 +21,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * It retains as many of the most recent messages as can fit into the window.
  * If there isn't enough space for a new message, the oldest one (or multiple) is discarded.
  * Messages are indivisible. If a message doesn't fit, it's discarded completely.
+ * <p>
+ * Once added, a {@link SystemMessage} is always retained.
+ * Only one {@link SystemMessage} can be held at a time.
+ * If a new {@link SystemMessage} with the same content is added, it is ignored.
+ * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore}.
  */
@@ -46,9 +53,26 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
+        if (message instanceof SystemMessage) {
+            Optional<SystemMessage> maybeSystemMessage = findSystemMessage(messages);
+            if (maybeSystemMessage.isPresent()) {
+                if (maybeSystemMessage.get().equals(message)) {
+                    return; // do not add the same system message
+                } else {
+                    messages.remove(maybeSystemMessage.get()); // need to replace existing system message
+                }
+            }
+        }
         messages.add(message);
         ensureCapacity(messages, maxTokens, tokenizer);
         store.updateMessages(id, messages);
+    }
+
+    private static Optional<SystemMessage> findSystemMessage(List<ChatMessage> messages) {
+        return messages.stream()
+                .filter(message -> message instanceof SystemMessage)
+                .map(message -> (SystemMessage) message)
+                .findAny();
     }
 
     @Override
@@ -61,13 +85,16 @@ public class TokenWindowChatMemory implements ChatMemory {
     private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, Tokenizer tokenizer) {
         int currentTokenCount = tokenizer.estimateTokenCountInMessages(messages);
         while (currentTokenCount > maxTokens) {
-            ChatMessage oldestMessage = messages.remove(0);
-            int tokenCountOfOldestMessage = tokenizer.estimateTokenCountInMessage(oldestMessage);
-            log.trace("Removing the oldest message ({} tokens) to comply with capacity requirements: {}",
-                    tokenCountOfOldestMessage, oldestMessage);
-            currentTokenCount -= tokenCountOfOldestMessage;
+            int messageToRemove = 0;
+            if (messages.get(0) instanceof SystemMessage) {
+                messageToRemove = 1;
+            }
+            ChatMessage removedMessage = messages.remove(messageToRemove);
+            int tokenCountOfRemovedMessage = tokenizer.estimateTokenCountInMessage(removedMessage);
+            log.trace("Removing the following message ({} tokens) to comply with the capacity requirements: {}",
+                    tokenCountOfRemovedMessage, removedMessage);
+            currentTokenCount -= tokenCountOfRemovedMessage;
         }
-        log.trace("Current token count: {}", currentTokenCount);
     }
 
     @Override
