@@ -6,6 +6,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,18 +15,24 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.DOCUMENT;
+import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.QUERY;
+import static java.util.Collections.singletonList;
+
 public class QwenEmbeddingModel implements EmbeddingModel {
+
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
     public static final String TYPE_DOCUMENT = "document";
+
     private final String apiKey;
     private final String modelName;
     private final TextEmbedding embedding;
 
-    protected QwenEmbeddingModel(String apiKey, String modelName) {
+    public QwenEmbeddingModel(String apiKey, String modelName) {
         this.apiKey = apiKey;
         this.modelName = modelName;
-        embedding = new TextEmbedding();
+        this.embedding = new TextEmbedding();
     }
 
     private boolean containsDocuments(List<TextSegment> textSegments) {
@@ -43,7 +51,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 .anyMatch(Utils::isNullOrBlank);
     }
 
-    private List<Embedding> embedTexts(List<TextSegment> textSegments, TextEmbeddingParam.TextType textType) {
+    private Response<List<Embedding>> embedTexts(List<TextSegment> textSegments, TextEmbeddingParam.TextType textType) {
         TextEmbeddingParam param = TextEmbeddingParam.builder()
                 .apiKey(apiKey)
                 .model(modelName)
@@ -53,7 +61,10 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                         .collect(Collectors.toList()))
                 .build();
         try {
-            return Optional.of(embedding.call(param))
+            TextEmbeddingResult generationResult = embedding.call(param);
+            // total_tokens are the same as input_tokens in the embedding model
+            TokenUsage usage = new TokenUsage(generationResult.getUsage().getTotalTokens());
+            List<Embedding> embeddings = Optional.of(generationResult)
                     .map(TextEmbeddingResult::getOutput)
                     .map(TextEmbeddingOutput::getEmbeddings)
                     .orElse(Collections.emptyList())
@@ -62,35 +73,45 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                     .map(doubleList -> doubleList.stream().map(Double::floatValue).collect(Collectors.toList()))
                     .map(Embedding::from)
                     .collect(Collectors.toList());
+            return Response.from(embeddings, usage);
         } catch (NoApiKeyException e) {
             throw new RuntimeException(e);
         }
     }
 
     @Override
-    public List<Embedding> embedAll(List<TextSegment> textSegments) {
+    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         boolean queries = containsQueries(textSegments);
 
         if (!queries) {
             // default all documents
-            return embedTexts(textSegments, TextEmbeddingParam.TextType.DOCUMENT);
+            return embedTexts(textSegments, DOCUMENT);
         } else {
             boolean documents = containsDocuments(textSegments);
             if (!documents) {
-                return embedTexts(textSegments, TextEmbeddingParam.TextType.QUERY);
+                return embedTexts(textSegments, QUERY);
             } else {
                 // This is a mixed collection of queries and documents. Embed one by one.
                 List<Embedding> embeddings = new ArrayList<>(textSegments.size());
-                for (TextSegment textSegment: textSegments) {
-                    List<Embedding> result;
+                Integer tokens = null;
+                for (TextSegment textSegment : textSegments) {
+                    Response<List<Embedding>> result;
                     if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata(TYPE_KEY))) {
-                        result = embedTexts(Collections.singletonList(textSegment), TextEmbeddingParam.TextType.QUERY);
+                        result = embedTexts(singletonList(textSegment), QUERY);
                     } else {
-                        result = embedTexts(Collections.singletonList(textSegment), TextEmbeddingParam.TextType.DOCUMENT);
+                        result = embedTexts(singletonList(textSegment), DOCUMENT);
                     }
-                    embeddings.addAll(result);
+                    embeddings.addAll(result.content());
+                    if (result.tokenUsage() == null) {
+                        continue;
+                    }
+                    if (tokens == null) {
+                        tokens = result.tokenUsage().inputTokenCount();
+                    } else {
+                        tokens += result.tokenUsage().inputTokenCount();
+                    }
                 }
-                return embeddings;
+                return Response.from(embeddings, new TokenUsage(tokens));
             }
         }
     }
@@ -98,7 +119,9 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     public static Builder builder() {
         return new Builder();
     }
+
     public static class Builder {
+
         private String apiKey;
         private String modelName;
 

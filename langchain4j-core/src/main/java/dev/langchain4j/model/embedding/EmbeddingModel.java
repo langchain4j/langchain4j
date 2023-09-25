@@ -2,23 +2,29 @@ package dev.langchain4j.model.embedding;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
 import static java.util.Collections.singletonList;
 
 /**
- * Represents a LLM that generates an embedding for a given text.
+ * Represents a model that can convert a given text into an embedding (vector representation of the text).
  */
 public interface EmbeddingModel {
 
-    default Embedding embed(String text) {
+    default Response<Embedding> embed(String text) {
         return embed(TextSegment.from(text));
     }
 
-    default Embedding embed(TextSegment textSegment) {
-        return embedAll(singletonList(textSegment)).get(0);
+    default Response<Embedding> embed(TextSegment textSegment) {
+        Response<List<Embedding>> response = embedAll(singletonList(textSegment));
+        return Response.from(
+                response.content().get(0),
+                response.tokenUsage(),
+                response.finishReason()
+        );
     }
 
-    List<Embedding> embedAll(List<TextSegment> textSegments);
+    Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
 }

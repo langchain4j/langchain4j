@@ -8,7 +8,6 @@ import dev.langchain4j.model.input.Prompt;
 import java.util.List;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static java.util.Collections.singletonList;
 
 /**
@@ -27,10 +26,6 @@ public interface TokenCountEstimator {
 
     default int estimateTokenCount(Prompt prompt) {
         return estimateTokenCount(prompt.text());
-    }
-
-    default int estimateTokenCount(Object structuredPrompt) {
-        return estimateTokenCount(toPrompt(structuredPrompt));
     }
 
     default int estimateTokenCount(TextSegment textSegment) {

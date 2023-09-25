@@ -14,7 +14,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Document {
+class Document {
 
     private float[] vector;
     private String text;

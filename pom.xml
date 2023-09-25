@@ -18,15 +18,21 @@
         <module>langchain4j-spring-boot-starter</module>
 
         <!-- model providers -->
+        <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-dashscope</module>
+        <module>langchain4j-hugging-face</module>
+        <module>langchain4j-local-ai</module>
+        <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
 
         <!-- embedding stores -->
+        <module>langchain4j-cassandra</module>
+        <module>langchain4j-chroma</module>
+        <module>langchain4j-elasticsearch</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-pinecone</module>
+        <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
-        <module>langchain4j-elasticsearch</module>
-        <module>langchain4j-cassandra</module>
     </modules>
 
 </project>

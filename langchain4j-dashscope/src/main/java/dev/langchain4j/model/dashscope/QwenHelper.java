@@ -3,42 +3,50 @@ package dev.langchain4j.model.dashscope;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.aigc.generation.GenerationUsage;
 import com.alibaba.dashscope.common.Message;
-import com.alibaba.dashscope.common.Role;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-public class QwenHelper {
-    public static List<Message> toQwenMessages(List<ChatMessage> messages) {
+import static com.alibaba.dashscope.common.Role.ASSISTANT;
+import static com.alibaba.dashscope.common.Role.SYSTEM;
+import static com.alibaba.dashscope.common.Role.USER;
+import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static java.util.stream.Collectors.toList;
+
+class QwenHelper {
+
+    static List<Message> toQwenMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(QwenHelper::toQwenMessage)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
-    public static Message toQwenMessage(ChatMessage message) {
+    static Message toQwenMessage(ChatMessage message) {
         return Message.builder()
                 .role(roleFrom(message))
                 .content(message.text())
                 .build();
     }
 
-    public static String roleFrom(ChatMessage message) {
+    static String roleFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
-            return Role.ASSISTANT.getValue();
+            return ASSISTANT.getValue();
         } else if (message instanceof SystemMessage) {
-            return Role.SYSTEM.getValue();
+            return SYSTEM.getValue();
         } else {
-            return Role.USER.getValue();
+            return USER.getValue();
         }
     }
 
-    public static String answerFrom(GenerationResult result) {
+    static String answerFrom(GenerationResult result) {
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)
@@ -50,6 +58,32 @@ public class QwenHelper {
                 .orElseGet(() -> Optional.of(result)
                         .map(GenerationResult::getOutput)
                         .map(GenerationOutput::getText)
-                        .orElse("Oops, something wrong...[request id: " + result.getRequestId() + "]"));
+                        .orElse(""));
+    }
+
+    static TokenUsage tokenUsageFrom(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getUsage)
+                .map(usage -> new TokenUsage(usage.getInputTokens(), usage.getOutputTokens()))
+                .orElse(new TokenUsage(null, null));
+    }
+
+    static FinishReason finishReasonFrom(GenerationResult result) {
+        String finishReason = Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getFinishReason)
+                .orElse("");
+
+        switch (finishReason) {
+            case "stop":
+                return STOP;
+            case "length":
+                return LENGTH;
+            default:
+                return null;
+        }
     }
 }
