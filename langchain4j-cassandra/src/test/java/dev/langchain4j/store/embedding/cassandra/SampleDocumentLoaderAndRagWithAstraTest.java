@@ -54,7 +54,7 @@ class SampleDocumentLoaderAndRagWithAstraTest {
         // --- Ingesting documents ---
 
         // Parsing input file
-        FileSystemDocumentLoaderTest.toPath();
+        //FileSystemDocumentLoaderTest.toPath();
         FileSystemDocumentLoader.
         Document document = FileSystemDocumentLoader
                 .loadDocument(Objects.requireNonNull(SampleDocumentLoaderAndRagWithAstraTest.class
