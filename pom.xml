@@ -32,7 +32,7 @@
         <module>langchain4j-pinecone</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
-
+        <module>langchain4j-redis</module>
     </modules>
 
 </project>

@@ -16,14 +16,17 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.time.Duration.ofSeconds;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 public class StreamingAiServicesIT {
 
-    StreamingChatLanguageModel streamingChatModel
-            = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+    StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .timeout(ofSeconds(30))
+            .build();
 
     interface Assistant {
 

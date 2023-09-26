@@ -160,11 +160,6 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-        return findRelevant(referenceEmbedding, maxResults, 0);
-    }
-
-    @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults);
 

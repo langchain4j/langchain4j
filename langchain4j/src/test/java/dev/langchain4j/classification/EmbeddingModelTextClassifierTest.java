@@ -1,6 +1,6 @@
 package dev.langchain4j.classification;
 
-import dev.langchain4j.model.inprocess.InProcessEmbeddingModel;
+import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -8,14 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.ACCOUNT_MANAGEMENT;
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.BILLING_AND_PAYMENTS;
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.FEEDBACK_AND_COMPLAINTS;
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.ORDER_STATUS;
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.PRODUCT_INFORMATION;
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.RETURNS_AND_EXCHANGES;
-import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.TECHNICAL_SUPPORT;
-import static dev.langchain4j.model.inprocess.InProcessEmbeddingModelType.ALL_MINILM_L6_V2_Q;
+import static dev.langchain4j.classification.EmbeddingModelTextClassifierTest.CustomerServiceCategory.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -182,7 +175,7 @@ class EmbeddingModelTextClassifierTest {
     void should_return_one_category_by_default() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new InProcessEmbeddingModel(ALL_MINILM_L6_V2_Q),
+                new AllMiniLmL6V2QuantizedEmbeddingModel(),
                 examples
         );
 
@@ -196,7 +189,7 @@ class EmbeddingModelTextClassifierTest {
     void should_return_multiple_categories() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new InProcessEmbeddingModel(ALL_MINILM_L6_V2_Q),
+                new AllMiniLmL6V2QuantizedEmbeddingModel(),
                 examples,
                 2,
                 0,
@@ -213,7 +206,7 @@ class EmbeddingModelTextClassifierTest {
     void should_classify_respecting_minScore() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new InProcessEmbeddingModel(ALL_MINILM_L6_V2_Q),
+                new AllMiniLmL6V2QuantizedEmbeddingModel(),
                 examples,
                 2,
                 0.64,
@@ -230,7 +223,7 @@ class EmbeddingModelTextClassifierTest {
     void should_classify_respecting_meanToMaxScoreRatio_1() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new InProcessEmbeddingModel(ALL_MINILM_L6_V2_Q),
+                new AllMiniLmL6V2QuantizedEmbeddingModel(),
                 examples,
                 1,
                 0,
@@ -247,7 +240,7 @@ class EmbeddingModelTextClassifierTest {
     void should_classify_respecting_meanToMaxScoreRatio_0() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new InProcessEmbeddingModel(ALL_MINILM_L6_V2_Q),
+                new AllMiniLmL6V2QuantizedEmbeddingModel(),
                 examples,
                 1,
                 0,

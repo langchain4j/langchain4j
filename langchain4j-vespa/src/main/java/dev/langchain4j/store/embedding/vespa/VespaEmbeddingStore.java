@@ -44,7 +44,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
   private static final String FIELD_NAME_VECTOR = "vector";
   private static final String FIELD_NAME_DOCUMENT_ID = "documentid";
   private static final String DEFAULT_RANK_PROFILE = "cosine_similarity";
-  private static final double DEFAULT_MIN_SCORE = 0.0;
   private static final int DEFAULT_TARGET_HITS = 10;
 
   private final String url;
@@ -169,15 +168,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     return ids;
-  }
-
-  /**
-   * {@inheritDoc}
-   * The score inside {@link EmbeddingMatch} is Vespa relevance according to provided rank profile.
-   */
-  @Override
-  public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    return findRelevant(referenceEmbedding, maxResults, DEFAULT_MIN_SCORE);
   }
 
   /**
