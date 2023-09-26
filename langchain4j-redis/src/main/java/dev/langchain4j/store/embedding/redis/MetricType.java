@@ -1,18 +1,20 @@
 package dev.langchain4j.store.embedding.redis;
 
 /**
- * Redis vector field distance Metric
+ * Similarity metric used by Redis
  */
-public enum MetricType {
+enum MetricType {
 
     /**
      * cosine similarity
      */
     COSINE,
+
     /**
      * inner product
      */
     IP,
+
     /**
      * euclidean distance
      */

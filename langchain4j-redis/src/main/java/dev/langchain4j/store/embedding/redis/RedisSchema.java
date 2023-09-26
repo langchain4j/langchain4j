@@ -5,23 +5,27 @@ import lombok.Builder;
 import redis.clients.jedis.search.schemafields.SchemaField;
 import redis.clients.jedis.search.schemafields.TextField;
 import redis.clients.jedis.search.schemafields.VectorField;
+import redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
+import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
+
 /**
  * Redis Schema Description
  */
 @Builder
 @AllArgsConstructor
-public class RedisSchema {
+class RedisSchema {
 
     public static final String SCORE_FIELD_NAME = "vector_score";
     private static final String JSON_PATH_PREFIX = "$.";
-    private static final VectorField.VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = VectorField.VectorAlgorithm.HNSW;
-    private static final MetricType DEFAULT_METRIC_TYPE = MetricType.COSINE;
+    private static final VectorAlgorithm DEFAULT_VECTOR_ALGORITHM = HNSW;
+    private static final MetricType DEFAULT_METRIC_TYPE = COSINE;
 
     /* Redis schema field settings */
 
@@ -39,7 +43,7 @@ public class RedisSchema {
     /* Vector field settings */
 
     @Builder.Default
-    private VectorField.VectorAlgorithm vectorAlgorithm = DEFAULT_VECTOR_ALGORITHM;
+    private VectorAlgorithm vectorAlgorithm = DEFAULT_VECTOR_ALGORITHM;
     private int dimension;
     @Builder.Default
     private MetricType metricType = DEFAULT_METRIC_TYPE;
