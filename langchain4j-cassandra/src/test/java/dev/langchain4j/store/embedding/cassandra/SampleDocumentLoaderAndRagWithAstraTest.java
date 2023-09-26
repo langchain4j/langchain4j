@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.cassandra;
 import com.dtsx.astra.sdk.utils.TestUtils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.DocumentType;
 import dev.langchain4j.data.document.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.io.File;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,13 +57,8 @@ class SampleDocumentLoaderAndRagWithAstraTest {
         // --- Ingesting documents ---
 
         // Parsing input file
-        //FileSystemDocumentLoaderTest.toPath();
-        FileSystemDocumentLoader.
-        Document document = FileSystemDocumentLoader
-                .loadDocument(Objects.requireNonNull(SampleDocumentLoaderAndRagWithAstraTest.class
-                                .getClassLoader()
-                                .getResource("story-about-happy-carrot.txt"))
-                                .getFile());
+        Path path = new File(getClass().getResource("/story-about-happy-carrot.txt").getFile()).toPath();
+        Document document = FileSystemDocumentLoader.loadDocument(path, DocumentType.TXT);
         DocumentSplitter splitter = DocumentSplitters
                 .recursive(100, 10, new OpenAiTokenizer(GPT_3_5_TURBO));
 
