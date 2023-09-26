@@ -28,13 +28,8 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.ai4j</groupId>
-            <artifactId>openai4j</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.knuddels</groupId>
-            <artifactId>jtokkit</artifactId>
+            <groupId>com.squareup.retrofit2</groupId>
+            <artifactId>retrofit</artifactId>
         </dependency>
 
         <dependency>
@@ -79,6 +74,13 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

@@ -19,6 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openai4j.version>0.9.0</openai4j.version>
         <retrofit.version>2.9.0</retrofit.version>
+        <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
         <lombok.version>1.18.28</lombok.version>
         <pdfbox.version>2.0.29</pdfbox.version>
@@ -56,6 +57,12 @@
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>converter-gson</artifactId>
                 <version>${retrofit.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp</artifactId>
+                <version>${okhttp.version}</version>
             </dependency>
 
             <dependency>

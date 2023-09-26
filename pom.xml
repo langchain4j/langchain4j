@@ -18,7 +18,11 @@
         <module>langchain4j-spring-boot-starter</module>
 
         <!-- model providers -->
+        <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-dashscope</module>
+        <module>langchain4j-hugging-face</module>
+        <module>langchain4j-local-ai</module>
+        <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
 
         <!-- embedding stores -->
