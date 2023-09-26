@@ -3,25 +3,35 @@ package dev.langchain4j.store.embedding.milvus;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.MetricType;
 import io.milvus.param.collection.FlushParam;
+import io.milvus.param.collection.HasCollectionParam;
 import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
+
+import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
+import static java.lang.String.format;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.joining;
 
 class CollectionRequestBuilder {
 
     static FlushParam buildFlushRequest(String collectionName) {
         return FlushParam.newBuilder()
-                .withCollectionNames(Collections.singletonList(collectionName))
+                .withCollectionNames(singletonList(collectionName))
                 .build();
     }
 
-    static InsertParam buildInsertRequest(List<InsertParam.Field> fields, String collectionName) {
+    static HasCollectionParam buildHasCollectionRequest(String collectionName) {
+        return HasCollectionParam.newBuilder()
+                .withCollectionName(collectionName)
+                .build();
+    }
+
+    static InsertParam buildInsertRequest(String collectionName, List<InsertParam.Field> fields) {
         return InsertParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFields(fields)
@@ -34,40 +44,36 @@ class CollectionRequestBuilder {
                 .build();
     }
 
-    static SearchParam buildSearchRequest(List<Float> vector,
+    static SearchParam buildSearchRequest(String collectionName,
+                                          List<Float> vector,
                                           int maxResults,
-                                          MilvusCollectionDescription collectionDescription,
-                                          MilvusOperationsParams operationsParams) {
-        List<String> searchOutputFields = Arrays.asList(collectionDescription.idFieldName(), collectionDescription.scalarFieldName());
-        List<List<Float>> searchVector = Collections.singletonList(vector);
-
+                                          MetricType metricType,
+                                          ConsistencyLevelEnum consistencyLevel) {
         return SearchParam.newBuilder()
-                .withCollectionName(collectionDescription.collectionName())
-                .withConsistencyLevel(ConsistencyLevelEnum.valueOf(operationsParams.consistencyLevel().name()))
-                .withMetricType(MetricType.valueOf(operationsParams.metricType().name()))
-                .withOutFields(searchOutputFields)
+                .withCollectionName(collectionName)
+                .withVectors(singletonList(vector))
+                .withVectorFieldName(VECTOR_FIELD_NAME)
                 .withTopK(maxResults)
-                .withVectors(searchVector)
-                .withVectorFieldName(collectionDescription.vectorFieldName())
+                .withMetricType(metricType)
+                .withConsistencyLevel(consistencyLevel)
+                .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME))
                 .build();
     }
 
-    static QueryParam buildQueryRequest(List<String> rowIds, MilvusCollectionDescription collectionDescription, String consistencyLevel) {
-        long limit = rowIds.size();
-        List<String> queryOutputFields = Collections.singletonList(collectionDescription.vectorFieldName());
+    static QueryParam buildQueryRequest(String collectionName,
+                                        List<String> rowIds,
+                                        ConsistencyLevelEnum consistencyLevel) {
         return QueryParam.newBuilder()
-                .withCollectionName(collectionDescription.collectionName())
-                .withConsistencyLevel(ConsistencyLevelEnum.valueOf(consistencyLevel))
-                .withExpr(buildQueryExpression(rowIds, collectionDescription.idFieldName()))
-                .withOutFields(queryOutputFields)
-                .withOffset(0L)
-                .withLimit(limit)
+                .withCollectionName(collectionName)
+                .withExpr(buildQueryExpression(rowIds))
+                .withConsistencyLevel(consistencyLevel)
+                .withOutFields(singletonList(VECTOR_FIELD_NAME))
                 .build();
     }
 
-    private static String buildQueryExpression(List<String> rowIds, String idFieldName) {
+    private static String buildQueryExpression(List<String> rowIds) {
         return rowIds.stream()
-                .map(id -> String.format("%s == '%s'", idFieldName, id))
-                .collect(Collectors.joining(" || "));
+                .map(id -> format("%s == '%s'", ID_FIELD_NAME, id))
+                .collect(joining(" || "));
     }
 }

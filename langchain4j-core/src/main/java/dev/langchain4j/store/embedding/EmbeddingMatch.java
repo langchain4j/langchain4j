@@ -22,7 +22,7 @@ public class EmbeddingMatch<Embedded> {
     public EmbeddingMatch(Double score, String embeddingId, Embedding embedding, Embedded embedded) {
         this.score = ensureNotNull(score, "score");
         this.embeddingId = ensureNotBlank(embeddingId, "embeddingId");
-        this.embedding = ensureNotNull(embedding, "embedding");
+        this.embedding = embedding;
         this.embedded = embedded;
     }
 

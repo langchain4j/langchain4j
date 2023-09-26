@@ -32,7 +32,6 @@ import lombok.Builder;
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   private static final String DEFAULT_CLASS = "Default";
-  private static final Double DEFAULT_MIN_CERTAINTY = 0.0;
   private static final boolean DEFAULT_AVOID_DUPS = true;
   private static final String DEFAULT_CONSISTENCY_LEVEL = ConsistencyLevel.QUORUM;
   private static final String METADATA_TEXT_SEGMENT = "text";
@@ -108,15 +107,6 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
   @Override
   public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
     return addAll(null, embeddings, embedded);
-  }
-
-  /**
-   * {@inheritDoc}
-   * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
-   */
-  @Override
-  public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults) {
-    return findRelevant(referenceEmbedding, maxResults, DEFAULT_MIN_CERTAINTY);
   }
 
   /**

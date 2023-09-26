@@ -35,6 +35,7 @@
         <snakeyaml.version>2.0</snakeyaml.version>
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
+        <jedis.version>5.0.0</jedis.version>
     </properties>
 
     <dependencyManagement>
@@ -188,6 +189,12 @@
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>redis.clients</groupId>
+                <artifactId>jedis</artifactId>
+                <version>${jedis.version}</version>
             </dependency>
 
         </dependencies>
@@ -349,7 +356,7 @@
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
                                 </license>
                                 <license>
-                                    <name>(The MIT License|MIT License)</name>
+                                    <name>(The MIT License|MIT License|MIT)</name>
                                     <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
                                 </license>
                                 <license>

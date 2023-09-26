@@ -35,7 +35,7 @@ import static java.util.stream.Collectors.toList;
  *     NEGATIVE, List.of("It is pretty bad", "Worst experience ever!")
  * );
  *
- * EmbeddingModel embeddingModel = new InProcessEmbeddingModel(ALL_MINILM_L6_V2_Q);
+ * EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
  *
  * TextClassifier<Sentiment> classifier = new EmbeddingModelTextClassifier<>(embeddingModel, examples);
  *
