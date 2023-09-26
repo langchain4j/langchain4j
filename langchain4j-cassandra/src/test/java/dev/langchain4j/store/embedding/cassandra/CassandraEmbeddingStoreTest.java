@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * Work with Cassandra Embedding Store.
  */
-public class CassandraEmbeddingStoreTest {
+class CassandraEmbeddingStoreTest {
 
     public static final String TEST_KEYSPACE = "langchain4j";
     public static final String TEST_INDEX    = "test_embedding_store";

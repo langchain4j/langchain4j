@@ -7,6 +7,8 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 
+import static dev.langchain4j.store.embedding.cassandra.CassandraEmbeddingConfiguration.CassandraEmbeddingConfigurationBuilder;
+
 /**
  * Represents an embeddings with
  */
@@ -67,7 +69,7 @@ public class CassandraEmbeddingStore extends AbstractEmbeddingStore<TextSegment>
         /**
          * Configuration built with the builder
          */
-        private final CassandraEmbeddingConfiguration.CassandraEmbeddingConfigurationBuilder conf;
+        private final CassandraEmbeddingConfigurationBuilder conf;
 
         /**
          * Initialization

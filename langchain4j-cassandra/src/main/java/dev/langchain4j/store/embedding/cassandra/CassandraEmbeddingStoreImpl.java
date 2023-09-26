@@ -4,6 +4,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 import com.dtsx.astra.sdk.cassio.MetadataVectorCassandraTable;
+import com.dtsx.astra.sdk.cassio.SimilarityMetric;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 import java.net.InetSocketAddress;
@@ -27,7 +28,7 @@ public class CassandraEmbeddingStoreImpl extends CassandraEmbeddingStoreSupport 
         createKeyspaceIfNotExist(sessionBuilder, config.getKeyspace());
         sessionBuilder.withKeyspace(config.getKeyspace());
         this.embeddingTable = new MetadataVectorCassandraTable(sessionBuilder.build(),
-               config.getKeyspace(), config.getTable(), config.getDimension());
+               config.getKeyspace(), config.getTable(), config.getDimension(),  SimilarityMetric.COS);
     }
 
     /**

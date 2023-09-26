@@ -50,8 +50,7 @@ public class AstraDbEmbeddingConfiguration {
     protected String table;
 
     /**
-     * Represents the dimension of the model use to create the embeddings. The vector holding the embeddings
-     * is a fixed size. The dimension of the vector is the dimension of the model used to create the embeddings.
+     * Represents the dimension of the vector used to save the embeddings.
      */
     @NonNull
     protected Integer dimension;

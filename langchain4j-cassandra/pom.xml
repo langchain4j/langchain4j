@@ -15,7 +15,6 @@
 
     <properties>
         <astra-sdk.version>0.6.11</astra-sdk.version>
-        <logback.version>1.4.8</logback.version>
     </properties>
 
     <dependencies>
@@ -41,6 +40,23 @@
             <groupId>com.datastax.astra</groupId>
             <artifactId>astra-sdk-vector</artifactId>
             <version>${astra-sdk.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>ch.qos.logback</groupId>
+                    <artifactId>logback-classic</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- removing cve -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20230618</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-beanutils</groupId>
+            <artifactId>commons-beanutils</artifactId>
+            <version>1.9.4</version>
         </dependency>
 
         <dependency>

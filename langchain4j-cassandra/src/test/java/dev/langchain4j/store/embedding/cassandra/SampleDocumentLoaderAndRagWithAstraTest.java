@@ -21,6 +21,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,10 +35,11 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_00
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.joining;
 
-public class SampleDocumentLoaderAndRagWithAstraTest {
+class SampleDocumentLoaderAndRagWithAstraTest {
 
     @Test
-    //@Disabled("To run you need both OpenAi and Astra keys")
+    @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
     public void shouldRagWithOpenAiAndAstra() throws InterruptedException {
         // Initialization
         String astraToken  = getAstraToken();
@@ -52,6 +54,8 @@ public class SampleDocumentLoaderAndRagWithAstraTest {
         // --- Ingesting documents ---
 
         // Parsing input file
+        FileSystemDocumentLoaderTest.toPath();
+        FileSystemDocumentLoader.
         Document document = FileSystemDocumentLoader
                 .loadDocument(Objects.requireNonNull(SampleDocumentLoaderAndRagWithAstraTest.class
                                 .getClassLoader()

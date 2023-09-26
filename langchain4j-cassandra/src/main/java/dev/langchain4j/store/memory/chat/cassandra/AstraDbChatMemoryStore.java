@@ -28,7 +28,7 @@ public class AstraDbChatMemoryStore extends CassandraChatMemoryStore {
     }
 
     /**
-     * Constructor with default table name.
+     * Constructor with explicit table name.
      *
      * @param token        token
      * @param dbId         database identifier

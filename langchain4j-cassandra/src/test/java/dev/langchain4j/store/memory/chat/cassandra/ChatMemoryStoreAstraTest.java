@@ -11,6 +11,7 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.UUID;
 
@@ -27,13 +28,13 @@ import static java.time.Duration.ofSeconds;
 public class ChatMemoryStoreAstraTest {
 
     @Test
-    @Disabled("To run you need Astra keys")
-    public void chatMemoryAstraTest() throws InterruptedException {
+    @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
+    @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
+    void chatMemoryAstraTest() throws InterruptedException {
         // Initialization
         String astraToken  = getAstraToken();
         String databaseId  = setupDatabase("langchain4j", "langchain4j");
         String openAIKey   = System.getenv("OPENAI_API_KEY");
-
 
         // Given
         Assertions.assertNotNull(openAIKey);
@@ -58,11 +59,12 @@ public class ChatMemoryStoreAstraTest {
                 .id(chatSessionId)
                 .maxTokens(300, new OpenAiTokenizer(GPT_3_5_TURBO))
                 .build();
+
         // When
         chatMemory.add(userMessage("I will ask you a few question about ff4j. Response in a single sentence"));
         chatMemory.add(userMessage("Can I use it with Javascript ? "));
-        // Then
 
+        // Then
         Response<AiMessage> output = model.generate(chatMemory.messages());
         Assertions.assertNotNull(output.content().text());
     }

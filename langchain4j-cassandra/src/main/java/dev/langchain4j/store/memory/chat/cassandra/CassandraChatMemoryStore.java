@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
@@ -24,7 +26,6 @@ import java.util.stream.Collectors;
 
 /**
  * Implementation of {@link ChatMemoryStore} using Astra DB Vector Search.
- *
  * Table contains all chats. (default name is message_store). Each chat with multiple messages
  * is a partition.Message id is a time uuid.
  *
@@ -100,36 +101,6 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
     }
 
     /**
-     * Pojo marshall as Json in Cassandra table.
-     */
-    @Data
-    public static class MessageBody {
-
-        /** Message type (user | ai |system). */
-        private String type;
-
-        /** Content of message. */
-        private MessageData data;
-    }
-
-    /**
-     * Pojo marshall as Json in Cassandra table.
-     */
-    @Data
-    public static class MessageData {
-
-        /** Text of the message. */
-        private String content;
-
-        /** additional parameters from model. */
-        @JsonProperty("additional_kwargs")
-        private Map<String, String> additionalKwargs = new HashMap<>();
-
-        /** sample attribute. */
-        private boolean example = false;
-    }
-
-    /**
      * Unmarshalling Cassandra row as a Message with proper sub-type.
      *
      * @param record
@@ -139,23 +110,11 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      */
     private ChatMessage toChatMessage(@NonNull Record record) {
         try {
-            MessageBody body = OM.readValue(record.getBody(), MessageBody.class);
-            String content = body.getData().getContent();
-            switch (body.type) {
-                case "system":
-                    return SystemMessage.from(content);
-                case "ai":
-                    return AiMessage.from(content);
-                case "user":
-                case "human":
-                    return UserMessage.from(content);
-                default:
-                    log.error("Unknown message type {}", body.type);
-            }
+            return ChatMessageDeserializer.messageFromJson(record.getBody());
         } catch(Exception e) {
             log.error("Unable to parse message body", e);
+            throw new IllegalArgumentException("Unable to parse message body");
         }
-        throw new IllegalArgumentException("Unable to parse message body");
     }
 
     /**
@@ -172,20 +131,13 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
             Record record = new Record();
             record.setRowId(Uuids.timeBased());
             record.setPartitionId(memoryId);
-
-            MessageBody body = new MessageBody();
-            body.setType(chatMessage.type().name().toLowerCase());
-            MessageData data = new MessageData();
-            data.setContent(chatMessage.text());
-            body.setData(data);
-            record.setBody(OM.writeValueAsString(body));
+            record.setBody(ChatMessageSerializer.messageToJson(chatMessage));
             return record;
         } catch(Exception e) {
             log.error("Unable to parse message body", e);
             throw new IllegalArgumentException("Unable to parse message body", e);
         }
     }
-
 
     private String getMemoryId(Object memoryId) {
         if (!(memoryId instanceof String) ) {

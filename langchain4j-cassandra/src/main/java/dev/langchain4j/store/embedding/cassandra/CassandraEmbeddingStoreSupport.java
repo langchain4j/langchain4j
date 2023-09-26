@@ -7,8 +7,10 @@ import com.dtsx.astra.sdk.cassio.SimilaritySearchResult;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -137,8 +139,8 @@ public abstract class CassandraEmbeddingStoreSupport implements EmbeddingStore<T
                 .similaritySearch(SimilaritySearchQuery.builder()
                         .embeddings(embedding.vectorAsList())
                         .recordCount(maxResults)
-                        .threshold(minScore)
-                        .distance(SimilarityMetric.DOT_PRODUCT)
+                        .threshold(CosineSimilarity.fromRelevanceScore(minScore))
+                        .distance(SimilarityMetric.COS)
                         .build())
                 .stream()
                 .map(CassandraEmbeddingStoreSupport::mapSearchResult)
@@ -156,7 +158,7 @@ public abstract class CassandraEmbeddingStoreSupport implements EmbeddingStore<T
     private static EmbeddingMatch<TextSegment> mapSearchResult(SimilaritySearchResult<MetadataVectorCassandraTable.Record> record) {
         return new EmbeddingMatch<>(
                 // Score
-                (double) record.getSimilarity(),
+                RelevanceScore.fromCosineSimilarity(record.getSimilarity()),
                 // EmbeddingId : unique identifier
                 record.getEmbedded().getRowId(),
                 // Embeddings vector
@@ -172,19 +174,21 @@ public abstract class CassandraEmbeddingStoreSupport implements EmbeddingStore<T
      *      vector
      * @param maxResults
      *      max number of record
-     * @param threshold
-     *      score threshold
+     * @param minScore
+     *      score minScore
+     * @param metadata
+     *      map key-value to build a metadata filter
      * @return
      *      list of matching results
      */
-    public List<EmbeddingMatch<TextSegment>> similaritySearch(Embedding embedding, Integer maxResults, Double threshold, Metadata metadata) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, Integer maxResults, Double minScore, Metadata metadata) {
         SimilaritySearchQuery.SimilaritySearchQueryBuilder builder =
                 SimilaritySearchQuery.builder().embeddings(embedding.vectorAsList());
-        if (maxResults != null && maxResults > 0) {
-            builder.recordCount(maxResults);
+        if (maxResults == null || maxResults < 1) {
+            throw new IllegalArgumentException("maxResults (param[1]) must not be null and greater than 0");
         }
-        if (threshold!= null && threshold > 0d && threshold < 1d) {
-            builder.threshold(threshold);
+        if (minScore == null || minScore < 1 || minScore > 1) {
+            throw new IllegalArgumentException("minScore (param[2]) must not be null and in between 0 and 1.");
         }
         if (metadata != null) {
             builder.metaData(metadata.asMap());

@@ -129,9 +129,7 @@ public abstract class AbstractEmbeddingStore<T> implements EmbeddingStore<T> {
         if (embeddings.size() != textSegments.size()) {
             throw new IllegalArgumentException("embeddings and textSegment lists must have the same size");
         }
-        return IntStream.range(0, embeddings.size())
-                .mapToObj(i -> add(embeddings.get(i), textSegments.get(i)))
-                .collect(Collectors.toList());
+        return getDelegateImplementation().addAll(embeddings, textSegments);
     }
 
     /**
