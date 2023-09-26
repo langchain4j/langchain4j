@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static com.dtsx.astra.sdk.utils.TestUtils.readToken;
+import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
 
 /**
@@ -54,7 +54,7 @@ public class AstraDbEmbeddingStoreTest {
             throws Exception {
 
         // Read Token from environment variable ASTRA_DB_APPLICATION_TOKEN
-        String astraToken  = readToken();
+        String astraToken  = getAstraToken();
 
         // Database will be created if not exist (can take 90 seconds on first run)
         String databaseId = setupDatabase(TEST_DB, TEST_KEYSPACE);

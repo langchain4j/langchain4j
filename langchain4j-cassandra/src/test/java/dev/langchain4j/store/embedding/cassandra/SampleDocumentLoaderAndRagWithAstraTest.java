@@ -15,11 +15,11 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.dtsx.astra.sdk.utils.TestUtils.readToken;
+import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
@@ -37,10 +37,10 @@ import static java.util.stream.Collectors.joining;
 public class SampleDocumentLoaderAndRagWithAstraTest {
 
     @Test
-    @Disabled("To run you need both OpenAi and Astra keys")
+    //@Disabled("To run you need both OpenAi and Astra keys")
     public void shouldRagWithOpenAiAndAstra() throws InterruptedException {
         // Initialization
-        String astraToken  = readToken();
+        String astraToken  = getAstraToken();
         String databaseId  = setupDatabase("langchain4j", "langchain4j");
         String openAIKey   = System.getenv("OPENAI_API_KEY");
 
@@ -58,7 +58,7 @@ public class SampleDocumentLoaderAndRagWithAstraTest {
                                 .getResource("story-about-happy-carrot.txt"))
                                 .getFile());
         DocumentSplitter splitter = DocumentSplitters
-                .recursive(100, new OpenAiTokenizer(GPT_3_5_TURBO));
+                .recursive(100, 10, new OpenAiTokenizer(GPT_3_5_TURBO));
 
         // Embedding model (OpenAI)
         EmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
@@ -91,14 +91,14 @@ public class SampleDocumentLoaderAndRagWithAstraTest {
         String question = "Who is Charlie?";
 
         // Embed the question
-        Embedding questionEmbedding = embeddingModel.embed(question);
+        Response<Embedding> questionEmbedding = embeddingModel.embed(question);
 
         // Find relevant embeddings in embedding store by semantic similarity
         // You can play with parameters below to find a sweet spot for your specific use case
         int maxResults = 3;
         double minScore = 0.8;
         List<EmbeddingMatch<TextSegment>> relevantEmbeddings =
-                embeddingStore.findRelevant(questionEmbedding, maxResults, minScore);
+                embeddingStore.findRelevant(questionEmbedding.content(), maxResults, minScore);
 
         // --------- Chat Template -------------
 
@@ -133,10 +133,10 @@ public class SampleDocumentLoaderAndRagWithAstraTest {
                 .logRequests(true)
                 .build();
 
-        AiMessage aiMessage = chatModel.sendUserMessage(prompt.toUserMessage());
+        Response<AiMessage> aiMessage = chatModel.generate(prompt.toUserMessage());
 
         // See an answer from the model
-        String answer = aiMessage.text();
+        String answer = aiMessage.content().text();
         System.out.println(answer);
     }
 }
