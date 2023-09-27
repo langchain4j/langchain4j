@@ -12,6 +12,11 @@ public class QwenModelName {
     public static final String QWEN_SPARK_V1 = "qwen-spark-v1";  // Qwen sft for ai character scene, 4k context.
     public static final String QWEN_SPARK_V2 = "qwen-spark-v2";  // Qwen sft for ai character scene, 8k context.
 
+    // Qwen open sourced 7-billion-parameters version
+    public static final String QWEN_7B_CHAT = "qwen-7b-chat";
+    // Qwen open sourced 14-billion-parameters version
+    public static final String QWEN_14B_CHAT = "qwen-14b-chat";
+
     // Use with QwenEmbeddingModel
     public static final String TEXT_EMBEDDING_V1 = "text-embedding-v1";
 }
