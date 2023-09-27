@@ -20,7 +20,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -29,7 +28,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
@@ -37,22 +35,23 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.joining;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class SampleDocumentLoaderAndRagWithAstraTest {
 
     @Test
     @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
-    public void shouldRagWithOpenAiAndAstra() throws InterruptedException {
+    void shouldRagWithOpenAiAndAstra() {
         // Initialization
-        String astraToken  = getAstraToken();
-        String databaseId  = setupDatabase("langchain4j", "langchain4j");
-        String openAIKey   = System.getenv("OPENAI_API_KEY");
+        String astraToken = getAstraToken();
+        String databaseId = setupDatabase("langchain4j", "langchain4j");
+        String openAIKey = System.getenv("OPENAI_API_KEY");
 
         // Given
-        Assertions.assertNotNull(openAIKey);
-        Assertions.assertNotNull(databaseId);
-        Assertions.assertNotNull(astraToken);
+        assertNotNull(openAIKey);
+        assertNotNull(databaseId);
+        assertNotNull(astraToken);
 
         // --- Ingesting documents ---
 

@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.cassandra;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.experimental.SuperBuilder;
 
 /**
  * Plain old Java Object (POJO) to hold the configuration for the CassandraEmbeddingStore.
@@ -13,11 +12,13 @@ import lombok.experimental.SuperBuilder;
  *
  * @see CassandraEmbeddingStore
  */
-@Getter @Builder
+@Getter
+@Builder
 public class AstraDbEmbeddingConfiguration {
 
     /**
      * Represents the Api Key to interact with Astra DB
+     *
      * @see <a href="https://docs.datastax.com/en/astra/docs/manage-application-tokens.html">Astra DB Api Key</a>
      */
     @NonNull
@@ -58,8 +59,7 @@ public class AstraDbEmbeddingConfiguration {
     /**
      * Initialize the builder.
      *
-     * @return
-     *      cassandra embedding configuration buildesr
+     * @return cassandra embedding configuration builder
      */
     public static AstraDbEmbeddingConfiguration.AstraDbEmbeddingConfigurationBuilder builder() {
         return new AstraDbEmbeddingConfiguration.AstraDbEmbeddingConfigurationBuilder();
@@ -68,5 +68,6 @@ public class AstraDbEmbeddingConfiguration {
     /**
      * Signature for the builder.
      */
-    public static class AstraDbEmbeddingConfigurationBuilder{}
+    public static class AstraDbEmbeddingConfigurationBuilder {
+    }
 }

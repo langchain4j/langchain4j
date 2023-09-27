@@ -15,6 +15,7 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Disabled("needs Elasticsearch to be running locally")
 class ElasticsearchEmbeddingStoreTest {
@@ -77,7 +78,7 @@ class ElasticsearchEmbeddingStoreTest {
 
     @Test
     void testAddNotEqualSizeEmbeddingAndEmbedded() {
-        Throwable ex = Assertions.assertThrows(IllegalArgumentException.class, () -> store.addAll(asList(
+        Throwable ex = assertThrows(IllegalArgumentException.class, () -> store.addAll(asList(
                 Embedding.from(asList(0.3f, 0.87f, 0.90f, 0.24f)),
                 Embedding.from(asList(0.54f, 0.34f, 0.67f, 0.24f, 0.55f)),
                 Embedding.from(asList(0.80f, 0.45f, 0.779f, 0.5556f))
