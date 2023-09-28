@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class HuggingFaceClient {
 
@@ -39,7 +40,7 @@ class HuggingFaceClient {
                 .build();
 
         this.huggingFaceApi = retrofit.create(HuggingFaceApi.class);
-        this.modelId = modelId;
+        this.modelId = ensureNotBlank(modelId, "modelId");
     }
 
     TextGenerationResponse chat(TextGenerationRequest request) {
