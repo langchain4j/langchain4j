@@ -1,6 +1,6 @@
 package dev.langchain4j.classification;
 
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+//import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -170,85 +170,85 @@ class EmbeddingModelTextClassifierTest {
         ));
     }
 
-    @Test
-    @Disabled
-    void should_return_one_category_by_default() {
-
-        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new AllMiniLmL6V2QuantizedEmbeddingModel(),
-                examples
-        );
-
-        List<CustomerServiceCategory> categories = classifier.classify("Yo where is my order?");
-
-        assertThat(categories).containsExactly(ORDER_STATUS);
-    }
-
-    @Test
-    @Disabled
-    void should_return_multiple_categories() {
-
-        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new AllMiniLmL6V2QuantizedEmbeddingModel(),
-                examples,
-                2,
-                0,
-                0.5
-        );
-
-        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
-
-        assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES, FEEDBACK_AND_COMPLAINTS);
-    }
-
-    @Test
-    @Disabled
-    void should_classify_respecting_minScore() {
-
-        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new AllMiniLmL6V2QuantizedEmbeddingModel(),
-                examples,
-                2,
-                0.64,
-                0.5
-        );
-
-        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
-
-        assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES);
-    }
-
-    @Test
-    @Disabled
-    void should_classify_respecting_meanToMaxScoreRatio_1() {
-
-        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new AllMiniLmL6V2QuantizedEmbeddingModel(),
-                examples,
-                1,
-                0,
-                1
-        );
-
-        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
-
-        assertThat(categories).containsExactly(FEEDBACK_AND_COMPLAINTS);
-    }
-
-    @Test
-    @Disabled
-    void should_classify_respecting_meanToMaxScoreRatio_0() {
-
-        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
-                new AllMiniLmL6V2QuantizedEmbeddingModel(),
-                examples,
-                1,
-                0,
-                0
-        );
-
-        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
-
-        assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES);
-    }
+//    @Test
+//    @Disabled
+//    void should_return_one_category_by_default() {
+//
+//        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+//                new AllMiniLmL6V2QuantizedEmbeddingModel(),
+//                examples
+//        );
+//
+//        List<CustomerServiceCategory> categories = classifier.classify("Yo where is my order?");
+//
+//        assertThat(categories).containsExactly(ORDER_STATUS);
+//    }
+//
+//    @Test
+//    @Disabled
+//    void should_return_multiple_categories() {
+//
+//        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+//                new AllMiniLmL6V2QuantizedEmbeddingModel(),
+//                examples,
+//                2,
+//                0,
+//                0.5
+//        );
+//
+//        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
+//
+//        assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES, FEEDBACK_AND_COMPLAINTS);
+//    }
+//
+//    @Test
+//    @Disabled
+//    void should_classify_respecting_minScore() {
+//
+//        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+//                new AllMiniLmL6V2QuantizedEmbeddingModel(),
+//                examples,
+//                2,
+//                0.64,
+//                0.5
+//        );
+//
+//        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
+//
+//        assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES);
+//    }
+//
+//    @Test
+//    @Disabled
+//    void should_classify_respecting_meanToMaxScoreRatio_1() {
+//
+//        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+//                new AllMiniLmL6V2QuantizedEmbeddingModel(),
+//                examples,
+//                1,
+//                0,
+//                1
+//        );
+//
+//        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
+//
+//        assertThat(categories).containsExactly(FEEDBACK_AND_COMPLAINTS);
+//    }
+//
+//    @Test
+//    @Disabled
+//    void should_classify_respecting_meanToMaxScoreRatio_0() {
+//
+//        TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
+//                new AllMiniLmL6V2QuantizedEmbeddingModel(),
+//                examples,
+//                1,
+//                0,
+//                0
+//        );
+//
+//        List<CustomerServiceCategory> categories = classifier.classify("Bro, this product is crap");
+//
+//        assertThat(categories).containsExactly(RETURNS_AND_EXCHANGES);
+//    }
 }
