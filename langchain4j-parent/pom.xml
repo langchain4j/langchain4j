@@ -206,7 +206,7 @@
                 <type>pom</type>
                 <scope>import</scope>
                 <exclusions>
-                    <!-- Exclusion due to vulnerabilities -->
+                    <!-- Exclusion due to CWE-295 vulnerability -->
                     <exclusion>
                         <groupId>io.netty</groupId>
                         <artifactId>netty-handler</artifactId>
