@@ -205,6 +205,13 @@
                 <version>${aws.java.sdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+                <exclusions>
+                    <!-- Exclusion due to vulnerabilities -->
+                    <exclusion>
+                        <groupId>io.netty</groupId>
+                        <artifactId>netty-handler</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
