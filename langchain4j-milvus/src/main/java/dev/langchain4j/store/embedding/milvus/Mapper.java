@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.milvus;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.response.QueryResultsWrapper;
@@ -53,12 +54,17 @@ class Mapper {
         }
 
         for (int i = 0; i < resultsWrapper.getRowRecords().size(); i++) {
-            String rowId = resultsWrapper.getIDScore(0).get(i).getStrID();
             double score = resultsWrapper.getIDScore(0).get(i).getScore();
-            String text = String.valueOf(resultsWrapper.getFieldData(TEXT_FIELD_NAME, 0).get(i));
+            String rowId = resultsWrapper.getIDScore(0).get(i).getStrID();
             Embedding embedding = idToEmbedding.get(rowId);
+            String text = String.valueOf(resultsWrapper.getFieldData(TEXT_FIELD_NAME, 0).get(i));
             TextSegment textSegment = isNullOrBlank(text) ? null : TextSegment.from(text);
-            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(score, rowId, embedding, textSegment);
+            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(
+                    RelevanceScore.fromCosineSimilarity(score),
+                    rowId,
+                    embedding,
+                    textSegment
+            );
             matches.add(embeddingMatch);
         }
 

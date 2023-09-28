@@ -219,7 +219,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String user;
         private String password;
         private Integer dimension;
-        private List<String> metadataFieldsName;
+        private List<String> metadataFieldsName = new ArrayList<>();
 
         /**
          * @param host Redis Stack host

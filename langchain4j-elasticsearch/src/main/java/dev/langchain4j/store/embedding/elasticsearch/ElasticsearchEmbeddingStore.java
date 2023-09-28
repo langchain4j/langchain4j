@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.apache.http.Header;
@@ -45,6 +44,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -65,36 +65,37 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * Creates an instance of ElasticsearchEmbeddingStore.
      *
      * @param serverUrl Elasticsearch Server URL
-     * @param apiKey    Elasticsearch API key
-     * @param userName  Elasticsearch userName
-     * @param password  Elasticsearch password
-     * @param indexName The name of the Elasticsearch index
+     * @param apiKey    Elasticsearch API key (optional)
+     * @param userName  Elasticsearch userName (optional)
+     * @param password  Elasticsearch password (optional)
+     * @param indexName Elasticsearch index name (optional). Default value: "default"
      */
     public ElasticsearchEmbeddingStore(String serverUrl,
                                        String apiKey,
                                        String userName,
                                        String password,
                                        String indexName) {
-        serverUrl = ValidationUtils.ensureNotNull(serverUrl, "serverUrl");
-        indexName = ValidationUtils.ensureNotNull(indexName, "indexName");
 
         RestClientBuilder restClientBuilder = RestClient
-                .builder(HttpHost.create(serverUrl));
+                .builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
+
         if (!isNullOrBlank(userName)) {
             CredentialsProvider provider = new BasicCredentialsProvider();
             provider.setCredentials(AuthScope.ANY, new UsernamePasswordCredentials(userName, password));
             restClientBuilder.setHttpClientConfigCallback(httpClientBuilder -> httpClientBuilder.setDefaultCredentialsProvider(provider));
         }
+
         if (!isNullOrBlank(apiKey)) {
             restClientBuilder.setDefaultHeaders(new Header[]{
                     new BasicHeader("Authorization", "Apikey " + apiKey)
             });
         }
+
         ElasticsearchTransport transport = new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
 
         this.client = new ElasticsearchClient(transport);
-        this.indexName = indexName;
-        objectMapper = new ObjectMapper();
+        this.indexName = ensureNotNull(indexName, "indexName");
+        this.objectMapper = new ObjectMapper();
     }
 
     public static Builder builder() {
@@ -107,7 +108,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String apiKey;
         private String userName;
         private String password;
-        private String indexName;
+        private String indexName = "default";
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -118,16 +119,16 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * @param apiKey Elasticsearch API key
+         * @param apiKey Elasticsearch API key (optional)
          * @return builder
          */
-        public Builder apikey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
             return this;
         }
 
         /**
-         * @param userName Elasticsearch userName
+         * @param userName Elasticsearch userName (optional)
          * @return builder
          */
         public Builder userName(String userName) {
@@ -136,7 +137,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * @param password Elasticsearch password
+         * @param password Elasticsearch password (optional)
          * @return builder
          */
         public Builder password(String password) {
@@ -145,7 +146,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * @param indexName The name of the Elasticsearch index
+         * @param indexName Elasticsearch index name (optional).
+         *                  Default value: "default".
          */
         public Builder indexName(String indexName) {
             this.indexName = indexName;
@@ -201,7 +203,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
             ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
             SearchResponse<Document> response = client.search(
-                    SearchRequest.of(s -> s.query(n -> n.scriptScore(scriptScoreQuery)).size(maxResults)), Document.class);
+                    SearchRequest.of(s -> s.index(indexName)
+                            .query(n -> n.scriptScore(scriptScoreQuery))
+                            .size(maxResults)),
+                    Document.class
+            );
 
             return toEmbeddingMatch(response);
         } catch (IOException e) {
