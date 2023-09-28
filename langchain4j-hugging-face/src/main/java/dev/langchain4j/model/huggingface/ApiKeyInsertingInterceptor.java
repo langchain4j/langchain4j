@@ -6,12 +6,14 @@ import okhttp3.Response;
 
 import java.io.IOException;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+
 class ApiKeyInsertingInterceptor implements Interceptor {
 
     private final String apiKey;
 
     ApiKeyInsertingInterceptor(String apiKey) {
-        this.apiKey = apiKey;
+        this.apiKey = ensureNotBlank(apiKey, "apiKey");
     }
 
     @Override

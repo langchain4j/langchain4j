@@ -15,11 +15,13 @@ import io.pinecone.PineconeConnectionConfig;
 import io.pinecone.proto.*;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -174,10 +176,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .getVectorsMap()
                 .values();
 
-        return matchedVectors.stream()
+        List<EmbeddingMatch<TextSegment>> matches = matchedVectors.stream()
                 .map(vector -> toEmbeddingMatch(vector, referenceEmbedding))
                 .filter(match -> match.score() >= minScore)
+                .sorted(comparingDouble(EmbeddingMatch::score))
                 .collect(toList());
+
+        Collections.reverse(matches);
+
+        return matches;
     }
 
     private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {

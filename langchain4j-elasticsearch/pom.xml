@@ -13,7 +13,7 @@
     <artifactId>langchain4j-elasticsearch</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Elastic</name>
+    <name>LangChain4j integration with Elasticsearch</name>
 
     <dependencies>
         <dependency>
@@ -50,16 +50,26 @@
         </dependency>
 
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-core</artifactId>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
 
 </project>
