@@ -1,11 +1,14 @@
-package dev.langchain4j.data.document;
+package dev.langchain4j.data.document.loader;
 
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentType;
+import dev.langchain4j.data.document.UnsupportedDocumentTypeException;
 import dev.langchain4j.data.document.source.UrlSource;
 
 import java.net.MalformedURLException;
 import java.net.URL;
 
-import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
+import static dev.langchain4j.data.document.loader.DocumentLoaderUtils.parserFor;
 
 public class UrlDocumentLoader {
 
