@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -33,13 +34,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
      */
     public ChromaEmbeddingStore(String baseUrl, String collectionName, Duration timeout) {
-        collectionName = collectionName == null ? "default" : collectionName;
-        timeout = timeout == null ? ofSeconds(5) : timeout;
+        collectionName = getOrDefault(collectionName, "default");
 
-        this.chromaClient = new ChromaClient(baseUrl, timeout);
+        this.chromaClient = new ChromaClient(baseUrl, getOrDefault(timeout, ofSeconds(5)));
 
         Collection collection = chromaClient.collection(collectionName);
-
         if (collection == null) {
             Collection createdCollection = chromaClient.createCollection(new CreateCollectionRequest(collectionName));
             collectionId = createdCollection.id();
@@ -165,7 +164,11 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
 
-        return toEmbeddingMatches(queryResponse);
+        List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
+
+        return matches.stream()
+                .filter(match -> match.score() >= minScore)
+                .collect(toList());
     }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
@@ -197,6 +200,6 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static TextSegment toTextSegment(QueryResponse queryResponse, int i) {
         String text = queryResponse.documents().get(0).get(i);
         Map<String, String> metadata = queryResponse.metadatas().get(0).get(i);
-        return text == null ? null : TextSegment.from(text, metadata == null ? null : new Metadata(metadata));
+        return text == null ? null : TextSegment.from(text, metadata == null ? new Metadata() : new Metadata(metadata));
     }
 }
