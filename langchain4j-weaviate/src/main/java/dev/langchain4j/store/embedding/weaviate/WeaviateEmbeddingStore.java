@@ -1,10 +1,13 @@
 package dev.langchain4j.store.embedding.weaviate;
 
-import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
+import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -17,40 +20,37 @@ import io.weaviate.client.base.Result;
 import io.weaviate.client.base.WeaviateErrorMessage;
 import io.weaviate.client.v1.auth.exception.AuthException;
 import io.weaviate.client.v1.data.model.WeaviateObject;
-import io.weaviate.client.v1.data.replication.model.ConsistencyLevel;
+import io.weaviate.client.v1.graphql.model.GraphQLError;
 import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearVectorArgument;
 import io.weaviate.client.v1.graphql.query.fields.Field;
 import java.util.*;
-import java.util.stream.Collectors;
 import lombok.Builder;
 
 /**
  * Represents the <a href="https://weaviate.io/">Weaviate</a> vector database.
  * Current implementation assumes the cosine distance metric is used.
+ * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
  */
 public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-  private static final String DEFAULT_CLASS = "Default";
-  private static final boolean DEFAULT_AVOID_DUPS = true;
-  private static final String DEFAULT_CONSISTENCY_LEVEL = ConsistencyLevel.QUORUM;
   private static final String METADATA_TEXT_SEGMENT = "text";
   private static final String ADDITIONALS = "_additional";
 
   private final WeaviateClient client;
   private final String objectClass;
-  private boolean avoidDups;
-  private String consistencyLevel;
+  private final boolean avoidDups;
+  private final String consistencyLevel;
 
   /**
    * Creates a new WeaviateEmbeddingStore instance.
    *
-   * @param apiKey           your Weaviate API key
-   * @param scheme           the scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
-   * @param host             the host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
+   * @param apiKey           Your Weaviate API key
+   * @param scheme           The scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
+   * @param host             The host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
    *                         Find in under Details of your Weaviate cluster.
-   * @param objectClass      the object class you want to store, e.g. "MyGreatClass"
-   * @param avoidDups        if true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
+   * @param objectClass      The object class you want to store, e.g. "MyGreatClass". Must start from an uppercase letter.
+   * @param avoidDups        If true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
    *                         provided text segment, which avoids duplicated entries in DB.
    *                         If false, then random ID will be generated.
    * @param consistencyLevel Consistency level: ONE, QUORUM (default) or ALL. Find more details <a href="https://weaviate.io/developers/weaviate/concepts/replication-architecture/consistency#tunable-write-consistency">here</a>.
@@ -65,13 +65,14 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     String consistencyLevel
   ) {
     try {
-      client = WeaviateAuthClient.apiKey(new Config(scheme, host), apiKey);
+      Config config = new Config(ensureNotBlank(scheme, "scheme"), ensureNotBlank(host, "host"));
+      this.client = WeaviateAuthClient.apiKey(config, ensureNotBlank(apiKey, "apiKey"));
     } catch (AuthException e) {
       throw new IllegalArgumentException(e);
     }
-    this.objectClass = objectClass != null ? objectClass : DEFAULT_CLASS;
-    this.avoidDups = avoidDups != null ? avoidDups : DEFAULT_AVOID_DUPS;
-    this.consistencyLevel = consistencyLevel != null ? consistencyLevel : DEFAULT_CONSISTENCY_LEVEL;
+    this.objectClass = getOrDefault(objectClass, "Default");
+    this.avoidDups = getOrDefault(avoidDups, true);
+    this.consistencyLevel = getOrDefault(consistencyLevel, QUORUM);
   }
 
   @Override
@@ -151,6 +152,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
       );
     }
 
+    GraphQLError[] errors = result.getResult().getErrors();
+    if (errors != null && errors.length > 0) {
+      throw new IllegalArgumentException(stream(errors).map(GraphQLError::getMessage).collect(joining("\n")));
+    }
+
     Optional<Map.Entry<String, Map>> resGetPart =
       ((Map<String, Map>) result.getResult().getData()).entrySet().stream().findFirst();
     if (!resGetPart.isPresent()) {
@@ -164,7 +170,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     List<Map<String, ?>> resItems = ((Map.Entry<String, List<Map<String, ?>>>) resItemsPart.get()).getValue();
 
-    return resItems.stream().map(WeaviateEmbeddingStore::toEmbeddingMatch).collect(Collectors.toList());
+    return resItems.stream().map(WeaviateEmbeddingStore::toEmbeddingMatch).collect(toList());
   }
 
   private List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
@@ -179,7 +185,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         ? ids.get(i)
         : avoidDups && embedded != null ? generateUUIDFrom(embedded.get(i).text()) : randomUUID();
       resIds.add(id);
-      objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : null));
+      objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i).text() : ""));
     }
 
     client
@@ -193,32 +199,29 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
   }
 
   private WeaviateObject buildObject(String id, Embedding embedding, String text) {
-    WeaviateObject.WeaviateObjectBuilder builder = WeaviateObject
+    Map<String, Object> props = new HashMap<>();
+    props.put(METADATA_TEXT_SEGMENT, text);
+
+    return WeaviateObject
       .builder()
       .className(objectClass)
       .id(id)
-      .vector(embedding.vectorAsList().toArray(new Float[0]));
-
-    if (text != null) {
-      Map<String, Object> props = new HashMap<>();
-      props.put(METADATA_TEXT_SEGMENT, text);
-
-      builder.properties(props);
-    }
-
-    return builder.build();
+      .vector(embedding.vectorAsList().toArray(new Float[0]))
+      .properties(props)
+      .build();
   }
 
   private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Map<String, ?> item) {
     Map<String, ?> additional = (Map<String, ?>) item.get(ADDITIONALS);
+    String text = (String) item.get(METADATA_TEXT_SEGMENT);
 
     return new EmbeddingMatch<>(
       (Double) additional.get("certainty"),
       (String) additional.get("id"),
       Embedding.from(
-        ((List<Double>) additional.get("vector")).stream().map(Double::floatValue).collect(Collectors.toList())
+        ((List<Double>) additional.get("vector")).stream().map(Double::floatValue).collect(toList())
       ),
-      TextSegment.from((String) item.get(METADATA_TEXT_SEGMENT))
+      isNullOrBlank(text) ? null : TextSegment.from(text)
     );
   }
 }
