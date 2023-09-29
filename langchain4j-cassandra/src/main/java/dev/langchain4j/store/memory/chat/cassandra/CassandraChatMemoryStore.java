@@ -10,6 +10,8 @@ import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import static com.dtsx.astra.sdk.cassio.ClusteredCassandraTable.Record;
@@ -61,11 +63,20 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      */
     @Override
     public List<ChatMessage> getMessages(@NonNull Object memoryId) {
-        return messageTable
+        /*
+         * RATIONAL:
+         * In the cassandra table the order is explicitly put to DESC with
+         * latest to come first (for long conversation for instance). Here we ask
+         * for the full history. Instead of changing the multi purpose table
+         * we reverse the list.
+         */
+        List<ChatMessage> latestFirstList = messageTable
                 .findPartition(getMemoryId(memoryId))
                 .stream()
                 .map(this::toChatMessage)
                 .collect(toList());
+        Collections.reverse(latestFirstList);
+        return latestFirstList;
     }
 
     /**
