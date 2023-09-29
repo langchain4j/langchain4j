@@ -72,6 +72,10 @@ public class Metadata {
         return new Metadata().add(key, value);
     }
 
+    public static Metadata from(Map<String, String> metadata) {
+        return new Metadata(metadata);
+    }
+
     public static Metadata metadata(String key, Object value) {
         return from(key, value);
     }

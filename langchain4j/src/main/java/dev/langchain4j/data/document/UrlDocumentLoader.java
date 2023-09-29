@@ -11,10 +11,11 @@ public class UrlDocumentLoader {
 
     /**
      * Loads a document from the specified URL, detecting the document type automatically.
+     * See {@link DocumentType} for the list of supported document types.
+     * If the document type is UNKNOWN, it is treated as TXT.
      *
      * @param url URL of the file
      * @return document
-     * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
      */
     public static Document load(URL url) {
         return load(url, DocumentType.of(url.toString()));
@@ -22,11 +23,12 @@ public class UrlDocumentLoader {
 
     /**
      * Loads a document from the specified URL, detecting the document type automatically.
+     * See {@link DocumentType} for the list of supported document types.
+     * If the document type is UNKNOWN, it is treated as TXT.
      *
      * @param url URL of the file
      * @return document
-     * @throws RuntimeException                 if specified URL is malformed
-     * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
+     * @throws RuntimeException if specified URL is malformed
      */
     public static Document load(String url) {
         try {

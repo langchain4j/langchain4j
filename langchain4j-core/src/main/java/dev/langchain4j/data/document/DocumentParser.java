@@ -8,8 +8,6 @@ import java.io.InputStream;
  */
 public interface DocumentParser {
 
-    String DOCUMENT_TYPE = "document_type";
-
     /**
      * Parses an InputStream into a Document.
      * The specific implementation of this method will depend on the type of the document being parsed.
