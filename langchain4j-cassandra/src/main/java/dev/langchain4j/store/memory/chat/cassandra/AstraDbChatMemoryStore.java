@@ -4,24 +4,18 @@ import com.datastax.astra.sdk.AstraClient;
 
 /**
  * AstraDb is a version of Cassandra running in Saas Mode.
- *
+ * <p>
  * The initialization of the CQLSession will be done through an AstraClient
- *
- * @author Cedrick Lunven (clun)
  */
 public class AstraDbChatMemoryStore extends CassandraChatMemoryStore {
 
     /**
      * Constructor with default table name.
      *
-     * @param token
-     *      token
-     * @param dbId
-     *      database idendifier
-     * @param dbRegion
-     *      database region
-     * @param keyspaceName
-     *      keyspace name
+     * @param token        token
+     * @param dbId         database identifier
+     * @param dbRegion     database region
+     * @param keyspaceName keyspace name
      */
     public AstraDbChatMemoryStore(String token, String dbId, String dbRegion, String keyspaceName) {
         this(token, dbId, dbRegion, keyspaceName, DEFAULT_TABLE_NAME);

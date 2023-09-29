@@ -1,6 +1,5 @@
-package dev.langchain4j.store.embedding.redis;
+package dev.langchain4j.store.embedding.weaviate;
 
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -9,53 +8,27 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import redis.clients.jedis.JedisPooled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs Redis running locally")
-class RedisEmbeddingStoreTest {
+@EnabledIfEnvironmentVariable(named = "WEAVIATE_API_KEY", matches = ".+")
+class WeaviateEmbeddingStoreTest {
 
-    /**
-     * First start Redis locally:
-     * docker pull redis/redis-stack:latest
-     * docker run -d -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
-     */
+    EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
+            .apiKey(System.getenv("WEAVIATE_API_KEY"))
+            .scheme("https")
+            .host("test3-bwsieg9y.weaviate.network")
+            .objectClass("Test" + randomUUID().replace("-", ""))
+            .build();
 
-    private static final String HOST = "localhost";
-    private static final int PORT = 6379;
-    private static final String METADATA_KEY = "test-key";
-
-    private EmbeddingStore<TextSegment> embeddingStore;
-
-    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-
-    @BeforeEach
-    void initEmptyRedisEmbeddingStore() {
-
-        flushDB();
-
-        embeddingStore = RedisEmbeddingStore.builder()
-                .host(HOST)
-                .port(PORT)
-                .dimension(384)
-                .build();
-    }
-
-    private static void flushDB() {
-        try (JedisPooled jedis = new JedisPooled(HOST, PORT)) {
-            jedis.flushDB();
-        }
-    }
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @Test
     void should_add_embedding() {
@@ -97,34 +70,6 @@ class RedisEmbeddingStoreTest {
     void should_add_embedding_with_segment() {
 
         TextSegment segment = TextSegment.from(randomUUID());
-        Embedding embedding = embeddingModel.embed(segment.text()).content();
-
-        String id = embeddingStore.add(embedding, segment);
-        assertThat(id).isNotNull();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
-        assertThat(match.embedded()).isEqualTo(segment);
-    }
-
-    @Test
-    void should_add_embedding_with_segment_with_metadata() {
-
-        flushDB();
-
-        embeddingStore = RedisEmbeddingStore.builder()
-                .host(HOST)
-                .port(PORT)
-                .dimension(384)
-                .metadataFieldsName(singletonList(METADATA_KEY))
-                .build();
-
-        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
         Embedding embedding = embeddingModel.embed(segment.text()).content();
 
         String id = embeddingStore.add(embedding, segment);

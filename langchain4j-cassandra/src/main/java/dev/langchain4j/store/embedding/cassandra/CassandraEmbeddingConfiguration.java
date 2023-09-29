@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.cassandra;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.experimental.SuperBuilder;
 
 import java.util.List;
 
@@ -15,10 +14,13 @@ import java.util.List;
  *
  * @see CassandraEmbeddingStore
  */
-@Getter @Builder
+@Getter
+@Builder
 public class CassandraEmbeddingConfiguration {
 
-    /** Default Cassandra Port. */
+    /**
+     * Default Cassandra Port.
+     */
     public static Integer DEFAULT_PORT = 9042;
 
     // --- Connectivity Parameters ---
@@ -74,8 +76,7 @@ public class CassandraEmbeddingConfiguration {
     /**
      * Initialize the builder.
      *
-     * @return
-     *      cassandra embedding configuration buildesr
+     * @return cassandra embedding configuration buildesr
      */
     public static CassandraEmbeddingConfigurationBuilder builder() {
         return new CassandraEmbeddingConfigurationBuilder();
@@ -84,6 +85,6 @@ public class CassandraEmbeddingConfiguration {
     /**
      * Signature for the builder.
      */
-    public static class CassandraEmbeddingConfigurationBuilder{}
-
+    public static class CassandraEmbeddingConfigurationBuilder {
+    }
 }

@@ -31,6 +31,7 @@ import retrofit2.Response;
 
 /**
  * Represents the <a href="https://vespa.ai/">Vespa</a> - search engine and vector database.
+ * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
  * Example server configuration contains cosine similarity search rank profile, of course other Vespa neighbor search
  * methods are supported too. Read more <a href="https://docs.vespa.ai/en/nearest-neighbor-search.html">here</a>.
  */

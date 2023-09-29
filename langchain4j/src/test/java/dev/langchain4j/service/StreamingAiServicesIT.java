@@ -26,6 +26,8 @@ public class StreamingAiServicesIT {
     StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .timeout(ofSeconds(30))
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     interface Assistant {
@@ -158,7 +160,9 @@ public class StreamingAiServicesIT {
         assertThat(answer).contains("6.97");
         assertThat(response.content().text()).isEqualTo(answer);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(147);
+        // tool arguments provided by the model (which contribute to the input token count)
+        // can have different formatting (extra spaces) which results in one extra/missing token
+        assertThat(response.tokenUsage().inputTokenCount()).isBetween(146, 147);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(1);
         assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(148);
 

@@ -64,6 +64,14 @@
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
@@ -81,27 +89,5 @@
             <comments>A business-friendly OSS license</comments>
         </license>
     </licenses>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
-                <configuration>
-                    <source>11</source>
-                    <target>11</target>
-                    <showWarnings>false</showWarnings>
-                </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.honton.chas</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <configuration>
-                    <skipCompliance>true</skipCompliance>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
 </project>
