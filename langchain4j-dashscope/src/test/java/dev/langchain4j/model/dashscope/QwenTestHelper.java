@@ -15,9 +15,10 @@ public class QwenTestHelper {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_TURBO),
                 Arguments.of(QwenModelName.QWEN_PLUS),
-                Arguments.of(QwenModelName.QWEN_7B_CHAT_V1),
                 Arguments.of(QwenModelName.QWEN_SPARK_V1),
-                Arguments.of(QwenModelName.QWEN_SPARK_V2)
+                Arguments.of(QwenModelName.QWEN_SPARK_V2),
+                Arguments.of(QwenModelName.QWEN_7B_CHAT),
+                Arguments.of(QwenModelName.QWEN_14B_CHAT)
         );
     }
 
@@ -25,7 +26,8 @@ public class QwenTestHelper {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_TURBO),
                 Arguments.of(QwenModelName.QWEN_PLUS),
-                Arguments.of(QwenModelName.QWEN_7B_CHAT_V1)
+                Arguments.of(QwenModelName.QWEN_7B_CHAT),
+                Arguments.of(QwenModelName.QWEN_14B_CHAT)
         );
     }
 

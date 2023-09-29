@@ -15,6 +15,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class Document {
 
+    public static final String DOCUMENT_TYPE = "document_type";
+    public static final String FILE_NAME = "file_name";
+    public static final String ABSOLUTE_DIRECTORY_PATH = "absolute_directory_path";
+    public static final String URL = "url";
+
     private final String text;
     private final Metadata metadata;
 

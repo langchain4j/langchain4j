@@ -27,6 +27,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents a <a href="https://www.pinecone.io/">Pinecone</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
+ * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
  */
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 

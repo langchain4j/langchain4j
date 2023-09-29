@@ -19,6 +19,7 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
@@ -34,6 +35,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final String modelName;
     private final Double temperature;
     private final Double topP;
+    private final List<String> stop;
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
@@ -45,6 +47,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     String modelName,
                                     Double temperature,
                                     Double topP,
+                                    List<String> stop,
                                     Integer maxTokens,
                                     Double presencePenalty,
                                     Double frequencyPenalty,
@@ -53,13 +56,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Boolean logRequests,
                                     Boolean logResponses) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
-        modelName = modelName == null ? GPT_3_5_TURBO : modelName;
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(5) : timeout;
+        timeout = getOrDefault(timeout, ofSeconds(5));
 
         this.client = OpenAiClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -69,9 +69,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .build();
-        this.modelName = modelName;
-        this.temperature = temperature;
+        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
+        this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
+        this.stop = stop;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
@@ -104,6 +105,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
                 .topP(topP)
+                .stop(stop)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
                 .frequencyPenalty(frequencyPenalty);

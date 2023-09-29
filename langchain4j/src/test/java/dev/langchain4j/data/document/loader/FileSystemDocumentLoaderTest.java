@@ -12,6 +12,10 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocuments;
+import static dev.langchain4j.data.document.Document.DOCUMENT_TYPE;
+import static dev.langchain4j.data.document.Document.FILE_NAME;
+import static dev.langchain4j.data.document.DocumentType.UNKNOWN;
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class FileSystemDocumentLoaderTest {
@@ -105,7 +109,7 @@ class FileSystemDocumentLoaderTest {
     }
 
     @Test
-    void should_load_documents_ignoring_unsupported_document_types() {
+    void should_load_documents_from_directory_including_unknown_document_types() {
 
         String userDir = System.getProperty("user.dir");
         Path resourceDirectory = Paths.get(userDir, "langchain4j/src/test/resources");
@@ -114,8 +118,13 @@ class FileSystemDocumentLoaderTest {
         }
 
         List<Document> documents = loadDocuments(resourceDirectory);
+        assertThat(documents).hasSize(10);
 
-        assertThat(documents).hasSize(9);
+        List<Document> documentsWithUnknownType = documents.stream()
+                .filter(document -> document.metadata(DOCUMENT_TYPE).equals(UNKNOWN.toString()))
+                .collect(toList());
+        assertThat(documentsWithUnknownType).hasSize(1);
+        assertThat(documentsWithUnknownType.get(0).metadata(FILE_NAME)).isEqualTo("test-file.banana");
     }
 
     private Path toPath(String fileName) {

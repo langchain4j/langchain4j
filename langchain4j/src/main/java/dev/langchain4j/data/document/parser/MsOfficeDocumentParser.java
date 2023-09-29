@@ -10,6 +10,7 @@ import org.apache.poi.extractor.POITextExtractor;
 import java.io.IOException;
 import java.io.InputStream;
 
+import static dev.langchain4j.data.document.Document.DOCUMENT_TYPE;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -28,12 +29,9 @@ public class MsOfficeDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream inputStream) {
         try (POITextExtractor extractor = ExtractorFactory.createExtractor(inputStream)) {
-            String text = extractor.getText();
-
-            return new Document(text, new Metadata().add(DOCUMENT_TYPE, this.documentType));
+            return new Document(extractor.getText(), Metadata.from(DOCUMENT_TYPE, documentType));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-
 }

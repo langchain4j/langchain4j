@@ -9,6 +9,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 
+import static dev.langchain4j.data.document.Document.DOCUMENT_TYPE;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -39,7 +40,7 @@ public class TextDocumentParser implements DocumentParser {
 
             String text = new String(buffer.toByteArray(), charset);
 
-            return Document.from(text, new Metadata().add(DOCUMENT_TYPE, documentType.toString()));
+            return Document.from(text, Metadata.from(DOCUMENT_TYPE, documentType.toString()));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

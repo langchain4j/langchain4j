@@ -17,15 +17,8 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.defaultTimeoutFor;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.util.Collections.singletonList;
 
@@ -38,6 +31,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final String modelName;
     private final Double temperature;
     private final Double topP;
+    private final List<String> stop;
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
@@ -50,6 +44,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            String modelName,
                            Double temperature,
                            Double topP,
+                           List<String> stop,
                            Integer maxTokens,
                            Double presencePenalty,
                            Double frequencyPenalty,
@@ -59,14 +54,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Boolean logRequests,
                            Boolean logResponses) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
+        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             baseUrl = OPENAI_DEMO_URL;
         }
-        modelName = modelName == null ? GPT_3_5_TURBO : modelName;
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? defaultTimeoutFor(modelName) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+        modelName = getOrDefault(modelName, GPT_3_5_TURBO);
+        timeout = getOrDefault(timeout, defaultTimeoutFor(modelName));
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
@@ -80,12 +73,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logResponses(logResponses)
                 .build();
         this.modelName = modelName;
-        this.temperature = temperature;
+        this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
+        this.stop = stop;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.maxRetries = maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = new OpenAiTokenizer(this.modelName);
     }
 
@@ -113,6 +107,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .messages(toOpenAiMessages(messages))
                 .temperature(temperature)
                 .topP(topP)
+                .stop(stop)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
                 .frequencyPenalty(frequencyPenalty);

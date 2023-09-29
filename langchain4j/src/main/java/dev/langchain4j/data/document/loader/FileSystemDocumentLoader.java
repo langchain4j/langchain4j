@@ -2,7 +2,7 @@ package dev.langchain4j.data.document.loader;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentType;
-import dev.langchain4j.data.document.UnsupportedDocumentTypeException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,11 +27,11 @@ public class FileSystemDocumentLoader {
     /**
      * Loads a document from the specified file, detecting document type automatically.
      * See {@link DocumentType} for the list of supported document types.
+     * If the document type is UNKNOWN, it is treated as TXT.
      *
      * @param filePath path to the file
      * @return document
-     * @throws IllegalArgumentException         if specified path is not a file
-     * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
+     * @throws IllegalArgumentException if specified path is not a file
      */
     public static Document loadDocument(Path filePath) {
         return loadDocument(filePath, DocumentType.of(filePath.toString()));
@@ -40,11 +40,11 @@ public class FileSystemDocumentLoader {
     /**
      * Loads a document from the specified file, detecting document type automatically.
      * See {@link DocumentType} for the list of supported document types.
+     * If the document type is UNKNOWN, it is treated as TXT.
      *
      * @param filePath path to the file
      * @return document
-     * @throws IllegalArgumentException         if specified path is not a file
-     * @throws UnsupportedDocumentTypeException if document type is not supported or cannot be detected automatically
+     * @throws IllegalArgumentException if specified path is not a file
      */
     public static Document loadDocument(String filePath) {
         return loadDocument(Paths.get(filePath));
@@ -80,8 +80,9 @@ public class FileSystemDocumentLoader {
 
     /**
      * Loads documents from the specified directory. Does not use recursion.
-     * Detects document types automatically. Files with unsupported types are ignored.
+     * Detects document types automatically.
      * See {@link DocumentType} for the list of supported document types.
+     * If the document type is UNKNOWN, it is treated as TXT.
      *
      * @param directoryPath path to the directory with files
      * @return list of documents
@@ -100,8 +101,8 @@ public class FileSystemDocumentLoader {
                         try {
                             Document document = loadDocument(filePath);
                             documents.add(document);
-                        } catch (UnsupportedDocumentTypeException e) {
-                            log.warn("Ignored unsupported document type", e);
+                        } catch (Exception e) {
+                            log.warn("Failed to load document from " + filePath, e);
                         }
                     });
         } catch (IOException e) {
@@ -113,8 +114,9 @@ public class FileSystemDocumentLoader {
 
     /**
      * Loads documents from the specified directory. Does not use recursion.
-     * Detects document types automatically. Files with unsupported types are ignored.
+     * Detects document types automatically.
      * See {@link DocumentType} for the list of supported document types.
+     * If the document type is UNKNOWN, it is treated as TXT.
      *
      * @param directoryPath path to the directory with files
      * @return list of documents
