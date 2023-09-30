@@ -202,12 +202,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 ## Getting started
 
-1. Add LangChain4j dependency to your project:
+1. Add LangChain4j OpenAI dependency to your project:
     - Maven:
       ```
       <dependency>
           <groupId>dev.langchain4j</groupId>
-          <artifactId>langchain4j</artifactId>
+          <artifactId>langchain4j-open-ai</artifactId>
           <version>0.23.0</version>
       </dependency>
       ```
