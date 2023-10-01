@@ -1,5 +1,6 @@
 package dev.langchain4j.data.document.source;
 
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSource;
 import dev.langchain4j.data.document.Metadata;
 
@@ -10,14 +11,14 @@ import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 
-public class UrlSource implements DocumentSource {
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-    private static final String URL = "url";
+public class UrlSource implements DocumentSource {
 
     private final URL url;
 
     public UrlSource(URL url) {
-        this.url = url;
+        this.url = ensureNotNull(url, "url");
     }
 
     @Override
@@ -28,7 +29,7 @@ public class UrlSource implements DocumentSource {
 
     @Override
     public Metadata metadata() {
-        return Metadata.from(URL, url.toString());
+        return Metadata.from(Document.URL, url);
     }
 
     public static UrlSource from(String url) {

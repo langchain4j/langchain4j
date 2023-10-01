@@ -22,6 +22,7 @@ class DocumentLoaderUtils {
         switch (type) {
             case TXT:
             case HTML:
+            case UNKNOWN:
                 return new TextDocumentParser(type);
             case PDF:
                 return new PdfDocumentParser();

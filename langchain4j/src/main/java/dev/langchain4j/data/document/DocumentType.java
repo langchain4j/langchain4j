@@ -4,12 +4,13 @@ import static java.util.Arrays.asList;
 
 public enum DocumentType {
 
-    TXT("txt"),
-    PDF("pdf"),
-    HTML("html", "htm", "xhtml"),
-    DOC("doc", "docx"),
-    XLS("xls", "xlsx"),
-    PPT("ppt", "pptx");
+    TXT(".txt"),
+    PDF(".pdf"),
+    HTML(".html", ".htm", ".xhtml"),
+    DOC(".doc", ".docx"),
+    XLS(".xls", ".xlsx"),
+    PPT(".ppt", ".pptx"),
+    UNKNOWN;
 
     private final Iterable<String> supportedExtensions;
 
@@ -21,12 +22,12 @@ public enum DocumentType {
 
         for (DocumentType documentType : values()) {
             for (String supportedExtension : documentType.supportedExtensions) {
-                if (fileName.endsWith(supportedExtension)) {
+                if (fileName.toLowerCase().endsWith(supportedExtension)) {
                     return documentType;
                 }
             }
         }
 
-        throw new UnsupportedDocumentTypeException(fileName);
+        return UNKNOWN;
     }
 }

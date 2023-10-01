@@ -11,15 +11,16 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class FileSystemSource implements DocumentSource {
+import static dev.langchain4j.data.document.Document.ABSOLUTE_DIRECTORY_PATH;
+import static dev.langchain4j.data.document.Document.FILE_NAME;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-    private static final String FILE_NAME = "file_name";
-    private static final String ABSOLUTE_DIRECTORY_PATH = "absolute_directory_path";
+public class FileSystemSource implements DocumentSource {
 
     public final Path path;
 
     public FileSystemSource(Path path) {
-        this.path = path;
+        this.path = ensureNotNull(path, "path");
     }
 
     @Override
@@ -30,8 +31,8 @@ public class FileSystemSource implements DocumentSource {
     @Override
     public Metadata metadata() {
         return new Metadata()
-                .add(FILE_NAME, path.getFileName().toString())
-                .add(ABSOLUTE_DIRECTORY_PATH, path.getParent().toAbsolutePath().toString());
+                .add(FILE_NAME, path.getFileName())
+                .add(ABSOLUTE_DIRECTORY_PATH, path.getParent().toAbsolutePath());
     }
 
     public static FileSystemSource from(Path filePath) {
