@@ -54,20 +54,24 @@ public class S3FileLoaderIT {
     }
 
     @Test
-    public void should_throw_invalid_document_type() {
+    public void should_load_document_unknown_type() {
         S3Client s3Client = S3Client.builder()
                 .endpointOverride(s3Container.getEndpointOverride(LocalStackContainer.Service.S3))
                 .build();
 
         s3Client.createBucket(CreateBucketRequest.builder().bucket("test-bucket").build());
-        s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("invalid-test-file.invalid").build(),
-                RequestBody.fromString("Hello, World!"));
+        s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("unknown-test-file.unknown").build(),
+                RequestBody.fromString("Hello, World! I am Unknown"));
 
-        S3FileLoader s3FileLoader = S3FileLoader.builder("test-bucket", "invalid-test-file.invalid")
+        S3FileLoader s3FileLoader = S3FileLoader.builder("test-bucket", "unknown-test-file.unknown")
                 .endpointUrl(s3Container.getEndpointOverride(LocalStackContainer.Service.S3).toString())
                 .build();
 
-        assertThrows(RuntimeException.class, s3FileLoader::load);
+        Document document = s3FileLoader.load();
+
+        assertNotNull(document);
+        assertEquals("Hello, World! I am Unknown", document.text());
+        assertEquals("s3://test-bucket/unknown-test-file.unknown", document.metadata("source"));
     }
 
     @AfterEach

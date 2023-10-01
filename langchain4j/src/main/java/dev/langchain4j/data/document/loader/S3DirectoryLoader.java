@@ -2,7 +2,6 @@ package dev.langchain4j.data.document.loader;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentType;
-import dev.langchain4j.data.document.UnsupportedDocumentTypeException;
 import dev.langchain4j.data.document.source.S3Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +70,8 @@ public class S3DirectoryLoader extends AbstractS3Loader<List<Document>> {
 
             try {
                 documents.add(DocumentLoaderUtils.load(new S3Source(bucket, key, inputStream), parserFor(DocumentType.of(key))));
-            } catch (UnsupportedDocumentTypeException e) {
-                log.warn("Ignored unsupported document type", e);
+            } catch (Exception e) {
+                log.warn("Failed to load document from S3", e);
             }
         }
 

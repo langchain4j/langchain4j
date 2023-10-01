@@ -43,7 +43,7 @@ public class S3FileLoader extends AbstractS3Loader<Document> {
             ResponseInputStream<GetObjectResponse> inputStream = s3Client.getObject(objectRequest);
             return DocumentLoaderUtils.load(new S3Source(bucket, key, inputStream), parserFor(DocumentType.of(key)));
         } catch (S3Exception e) {
-            throw new RuntimeException("Encountered an error from s3", e);
+            throw new RuntimeException("Failed to load document from s3", e);
         }
     }
 

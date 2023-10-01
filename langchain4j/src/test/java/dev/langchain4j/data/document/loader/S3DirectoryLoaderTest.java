@@ -66,25 +66,28 @@ public class S3DirectoryLoaderTest {
     }
 
     @Test
-    public void should_load_documents_from_directory_ignoring_unsupported_types() {
+    public void should_load_documents_from_directory_accepting_unknown_types() {
         S3Object s3Object1 = S3Object.builder().key("testPrefix/testKey1.txt").size(10L).build();
         S3Object s3Object2 = S3Object.builder().key("testPrefix/testKey2.txt").size(20L).build();
-        S3Object s3Object3 = S3Object.builder().key("testPrefix/testKey2.invalid").size(30L).build();
+        S3Object s3Object3 = S3Object.builder().key("testPrefix/testKey3.unknown").size(30L).build();
 
         when(listObjectsV2Response.contents()).thenReturn(Arrays.asList(s3Object1, s3Object2, s3Object3));
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).thenReturn(listObjectsV2Response);
 
         ResponseInputStream<GetObjectResponse> responseInputStream1 = new ResponseInputStream<>(getObjectResponse, new ByteArrayInputStream("test1".getBytes()));
         ResponseInputStream<GetObjectResponse> responseInputStream2 = new ResponseInputStream<>(getObjectResponse, new ByteArrayInputStream("test2".getBytes()));
-        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(responseInputStream1).thenReturn(responseInputStream2);
+        ResponseInputStream<GetObjectResponse> responseInputStream3 = new ResponseInputStream<>(getObjectResponse, new ByteArrayInputStream("unknown".getBytes()));
+        when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(responseInputStream1).thenReturn(responseInputStream2).thenReturn(responseInputStream3);
 
         List<Document> documents = s3DirectoryLoader.load(s3Client);
 
-        assertEquals(2, documents.size());
+        assertEquals(3, documents.size());
         assertEquals("test1", documents.get(0).text());
         assertEquals("test2", documents.get(1).text());
+        assertEquals("unknown", documents.get(2).text());
         assertEquals("s3://langchain4j/testPrefix/testKey1.txt", documents.get(0).metadata("source"));
         assertEquals("s3://langchain4j/testPrefix/testKey2.txt", documents.get(1).metadata("source"));
+        assertEquals("s3://langchain4j/testPrefix/testKey3.unknown", documents.get(2).metadata("source"));
     }
 
     @Test

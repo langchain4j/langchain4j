@@ -92,11 +92,11 @@ public class S3DirectoryLoaderIT {
     }
 
     @Test
-    public void should_load_ignoring_unsupported_types() {
-        s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("directory/file2.invalid").build(),
-                RequestBody.fromString("Hello, World!"));
+    public void should_load_accepting_unknown_types() {
+        s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("directory/file2.unknown").build(),
+                RequestBody.fromString("I am unknown."));
         s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("directory/file3.txt").build(),
-                RequestBody.fromString("Hello, again!"));
+                RequestBody.fromString("Hello, World!"));
 
         S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder("test-bucket", "directory")
                 .endpointUrl(s3Container.getEndpointOverride(S3).toString())
@@ -104,9 +104,11 @@ public class S3DirectoryLoaderIT {
 
         List<Document> documents = s3DirectoryLoader.load();
 
-        assertEquals(1, documents.size());
-        assertEquals("Hello, again!", documents.get(0).text());
-        assertEquals("s3://test-bucket/directory/file3.txt", documents.get(0).metadata("source"));
+        assertEquals(2, documents.size());
+        assertEquals("I am unknown.", documents.get(0).text());
+        assertEquals("s3://test-bucket/directory/file2.unknown", documents.get(0).metadata("source"));
+        assertEquals("Hello, World!", documents.get(1).text());
+        assertEquals("s3://test-bucket/directory/file3.txt", documents.get(1).metadata("source"));
     }
 
     @AfterEach
