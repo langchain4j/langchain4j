@@ -35,7 +35,7 @@ class OpenSearchEmbeddingStoreTest {
      */
 
     private static final String OPENSEARCH_FULL_IMAGE =
-        "opensearchproject/opensearch:2.9.0";
+        "opensearchproject/opensearch:2.10.0";
 
     @Container
     private static final OpensearchContainer opensearch =
