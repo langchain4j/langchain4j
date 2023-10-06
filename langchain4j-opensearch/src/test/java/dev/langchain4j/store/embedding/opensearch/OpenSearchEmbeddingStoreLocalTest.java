@@ -11,7 +11,6 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.opensearch.testcontainers.OpensearchContainer;
@@ -25,8 +24,8 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs OpenSearch to be running locally")
-class OpenSearchEmbeddingStoreTest {
+@Disabled("Needs OpenSearch running locally")
+class OpenSearchEmbeddingStoreLocalTest {
 
     /**
      * To run the tests locally, you don't need to have OpenSearch up-and-running. This implementation
@@ -34,29 +33,20 @@ class OpenSearchEmbeddingStoreTest {
      * if you just execute the tests then a container will be spun up automatically for you.
      */
 
-    private static final String OPENSEARCH_FULL_IMAGE =
-        "opensearchproject/opensearch:2.10.0";
-
     @Container
     private static final OpensearchContainer opensearch =
-        new OpensearchContainer(DockerImageName.parse(OPENSEARCH_FULL_IMAGE));
+        new OpensearchContainer(DockerImageName.parse("opensearchproject/opensearch:2.10.0"));
 
-    private EmbeddingStore<TextSegment> embeddingStore;
+    private final EmbeddingStore<TextSegment> embeddingStore = OpenSearchEmbeddingStore.builder()
+        .serverUrl(opensearch.getHttpHostAddress())
+        .indexName(randomUUID())
+        .build();
+
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     static void startOpenSearch() {
         opensearch.start();
-    }
-
-    @BeforeEach
-    void setupOpenSearchEmbeddingStore() {
-        if (embeddingStore == null) {
-            embeddingStore = OpenSearchEmbeddingStore.builder()
-                .serverUrl(opensearch.getHttpHostAddress())
-                .indexName(randomUUID())
-                .build();
-        }
     }
 
     @Test

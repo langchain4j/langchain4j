@@ -1,12 +1,15 @@
 package dev.langchain4j.store.embedding.opensearch;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import software.amazon.awssdk.http.SdkHttpClient;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
+import software.amazon.awssdk.regions.Region;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
@@ -30,6 +33,8 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.transport.OpenSearchTransport;
+import org.opensearch.client.transport.aws.AwsSdk2Transport;
+import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
 import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 import org.slf4j.Logger;
@@ -60,25 +65,24 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final OpenSearchClient client;
 
     /**
-     * Creates an instance of OpenSearchEmbeddingStore.
+     * Creates an instance of OpenSearchEmbeddingStore to connect with
+     * OpenSearch clusters running locally and network reacheable.
      *
-     * @param serverUrl OpenSearch Server URL
+     * @param serverUrl OpenSearch Server URL.
      * @param apiKey    OpenSearch API key (optional)
      * @param userName  OpenSearch user name (optional)
      * @param password  OpenSearch password (optional)
      * @param indexName OpenSearch index name (optional). Default value: "default"
      */
     public OpenSearchEmbeddingStore(String serverUrl,
-                                       String apiKey,
-                                       String userName,
-                                       String password,
-                                       String indexName) {
+                                    String apiKey,
+                                    String userName,
+                                    String password,
+                                    String indexName) {
 
         HttpHost openSearchHost = null;
         try {
             openSearchHost = HttpHost.create(serverUrl);
-            // This assumes the user provided the `serverUrl`
-            // using the following syntax: protocol://host:port
         } catch (URISyntaxException se) {
             log.error("[I/O OpenSearch Exception]", se);
             throw new OpenSearchRequestFailedException(se.getMessage());
@@ -122,6 +126,39 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     }
 
+    /**
+     * Creates an instance of OpenSearchEmbeddingStore to connect with
+     * OpenSearch clusters running as a fully managed service at AWS.
+     *
+     * @param serverUrl   OpenSearch Server URL.
+     * @param apiKey      OpenSearch API key (optional)
+     * @param serviceName The AWS signing service name, one of `es` (Amazon OpenSearch) or `aoss` (Amazon OpenSearch Serverless).
+     * @param region      The AWS region for which requests will be signed. This should typically match the region in `serverUrl`.
+     * @param indexName   OpenSearch index name (optional). Default value: "default"
+     */
+    public OpenSearchEmbeddingStore(String serverUrl,
+                                    String serviceName,
+                                    String region,
+                                    AwsSdk2TransportOptions options,
+                                    String indexName) {
+
+        Region selectedRegion = Region.of(region);
+
+        AwsSdk2TransportOptions selectedOptions = options;
+        if (selectedOptions == null) {
+            selectedOptions = AwsSdk2TransportOptions.builder().build();
+        }
+
+        SdkHttpClient httpClient = ApacheHttpClient.builder().build();
+        OpenSearchTransport transport = new AwsSdk2Transport(
+            httpClient, serverUrl, serviceName, selectedRegion, selectedOptions
+        );
+
+        this.client = new OpenSearchClient(transport);
+        this.indexName = ensureNotNull(indexName, "indexName");
+
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -132,6 +169,9 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String apiKey;
         private String userName;
         private String password;
+        private String serviceName;
+        private String region;
+        private AwsSdk2TransportOptions options;
         private String indexName = "default";
 
         public Builder serverUrl(String serverUrl) {
@@ -154,13 +194,34 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder serviceName(String serviceName) {
+            this.serviceName = serviceName;
+            return this;
+        }
+
+        public Builder region(String region) {
+            this.region = region;
+            return this;
+        }
+
+        public Builder options(AwsSdk2TransportOptions options) {
+            this.options = options;
+            return this;
+        }
+
         public Builder indexName(String indexName) {
             this.indexName = indexName;
             return this;
         }
 
         public OpenSearchEmbeddingStore build() {
-            return new OpenSearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+            if (!isNullOrBlank(serviceName) || !isNullOrBlank(region) || options != null) {
+                return new OpenSearchEmbeddingStore(
+                    serverUrl, serviceName, region, options, indexName
+                );
+            }
+            return new OpenSearchEmbeddingStore(
+                serverUrl, apiKey, userName, password, indexName);
         }
 
     }

@@ -37,6 +37,8 @@
         <snakeyaml.version>2.0</snakeyaml.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.6.0</opensearch-java.version>
+        <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
+        <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.0</opensearch-containers.version>
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
@@ -206,6 +208,24 @@
                 <groupId>org.opensearch.client</groupId>
                 <artifactId>opensearch-java</artifactId>
                 <version>${opensearch-java.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>opensearch</artifactId>
+                <version>${aws-opensearch.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-core</artifactId>
+                <version>${aws-java-sdk-core.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>apache-client</artifactId>
+                <version>${aws-opensearch.version}</version>
             </dependency>
 
             <dependency>
