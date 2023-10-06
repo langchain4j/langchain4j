@@ -35,8 +35,8 @@
         <tinylog.version>2.6.2</tinylog.version>
         <spring-boot.version>2.7.14</spring-boot.version>
         <snakeyaml.version>2.0</snakeyaml.version>
+        <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.6.0</opensearch-java.version>
-        <opensearch-rest.version>2.10.0</opensearch-rest.version>
         <opensearch-containers.version>2.0.0</opensearch-containers.version>
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
@@ -197,15 +197,15 @@
             </dependency>
 
             <dependency>
-                <groupId>org.opensearch.client</groupId>
-                <artifactId>opensearch-java</artifactId>
-                <version>${opensearch-java.version}</version>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>${httpclient5.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.opensearch.client</groupId>
-                <artifactId>opensearch-rest-client</artifactId>
-                <version>${opensearch-rest.version}</version>
+                <artifactId>opensearch-java</artifactId>
+                <version>${opensearch-java.version}</version>
             </dependency>
 
             <dependency>

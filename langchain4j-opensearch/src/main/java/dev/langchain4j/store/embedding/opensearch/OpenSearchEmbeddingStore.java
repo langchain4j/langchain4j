@@ -7,15 +7,13 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
-import org.apache.http.message.BasicHeader;
-import org.opensearch.client.RestClient;
-import org.opensearch.client.RestClientBuilder;
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
+import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHost;
+import org.apache.hc.core5.http.message.BasicHeader;
 import org.opensearch.client.json.JsonData;
 import org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import org.opensearch.client.opensearch.OpenSearchClient;
@@ -33,11 +31,12 @@ import org.opensearch.client.opensearch.core.SearchResponse;
 import org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import org.opensearch.client.transport.OpenSearchTransport;
 import org.opensearch.client.transport.endpoints.BooleanResponse;
-import org.opensearch.client.transport.rest_client.RestClientTransport;
+import org.opensearch.client.transport.httpclient5.ApacheHttpClient5TransportBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +64,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      *
      * @param serverUrl OpenSearch Server URL
      * @param apiKey    OpenSearch API key (optional)
-     * @param userName  OpenSearch userName (optional)
+     * @param userName  OpenSearch user name (optional)
      * @param password  OpenSearch password (optional)
      * @param indexName OpenSearch index name (optional). Default value: "default"
      */
@@ -75,29 +74,48 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                                        String password,
                                        String indexName) {
 
-        HttpHost host = HttpHost.create(serverUrl);
-        RestClientBuilder rcb = RestClient.builder(host);
+        HttpHost openSearchHost = null;
+        try {
+            openSearchHost = HttpHost.create(serverUrl);
+            // This assumes the user provided the `serverUrl`
+            // using the following syntax: protocol://host:port
+        } catch (URISyntaxException se) {
+            log.error("[I/O OpenSearch Exception]", se);
+            throw new OpenSearchRequestFailedException(se.getMessage());
+        }
 
+        List<Header> defaultHeaders = List.of(
+            new BasicHeader("Authorization", "ApiKey " + apiKey)
+        );
+
+        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
         if (!isNullOrBlank(userName) && !isNullOrBlank(password)) {
-            BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-            credentialsProvider.setCredentials(new AuthScope(host), new UsernamePasswordCredentials(userName, password));
-            rcb.setHttpClientConfigCallback(new RestClientBuilder.HttpClientConfigCallback() {
-                @Override
-                public HttpAsyncClientBuilder customizeHttpClient(HttpAsyncClientBuilder httpClientBuilder) {
-                    return httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            credentialsProvider.setCredentials(new AuthScope(openSearchHost),
+                new UsernamePasswordCredentials(userName, password.toCharArray()));
+        }
+
+        OpenSearchTransport transport = ApacheHttpClient5TransportBuilder
+            .builder(openSearchHost)
+            .setMapper(new JacksonJsonpMapper())
+            .setHttpClientConfigCallback(httpClientBuilder -> {
+
+                if (!isNullOrBlank(apiKey)) {
+                    httpClientBuilder.setDefaultHeaders(defaultHeaders);
                 }
-            });
-        }
 
-        if (!isNullOrBlank(apiKey)) {
-            Header[] defaultHeaders = new Header[]{
-                new BasicHeader("Authorization", "ApiKey " + apiKey)
-            };
-            rcb.setDefaultHeaders(defaultHeaders);
-        }
+                if (!isNullOrBlank(userName) && !isNullOrBlank(password)) {
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                } 
 
-        RestClient restClient = rcb.build();
-        OpenSearchTransport transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
+                httpClientBuilder.setConnectionManager(
+                    PoolingAsyncClientConnectionManagerBuilder
+                        .create()
+                        .build());
+
+                return httpClientBuilder;
+
+            })
+            .build();        
         
         this.client = new OpenSearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
