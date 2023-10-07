@@ -131,9 +131,9 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * OpenSearch clusters running as a fully managed service at AWS.
      *
      * @param serverUrl   OpenSearch Server URL.
-     * @param apiKey      OpenSearch API key (optional)
      * @param serviceName The AWS signing service name, one of `es` (Amazon OpenSearch) or `aoss` (Amazon OpenSearch Serverless).
      * @param region      The AWS region for which requests will be signed. This should typically match the region in `serverUrl`.
+     * @param options     The options to establish connection with the service. It must include which credentials should be used.
      * @param indexName   OpenSearch index name (optional). Default value: "default"
      */
     public OpenSearchEmbeddingStore(String serverUrl,
@@ -144,14 +144,9 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         Region selectedRegion = Region.of(region);
 
-        AwsSdk2TransportOptions selectedOptions = options;
-        if (selectedOptions == null) {
-            selectedOptions = AwsSdk2TransportOptions.builder().build();
-        }
-
         SdkHttpClient httpClient = ApacheHttpClient.builder().build();
         OpenSearchTransport transport = new AwsSdk2Transport(
-            httpClient, serverUrl, serviceName, selectedRegion, selectedOptions
+            httpClient, serverUrl, serviceName, selectedRegion, options
         );
 
         this.client = new OpenSearchClient(transport);
