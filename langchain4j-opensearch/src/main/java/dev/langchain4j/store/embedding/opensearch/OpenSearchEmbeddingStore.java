@@ -210,7 +210,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public OpenSearchEmbeddingStore build() {
-            if (!isNullOrBlank(serviceName) || !isNullOrBlank(region) || options != null) {
+            if (!isNullOrBlank(serviceName) && !isNullOrBlank(region) && options != null) {
                 return new OpenSearchEmbeddingStore(
                     serverUrl, serviceName, region, options, indexName
                 );
