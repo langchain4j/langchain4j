@@ -21,7 +21,7 @@
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
-        <lombok.version>1.18.28</lombok.version>
+        <lombok.version>1.18.30</lombok.version>
         <pdfbox.version>2.0.29</pdfbox.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
         <mustache.version>0.9.10</mustache.version>
