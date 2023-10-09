@@ -216,10 +216,10 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.23.0'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.23.0'
       ```
 
-2. Import your OpenAI/HuggingFace API key:
+2. Import your OpenAI API key:
     ```java
     String apiKey = System.getenv("OPENAI_API_KEY");
     ```
