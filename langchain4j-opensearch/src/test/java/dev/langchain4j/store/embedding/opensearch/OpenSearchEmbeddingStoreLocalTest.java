@@ -9,7 +9,6 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -35,12 +34,12 @@ class OpenSearchEmbeddingStoreLocalTest {
 
     @Container
     private static final OpensearchContainer opensearch =
-        new OpensearchContainer(DockerImageName.parse("opensearchproject/opensearch:2.10.0"));
+            new OpensearchContainer(DockerImageName.parse("opensearchproject/opensearch:2.10.0"));
 
     private final EmbeddingStore<TextSegment> embeddingStore = OpenSearchEmbeddingStore.builder()
-        .serverUrl(opensearch.getHttpHostAddress())
-        .indexName(randomUUID())
-        .build();
+            .serverUrl(opensearch.getHttpHostAddress())
+            .indexName(randomUUID())
+            .build();
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -66,7 +65,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
-
     }
 
     @Test
@@ -86,7 +84,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
-
     }
 
     @Test
@@ -108,7 +105,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
-
     }
 
     @Test
@@ -130,7 +126,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
-
     }
 
     @Test
@@ -158,7 +153,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isNull();
-
     }
 
     @Test
@@ -191,7 +185,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
-
     }
 
     @Test
@@ -241,7 +234,6 @@ class OpenSearchEmbeddingStoreLocalTest {
         );
         assertThat(relevant4).hasSize(1);
         assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
-
     }
 
     @Test
@@ -264,7 +256,5 @@ class OpenSearchEmbeddingStoreLocalTest {
                 RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
                 withPercentage(1)
         );
-
     }
-
 }

@@ -13,5 +13,4 @@ class OpenSearchRequestFailedException extends RuntimeException {
     public OpenSearchRequestFailedException(String message, Throwable cause) {
         super(message, cause);
     }
-    
 }

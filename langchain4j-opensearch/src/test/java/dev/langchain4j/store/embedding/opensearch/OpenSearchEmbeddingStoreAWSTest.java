@@ -1,12 +1,5 @@
 package dev.langchain4j.store.embedding.opensearch;
 
-import java.util.List;
-import java.util.UUID;
-
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
-
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -16,7 +9,13 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.opensearch.client.transport.aws.AwsSdk2TransportOptions;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
+
+import java.util.List;
+import java.util.UUID;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,16 +34,16 @@ public class OpenSearchEmbeddingStoreAWSTest {
     private final ProfileCredentialsProvider credentials = ProfileCredentialsProvider.create("default");
 
     private final AwsSdk2TransportOptions transportOptions = AwsSdk2TransportOptions.builder()
-        .setCredentials(credentials)
-        .build();
+            .setCredentials(credentials)
+            .build();
 
     private final EmbeddingStore<TextSegment> embeddingStore = OpenSearchEmbeddingStore.builder()
-        .serverUrl(domainEndpoint)
-        .serviceName("es")
-        .region("us-east-1")
-        .options(transportOptions)
-        .indexName(randomUUID())
-        .build();
+            .serverUrl(domainEndpoint)
+            .serviceName("es")
+            .region("us-east-1")
+            .options(transportOptions)
+            .indexName(randomUUID())
+            .build();
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -65,7 +64,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
-
     }
 
     @Test
@@ -85,7 +83,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
-
     }
 
     @Test
@@ -107,7 +104,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
-
     }
 
     @Test
@@ -129,7 +125,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
-
     }
 
     @Test
@@ -157,7 +152,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isNull();
-
     }
 
     @Test
@@ -190,7 +184,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
-
     }
 
     @Test
@@ -240,7 +233,6 @@ public class OpenSearchEmbeddingStoreAWSTest {
         );
         assertThat(relevant4).hasSize(1);
         assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
-
     }
 
     @Test
@@ -263,11 +255,9 @@ public class OpenSearchEmbeddingStoreAWSTest {
                 RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
                 withPercentage(1)
         );
-
     }
 
     public static String randomUUID() {
         return UUID.randomUUID().toString();
     }
-
 }
