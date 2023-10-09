@@ -1,6 +1,5 @@
 package dev.langchain4j.model.dashscope;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
