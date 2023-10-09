@@ -28,11 +28,18 @@
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.9.3</junit.version>
+        <junit-jupiter.version>5.10.0</junit-jupiter.version>
+        <testcontainers.version>1.19.1</testcontainers.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
         <spring-boot.version>2.7.14</spring-boot.version>
         <snakeyaml.version>2.0</snakeyaml.version>
+        <httpclient5.version>5.2.1</httpclient5.version>
+        <opensearch-java.version>2.6.0</opensearch-java.version>
+        <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
+        <aws-opensearch.version>2.20.161</aws-opensearch.version>
+        <opensearch-containers.version>2.0.0</opensearch-containers.version>
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
@@ -120,6 +127,30 @@
             </dependency>
 
             <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${junit-jupiter.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.opensearch</groupId>
+                <artifactId>opensearch-testcontainers</artifactId>
+                <version>${opensearch-containers.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-core</artifactId>
                 <version>${mockito.version}</version>
@@ -165,6 +196,36 @@
                 <groupId>org.yaml</groupId>
                 <artifactId>snakeyaml</artifactId>
                 <version>${snakeyaml.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>${httpclient5.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.opensearch.client</groupId>
+                <artifactId>opensearch-java</artifactId>
+                <version>${opensearch-java.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>opensearch</artifactId>
+                <version>${aws-opensearch.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-core</artifactId>
+                <version>${aws-java-sdk-core.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>apache-client</artifactId>
+                <version>${aws-opensearch.version}</version>
             </dependency>
 
             <dependency>
