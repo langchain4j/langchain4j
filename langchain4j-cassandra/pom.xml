@@ -5,6 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <artifactId>langchain4j-cassandra</artifactId>
     <name>LangChain4j integration with Cassandra and AstraDb</name>
+    <description>Some dependencies have a "Public Domain" license</description>
 
     <parent>
         <groupId>dev.langchain4j</groupId>
@@ -81,13 +82,17 @@
 
     </dependencies>
 
-    <licenses>
-        <license>
-            <name>Apache-2.0</name>
-            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
-            <distribution>repo</distribution>
-            <comments>A business-friendly OSS license</comments>
-        </license>
-    </licenses>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.honton.chas</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <configuration>
+                    <!-- org.json:json has a "Public Domain" license -->
+                    <skipCompliance>true</skipCompliance>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

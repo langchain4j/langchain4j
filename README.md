@@ -1,5 +1,8 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
+[![](https://img.shields.io/twitter/follow/langchain4j)](https://twitter.com/intent/follow?screen_name=langchain4j)
+[![](https://dcbadge.vercel.app/api/server/V5qHrWNVf?compact=true&style=flat)](https://discord.gg/V5qHrWNVf)
+
 ## Project goals
 
 The goal of this project is to simplify the integration of AI/LLM capabilities into your Java application.
