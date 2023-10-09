@@ -355,11 +355,6 @@
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
                                 </license>
                                 <license>
-                                    <!-- for com.datastax.astra:astra-sdk-vector -->
-                                    <name>Apache 2</name>
-                                    <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
-                                </license>
-                                <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
                                     <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
                                 </license>
