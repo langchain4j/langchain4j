@@ -7,9 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.util.Map;
 
-/**
- * Elasticsearch document object, for the purpose of construct document object from embedding and text segment
- */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
