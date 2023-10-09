@@ -1,5 +1,7 @@
 package dev.langchain4j.store.memory.chat.cassandra;
 
+import com.datastax.astra.sdk.AstraClient;
+import com.dtsx.astra.sdk.utils.TestUtils;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -24,23 +26,29 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 public class ChatMemoryStoreAstraTest {
 
+    private static final String TEST_DATABASE = "langchain4j";
+    private static final String TEST_KEYSPACE = "langchain4j";
+
     @Test
-    @Disabled("bug: order of retrieved messages is wrong")
     @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
     void chatMemoryAstraTest() {
 
         // Initialization
         String astraToken = getAstraToken();
-        String databaseId = setupDatabase("langchain4j", "langchain4j");
+        String databaseId = setupDatabase(TEST_DATABASE, TEST_KEYSPACE);
 
         // Given
         assertNotNull(databaseId);
         assertNotNull(astraToken);
 
+        // Flush Table before test
+        truncateTable(databaseId, TEST_KEYSPACE, CassandraChatMemoryStore.DEFAULT_TABLE_NAME);
+
         // When
         ChatMemoryStore chatMemoryStore =
                 new AstraDbChatMemoryStore(astraToken, databaseId, TEST_REGION, "langchain4j");
+
         // When
         String chatSessionId = "chat-" + UUID.randomUUID();
         ChatMemory chatMemory = TokenWindowChatMemory.builder()
@@ -59,4 +67,19 @@ public class ChatMemoryStoreAstraTest {
         // Then
         assertThat(chatMemory.messages()).containsExactly(userMessage, aiMessage);
     }
+
+    private void truncateTable(String databaseId, String keyspace, String table) {
+        try (AstraClient astraClient = AstraClient.builder()
+                .withToken(getAstraToken())
+                .withCqlKeyspace(keyspace)
+                .withDatabaseId(databaseId)
+                .withDatabaseRegion(TestUtils.TEST_REGION)
+                .enableCql()
+                .enableDownloadSecureConnectBundle()
+                .build()) {
+            astraClient.cqlSession()
+                    .execute("TRUNCATE TABLE " + table);
+        }
+    }
+
 }
