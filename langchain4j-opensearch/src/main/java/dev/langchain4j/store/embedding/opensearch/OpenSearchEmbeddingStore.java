@@ -14,7 +14,6 @@ import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.nio.PoolingAsyncClientConnectionManagerBuilder;
-import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.HttpHost;
 import org.apache.hc.core5.http.message.BasicHeader;
 import org.opensearch.client.json.JsonData;
@@ -80,22 +79,12 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                                     String password,
                                     String indexName) {
 
-        HttpHost openSearchHost = null;
+        HttpHost openSearchHost;
         try {
             openSearchHost = HttpHost.create(serverUrl);
         } catch (URISyntaxException se) {
             log.error("[I/O OpenSearch Exception]", se);
             throw new OpenSearchRequestFailedException(se.getMessage());
-        }
-
-        List<Header> defaultHeaders = List.of(
-            new BasicHeader("Authorization", "ApiKey " + apiKey)
-        );
-
-        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-        if (!isNullOrBlank(userName) && !isNullOrBlank(password)) {
-            credentialsProvider.setCredentials(new AuthScope(openSearchHost),
-                new UsernamePasswordCredentials(userName, password.toCharArray()));
         }
 
         OpenSearchTransport transport = ApacheHttpClient5TransportBuilder
@@ -104,10 +93,15 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             .setHttpClientConfigCallback(httpClientBuilder -> {
 
                 if (!isNullOrBlank(apiKey)) {
-                    httpClientBuilder.setDefaultHeaders(defaultHeaders);
+                    httpClientBuilder.setDefaultHeaders(singletonList(
+                            new BasicHeader("Authorization", "ApiKey " + apiKey)
+                    ));
                 }
 
                 if (!isNullOrBlank(userName) && !isNullOrBlank(password)) {
+                    BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                    credentialsProvider.setCredentials(new AuthScope(openSearchHost),
+                            new UsernamePasswordCredentials(userName, password.toCharArray()));
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                 } 
 
@@ -288,7 +282,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             .script(s -> s.inline(InlineScript.of(i -> i
                 .source("knn_score")
                 .lang("knn")
-                .params("field", JsonData.of("values"))
+                .params("field", JsonData.of("vector"))
                 .params("query_value", JsonData.of(vector))
                 .params("space_type", JsonData.of("cosinesimil")))))
             .boost(0.5f));
@@ -338,7 +332,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     private TypeMapping getDefaultMappings(int dimension) {
         Map<String, Property> properties = new HashMap<>(4);
         properties.put("text", Property.of(p -> p.text(TextProperty.of(t -> t))));
-        properties.put("values", Property.of(p -> p.knnVector(
+        properties.put("vector", Property.of(p -> p.knnVector(
             k -> k.dimension(dimension)
         )));
         return TypeMapping.of(c -> c.properties(properties));
@@ -352,7 +346,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         for (int i = 0; i < size; i++) {
             int finalI = i;
             Document document = Document.builder()
-                    .values(embeddings.get(i).vector())
+                    .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
                     .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
                         .map(Metadata::asMap)
@@ -389,7 +383,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .map(document -> new EmbeddingMatch<>(
                     hit.score(),
                     hit.id(),
-                    new Embedding(document.getValues()),
+                    new Embedding(document.getVector()),
                     document.getText() == null
                         ? null
                         : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))

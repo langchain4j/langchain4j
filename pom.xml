@@ -28,9 +28,9 @@
         <!-- embedding stores -->
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
-        <module>langchain4j-opensearch</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-milvus</module>
+        <module>langchain4j-opensearch</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
