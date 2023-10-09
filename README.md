@@ -205,21 +205,21 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 ## Getting started
 
-1. Add LangChain4j dependency to your project:
+1. Add LangChain4j OpenAI dependency to your project:
     - Maven:
       ```
       <dependency>
           <groupId>dev.langchain4j</groupId>
-          <artifactId>langchain4j</artifactId>
+          <artifactId>langchain4j-open-ai</artifactId>
           <version>0.23.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j:0.23.0'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.23.0'
       ```
 
-2. Import your OpenAI/HuggingFace API key:
+2. Import your OpenAI API key:
     ```java
     String apiKey = System.getenv("OPENAI_API_KEY");
     ```
