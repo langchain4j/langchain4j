@@ -7,11 +7,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up JDK 8
+      - name: Set up JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '8'
-          distribution: 'temurin'
+          java-version: '11'
+          distribution: 'adopt'
       - name: Test
         run: mvn --batch-mode test
 
