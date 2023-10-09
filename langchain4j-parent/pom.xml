@@ -351,9 +351,13 @@
                             <scopes>compile,runtime,provided,test</scopes>
                             <acceptableLicenses>
                                 <license>
-                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)
-                                    </name>
+                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)</name>
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
+                                </license>
+                                <license>
+                                    <!-- for com.datastax.astra:astra-sdk-vector -->
+                                    <name>Apache 2</name>
+                                    <url>http://www.apache.org/licenses/LICENSE-2.0.html</url>
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
