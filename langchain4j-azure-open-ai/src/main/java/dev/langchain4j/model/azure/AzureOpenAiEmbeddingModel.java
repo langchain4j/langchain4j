@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -55,8 +56,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      Boolean logRequests,
                                      Boolean logResponses) {
 
-        timeout = timeout == null ? ofSeconds(15) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
@@ -70,7 +70,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.maxRetries = maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = tokenizer;
     }
 

@@ -13,6 +13,7 @@ import java.net.Proxy;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
@@ -56,9 +57,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Boolean logRequests,
                                     Boolean logResponses) {
 
-        temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? ofSeconds(60) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
 
         this.client = OpenAiClient.builder()
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
@@ -72,8 +71,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.temperature = temperature;
-        this.maxRetries = maxRetries;
+        this.temperature = getOrDefault(temperature, 0.7);
+        this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = tokenizer;
     }
 
