@@ -17,9 +17,8 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -44,13 +43,12 @@ public class OpenAiModerationModel implements ModerationModel {
                                  Boolean logRequests,
                                  Boolean logResponses) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
+        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             baseUrl = OPENAI_DEMO_URL;
         }
-        modelName = modelName == null ? TEXT_MODERATION_LATEST : modelName;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
@@ -63,8 +61,8 @@ public class OpenAiModerationModel implements ModerationModel {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
-        this.maxRetries = maxRetries;
+        this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
+        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override

@@ -13,6 +13,7 @@ import lombok.Builder;
 import java.net.Proxy;
 import java.time.Duration;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
@@ -38,15 +39,13 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                                         Duration timeout,
                                         Proxy proxy,
                                         Boolean logRequests,
-                                        Boolean logResponses) {
+                                        Boolean logResponses,
+                                        Tokenizer tokenizer) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
-        modelName = modelName == null ? TEXT_DAVINCI_003 : modelName;
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(60) : timeout;
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -56,9 +55,9 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .build();
-        this.modelName = modelName;
-        this.temperature = temperature;
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
+        this.modelName = getOrDefault(modelName, TEXT_DAVINCI_003);
+        this.temperature = getOrDefault(temperature, 0.7);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
     }
 
     @Override

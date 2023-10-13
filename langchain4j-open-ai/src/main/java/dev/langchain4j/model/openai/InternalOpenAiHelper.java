@@ -9,16 +9,12 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
 import static dev.ai4j.openai4j.chat.Role.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4;
 import static dev.langchain4j.model.output.FinishReason.*;
-import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
@@ -27,16 +23,6 @@ public class InternalOpenAiHelper {
 
     static final String OPENAI_DEMO_API_KEY = "demo";
     static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
-
-    static Duration defaultTimeoutFor(String modelName) {
-        if (modelName.startsWith(GPT_3_5_TURBO)) {
-            return ofSeconds(7);
-        } else if (modelName.startsWith(GPT_4)) {
-            return ofSeconds(20);
-        }
-
-        return ofSeconds(10);
-    }
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
 

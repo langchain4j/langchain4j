@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.roleFrom;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_0301;
 
@@ -25,7 +26,7 @@ public class OpenAiTokenizer implements Tokenizer {
     private final Optional<Encoding> encoding;
 
     public OpenAiTokenizer(String modelName) {
-        this.modelName = modelName;
+        this.modelName = ensureNotBlank(modelName, "modelName");
         // If the model is unknown, we should NOT fail fast during the creation of OpenAiTokenizer.
         // Doing so would cause the failure of every OpenAI***Model that uses this tokenizer.
         // This is done to account for situations when a new OpenAI model is available,
