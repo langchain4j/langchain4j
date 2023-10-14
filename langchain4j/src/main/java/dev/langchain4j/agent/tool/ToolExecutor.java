@@ -28,7 +28,7 @@ public class ToolExecutor {
 
         // TODO ensure this method never throws exceptions
 
-        Object[] arguments = prepareArguments(toolExecutionRequest.argumentsAsMap());
+        Object[] arguments = prepareArguments(ToolExecutionRequestUtil.argumentsAsMap(toolExecutionRequest.arguments()));
         try {
             String result = execute(arguments);
             log.debug("Tool execution result: {}", result);
