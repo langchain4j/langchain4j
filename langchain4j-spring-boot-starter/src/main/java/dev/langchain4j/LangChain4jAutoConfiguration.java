@@ -46,6 +46,7 @@ public class LangChain4jAutoConfiguration {
                     throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.openai.api-key' property");
                 }
                 return OpenAiChatModel.builder()
+                        .baseUrl(openAi.getBaseUrl())
                         .apiKey(openAi.getApiKey())
                         .modelName(openAi.getModelName())
                         .temperature(openAi.getTemperature())
