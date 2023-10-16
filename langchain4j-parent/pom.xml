@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.23.0</version>
+    <version>0.23.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -42,6 +42,7 @@
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
+        <mongodb.version>4.11.0</mongodb.version>
     </properties>
 
     <dependencyManagement>
@@ -255,6 +256,11 @@
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${jedis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-sync</artifactId>
+                <version>${mongodb.version}</version>
             </dependency>
 
         </dependencies>
