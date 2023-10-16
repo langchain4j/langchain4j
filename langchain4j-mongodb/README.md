@@ -2,7 +2,7 @@
 
 ## Overview
 
-Welcome to the LangChain4J MongoDB Embedding Store Plugin! This plugin provides seamless integration between LangChain4J
+Welcome to the LangChain4J MongoDB Embedding Store! This provides seamless integration between LangChain4J
 and MongoDB, allowing you to use MongoDB as an embedding store.
 
 ## Features
@@ -24,7 +24,7 @@ Make sure you have the following prerequisites installed:
 
 ### Installation
 
-1. Add the LangChain4J MongoDB Embedding Store Plugin to your project:
+1. Add the LangChain4J MongoDB Embedding Store to your project:
 
    ```xml
    <!-- Maven Dependency -->
