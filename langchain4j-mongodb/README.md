@@ -20,6 +20,8 @@ Make sure you have the following prerequisites installed:
 - LangChain4J library
 - MongoDB Atlas account (cloud.mongodb.com)
 
+**remark**: it does not work on a standard MongoDB installation, you need to use MongoDB Atlas (cloud service).
+
 ### Installation
 
 1. Add the LangChain4J MongoDB Embedding Store Plugin to your project:
