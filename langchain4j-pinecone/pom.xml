@@ -35,12 +35,23 @@
                     <groupId>io.netty</groupId>
                     <artifactId>netty-codec</artifactId>
                 </exclusion>
+                <!-- due to CVE-2023-44487 vulnerability -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-codec-http2</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec</artifactId>
             <version>4.1.98.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http2</artifactId>
+            <version>4.1.100.Final</version>
         </dependency>
 
         <dependency>
