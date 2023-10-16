@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.mongodb;
 import com.mongodb.ConnectionString;
 import com.mongodb.Function;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCommandException;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -139,15 +140,20 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 include("embedding", "embedded")
                         )
                 ));
+        try {
+            AggregateIterable<EmbeddingMatchDocument> results = collection.aggregate(pipeline, EmbeddingMatchDocument.class);
 
-        log.trace("pipeline: {}", DebugUtils.asJson(pipeline));
+            return StreamSupport.stream(results.spliterator(), false)
+                    .map(documentMapping::asTextSegmentEmbeddingMatch)
+                    .collect(Collectors.toList());
 
-        AggregateIterable<EmbeddingMatchDocument> results = collection.aggregate(pipeline, EmbeddingMatchDocument.class);
-
-
-        return StreamSupport.stream(results.spliterator(), false)
-                .map(documentMapping::asTextSegmentEmbeddingMatch)
-                .collect(Collectors.toList());
+        } catch (MongoCommandException e) {
+            log.error("Error in MongoDBEmbeddingStore.findRelevant", e);
+            if (log.isDebugEnabled()) {
+                DebugUtils.printDebugInfoAboutVectorSearchInMongoDB(referenceEmbedding.dimensions(), pipeline);
+            }
+            throw e;
+        }
     }
 
 
@@ -211,9 +217,9 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
          * experimental (mongodb search does not seem to support embedded documents in filters)
          * Filters.eq("embedded.metadata.document_type", "TXT") won't work atm, although that field was mapped as 'token'. It should work according to the docs
          *
-         * @see <a href="https://docs.mongodb.com/manual/reference/operator/query/">MongoDB Query Operators</a>
          * @param filter
          * @return
+         * @see <a href="https://docs.mongodb.com/manual/reference/operator/query/">MongoDB Query Operators</a>
          */
         public Builder filter(Bson filter) {
             this.filter = filter;
