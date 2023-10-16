@@ -216,7 +216,7 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String database;
         private String collection;
         private String indexName = "default";
-        private long         maxResultRatio = 10L;
+        private long maxResultRatio = 10L;
         private Bson filter = null;
         private boolean shouldCreateIndex = true;
 

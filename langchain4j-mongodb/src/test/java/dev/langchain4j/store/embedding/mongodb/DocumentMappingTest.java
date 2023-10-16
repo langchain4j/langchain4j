@@ -7,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.mongodb.document.EmbeddingDocument;
 import dev.langchain4j.store.embedding.mongodb.document.EmbeddingMatchDocument;
 import org.assertj.core.util.Maps;
+import dev.langchain4j.store.embedding.mongodb.document.TextSegmentDocument;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -44,14 +45,12 @@ class DocumentMappingTest {
 
         assertThat(embeddingDocument.getEmbedding().get(0)).isEqualTo(1 / 3d, within(0.00000001d));
     }
-
     @Test
     void asDoublesListRequiredEmbedding() {
         assertThrows(NullPointerException.class, () -> {
-            documentMapping.generateDocument(null, null, new TextSegment("test", Metadata.from("key", "value")));
+            documentMapping.generateDocument(null,  null, new TextSegment("test", Metadata.from("key", "value")));
         });
     }
-
     @Test
     void asDoublesListRequiredTextSegment() {
         assertThrows(NullPointerException.class, () -> {
