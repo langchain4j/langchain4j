@@ -33,6 +33,7 @@
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-milvus</module>
+        <module>langchain4j-mongodb</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pinecone</module>
         <module>langchain4j-pgvector</module>
