@@ -19,6 +19,7 @@ import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
@@ -68,8 +69,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Boolean logRequests,
                                          Boolean logResponses) {
 
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
@@ -83,7 +83,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .build();
-        this.temperature = temperature;
+        this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
