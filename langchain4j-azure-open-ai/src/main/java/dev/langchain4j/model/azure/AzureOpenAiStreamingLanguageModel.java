@@ -14,6 +14,7 @@ import dev.langchain4j.model.output.Response;
 import java.net.Proxy;
 import java.time.Duration;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
@@ -54,8 +55,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Boolean logRequests,
                                              Boolean logResponses) {
 
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
@@ -69,7 +69,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .build();
-        this.temperature = temperature;
+        this.temperature = getOrDefault(temperature, 0.7);
         this.tokenizer = tokenizer;
     }
 

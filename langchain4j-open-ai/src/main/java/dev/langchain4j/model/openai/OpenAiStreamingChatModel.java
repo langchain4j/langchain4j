@@ -28,6 +28,7 @@ import static java.util.Collections.singletonList;
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
@@ -54,9 +55,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Duration timeout,
                                     Proxy proxy,
                                     Boolean logRequests,
-                                    Boolean logResponses) {
+                                    Boolean logResponses,
+                                    Tokenizer tokenizer) {
 
-        timeout = getOrDefault(timeout, ofSeconds(5));
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
@@ -76,7 +78,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
     }
 
     @Override
