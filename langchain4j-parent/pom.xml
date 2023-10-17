@@ -42,6 +42,7 @@
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
+        <netty.version>4.1.100.Final</netty.version>
     </properties>
 
     <dependencyManagement>
