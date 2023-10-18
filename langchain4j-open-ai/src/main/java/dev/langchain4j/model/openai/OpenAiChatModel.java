@@ -20,10 +20,12 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
@@ -52,14 +54,15 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Integer maxRetries,
                            Proxy proxy,
                            Boolean logRequests,
-                           Boolean logResponses) {
+                           Boolean logResponses,
+                           Tokenizer tokenizer) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             baseUrl = OPENAI_DEMO_URL;
         }
-        modelName = getOrDefault(modelName, GPT_3_5_TURBO);
-        timeout = getOrDefault(timeout, defaultTimeoutFor(modelName));
+
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
@@ -72,7 +75,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
+        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.stop = stop;
@@ -80,7 +83,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
     }
 
     @Override

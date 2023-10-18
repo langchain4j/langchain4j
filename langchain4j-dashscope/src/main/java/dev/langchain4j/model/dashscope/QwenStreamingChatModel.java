@@ -10,12 +10,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
-import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
 import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
 
 public class QwenStreamingChatModel extends QwenChatModel implements StreamingChatLanguageModel {

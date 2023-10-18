@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
@@ -65,9 +66,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Boolean logRequests,
                                 Boolean logResponses) {
 
-        temperature = temperature == null ? 0.7 : temperature;
-        timeout = timeout == null ? ofSeconds(60) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
@@ -81,12 +80,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.temperature = temperature;
+        this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.maxRetries = maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = tokenizer;
     }
 

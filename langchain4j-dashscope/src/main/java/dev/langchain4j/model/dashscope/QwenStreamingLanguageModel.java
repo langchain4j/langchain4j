@@ -11,7 +11,6 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
-import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
 
 public class QwenStreamingLanguageModel extends QwenLanguageModel implements StreamingLanguageModel {
 

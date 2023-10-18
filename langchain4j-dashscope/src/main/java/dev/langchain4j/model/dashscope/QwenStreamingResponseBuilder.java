@@ -2,15 +2,13 @@ package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.GenerationUsage;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.util.List;
-
-import static dev.langchain4j.model.dashscope.QwenHelper.*;
+import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
+import static dev.langchain4j.model.dashscope.QwenHelper.finishReasonFrom;
 
 public class QwenStreamingResponseBuilder {
     private String generatedContent = "";

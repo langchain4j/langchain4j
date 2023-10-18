@@ -3,7 +3,6 @@ package dev.langchain4j.model.dashscope;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput;
 import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
-import com.alibaba.dashscope.aigc.generation.GenerationUsage;
 import com.alibaba.dashscope.common.Message;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -14,11 +13,9 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.List;
 import java.util.Optional;
 
-import static com.alibaba.dashscope.common.Role.ASSISTANT;
-import static com.alibaba.dashscope.common.Role.SYSTEM;
-import static com.alibaba.dashscope.common.Role.USER;
-import static dev.langchain4j.model.output.FinishReason.*;
-import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static com.alibaba.dashscope.common.Role.*;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
 class QwenHelper {

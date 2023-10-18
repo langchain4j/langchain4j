@@ -19,6 +19,7 @@ import java.util.List;
 import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.stream.Collectors.toList;
 
@@ -27,6 +28,8 @@ import static java.util.stream.Collectors.toList;
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings">here</a>.
  */
 public class VertexAiEmbeddingModel implements EmbeddingModel {
+
+    private static final int BATCH_SIZE = 5; // Vertex AI has a limit of up to 5 input texts per request
 
     private final PredictionServiceSettings settings;
     private final EndpointName endpointName;
@@ -51,38 +54,37 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 ensureNotBlank(publisher, "publisher"),
                 ensureNotBlank(modelName, "modelName")
         );
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
+        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override
-    public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        List<String> texts = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(toList());
+    public Response<List<Embedding>> embedAll(List<TextSegment> segments) {
 
-        return embedTexts(texts);
-    }
-
-    private Response<List<Embedding>> embedTexts(List<String> texts) {
         try (PredictionServiceClient client = PredictionServiceClient.create(settings)) {
 
-            List<Value> instances = new ArrayList<>();
-            for (String text : texts) {
-                Value.Builder instanceBuilder = Value.newBuilder();
-                JsonFormat.parser().merge(toJson(new VertexAiEmbeddingInstance(text)), instanceBuilder);
-                instances.add(instanceBuilder.build());
-            }
-
-            PredictResponse response = withRetry(() -> client.predict(endpointName, instances, EMPTY_VALUE), maxRetries);
-
-            List<Embedding> embeddings = response.getPredictionsList().stream()
-                    .map(VertexAiEmbeddingModel::toVector)
-                    .map(Embedding::from)
-                    .collect(toList());
-
+            List<Embedding> embeddings = new ArrayList<>();
             int inputTokenCount = 0;
-            for (Value value : response.getPredictionsList()) {
-                inputTokenCount += extractTokenCount(value);
+
+            for (int i = 0; i < segments.size(); i += BATCH_SIZE) {
+
+                List<TextSegment> batch = segments.subList(i, Math.min(i + BATCH_SIZE, segments.size()));
+
+                List<Value> instances = new ArrayList<>();
+                for (TextSegment segment : batch) {
+                    Value.Builder instanceBuilder = Value.newBuilder();
+                    JsonFormat.parser().merge(toJson(new VertexAiEmbeddingInstance(segment.text())), instanceBuilder);
+                    instances.add(instanceBuilder.build());
+                }
+
+                PredictResponse response = withRetry(() -> client.predict(endpointName, instances, EMPTY_VALUE), maxRetries);
+
+                embeddings.addAll(response.getPredictionsList().stream()
+                        .map(VertexAiEmbeddingModel::toEmbedding)
+                        .collect(toList()));
+
+                for (Value prediction : response.getPredictionsList()) {
+                    inputTokenCount += extractTokenCount(prediction);
+                }
             }
 
             return Response.from(
@@ -94,8 +96,9 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         }
     }
 
-    private static List<Float> toVector(Value prediction) {
-        return prediction.getStructValue()
+    private static Embedding toEmbedding(Value prediction) {
+
+        List<Float> vector = prediction.getStructValue()
                 .getFieldsMap()
                 .get("embeddings")
                 .getStructValue()
@@ -105,10 +108,12 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 .stream()
                 .map(v -> (float) v.getNumberValue())
                 .collect(toList());
+
+        return Embedding.from(vector);
     }
 
-    private static int extractTokenCount(Value value) {
-        return (int) value.getStructValue()
+    private static int extractTokenCount(Value prediction) {
+        return (int) prediction.getStructValue()
                 .getFieldsMap()
                 .get("embeddings")
                 .getStructValue()
