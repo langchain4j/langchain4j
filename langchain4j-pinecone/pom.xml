@@ -52,6 +52,7 @@
             <artifactId>netty-codec-http2</artifactId>
             <version>${netty.version}</version>
         </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
