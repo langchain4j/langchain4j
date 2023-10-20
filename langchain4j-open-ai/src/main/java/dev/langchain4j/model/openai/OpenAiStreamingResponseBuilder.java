@@ -12,19 +12,25 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 
+/**
+ * This class needs to be thread safe because it is called when a streaming result comes back
+ * and there is no guarantee that this thread will be the same as the one that initiated the request,
+ * in fact it almost certainly won't be.
+ */
 public class OpenAiStreamingResponseBuilder {
 
-    private final StringBuilder contentBuilder = new StringBuilder();
-    private final StringBuilder toolNameBuilder = new StringBuilder();
-    private final StringBuilder toolArgumentsBuilder = new StringBuilder();
+    private final StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer toolNameBuilder = new StringBuffer();
+    private final StringBuffer toolArgumentsBuilder = new StringBuffer();
 
     private final Integer inputTokenCount;
-    private int outputTokenCount;
+    private final AtomicInteger outputTokenCount = new AtomicInteger();
 
-    private String finishReason;
+    private volatile String finishReason;
 
     public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
         this.inputTokenCount = inputTokenCount;
@@ -58,7 +64,7 @@ public class OpenAiStreamingResponseBuilder {
         String content = delta.content();
         if (content != null) {
             contentBuilder.append(content);
-            outputTokenCount++;
+            outputTokenCount.incrementAndGet();
             return;
         }
 
@@ -66,12 +72,12 @@ public class OpenAiStreamingResponseBuilder {
         if (functionCall != null) {
             if (functionCall.name() != null) {
                 toolNameBuilder.append(functionCall.name());
-                outputTokenCount++;
+                outputTokenCount.incrementAndGet();
             }
 
             if (functionCall.arguments() != null) {
                 toolArgumentsBuilder.append(functionCall.arguments());
-                outputTokenCount++;
+                outputTokenCount.incrementAndGet();
             }
         }
     }
@@ -99,7 +105,7 @@ public class OpenAiStreamingResponseBuilder {
         String token = completionChoice.text();
         if (token != null) {
             contentBuilder.append(token);
-            outputTokenCount++;
+            outputTokenCount.incrementAndGet();
         }
     }
 
@@ -109,7 +115,7 @@ public class OpenAiStreamingResponseBuilder {
         if (!content.isEmpty()) {
             return Response.from(
                     AiMessage.from(content),
-                    new TokenUsage(inputTokenCount, outputTokenCount),
+                    new TokenUsage(inputTokenCount, outputTokenCount.get()),
                     finishReasonFrom(finishReason)
             );
         }
@@ -121,7 +127,7 @@ public class OpenAiStreamingResponseBuilder {
                             .name(toolName)
                             .arguments(toolArgumentsBuilder.toString())
                             .build()),
-                    new TokenUsage(inputTokenCount, outputTokenCount),
+                    new TokenUsage(inputTokenCount, outputTokenCount.get()),
                     finishReasonFrom(finishReason)
             );
         }
