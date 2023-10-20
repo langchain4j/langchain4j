@@ -96,21 +96,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             if (dropTableFirst) {
                 Statement setupStmt = connection.createStatement();
-                setupStmt.executeUpdate("DROP TABLE IF EXISTS %s".formatted(namespace));
+                setupStmt.executeUpdate(String.format("DROP TABLE IF EXISTS %s", namespace));
             }
 
             if (createdTable) {
                 Statement createStmt = connection.createStatement();
-                createStmt.executeUpdate(
-                        "CREATE TABLE %s (vector_id UUID PRIMARY KEY, embedding vector(%s), text TEXT NULL, metadata JSON NULL)"
-                                .formatted(namespace, dimension));
+                createStmt.executeUpdate(String.format(
+                        "CREATE TABLE IF NOT EXISTS %s (vector_id UUID PRIMARY KEY, embedding vector(%s), text TEXT NULL, metadata JSON NULL)",
+                        namespace, dimension));
             }
 
             if (useIndex) {
                 Statement indexStmt = connection.createStatement();
-                indexStmt.executeUpdate(
-                        "CREATE INDEX ON %s USING ivfflat (embedding vector_cosine_ops) WITH (lists = %s)"
-                                .formatted(namespace, indexListSize));
+                indexStmt.executeUpdate(String.format(
+                        "CREATE INDEX IF NOT EXISTS ON %s USING ivfflat (embedding vector_cosine_ops) WITH (lists = %s)",
+                        namespace, indexListSize));
             }
         } catch (SQLException e) {
             throw new ServiceException("Init Failure", e.getCause());
@@ -120,8 +120,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     Connection setupConnection() throws SQLException {
         Connection connection =
                 DriverManager.getConnection(
-                        "jdbc:postgresql://%s:%s/%s"
-                                .formatted(this.dbHost, this.dbPort, this.dbName),
+                        String.format("jdbc:postgresql://%s:%s/%s", this.dbHost, this.dbPort, this.dbName),
                         this.dbUser,
                         this.dbPassword);
         PGvector.addVectorType(connection);
@@ -214,9 +213,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection conn = setupConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
-            String query =
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, vector_id, embedding, text, metadata FROM %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;"
-                            .formatted(referenceVector, this.namespace, minScore, maxResults);
+            String query = String.format(
+                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, vector_id, embedding, text, metadata FROM %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
+                    referenceVector, this.namespace, minScore, maxResults);
             PreparedStatement selectStmt = conn.prepareStatement(query);
 
             ResultSet resultSet = selectStmt.executeQuery();
@@ -233,7 +232,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 Type type = new TypeToken<Map<String, String>>() {}.getType();
 
                 Metadata metadata = new Metadata(new HashMap<>(gson.fromJson(metadataJson, type)));
-                if (text == null || text.isBlank()) {
+                if (text == null || text.isEmpty()) {
                     result.add(new EmbeddingMatch<>(score, embeddingId, embedding, null));
                 } else {
                     TextSegment textSegment = TextSegment.from(text, metadata);
@@ -267,9 +266,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 "embeddings size is not equal to embedded size");
 
         try (Connection conn = setupConnection()) {
-            String query =
-                    "INSERT INTO %s (vector_id, embedding, text, metadata) VALUES (?, ?, ?, ?)"
-                            .formatted(this.namespace);
+            String query = String.format(
+                    "INSERT INTO %s (vector_id, embedding, text, metadata) VALUES (?, ?, ?, ?)" +
+                            "ON CONFLICT (vector_id) DO UPDATE SET " +
+                            "embedding = EXCLUDED.embedding," +
+                            "text = EXCLUDED.text," +
+                            "metadata = EXCLUDED.metadata;",
+                    this.namespace);
 
             PreparedStatement upsertStmt = conn.prepareStatement(query);
 
