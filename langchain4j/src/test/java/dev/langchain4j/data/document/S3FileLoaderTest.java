@@ -1,6 +1,5 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +32,10 @@ public class S3FileLoaderTest {
 
     @BeforeEach
     public void setUp() {
-        s3FileLoader = S3FileLoader.builder("langchain4j", "key.txt").build();
+        s3FileLoader = S3FileLoader.builder()
+                .bucket("langchain4j")
+                .key("key.txt")
+                .build();
     }
 
     @Test
@@ -57,11 +59,15 @@ public class S3FileLoaderTest {
 
     @Test
     public void should_throw_invalid_key() {
-        assertThrows(IllegalArgumentException.class, () -> S3FileLoader.builder("testBucket", null).build());
+        assertThrows(IllegalArgumentException.class, () -> S3FileLoader.builder()
+                .bucket("testBucket")
+                .build());
     }
 
     @Test
     public void should_throw_invalid_bucket() {
-        assertThrows(IllegalArgumentException.class, () -> S3FileLoader.builder(null, "testKey").build());
+        assertThrows(IllegalArgumentException.class, () -> S3FileLoader.builder()
+                .key("testKey")
+                .build());
     }
 }

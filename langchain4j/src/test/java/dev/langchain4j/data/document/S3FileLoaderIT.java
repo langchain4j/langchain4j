@@ -1,7 +1,8 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,11 @@ public class S3FileLoaderIT {
 
     private static final DockerImageName localstackImage = DockerImageName.parse("localstack/localstack:2.0");
 
+    @BeforeAll
+    public static void setUpClass() {
+        System.setProperty("aws.region", "us-east-1");
+    }
+
     @BeforeEach
     public void setUp() {
         s3Container = new LocalStackContainer(localstackImage)
@@ -42,7 +48,9 @@ public class S3FileLoaderIT {
 
     @Test
     public void should_load_document() {
-        S3FileLoader s3FileLoader = S3FileLoader.builder("test-bucket", "test-file.txt")
+        S3FileLoader s3FileLoader = S3FileLoader.builder()
+                .bucket("test-bucket")
+                .key("test-file.txt")
                 .endpointUrl(s3Container.getEndpointOverride(LocalStackContainer.Service.S3).toString())
                 .build();
 
@@ -63,7 +71,9 @@ public class S3FileLoaderIT {
         s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("unknown-test-file.unknown").build(),
                 RequestBody.fromString("Hello, World! I am Unknown"));
 
-        S3FileLoader s3FileLoader = S3FileLoader.builder("test-bucket", "unknown-test-file.unknown")
+        S3FileLoader s3FileLoader = S3FileLoader.builder()
+                .bucket("test-bucket")
+                .key("unknown-test-file.unknown")
                 .endpointUrl(s3Container.getEndpointOverride(LocalStackContainer.Service.S3).toString())
                 .build();
 
@@ -77,6 +87,11 @@ public class S3FileLoaderIT {
     @AfterEach
     public void tearDown() {
         s3Container.stop();
+    }
+
+    @AfterAll
+    public static void tearDownClass() {
+        System.clearProperty("aws.region");
     }
 
 }

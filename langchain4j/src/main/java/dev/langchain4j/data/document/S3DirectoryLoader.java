@@ -1,7 +1,5 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentType;
 import dev.langchain4j.data.document.source.S3Source;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.data.document.loader.DocumentLoaderUtils.parserFor;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-
+import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
 /**
  * S3 Directory Loader Implementation
  */
@@ -27,11 +23,6 @@ public class S3DirectoryLoader extends AbstractS3Loader<List<Document>> {
 
     private S3DirectoryLoader(Builder builder) {
         super(builder);
-
-        if (isNullOrBlank(bucket)) {
-            throw new IllegalArgumentException("Bucket is a required parameter.");
-        }
-
         this.prefix = builder.prefix;
     }
 
@@ -78,36 +69,21 @@ public class S3DirectoryLoader extends AbstractS3Loader<List<Document>> {
         return documents;
     }
 
-    public static Builder builder(String bucketName, String prefix) {
-        return new Builder(bucketName, prefix);
-    }
-
-    public static Builder builder(String bucketName) {
-        return new Builder(bucketName);
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static final class Builder extends AbstractS3Loader.Builder<Builder> {
-        private final String prefix;
+        private String prefix = "";
 
         /**
-         * Set the bucket.
+         * Set the prefix.
          *
-         * @param bucket Bucket.
-         */
-        public Builder(String bucket) {
-            super(bucket);
-            this.prefix = "";
-        }
-
-        /**
-         * Set the bucket and prefix.
-         *
-         * @param bucket Bucket.
          * @param prefix Prefix.
          */
-        public Builder(String bucket, String prefix) {
-            super(bucket);
+        public Builder prefix(String prefix) {
             this.prefix = prefix;
+            return this;
         }
 
         @Override

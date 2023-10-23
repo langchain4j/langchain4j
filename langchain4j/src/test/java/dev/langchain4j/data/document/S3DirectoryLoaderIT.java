@@ -1,7 +1,8 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,11 @@ public class S3DirectoryLoaderIT {
     private LocalStackContainer s3Container;
     private S3Client s3Client;
 
+    @BeforeAll
+    public static void setUpClass() {
+        System.setProperty("aws.region", "us-east-1");
+    }
+
     @BeforeEach
     public void setUp() {
         s3Container = new LocalStackContainer(DockerImageName.parse("localstack/localstack:2.0"))
@@ -40,7 +46,8 @@ public class S3DirectoryLoaderIT {
 
     @Test
     public void should_load_empty_list() {
-        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder("test-bucket")
+        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder()
+                .bucket("test-bucket")
                 .endpointUrl(s3Container.getEndpointOverride(S3).toString())
                 .build();
 
@@ -56,7 +63,8 @@ public class S3DirectoryLoaderIT {
         s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("directory/file2.txt").build(),
                 RequestBody.fromString("Hello, again!"));
 
-        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder("test-bucket")
+        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder()
+                .bucket("test-bucket")
                 .endpointUrl(s3Container.getEndpointOverride(S3).toString())
                 .build();
 
@@ -78,7 +86,9 @@ public class S3DirectoryLoaderIT {
         s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("directory/file3.txt").build(),
                 RequestBody.fromString("Hello, again!"));
 
-        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder("test-bucket", "directory")
+        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder()
+                .bucket("test-bucket")
+                .prefix("directory")
                 .endpointUrl(s3Container.getEndpointOverride(S3).toString())
                 .build();
 
@@ -98,7 +108,9 @@ public class S3DirectoryLoaderIT {
         s3Client.putObject(PutObjectRequest.builder().bucket("test-bucket").key("directory/file3.txt").build(),
                 RequestBody.fromString("Hello, World!"));
 
-        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder("test-bucket", "directory")
+        S3DirectoryLoader s3DirectoryLoader = S3DirectoryLoader.builder()
+                .bucket("test-bucket")
+                .prefix("directory")
                 .endpointUrl(s3Container.getEndpointOverride(S3).toString())
                 .build();
 
@@ -114,6 +126,11 @@ public class S3DirectoryLoaderIT {
     @AfterEach
     public void tearDown() {
         s3Container.stop();
+    }
+
+    @AfterAll
+    public static void tearDownClass() {
+        System.clearProperty("aws.region");
     }
 }
 

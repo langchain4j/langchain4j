@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
 
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -16,6 +16,7 @@ import java.net.URISyntaxException;
 
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public abstract class AbstractS3Loader<T> {
     protected final String bucket;
@@ -27,7 +28,7 @@ public abstract class AbstractS3Loader<T> {
     protected final AwsCredentials awsCredentials;
 
     protected AbstractS3Loader(Builder builder) {
-        this.bucket = builder.bucket;
+        this.bucket = ensureNotBlank(builder.bucket, "bucket");
         this.region = builder.region;
         this.endpointUrl = builder.endpointUrl;
         this.profile = builder.profile;
@@ -49,11 +50,11 @@ public abstract class AbstractS3Loader<T> {
     }
 
     private static AwsSessionCredentials toAwsSessionCredentials(AwsCredentials awsCredentials) {
-        return AwsSessionCredentials.create(awsCredentials.getAccessKeyId(), awsCredentials.getSecretAccessKey(), awsCredentials.getSessionToken());
+        return AwsSessionCredentials.create(awsCredentials.accessKeyId(), awsCredentials.secretAccessKey(), awsCredentials.sessionToken());
     }
 
     private static software.amazon.awssdk.auth.credentials.AwsCredentials toAwsCredentials(AwsCredentials awsCredentials) {
-        return AwsBasicCredentials.create(awsCredentials.getAccessKeyId(), awsCredentials.getSecretAccessKey());
+        return AwsBasicCredentials.create(awsCredentials.accessKeyId(), awsCredentials.secretAccessKey());
     }
 
     protected abstract T load(S3Client s3Client);
@@ -62,10 +63,10 @@ public abstract class AbstractS3Loader<T> {
         AwsCredentialsProvider provider = DefaultCredentialsProvider.builder().build();
 
         if (awsCredentials != null) {
-            if (awsCredentials.hasAccessKeyIdAndSecretKey()) {
-                provider = StaticCredentialsProvider.create(toAwsCredentials(awsCredentials));
-            } else if (awsCredentials.hasAllCredentials()) {
+            if (awsCredentials.hasAllCredentials()) {
                 provider = StaticCredentialsProvider.create(toAwsSessionCredentials(awsCredentials));
+            }else if (awsCredentials.hasAccessKeyIdAndSecretKey()) {
+                provider = StaticCredentialsProvider.create(toAwsCredentials(awsCredentials));
             } else {
                 throw new IllegalArgumentException("Invalid AWS credentials");
             }
@@ -96,7 +97,7 @@ public abstract class AbstractS3Loader<T> {
     }
 
     public static abstract class Builder<T extends Builder<T>> {
-        private final String bucket;
+        private String bucket;
         private String region;
         private String endpointUrl;
         private String profile;
@@ -104,8 +105,14 @@ public abstract class AbstractS3Loader<T> {
         private boolean forcePathStyle;
         private AwsCredentials awsCredentials;
 
-        public Builder(String bucket) {
+        /**
+         * Set the AWS bucket.
+         *
+         * @return The builder instance.
+         */
+        public T bucket(String bucket) {
             this.bucket = bucket;
+            return self();
         }
 
         /**

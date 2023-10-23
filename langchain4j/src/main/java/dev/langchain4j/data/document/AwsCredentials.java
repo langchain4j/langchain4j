@@ -1,6 +1,7 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
 import static dev.langchain4j.internal.Utils.areNotNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Represents an AWS credentials object, including access key ID, secret access key, and optional session token.
@@ -12,26 +13,25 @@ public class AwsCredentials {
     private String sessionToken;
 
     public AwsCredentials(String accessKeyId, String secretAccessKey, String sessionToken) {
-        this.accessKeyId = accessKeyId;
-        this.secretAccessKey = secretAccessKey;
+        this.accessKeyId = ensureNotBlank(accessKeyId, "accessKeyId");
+        this.secretAccessKey = ensureNotBlank(secretAccessKey, "secretAccessKey");
         this.sessionToken = sessionToken;
     }
 
     public AwsCredentials(String accessKeyId, String secretAccessKey) {
-        this.accessKeyId = accessKeyId;
-        this.secretAccessKey = secretAccessKey;
+        this(accessKeyId, secretAccessKey, null);
     }
 
 
-    public String getAccessKeyId() {
+    public String accessKeyId() {
         return accessKeyId;
     }
 
-    public String getSecretAccessKey() {
+    public String secretAccessKey() {
         return secretAccessKey;
     }
 
-    public String getSessionToken() {
+    public String sessionToken() {
         return sessionToken;
     }
 

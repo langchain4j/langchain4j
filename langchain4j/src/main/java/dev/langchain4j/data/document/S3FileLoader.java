@@ -1,7 +1,5 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentType;
 import dev.langchain4j.data.document.source.S3Source;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -10,8 +8,8 @@ import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 
-import static dev.langchain4j.data.document.loader.DocumentLoaderUtils.parserFor;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * S3 File Loader Implementation
@@ -21,12 +19,7 @@ public class S3FileLoader extends AbstractS3Loader<Document> {
 
     private S3FileLoader(Builder builder) {
         super(builder);
-
-        if (isNullOrBlank(bucket) || isNullOrBlank(builder.key)) {
-            throw new IllegalArgumentException("Bucket and key are required parameters.");
-        }
-
-        this.key = builder.key;
+        this.key = ensureNotBlank(builder.key, "key");
     }
 
     /**
@@ -47,22 +40,21 @@ public class S3FileLoader extends AbstractS3Loader<Document> {
         }
     }
 
-    public static Builder builder(String bucketName, String fileName) {
-        return new Builder(bucketName, fileName);
+    public static Builder builder() {
+        return new Builder();
     }
 
     public static final class Builder extends AbstractS3Loader.Builder<Builder> {
-        private final String key;
+        private String key;
 
         /**
-         * Set the bucket and object key.
+         * Set the object key.
          *
-         * @param bucket Bucket.
          * @param key Key.
          */
-        public Builder(String bucket, String key) {
-            super(bucket);
+        public Builder key(String key) {
             this.key = key;
+            return this;
         }
 
         @Override

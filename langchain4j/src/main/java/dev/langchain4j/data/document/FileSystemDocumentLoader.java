@@ -1,7 +1,4 @@
-package dev.langchain4j.data.document.loader;
-
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentType;
+package dev.langchain4j.data.document;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.data.document.loader.DocumentLoaderUtils.parserFor;
+import static dev.langchain4j.data.document.DocumentLoaderUtils.parserFor;
 import static dev.langchain4j.data.document.source.FileSystemSource.from;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static java.nio.file.Files.isDirectory;

@@ -1,6 +1,5 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +41,10 @@ public class S3DirectoryLoaderTest {
 
     @BeforeEach
     public void setUp() {
-        s3DirectoryLoader = S3DirectoryLoader.builder("langchain4j", "testPrefix").build();
+        s3DirectoryLoader = S3DirectoryLoader.builder()
+                .bucket("langchain4j")
+                .prefix("testPrefix")
+                .build();
     }
 
     @Test
@@ -109,6 +111,8 @@ public class S3DirectoryLoaderTest {
 
     @Test
     public void should_throw_invalid_bucket() {
-        assertThrows(IllegalArgumentException.class, () -> S3DirectoryLoader.builder(null, "testPrefix").build());
+        assertThrows(IllegalArgumentException.class, () -> S3DirectoryLoader.builder()
+                .prefix("testPrefix")
+                .build());
     }
 }

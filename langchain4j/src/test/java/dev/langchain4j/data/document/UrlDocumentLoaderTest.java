@@ -1,8 +1,8 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.data.document.loader.UrlDocumentLoader;
+import dev.langchain4j.data.document.UrlDocumentLoader;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

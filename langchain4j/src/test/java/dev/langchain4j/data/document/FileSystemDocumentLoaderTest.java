@@ -1,4 +1,4 @@
-package dev.langchain4j.data.document.loader;
+package dev.langchain4j.data.document;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
@@ -10,8 +10,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
-import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocuments;
+import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocument;
+import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocuments;
 import static dev.langchain4j.data.document.Document.DOCUMENT_TYPE;
 import static dev.langchain4j.data.document.Document.FILE_NAME;
 import static dev.langchain4j.data.document.DocumentType.UNKNOWN;
