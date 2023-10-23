@@ -67,8 +67,6 @@ public abstract class AbstractS3Loader<T> {
                 provider = StaticCredentialsProvider.create(toAwsSessionCredentials(awsCredentials));
             }else if (awsCredentials.hasAccessKeyIdAndSecretKey()) {
                 provider = StaticCredentialsProvider.create(toAwsCredentials(awsCredentials));
-            } else {
-                throw new IllegalArgumentException("Invalid AWS credentials");
             }
         }
 
