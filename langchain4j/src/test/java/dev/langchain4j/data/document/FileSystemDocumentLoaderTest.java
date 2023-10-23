@@ -1,7 +1,5 @@
 package dev.langchain4j.data.document;
 
-import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
 import java.net.URISyntaxException;
@@ -10,11 +8,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocument;
-import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocuments;
 import static dev.langchain4j.data.document.Document.DOCUMENT_TYPE;
 import static dev.langchain4j.data.document.Document.FILE_NAME;
 import static dev.langchain4j.data.document.DocumentType.UNKNOWN;
+import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocument;
+import static dev.langchain4j.data.document.FileSystemDocumentLoader.loadDocuments;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
