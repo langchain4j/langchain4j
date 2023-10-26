@@ -9,7 +9,7 @@ import java.time.Duration;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
- * TODO
+ * Represents an Ollama streaming language model with a completion interface
  */
 public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
