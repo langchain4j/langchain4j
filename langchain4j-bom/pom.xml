@@ -67,6 +67,11 @@
                 <artifactId>langchain4j-dashscope</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- embedding stores -->
             <dependency>
@@ -112,6 +117,11 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-weaviate</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-pgvector</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
