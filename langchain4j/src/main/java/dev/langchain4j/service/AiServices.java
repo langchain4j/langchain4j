@@ -403,7 +403,9 @@ public class AiServices<T> {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
-                        Response<AiMessage> response = context.chatModel.generate(messages, context.toolSpecifications);
+                        Response<AiMessage> response = context.toolSpecifications != null ?
+                                context.chatModel.generate(messages, context.toolSpecifications) :
+                                context.chatModel.generate(messages);
 
                         verifyModerationIfNeeded(moderationFuture);
 
