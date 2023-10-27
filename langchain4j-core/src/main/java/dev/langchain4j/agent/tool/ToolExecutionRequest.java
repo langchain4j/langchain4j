@@ -1,19 +1,9 @@
 package dev.langchain4j.agent.tool;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import java.lang.reflect.Type;
-import java.util.Map;
+import static dev.langchain4j.internal.Utils.quoted;
 import java.util.Objects;
 
-import static dev.langchain4j.internal.Utils.quoted;
-
 public class ToolExecutionRequest {
-
-    private static final Gson GSON = new Gson();
-    private static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
 
     private final String name;
     private final String arguments;
@@ -29,15 +19,6 @@ public class ToolExecutionRequest {
 
     public String arguments() {
         return arguments;
-    }
-
-    public Map<String, Object> argumentsAsMap() {
-        return GSON.fromJson(arguments, MAP_TYPE);
-    }
-
-    public <T> T argument(String name) {
-        Map<String, Object> arguments = argumentsAsMap();
-        return (T) arguments.get(name);
     }
 
     @Override

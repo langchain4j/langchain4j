@@ -1,21 +1,15 @@
 package dev.langchain4j.model.input;
 
-import com.github.mustachejava.DefaultMustacheFactory;
-import com.github.mustachejava.Mustache;
-import com.github.mustachejava.MustacheFactory;
-
-import java.io.StringReader;
-import java.io.StringWriter;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.singletonMap;
+import dev.langchain4j.spi.ServiceHelper;
+import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static java.util.Collections.singletonMap;
 
 /**
  * Represents a template of a prompt that can be reused multiple times.
@@ -27,9 +21,17 @@ import static java.util.Collections.singletonMap;
  */
 public class PromptTemplate {
 
-    private static final MustacheFactory MUSTACHE_FACTORY = new DefaultMustacheFactory();
+    private static final PromptTemplateFactory FACTORY = factory();
 
-    private final Mustache mustache;
+    private static PromptTemplateFactory factory() {
+        for (PromptTemplateFactory factory : ServiceHelper.loadFactories(PromptTemplateFactory.class)) {
+            return factory;
+        }
+        // fallback to the default
+        return new MustachePromptTemplateFactory();
+    }
+
+    private final PromptTemplateFactory.Template template;
     private final Clock clock;
 
     public PromptTemplate(String template) {
@@ -37,8 +39,17 @@ public class PromptTemplate {
     }
 
     PromptTemplate(String template, Clock clock) {
-        StringReader stringReader = new StringReader(ensureNotBlank(template, "template"));
-        this.mustache = MUSTACHE_FACTORY.compile(stringReader, "template");
+        this.template = FACTORY.create(new PromptTemplateFactory.Input() {
+            @Override
+            public String getTemplate() {
+                return template;
+            }
+
+            @Override
+            public String getName() {
+                return "template";
+            }
+        });
         this.clock = ensureNotNull(clock, "clock");
     }
 
@@ -59,9 +70,7 @@ public class PromptTemplate {
      * @return A Prompt object where the placeholders in the template have been replaced by the provided values.
      */
     public Prompt apply(Map<String, Object> variables) {
-        StringWriter writer = new StringWriter();
-        mustache.execute(writer, injectDateTimeVariables(variables));
-        return Prompt.from(writer.toString());
+        return Prompt.from(template.render(injectDateTimeVariables(variables)));
     }
 
     private Map<String, Object> injectDateTimeVariables(Map<String, Object> variables) {

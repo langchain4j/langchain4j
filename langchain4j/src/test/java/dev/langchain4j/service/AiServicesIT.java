@@ -49,8 +49,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {
 
-    private static final List<ToolSpecification> NO_TOOLS = null;
-
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -91,7 +89,7 @@ public class AiServicesIT {
         assertThat(joke).isNotBlank();
         System.out.println(joke);
 
-        verify(chatLanguageModel).generate(singletonList(userMessage("Tell me a joke about AI")), NO_TOOLS);
+        verify(chatLanguageModel).generate(singletonList(userMessage("Tell me a joke about AI")));
     }
 
 
@@ -120,7 +118,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31")), NO_TOOLS);
+                        "You must answer strictly in the following format: 2023-12-31")));
     }
 
     @Test
@@ -136,7 +134,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
-                        "You must answer strictly in the following format: 23:59:59")), NO_TOOLS);
+                        "You must answer strictly in the following format: 23:59:59")));
     }
 
     @Test
@@ -152,7 +150,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31T23:59:59")), NO_TOOLS);
+                        "You must answer strictly in the following format: 2023-12-31T23:59:59")));
     }
 
 
@@ -179,7 +177,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Analyze sentiment of " + customerReview + "\n" +
-                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")), NO_TOOLS);
+                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")));
     }
 
 
@@ -217,7 +215,7 @@ public class AiServicesIT {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "}")), NO_TOOLS);
+                        "}")));
     }
 
 
@@ -262,7 +260,7 @@ public class AiServicesIT {
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
-                        "}")), NO_TOOLS);
+                        "}")));
     }
 
 
@@ -299,7 +297,7 @@ public class AiServicesIT {
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
-                        "}")), NO_TOOLS);
+                        "}")));
     }
 
     @Test
@@ -330,7 +328,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
                         "}")
-        ), NO_TOOLS);
+        ));
     }
 
     interface ProfessionalChef {
@@ -354,7 +352,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are a professional chef. You are friendly, polite and concise."),
                 userMessage(question)
-        ), NO_TOOLS);
+        ));
     }
 
 
@@ -379,7 +377,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are a professional translator into german"),
                 userMessage("Translate the following text: Hello, how are you?")
-        ), NO_TOOLS);
+        ));
     }
 
     interface Summarizer {
@@ -405,7 +403,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
                 userMessage(text + "\nYou must put every item on a separate line.")
-        ), NO_TOOLS);
+        ));
     }
 
 
@@ -429,7 +427,7 @@ public class AiServicesIT {
                 .isExactlyInstanceOf(ModerationException.class)
                 .hasMessage("Text \"" + message + "\" violates content policy");
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(message)), NO_TOOLS);
+        verify(chatLanguageModel).generate(singletonList(userMessage(message)));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -447,7 +445,7 @@ public class AiServicesIT {
 
         assertThat(response).isNotBlank();
 
-        verify(chatLanguageModel).generate(singletonList(userMessage(message)), NO_TOOLS);
+        verify(chatLanguageModel).generate(singletonList(userMessage(message)));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
 
@@ -475,7 +473,7 @@ public class AiServicesIT {
         String firstAiMessage = chatWithMemory.chatWithoutSystemMessage(firstUserMessage);
 
         verify(chatMemory).add(userMessage(firstUserMessage));
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstUserMessage)), NO_TOOLS);
+        verify(chatLanguageModel).generate(singletonList(userMessage(firstUserMessage)));
         verify(chatMemory).add(aiMessage(firstAiMessage));
 
         String secondUserMessage = "What is my name?";
@@ -487,7 +485,7 @@ public class AiServicesIT {
                 userMessage(firstUserMessage),
                 aiMessage(firstAiMessage),
                 userMessage(secondUserMessage)
-        ), NO_TOOLS);
+        ));
         verify(chatMemory).add(aiMessage(secondAiMessage));
         verify(chatMemory, times(6)).messages();
     }
@@ -507,7 +505,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage(systemMessage),
                 userMessage(firstUserMessage)
-        ), NO_TOOLS);
+        ));
 
         String secondUserMessage = "What is my name?";
         String secondAiMessage = chatWithMemory.chatWithSystemMessage(secondUserMessage);
@@ -518,7 +516,7 @@ public class AiServicesIT {
                 userMessage(firstUserMessage),
                 aiMessage(firstAiMessage),
                 userMessage(secondUserMessage)
-        ), NO_TOOLS);
+        ));
 
         verify(chatMemory, times(2)).add(systemMessage(systemMessage));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -543,7 +541,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage(firstSystemMessage),
                 userMessage(firstUserMessage)
-        ), NO_TOOLS);
+        ));
 
 
         String secondSystemMessage = "You are funny assistant";
@@ -556,7 +554,7 @@ public class AiServicesIT {
                 aiMessage(firstAiMessage),
                 systemMessage(secondSystemMessage),
                 userMessage(secondUserMessage)
-        ), NO_TOOLS);
+        ));
 
         verify(chatMemory).add(systemMessage(firstSystemMessage));
         verify(chatMemory).add(userMessage(firstUserMessage));
@@ -613,11 +611,11 @@ public class AiServicesIT {
 
         String firstMessageFromFirstUser = "Hello, my name is Klaus";
         String firstAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, firstMessageFromFirstUser);
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromFirstUser)), NO_TOOLS);
+        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromFirstUser)));
 
         String firstMessageFromSecondUser = "Hello, my name is Francine";
         String firstAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, firstMessageFromSecondUser);
-        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromSecondUser)), NO_TOOLS);
+        verify(chatLanguageModel).generate(singletonList(userMessage(firstMessageFromSecondUser)));
 
         String secondMessageFromFirstUser = "What is my name?";
         String secondAiResponseToFirstUser = chatWithMemory.chat(firstMemoryId, secondMessageFromFirstUser);
@@ -626,7 +624,7 @@ public class AiServicesIT {
                 userMessage(firstMessageFromFirstUser),
                 aiMessage(firstAiResponseToFirstUser),
                 userMessage(secondMessageFromFirstUser)
-        ), NO_TOOLS);
+        ));
 
         String secondMessageFromSecondUser = "What is my name?";
         String secondAiResponseToSecondUser = chatWithMemory.chat(secondMemoryId, secondMessageFromSecondUser);
@@ -635,7 +633,7 @@ public class AiServicesIT {
                 userMessage(firstMessageFromSecondUser),
                 aiMessage(firstAiResponseToSecondUser),
                 userMessage(secondMessageFromSecondUser)
-        ), NO_TOOLS);
+        ));
 
         assertThat(persistentStorage).containsOnlyKeys(firstMemoryId, secondMemoryId);
 
