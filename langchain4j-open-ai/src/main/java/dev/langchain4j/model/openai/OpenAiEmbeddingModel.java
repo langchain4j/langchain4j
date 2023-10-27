@@ -16,10 +16,8 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_API_KEY;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_DEMO_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
@@ -42,15 +40,15 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                                 Integer maxRetries,
                                 Proxy proxy,
                                 Boolean logRequests,
-                                Boolean logResponses) {
+                                Boolean logResponses,
+                                Tokenizer tokenizer) {
 
-        baseUrl = baseUrl == null ? OPENAI_URL : baseUrl;
+        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
             baseUrl = OPENAI_DEMO_URL;
         }
-        modelName = modelName == null ? TEXT_EMBEDDING_ADA_002 : modelName;
-        timeout = timeout == null ? ofSeconds(15) : timeout;
-        maxRetries = maxRetries == null ? 3 : maxRetries;
+
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
@@ -63,9 +61,9 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
-        this.modelName = modelName;
-        this.maxRetries = maxRetries;
-        this.tokenizer = new OpenAiTokenizer(this.modelName);
+        this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
+        this.maxRetries = getOrDefault(maxRetries, 3);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
     }
 
     @Override

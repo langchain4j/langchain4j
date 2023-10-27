@@ -4,6 +4,7 @@ import java.time.Duration;
 
 class OpenAi {
 
+    private String baseUrl;
     private String apiKey;
     private String modelName;
     private Double temperature;
@@ -15,6 +16,14 @@ class OpenAi {
     private Integer maxRetries;
     private Boolean logRequests;
     private Boolean logResponses;
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
 
     public String getApiKey() {
         return apiKey;
