@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.23.1-SNAPSHOT</version>
+    <version>0.23.0</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -45,7 +45,6 @@
         <aws.java.sdk.version>2.20.149</aws.java.sdk.version>
         <testcontainers.version>1.19.0</testcontainers.version>
         <netty.version>4.1.100.Final</netty.version>
-        <mongodb.version>4.11.0</mongodb.version>
     </properties>
 
     <dependencyManagement>
@@ -266,17 +265,6 @@
                 <artifactId>jedis</artifactId>
                 <version>${jedis.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.mongodb</groupId>
-                <artifactId>mongodb-driver-sync</artifactId>
-                <version>${mongodb.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.mongodb</groupId>
-                <artifactId>mongodb-driver-sync</artifactId>
-                <version>${mongodb.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>software.amazon.awssdk</groupId>
@@ -297,14 +285,12 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers</artifactId>
                 <version>${testcontainers.version}</version>
-                <scope>test</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>localstack</artifactId>
                 <version>${testcontainers.version}</version>
-                <scope>test</scope>
             </dependency>
         </dependencies>
 
