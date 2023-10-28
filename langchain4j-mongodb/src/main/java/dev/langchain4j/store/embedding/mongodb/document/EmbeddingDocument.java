@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import org.bson.codecs.pojo.annotations.BsonId;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -14,5 +15,7 @@ public class EmbeddingDocument {
     @BsonId
     private String id;
     private List<Double> embedding;
-    private TextSegmentDocument embedded;
+
+    private String text;
+    private Map<String, String> metadata;
 }
