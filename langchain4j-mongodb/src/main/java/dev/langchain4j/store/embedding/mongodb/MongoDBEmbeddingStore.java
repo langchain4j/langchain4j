@@ -1,21 +1,22 @@
 package dev.langchain4j.store.embedding.mongodb;
 
 import com.mongodb.ConnectionString;
-import com.mongodb.Function;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.model.search.VectorSearchOptions;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.mongodb.document.EmbeddingDocument;
 import dev.langchain4j.store.embedding.mongodb.document.EmbeddingMatchDocument;
-import dev.langchain4j.store.embedding.mongodb.document.TextSegmentDocument;
+import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
@@ -24,7 +25,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -40,9 +44,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 /**
- *
  * Represents a <a href="https://www.mongodb.com/">MongoDB</a> index as an embedding store.
- *
+ * <p>
  * More <a href="https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector/">info</a> to set up MongoDb as vectorDatabase
  *
  * <a href="https://www.mongodb.com/developer/products/atlas/semantic-search-mongodb-atlas-vector-search/">tutorial</a> how to use a knn-vector in MongoDB Atlas (great startingpoint)
@@ -61,12 +64,12 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final DocumentMapping documentMapping = new DocumentMapping();
     private final QueryMapping queryMapping = new QueryMapping();
+    private boolean shouldCreateIndex = true;
 
     MongoDBEmbeddingStore(MongoClient mongoClient, String database, String collection, String indexName, long maxResultRatio, Bson filter) {
 
 
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(TextSegmentDocument.class)
                 .automatic(true).build());
         codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
         this.indexName = indexName;
@@ -93,32 +96,57 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        return addAllInternal(embeddings, i -> null);
+        List<TextSegment> textSegments = new ArrayList<>(embeddings.size());
+        Collections.fill(textSegments, createEmptyTextSegment());
+        return addAllInternal(embeddings, textSegments);
     }
 
     @Override
-    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
-        return addAllInternal(embeddings, embedded::get);
+    public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
+        return addAllInternal(embeddings, textSegments);
     }
 
     public String addInternal(String id, Embedding embedding, TextSegment textSegment) {
+        createIndexIfNotExist(embedding, textSegment);
         String documentId = id != null ? id : randomUUID();
         EmbeddingDocument document = documentMapping.generateDocument(documentId, embedding, textSegment);
         collection.insertOne(document);
         return documentId;
     }
 
-    public List<String> addAllInternal(List<Embedding> embeddings, Function<Integer, TextSegment> embeddedProvidor) {
+    public List<String> addAllInternal(List<Embedding> embeddings, List<TextSegment> textSegments) {
         List<String> ids = new ArrayList<>();
         List<EmbeddingDocument> documents = new ArrayList<>();
         for (int i = 0; i < embeddings.size(); i++) {
             String id = randomUUID();
             ids.add(id);
-            documents.add(documentMapping.generateDocument(id, embeddings.get(i), embeddedProvidor.apply(i)));
+            documents.add(documentMapping.generateDocument(id, embeddings.get(i), textSegments.get(i)));
         }
+
+        embeddings.stream().findAny().ifPresent(embedding -> createIndexIfNotExist(embedding, textSegments.get(0)));
 
         collection.insertMany(documents);
         return ids;
+    }
+
+    private void createIndexIfNotExist(Embedding embedding, TextSegment textSegment) {
+        if (shouldCreateIndex) {
+            Optional<Document> existing = StreamSupport.stream(collection.listSearchIndexes().spliterator(), false)
+                    .filter(index -> indexName.equals(index.getString("name")))
+                    .findAny();
+
+            if (!existing.isPresent()) {
+                Bson mapping = DebugUtils.getMapping(embedding.dimensions(), textSegment.metadata().asMap().keySet());
+
+                collection.createSearchIndex(indexName, mapping);
+            }
+            shouldCreateIndex = false;
+        }
+
+    }
+
+    private TextSegment createEmptyTextSegment() {
+        return new TextSegment("", new Metadata(new HashMap<>()));
     }
 
     @Override
@@ -136,8 +164,8 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
                         vectorSearchOptions),
                 project(
                         fields(
-                                metaVectorSearchScore("vectorSearchScore"),
-                                include("embedding", "embedded")
+                                metaVectorSearchScore("score"),
+                                include("embedding", "metadata", "text")
                         )
                 ));
         try {
@@ -150,7 +178,14 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         } catch (MongoCommandException e) {
             log.error("Error in MongoDBEmbeddingStore.findRelevant", e);
             if (log.isDebugEnabled()) {
-                DebugUtils.printDebugInfoAboutVectorSearchInMongoDB(referenceEmbedding.dimensions(), pipeline);
+                log.debug("probably the index is not yet created. Please create the index in MongoDB Atlas");
+                log.debug("to test the aggregation pipeline you can use this json: {}", DebugUtils.asJson(pipeline));
+
+                try (MongoCursor<Document> resultsCursor = collection.listSearchIndexes().iterator()) {
+                    while (resultsCursor.hasNext()) {
+                        log.debug("current existing indexes: {}", DebugUtils.asJson(resultsCursor.next()));
+                    }
+                }
             }
             throw e;
         }
@@ -181,8 +216,9 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String database;
         private String collection;
         private String indexName = "default";
-        private long maxResultRatio = 10L;
+        private long         maxResultRatio = 10L;
         private Bson filter = null;
+        private boolean shouldCreateIndex = true;
 
         protected Builder mongoClient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
@@ -209,16 +245,23 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder shouldCreateIndex(boolean shouldCreateIndex) {
+            this.shouldCreateIndex = shouldCreateIndex;
+            return this;
+        }
+
         /**
          * A filter to apply to the documents before searching. This is useful if you want to restrict the search to a subset of embeddings
-         *
-         * example Filters.lt("fieldName", 1)
-         *
-         * experimental (mongodb search does not seem to support embedded documents in filters)
-         * Filters.eq("embedded.metadata.document_type", "TXT") won't work atm, although that field was mapped as 'token'. It should work according to the docs
+         * <p>
+         * example {@code Filters.lt("fieldName", 1)}
+         * <p>
+         * experimental
+         * Filters.eq("embedded.metadata.document_type", "TXT") won't work atm, use Filters.eqFull("metadata.document_type", "TXT") instead
+         * check your driver documentation
          *
          * @param filter
          * @return
+         * @see com.mongodb.client.model.Filters#eqFull(String, Object)
          * @see <a href="https://docs.mongodb.com/manual/reference/operator/query/">MongoDB Query Operators</a>
          */
         public Builder filter(Bson filter) {
@@ -227,7 +270,9 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public MongoDBEmbeddingStore build() {
-            return new MongoDBEmbeddingStore(mongoClient, database, collection, indexName, maxResultRatio, filter);
+            MongoDBEmbeddingStore mongoDBEmbeddingStore = new MongoDBEmbeddingStore(mongoClient, database, collection, indexName, maxResultRatio, filter);
+            mongoDBEmbeddingStore.shouldCreateIndex = true;
+            return mongoDBEmbeddingStore;
         }
 
     }

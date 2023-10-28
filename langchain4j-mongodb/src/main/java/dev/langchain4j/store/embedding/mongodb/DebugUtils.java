@@ -1,11 +1,14 @@
 package dev.langchain4j.store.embedding.mongodb;
 
+import org.bson.BsonDocument;
+import org.bson.BsonDocumentWriter;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonWriterSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class DebugUtils {
@@ -25,31 +28,51 @@ public class DebugUtils {
 
     }
 
-    public static void printDebugInfoAboutVectorSearchInMongoDB(int dimensions, List<Bson> pipeline){
-        log.debug("problably the index is not yet created. Please create the index in MongoDB Atlas");
-        log.debug("check your mappings at MongoDB Atlas. The minimum mapping should look similar as: {}", DebugUtils.getExampleMapping(dimensions));
 
-        log.debug("to test the aggregation pipeline you can use this json: {}", DebugUtils.asJson(pipeline));
+    public static Bson getMapping(int dimensions, Set<String> metadataFields) {
+        BsonDocumentWriter writer = new BsonDocumentWriter(new BsonDocument());
+        // @formatter:off
+        writer.writeStartDocument();
+            writer.writeStartDocument("mappings");
+            writer.writeBoolean("dynamic", false);
+                writer.writeStartDocument("fields");
+                writeEmbedding(dimensions, writer);
+
+                if(metadataFields != null && !metadataFields.isEmpty()){
+                    writeMetadata(metadataFields, writer);
+                }
+                writer.writeEndDocument();
+            writer.writeEndDocument();
+        writer.writeEndDocument();
+        // @formatter:on
+
+        return writer.getDocument();
+
     }
 
+    private static void writeMetadata(Set<String> metadataFields, BsonDocumentWriter writer) {
+        // @formatter:off
+        writer.writeStartDocument("metadata");
+            writer.writeBoolean("dynamic", false);
+            writer.writeString("type", "document");
+                writer.writeStartDocument("fields");
+                metadataFields.forEach(field -> writeMetadataField(writer, field));
+                writer.writeEndDocument();
+        writer.writeEndDocument();
+        // @formatter:on
+    }
 
-    private static String getExampleMapping(int dimensions) {
+    private static void writeMetadataField(BsonDocumentWriter writer, String fieldName) {
+        writer.writeStartDocument(fieldName);
+        writer.writeString("type", "token");
+        writer.writeEndDocument();
+    }
 
-
-        return "{\n" +
-                "  \"mappings\": {\n" +
-                "    \"dynamic\": false,\n" +
-                "    \"fields\": {\n" +
-                "      \n" +
-                "      \"embedding\": {\n" +
-                "        \"dimensions\": " +dimensions+ ",\n" +
-                "        \"similarity\": \"cosine\",\n" +
-                "        \"type\": \"knnVector\"\n" +
-                "      }\n" +
-                "    }\n" +
-                "  }\n" +
-                " \n" +
-                "}";
-
+    private static void writeEmbedding(int dimensions, BsonDocumentWriter writer) {
+        writer.writeStartDocument("embedding");
+        writer.writeInt32("dimensions", dimensions);
+        writer.writeString("similarity", "cosine");
+        writer.writeString("type", "knnVector");
+        writer.writeEndDocument();
     }
 }
