@@ -253,11 +253,8 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * A filter to apply to the documents before searching. This is useful if you want to restrict the search to a subset of embeddings
          * <p>
-         * example {@code Filters.lt("fieldName", 1)}
+         * example {@code Filters.eq("embedded.metadata.document_type", "TXT")} will only search for embeddings with the metadata.document_type = TXT
          * <p>
-         * experimental
-         * Filters.eq("embedded.metadata.document_type", "TXT") won't work atm, use Filters.eqFull("metadata.document_type", "TXT") instead
-         * check your driver documentation
          *
          * @param filter
          * @return
