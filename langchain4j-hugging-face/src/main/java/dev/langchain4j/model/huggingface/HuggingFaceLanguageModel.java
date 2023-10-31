@@ -1,5 +1,11 @@
 package dev.langchain4j.model.huggingface;
 
+import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
+import dev.langchain4j.model.huggingface.client.Options;
+import dev.langchain4j.model.huggingface.client.Parameters;
+import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
+import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
+import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 
@@ -34,7 +40,22 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     public HuggingFaceLanguageModel(Builder builder) {
-        this.client = new HuggingFaceClient(builder.accessToken, builder.modelId, builder.timeout);
+        this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
+            @Override
+            public String apiKey() {
+                return builder.accessToken;
+            }
+
+            @Override
+            public String modelId() {
+                return builder.modelId;
+            }
+
+            @Override
+            public Duration timeout() {
+                return builder.timeout;
+            }
+        });
         this.temperature = builder.temperature;
         this.maxNewTokens = builder.maxNewTokens;
         this.returnFullText = builder.returnFullText;

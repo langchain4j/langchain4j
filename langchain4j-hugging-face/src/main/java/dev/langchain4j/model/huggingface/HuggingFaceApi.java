@@ -1,5 +1,8 @@
 package dev.langchain4j.model.huggingface;
 
+import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
+import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
+import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.Headers;
