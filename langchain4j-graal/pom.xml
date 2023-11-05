@@ -48,13 +48,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.graalvm.polyglot</groupId>
-            <artifactId>java</artifactId>
-            <version>23.1.0</version>
-            <type>pom</type>
-        </dependency>
-
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
