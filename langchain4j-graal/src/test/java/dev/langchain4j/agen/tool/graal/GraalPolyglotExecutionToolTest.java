@@ -44,21 +44,10 @@ class GraalPolyglotExecutionToolTest {
     {
         GraalPythonExecutionTool jsTool =  new GraalPythonExecutionTool();
         String jsCode = "def fibonacci_of(n):\n" +
-                "    # Validate the value of n\n" +
-                "    if not (isinstance(n, int) and n >= 0):\n" +
-                "        raise ValueError(f'Positive integer number expected, got \"{n}\"')\n" +
-                "\n" +
-                "    # Handle the base cases\n" +
-                "    if n in {0, 1}:\n" +
-                "        return n\n" +
-                "\n" +
-                "    previous, fib_number = 0, 1\n" +
-                "    for _ in range(2, n + 1):\n" +
-                "        # Compute the next Fibonacci number, remember the previous one\n" +
-                "        previous, fib_number = fib_number, previous + fib_number\n" +
-                "\n" +
-                "    return fib_number\n" +
-                "fibonacci_of(11)";
+                "     if n <= 1:  # Base case\n" +
+                "         return 1\n" +
+                "     return fibonacci_of(n - 1) + fibonacci_of(n - 2)  # Recursive case\n" +
+                "fibonacci_of(10)";
 
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .arguments( new Gson().toJson(Map.of("arg0", jsCode)))
