@@ -25,6 +25,9 @@
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
 
+        <!-- image generation model providers -->
+        <module>langchain4j-open-ai-dall-e</module>
+
         <!-- embedding stores -->
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
@@ -35,6 +38,7 @@
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-open-ai-dall-e</module>
     </modules>
 
 </project>
