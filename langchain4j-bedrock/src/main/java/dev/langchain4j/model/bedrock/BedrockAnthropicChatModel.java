@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Getter
 @SuperBuilder
-public class BedrockAnthropicChatModel extends BedrockChatModel<BedrockAnthropicChatResponse> {
+public class BedrockAnthropicChatModel extends AbstractBedrockChatModel<BedrockAnthropicChatModelResponse> {
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
 
     @Builder.Default
@@ -41,8 +41,8 @@ public class BedrockAnthropicChatModel extends BedrockChatModel<BedrockAnthropic
     }
 
     @Override
-    public Class<BedrockAnthropicChatResponse> getResponseClassType() {
-        return BedrockAnthropicChatResponse.class;
+    public Class<BedrockAnthropicChatModelResponse> getResponseClassType() {
+        return BedrockAnthropicChatModelResponse.class;
     }
 
     /**

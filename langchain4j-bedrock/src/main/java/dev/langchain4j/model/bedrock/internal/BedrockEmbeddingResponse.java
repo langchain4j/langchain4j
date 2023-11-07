@@ -3,9 +3,9 @@ package dev.langchain4j.model.bedrock.internal;
 import dev.langchain4j.data.embedding.Embedding;
 
 /**
- * Bedrock embedding instance
+ * Bedrock embedding response
  */
-public interface BedrockEmbeddingInstance {
+public interface BedrockEmbeddingResponse {
 
     /**
      * Get embedding

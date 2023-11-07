@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Getter
 @SuperBuilder
-public class BedrockAI21LabsChatModel extends BedrockChatModel<BedrockAI21LabsChatResponse> {
+public class BedrockAI21LabsChatModel extends AbstractBedrockChatModel<BedrockAI21LabsChatModelResponse> {
 
     @Builder.Default
     private final Types model = Types.J2MidV2;
@@ -44,8 +44,8 @@ public class BedrockAI21LabsChatModel extends BedrockChatModel<BedrockAI21LabsCh
     }
 
     @Override
-    protected Class<BedrockAI21LabsChatResponse> getResponseClassType() {
-        return BedrockAI21LabsChatResponse.class;
+    protected Class<BedrockAI21LabsChatModelResponse> getResponseClassType() {
+        return BedrockAI21LabsChatModelResponse.class;
     }
 
     /**

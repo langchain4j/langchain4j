@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Getter
 @SuperBuilder
-public class BedrockCohereChatModel extends BedrockChatModel<BedrockCohereChatResponse> {
+public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohereChatModelResponse> {
 
     public enum ReturnLikelihood {
         NONE,
@@ -46,8 +46,8 @@ public class BedrockCohereChatModel extends BedrockChatModel<BedrockCohereChatRe
     }
 
     @Override
-    protected Class<BedrockCohereChatResponse> getResponseClassType() {
-        return BedrockCohereChatResponse.class;
+    protected Class<BedrockCohereChatModelResponse> getResponseClassType() {
+        return BedrockCohereChatModelResponse.class;
     }
 
     /**

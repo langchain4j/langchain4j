@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatInstance;
+import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Getter;
@@ -13,7 +13,7 @@ import java.util.List;
  */
 @Getter
 @Setter
-public class BedrockCohereChatResponse implements BedrockChatInstance {
+public class BedrockCohereChatModelResponse implements BedrockChatModelResponse {
 
     @Getter
     @Setter

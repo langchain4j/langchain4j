@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -18,7 +18,7 @@ import java.util.Map;
  */
 @Getter
 @SuperBuilder
-public class BedrockStabilityAIChatModel extends BedrockChatModel<BedrockStabilityAIChatResponse> {
+public class BedrockStabilityAIChatModel extends AbstractBedrockChatModel<BedrockStabilityAIChatModelResponse> {
 
     @Getter
     public enum StylePreset {
@@ -91,8 +91,8 @@ public class BedrockStabilityAIChatModel extends BedrockChatModel<BedrockStabili
     }
 
     @Override
-    protected Class<BedrockStabilityAIChatResponse> getResponseClassType() {
-        return BedrockStabilityAIChatResponse.class;
+    protected Class<BedrockStabilityAIChatModelResponse> getResponseClassType() {
+        return BedrockStabilityAIChatModelResponse.class;
     }
 
     /**

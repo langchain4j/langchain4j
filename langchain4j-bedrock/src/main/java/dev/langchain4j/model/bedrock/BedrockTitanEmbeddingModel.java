@@ -1,7 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.bedrock.internal.BedrockEmbeddingModel;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockEmbeddingModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  */
 @SuperBuilder
 @Getter
-public class BedrockTitanEmbeddingModel extends BedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
+public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
     private final static String MODEL_ID = "amazon.titan-embed-text-v1";
 
     @Builder.Default

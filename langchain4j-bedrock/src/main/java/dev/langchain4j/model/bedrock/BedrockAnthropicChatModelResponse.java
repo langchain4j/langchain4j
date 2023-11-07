@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatInstance;
+import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Getter;
@@ -11,7 +11,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class BedrockAnthropicChatResponse implements BedrockChatInstance {
+public class BedrockAnthropicChatModelResponse implements BedrockChatModelResponse {
     private String completion;
     private String stop_reason;
 

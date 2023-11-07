@@ -31,7 +31,7 @@ import static java.util.stream.Collectors.joining;
  */
 @Getter
 @SuperBuilder
-public abstract class BedrockChatModel<T extends BedrockChatInstance> implements ChatLanguageModel {
+public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse> implements ChatLanguageModel {
     private static final String HUMAN_PROMPT = "Human:";
     private static final String ASSISTANT_PROMPT = "Assistant:";
 

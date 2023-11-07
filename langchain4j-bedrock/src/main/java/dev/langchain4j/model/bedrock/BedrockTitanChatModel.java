@@ -1,6 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
-import dev.langchain4j.model.bedrock.internal.BedrockChatModel;
+import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -13,7 +13,7 @@ import java.util.Map;
  */
 @Getter
 @SuperBuilder
-public class BedrockTitanChatModel extends BedrockChatModel<BedrockTitanChatResponse> {
+public class BedrockTitanChatModel extends AbstractBedrockChatModel<BedrockTitanChatModelResponse> {
 
     @Builder.Default
     private final Types model = Types.TitanTextExpressV1;
@@ -40,8 +40,8 @@ public class BedrockTitanChatModel extends BedrockChatModel<BedrockTitanChatResp
     }
 
     @Override
-    public Class<BedrockTitanChatResponse> getResponseClassType() {
-        return BedrockTitanChatResponse.class;
+    public Class<BedrockTitanChatModelResponse> getResponseClassType() {
+        return BedrockTitanChatModelResponse.class;
     }
 
     /**

@@ -26,9 +26,12 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 
+/**
+ * Abstract bedrock embedding model
+ */
 @SuperBuilder
 @Getter
-public abstract class BedrockEmbeddingModel<T extends BedrockEmbeddingInstance> implements EmbeddingModel {
+public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
 
     @Builder.Default
     private final Region region = Region.US_EAST_1;
