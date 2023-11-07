@@ -12,6 +12,7 @@
     <modules>
 
         <module>langchain4j-parent</module>
+        <module>langchain4j-bom</module>
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
@@ -32,6 +33,7 @@
         <module>langchain4j-milvus</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pinecone</module>
+        <module>langchain4j-pgvector</module>
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
