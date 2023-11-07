@@ -7,12 +7,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class VextexAiLanguageModelIT {
+class VertexAiLanguageModelIT {
 
     @Test
     @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testLanguageModel() {
-        VextexAiLanguageModel vextexAiLanguageModel = VextexAiLanguageModel.builder()
+        VertexAiLanguageModel vertexAiLanguageModel = VertexAiLanguageModel.builder()
                 .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .project("langchain4j")
                 .location("us-central1")
@@ -25,7 +25,7 @@ class VextexAiLanguageModelIT {
                 .maxRetries(3)
                 .build();
 
-        Response<String> response = vextexAiLanguageModel.generate("hi, what is java?");
+        Response<String> response = vertexAiLanguageModel.generate("hi, what is java?");
 
         assertThat(response.content()).containsIgnoringCase("java");
         System.out.println(response);
