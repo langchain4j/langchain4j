@@ -115,10 +115,10 @@ class MessageWindowChatMemoryTest {
         SystemMessage secondSystemMessage = systemMessage("You are an unhelpful assistant");
         chatMemory.add(secondSystemMessage);
         assertThat(chatMemory.messages()).containsExactly(
-                // firstSystemMessage was removed
+                // firstSystemMessage has been replaced with secondSystemMessage
+                secondSystemMessage,
                 firstUserMessage,
-                firstAiMessage,
-                secondSystemMessage
+                firstAiMessage
         );
     }
 
