@@ -16,7 +16,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Disabled("To run this test, you need either Testcontainers Cloud or installing Docker locally. You also need your AWS credentials set up.")
+@Disabled("To run this test, you need a Docker-API compatible container runtime, such as using Testcontainers Cloud or installing Docker locally.")
 public class S3FileLoaderIT {
 
     private LocalStackContainer s3Container;
