@@ -34,8 +34,6 @@ public class S3FileLoaderIT {
 
     @BeforeEach
     public void setUp() {
-        System.setProperty("aws.accessKeyId", "test");
-        System.setProperty("aws.secretAccessKey", "test");
         s3Container = new LocalStackContainer(localstackImage)
                 .withServices(S3)
                 .withEnv("DEFAULT_REGION", "us-east-1");
