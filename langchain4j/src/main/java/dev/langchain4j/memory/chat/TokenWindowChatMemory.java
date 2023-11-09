@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,8 +63,10 @@ public class TokenWindowChatMemory implements ChatMemory {
                     messages.remove(maybeSystemMessage.get()); // need to replace existing system message
                 }
             }
+            messages.add(0, message);
+        } else {
+            messages.add(message);
         }
-        messages.add(message);
         ensureCapacity(messages, maxTokens, tokenizer);
         store.updateMessages(id, messages);
     }
@@ -77,7 +80,7 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public List<ChatMessage> messages() {
-        List<ChatMessage> messages = new ArrayList<>(store.getMessages(id));
+        List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         ensureCapacity(messages, maxTokens, tokenizer);
         return messages;
     }
