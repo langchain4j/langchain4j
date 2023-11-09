@@ -19,6 +19,7 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.retriever.Retriever;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -409,12 +410,14 @@ public class AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
+                        TokenUsage tokenUsage = new TokenUsage();
                         ToolExecutionRequest toolExecutionRequest;
                         while (true) { // TODO limit number of cycles
 
                             if (context.hasChatMemory()) {
                                 context.chatMemory(memoryId).add(response.content());
                             }
+                            tokenUsage.add(response.tokenUsage());
 
                             toolExecutionRequest = response.content().toolExecutionRequest();
                             if (toolExecutionRequest == null) {
@@ -432,6 +435,7 @@ public class AiServices<T> {
                             response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
                         }
 
+                        response = Response.from(response.content(), tokenUsage, response.finishReason());
                         return ServiceOutputParser.parse(response, method.getReturnType());
                     }
 
