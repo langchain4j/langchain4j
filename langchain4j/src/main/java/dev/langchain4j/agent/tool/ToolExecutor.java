@@ -1,7 +1,6 @@
 package dev.langchain4j.agent.tool;
 
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.service.MemoryId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,7 +67,7 @@ public class ToolExecutor {
 
         for (int i = 0; i < parameters.length; i++) {
             // Set memoryId if parameter is annotated as such
-            if (parameters[i].isAnnotationPresent(MemoryId.class)) {
+            if (parameters[i].isAnnotationPresent(ToolMemoryId.class)) {
                 arguments[i] = memoryId;
                 continue;
             }

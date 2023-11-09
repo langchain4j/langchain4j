@@ -33,6 +33,11 @@ public class ToolSpecifications {
                 .description(description);
 
         for (Parameter parameter : method.getParameters()) {
+            // ignore memory id
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
+                continue;
+            }
+
             builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
         }
 
