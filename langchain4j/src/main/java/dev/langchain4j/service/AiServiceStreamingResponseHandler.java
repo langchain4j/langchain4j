@@ -62,7 +62,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
         ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
         if (toolExecutionRequest != null) {
             ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
-            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
+            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
             ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                     toolExecutionRequest.name(),
                     toolExecutionResult

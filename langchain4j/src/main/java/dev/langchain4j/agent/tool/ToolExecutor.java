@@ -1,6 +1,7 @@
 package dev.langchain4j.agent.tool;
 
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.service.MemoryId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,12 +24,12 @@ public class ToolExecutor {
         this.method = method;
     }
 
-    public String execute(ToolExecutionRequest toolExecutionRequest) {
+    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         log.debug("About to execute {}", toolExecutionRequest);
 
         // TODO ensure this method never throws exceptions
 
-        Object[] arguments = prepareArguments(ToolExecutionRequestUtil.argumentsAsMap(toolExecutionRequest.arguments()));
+        Object[] arguments = prepareArguments(ToolExecutionRequestUtil.argumentsAsMap(toolExecutionRequest.arguments()), memoryId);
         try {
             String result = execute(arguments);
             log.debug("Tool execution result: {}", result);
@@ -61,11 +62,17 @@ public class ToolExecutor {
         return Json.toJson(result);
     }
 
-    private Object[] prepareArguments(Map<String, Object> argumentsMap) {
+    private Object[] prepareArguments(Map<String, Object> argumentsMap, Object memoryId) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
         for (int i = 0; i < parameters.length; i++) {
+            // Set memoryId if parameter is annotated as such
+            if (parameters[i].isAnnotationPresent(MemoryId.class)) {
+                arguments[i] = memoryId;
+                continue;
+            }
+
             String parameterName = parameters[i].getName();
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);

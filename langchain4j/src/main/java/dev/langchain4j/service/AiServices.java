@@ -422,7 +422,7 @@ public class AiServices<T> {
                             }
 
                             ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
-                            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest);
+                            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
                             ToolExecutionResultMessage toolExecutionResultMessage
                                     = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
 
