@@ -16,7 +16,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import static org.testcontainers.containers.localstack.LocalStackContainer.Service.S3;
 import static org.junit.jupiter.api.Assertions.*;
 
-@Disabled("To run this test, you need a Docker-API compatible container runtime, such as using Testcontainers Cloud or installing Docker locally.")
+@Disabled("To run this test, you need either Testcontainers Cloud or installing Docker locally. You also need your AWS credentials set up.")
 public class S3FileLoaderIT {
 
     private LocalStackContainer s3Container;
@@ -27,11 +27,15 @@ public class S3FileLoaderIT {
 
     @BeforeAll
     public static void setUpClass() {
+        System.setProperty("aws.accessKeyId", "test");
+        System.setProperty("aws.secretAccessKey", "test");
         System.setProperty("aws.region", "us-east-1");
     }
 
     @BeforeEach
     public void setUp() {
+        System.setProperty("aws.accessKeyId", "test");
+        System.setProperty("aws.secretAccessKey", "test");
         s3Container = new LocalStackContainer(localstackImage)
                 .withServices(S3)
                 .withEnv("DEFAULT_REGION", "us-east-1");
@@ -91,6 +95,8 @@ public class S3FileLoaderIT {
 
     @AfterAll
     public static void tearDownClass() {
+        System.clearProperty("aws.accessKeyId");
+        System.clearProperty("aws.secretAccessKey");
         System.clearProperty("aws.region");
     }
 
