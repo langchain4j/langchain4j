@@ -1,30 +1,28 @@
 package dev.langchain4j.store.embedding.inmemory;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.util.Comparator.comparingDouble;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.spi.ServiceHelper;
+import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.util.Comparator.comparingDouble;
 
 /**
  * An {@link EmbeddingStore} that stores embeddings in memory.
@@ -89,7 +87,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return id;
     }
 
-    private void add(String id, Embedding embedding, Embedded embedded) {
+    public void add(String id, Embedding embedding, Embedded embedded) {
         entries.add(new Entry<>(id, embedding, embedded));
     }
 
@@ -152,7 +150,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     public String serializeToJson() {
-        return new Gson().toJson(this);
+        return CODEC.toJson(this);
     }
 
     public void serializeToFile(Path filePath) {
@@ -168,10 +166,20 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         serializeToFile(Paths.get(filePath));
     }
 
+    private static final InMemoryEmbeddingStoreJsonCodec CODEC = loadCodec();
+
+    private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
+        Collection<InMemoryEmbeddingStoreJsonCodecFactory> factories = ServiceHelper.loadFactories(
+                InMemoryEmbeddingStoreJsonCodecFactory.class);
+        for (InMemoryEmbeddingStoreJsonCodecFactory factory : factories) {
+            return factory.create();
+        }
+        // fallback to default
+        return new GsonInMemoryEmbeddingStoreJsonCodec();
+    }
+
     public static InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
-        Type type = new TypeToken<InMemoryEmbeddingStore<TextSegment>>() {
-        }.getType();
-        return new Gson().fromJson(json, type);
+        return CODEC.fromJson(json);
     }
 
     public static InMemoryEmbeddingStore<TextSegment> fromFile(Path filePath) {
