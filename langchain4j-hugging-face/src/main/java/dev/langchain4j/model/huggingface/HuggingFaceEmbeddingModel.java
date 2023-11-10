@@ -3,6 +3,9 @@ package dev.langchain4j.model.huggingface;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
+import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
+import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -24,11 +27,22 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
         if (accessToken == null || accessToken.trim().isEmpty()) {
             throw new IllegalArgumentException("HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
         }
-        this.client = new HuggingFaceClient(
-                accessToken,
-                modelId == null ? SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2 : modelId,
-                timeout == null ? DEFAULT_TIMEOUT : timeout
-        );
+        this.client = FactoryCreator.FACTORY.create(new HuggingFaceClientFactory.Input() {
+            @Override
+            public String apiKey() {
+                return accessToken;
+            }
+
+            @Override
+            public String modelId() {
+                return modelId == null ? SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2 : modelId;
+            }
+
+            @Override
+            public Duration timeout() {
+                return timeout == null ? DEFAULT_TIMEOUT : timeout;
+            }
+        });
         this.waitForModel = waitForModel == null ? true : waitForModel;
     }
 

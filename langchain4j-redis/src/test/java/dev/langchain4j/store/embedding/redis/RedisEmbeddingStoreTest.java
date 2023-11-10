@@ -9,9 +9,16 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+
+import com.redis.testcontainers.RedisStackContainer;
+
 import redis.clients.jedis.JedisPooled;
 
 import java.util.List;
@@ -22,7 +29,7 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs Redis running locally")
+@TestInstance(Lifecycle.PER_CLASS)
 class RedisEmbeddingStoreTest {
 
     /**
@@ -31,13 +38,24 @@ class RedisEmbeddingStoreTest {
      * docker run -d -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
      */
 
-    private static final String HOST = "localhost";
-    private static final int PORT = 6379;
     private static final String METADATA_KEY = "test-key";
+    
+    private final RedisStackContainer redis = new RedisStackContainer(RedisStackContainer.DEFAULT_IMAGE_NAME.withTag(RedisStackContainer.DEFAULT_TAG));;
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    
+    @BeforeAll
+    void setup() {
+        // Redis container setup
+        redis.start();
+    }
+    
+    @AfterAll
+    void teardown() {
+        redis.close();
+    }
 
     @BeforeEach
     void initEmptyRedisEmbeddingStore() {
@@ -45,14 +63,14 @@ class RedisEmbeddingStoreTest {
         flushDB();
 
         embeddingStore = RedisEmbeddingStore.builder()
-                .host(HOST)
-                .port(PORT)
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
                 .dimension(384)
                 .build();
     }
 
-    private static void flushDB() {
-        try (JedisPooled jedis = new JedisPooled(HOST, PORT)) {
+    private void flushDB() {
+        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
             jedis.flushDB();
         }
     }
@@ -118,8 +136,8 @@ class RedisEmbeddingStoreTest {
         flushDB();
 
         embeddingStore = RedisEmbeddingStore.builder()
-                .host(HOST)
-                .port(PORT)
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
                 .dimension(384)
                 .metadataFieldsName(singletonList(METADATA_KEY))
                 .build();
