@@ -1,10 +1,5 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.data.Percentage.withPercentage;
-
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -14,55 +9,50 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import java.util.List;
-import java.util.Optional;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariables;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.utility.DockerImageName;
 
-@EnabledIfEnvironmentVariables({
-    @EnabledIfEnvironmentVariable(named = "DB_HOST", matches = ".+"),
-    @EnabledIfEnvironmentVariable(named = "DB_USER", matches = ".+"),
-    @EnabledIfEnvironmentVariable(named = "DB_PASSWORD", matches = ".+"),
-    @EnabledIfEnvironmentVariable(named = "DB_NAME", matches = ".+")
-})
-public class PgVectorEmbeddingStoreTest {
-    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
+
+@Disabled("Comment this line if you want to run locally")
+public class PgVectorEmbeddingStoreIT {
+
+    @Container
+    private static final PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>(
+            DockerImageName.parse("ankane/pgvector:v0.5.1").asCompatibleSubstituteFor("postgres")
+    );
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
-    private PgVectorEmbeddingStore createEmbeddedStore(
-            String namespace,
-            int dimension,
-            boolean useIndex,
-            int indexListSize,
-            boolean createTable,
-            boolean dropTable) {
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-        String dbHost = System.getenv("DB_HOST");
-        String dbUser = System.getenv("DB_USER");
-        String dbPassword = System.getenv("DB_PASSWORD");
-        String dbPort = Optional.ofNullable(System.getenv("DB_PORT")).orElse("5432");
-        String dbName = System.getenv("DB_NAME");
-
-        return new PgVectorEmbeddingStore(
-                dbHost,
-                dbUser,
-                dbPassword,
-                dbPort,
-                dbName,
-                namespace,
-                dimension,
-                useIndex,
-                indexListSize,
-                createTable,
-                dropTable);
+    @BeforeAll
+    static void beforeAll() {
+        pgVector.start();
     }
 
     @BeforeEach
-    void initPgVectorEmbeddingStore() {
-        embeddingStore = createEmbeddedStore("test_namespace", 384, false, 100, true, true);
+    void beforeEach() {
+        embeddingStore = PgVectorEmbeddingStore.builder()
+                .host(pgVector.getHost())
+                .port(pgVector.getFirstMappedPort())
+                .user("test")
+                .password("test")
+                .database("test")
+                .table("test")
+                .dimension(384)
+                .dropTableFirst(true)
+                .build();
     }
 
     @Test
