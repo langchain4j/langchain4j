@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.redis;
 
+import com.redis.testcontainers.RedisStackContainer;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -9,20 +10,14 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
-
-import com.redis.testcontainers.RedisStackContainer;
-
 import redis.clients.jedis.JedisPooled;
 
 import java.util.List;
 
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -39,19 +34,18 @@ class RedisEmbeddingStoreTest {
      */
 
     private static final String METADATA_KEY = "test-key";
-    
-    private final RedisStackContainer redis = new RedisStackContainer(RedisStackContainer.DEFAULT_IMAGE_NAME.withTag(RedisStackContainer.DEFAULT_TAG));;
+
+    private final RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-    
+
     @BeforeAll
     void setup() {
-        // Redis container setup
         redis.start();
     }
-    
+
     @AfterAll
     void teardown() {
         redis.close();
