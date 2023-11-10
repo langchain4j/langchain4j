@@ -1,10 +1,10 @@
-package dev.langchain4j.model.huggingface;
+package dev.langchain4j.model.huggingface.client;
 
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-class TextGenerationRequest {
+public class TextGenerationRequest {
 
     private final String inputs;
     private final Parameters parameters;
@@ -47,32 +47,32 @@ class TextGenerationRequest {
                 + " }";
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
-    static final class Builder {
+    public static final class Builder {
 
         private String inputs;
         private Parameters parameters;
         private Options options;
 
-        Builder inputs(String inputs) {
+        public Builder inputs(String inputs) {
             this.inputs = inputs;
             return this;
         }
 
-        Builder parameters(Parameters parameters) {
+        public Builder parameters(Parameters parameters) {
             this.parameters = parameters;
             return this;
         }
 
-        Builder options(Options options) {
+        public Builder options(Options options) {
             this.options = options;
             return this;
         }
 
-        TextGenerationRequest build() {
+        public TextGenerationRequest build() {
             return new TextGenerationRequest(this);
         }
     }

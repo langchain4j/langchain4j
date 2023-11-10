@@ -217,7 +217,8 @@ class ToolExecutorTest {
                 .arguments(arguments)
                 .build();
 
-        ToolExecutor toolExecutor = new ToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
+        DefaultToolExecutor
+                toolExecutor = new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
 
         String result = toolExecutor.execute(request);
 
@@ -229,7 +230,8 @@ class ToolExecutorTest {
                 .arguments(arguments)
                 .build();
 
-        ToolExecutor toolExecutor = new ToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
+        DefaultToolExecutor
+                toolExecutor = new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
 
         assertThatThrownBy(() -> toolExecutor.execute(request))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
