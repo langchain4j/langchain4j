@@ -1,10 +1,10 @@
-package dev.langchain4j.model.huggingface;
+package dev.langchain4j.model.huggingface.client;
 
-class TextGenerationResponse {
+public class TextGenerationResponse {
 
     private final String generatedText;
 
-    TextGenerationResponse(String generatedText) {
+    public TextGenerationResponse(String generatedText) {
         this.generatedText = generatedText;
     }
 

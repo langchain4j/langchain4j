@@ -1,8 +1,8 @@
-package dev.langchain4j.model.huggingface;
+package dev.langchain4j.model.huggingface.client;
 
 import java.util.Objects;
 
-class Parameters {
+public class Parameters {
 
     private final Integer topK;
     private final Double topP;
@@ -14,7 +14,7 @@ class Parameters {
     private final Integer numReturnSequences;
     private final Boolean doSample;
 
-    Parameters(Builder builder) {
+    public Parameters(Builder builder) {
         this.topK = builder.topK;
         this.topP = builder.topP;
         this.temperature = builder.temperature;
@@ -75,11 +75,11 @@ class Parameters {
                 + " }";
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
-    static final class Builder {
+    public static final class Builder {
 
         private Integer topK;
         private Double topP;
@@ -91,52 +91,52 @@ class Parameters {
         private Integer numReturnSequences;
         private Boolean doSample;
 
-        Builder topK(Integer topK) {
+        public Builder topK(Integer topK) {
             this.topK = topK;
             return this;
         }
 
-        Builder topP(Double topP) {
+        public Builder topP(Double topP) {
             this.topP = topP;
             return this;
         }
 
-        Builder temperature(Double temperature) {
+        public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        Builder repetitionPenalty(Double repetitionPenalty) {
+        public Builder repetitionPenalty(Double repetitionPenalty) {
             this.repetitionPenalty = repetitionPenalty;
             return this;
         }
 
-        Builder maxNewTokens(Integer maxNewTokens) {
+        public Builder maxNewTokens(Integer maxNewTokens) {
             this.maxNewTokens = maxNewTokens;
             return this;
         }
 
-        Builder maxTime(Double maxTime) {
+        public Builder maxTime(Double maxTime) {
             this.maxTime = maxTime;
             return this;
         }
 
-        Builder returnFullText(Boolean returnFullText) {
+        public Builder returnFullText(Boolean returnFullText) {
             this.returnFullText = returnFullText;
             return this;
         }
 
-        Builder numReturnSequences(Integer numReturnSequences) {
+        public Builder numReturnSequences(Integer numReturnSequences) {
             this.numReturnSequences = numReturnSequences;
             return this;
         }
 
-        Builder doSample(Boolean doSample) {
+        public Builder doSample(Boolean doSample) {
             this.doSample = doSample;
             return this;
         }
 
-        Parameters build() {
+        public Parameters build() {
             return new Parameters(this);
         }
     }
