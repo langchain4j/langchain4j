@@ -1,6 +1,5 @@
-package dev.langchain4j.store.embedding.elasticsearch;
+package dev.langchain4j.store.embedding.milvus;
 
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -15,68 +14,67 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static io.milvus.param.MetricType.IP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs Elasticsearch to be running locally")
-class ElasticsearchEmbeddingStoreTest {
+@Disabled("needs Milvus running locally")
+class MilvusEmbeddingStoreIT {
 
     /**
-     * First start elasticsearch locally:
-     * docker pull docker.elastic.co/elasticsearch/elasticsearch:8.9.0
-     * docker run -d -p 9200:9200 -p 9300:9300 -e discovery.type=single-node -e xpack.security.enabled=false docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+     * First run Milvus locally:
+     * Run "docker compose up -d" inside "langchain4j-milvus/src/test/resources" directory.
+     * If you want to create a fresh Milvus instance, don't forget to remove "langchain4j-milvus/src/test/resources/volumes" directory.
      */
 
-    private final EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
-            .serverUrl("http://localhost:9200")
-            .indexName(randomUUID())
+    EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+            .host("localhost")
+            .port(19530)
+            .collectionName("collection_" + randomUUID().replace("-", ""))
+            .dimension(384)
             .build();
 
-    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @Test
-    void should_add_embedding() throws InterruptedException {
+    void should_add_embedding() {
 
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         String id = embeddingStore.add(embedding);
         assertThat(id).isNotNull();
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedding()).isNull();
         assertThat(match.embedded()).isNull();
     }
 
     @Test
-    void should_add_embedding_with_id() throws InterruptedException {
+    void should_add_embedding_with_id() {
 
         String id = randomUUID();
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         embeddingStore.add(id, embedding);
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedding()).isNull();
         assertThat(match.embedded()).isNull();
     }
 
     @Test
-    void should_add_embedding_with_segment() throws InterruptedException {
+    void should_add_embedding_with_segment() {
 
         TextSegment segment = TextSegment.from(randomUUID());
         Embedding embedding = embeddingModel.embed(segment.text()).content();
@@ -84,41 +82,18 @@ class ElasticsearchEmbeddingStoreTest {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedding()).isNull();
         assertThat(match.embedded()).isEqualTo(segment);
     }
 
     @Test
-    void should_add_embedding_with_segment_with_metadata() throws InterruptedException {
-
-        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from("test-key", "test-value"));
-        Embedding embedding = embeddingModel.embed(segment.text()).content();
-
-        String id = embeddingStore.add(embedding, segment);
-        assertThat(id).isNotNull();
-
-        Thread.sleep(2000);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
-        assertThat(match.embedded()).isEqualTo(segment);
-    }
-
-    @Test
-    void should_add_multiple_embeddings() throws InterruptedException {
+    void should_add_multiple_embeddings() {
 
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
@@ -126,26 +101,24 @@ class ElasticsearchEmbeddingStoreTest {
         List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
         assertThat(ids).hasSize(2);
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+        assertThat(firstMatch.embedding()).isNull();
         assertThat(firstMatch.embedded()).isNull();
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isBetween(0d, 1d);
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
+        assertThat(secondMatch.embedding()).isNull();
         assertThat(secondMatch.embedded()).isNull();
     }
 
     @Test
-    void should_add_multiple_embeddings_with_segments() throws InterruptedException {
+    void should_add_multiple_embeddings_with_segments() {
 
         TextSegment firstSegment = TextSegment.from(randomUUID());
         Embedding firstEmbedding = embeddingModel.embed(firstSegment.text()).content();
@@ -158,26 +131,24 @@ class ElasticsearchEmbeddingStoreTest {
         );
         assertThat(ids).hasSize(2);
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+        assertThat(firstMatch.embedding()).isNull();
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isBetween(0d, 1d);
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
+        assertThat(secondMatch.embedding()).isNull();
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
     }
 
     @Test
-    void should_find_with_min_score() throws InterruptedException {
+    void should_find_with_min_score() {
 
         String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
@@ -186,8 +157,6 @@ class ElasticsearchEmbeddingStoreTest {
         String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
         embeddingStore.add(secondId, secondEmbedding);
-
-        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -226,7 +195,7 @@ class ElasticsearchEmbeddingStoreTest {
     }
 
     @Test
-    void should_return_correct_score() throws InterruptedException {
+    void should_return_correct_score() {
 
         Embedding embedding = embeddingModel.embed("hello").content();
 
@@ -234,8 +203,6 @@ class ElasticsearchEmbeddingStoreTest {
         assertThat(id).isNotNull();
 
         Embedding referenceEmbedding = embeddingModel.embed("hi").content();
-
-        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
         assertThat(relevant).hasSize(1);
@@ -245,5 +212,63 @@ class ElasticsearchEmbeddingStoreTest {
                 RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
                 withPercentage(1)
         );
+    }
+
+    @Test
+    void should_retrieve_embeddings_when_searching() {
+
+        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+                .host("localhost")
+                .port(19530)
+                .collectionName("collection_" + randomUUID().replace("-", ""))
+                .dimension(384)
+                .retrieveEmbeddingsOnSearch(true)
+                .build();
+
+        Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
+        Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
+
+        List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+        assertThat(ids).hasSize(2);
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        assertThat(relevant).hasSize(2);
+
+        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
+        assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
+        assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
+        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
+        assertThat(firstMatch.embedded()).isNull();
+
+        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
+        assertThat(secondMatch.score()).isBetween(0d, 1d);
+        assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
+        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
+        assertThat(secondMatch.embedded()).isNull();
+    }
+
+    @Test
+    void should_use_cloud_instance() {
+
+        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+                .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com")
+                .token(System.getenv("MILVUS_API_KEY"))
+                .collectionName("test")
+                .dimension(384)
+                .metricType(IP) // COSINE is not supported at the moment
+                .build();
+
+        Embedding embedding = embeddingModel.embed(randomUUID()).content();
+
+        String id = embeddingStore.add(embedding);
+        assertThat(id).isNotNull();
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertThat(match.embeddingId()).isEqualTo(id);
+        assertThat(match.embedding()).isNull();
+        assertThat(match.embedded()).isNull();
     }
 }

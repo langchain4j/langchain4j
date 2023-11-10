@@ -1,13 +1,11 @@
 package dev.langchain4j.store.embedding.cassandra;
 
 import com.datastax.astra.sdk.AstraClient;
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.dtsx.astra.sdk.utils.TestUtils;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -22,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Testing implementation of Embedding Store using AstraDB.
  */
-class AstraDbEmbeddingStoreTest {
+class AstraDbEmbeddingStoreIT {
 
     private static final String TEST_KEYSPACE = "langchain4j";
     private static final String TEST_INDEX = "test_embedding_store";

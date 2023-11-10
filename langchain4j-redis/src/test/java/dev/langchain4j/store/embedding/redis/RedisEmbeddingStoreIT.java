@@ -1,5 +1,7 @@
-package dev.langchain4j.store.embedding.milvus;
+package dev.langchain4j.store.embedding.redis;
 
+import com.redis.testcontainers.RedisStackContainer;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -8,34 +10,64 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import redis.clients.jedis.JedisPooled;
 
 import java.util.List;
 
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static io.milvus.param.MetricType.IP;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs Milvus running locally")
-class MilvusEmbeddingStoreTest {
+@TestInstance(Lifecycle.PER_CLASS)
+class RedisEmbeddingStoreIT {
 
     /**
-     * First run Milvus locally:
-     * Run "docker compose up -d" inside "langchain4j-milvus/src/test/resources" directory.
-     * If you want to create a fresh Milvus instance, don't forget to remove "langchain4j-milvus/src/test/resources/volumes" directory.
+     * First start Redis locally:
+     * docker pull redis/redis-stack:latest
+     * docker run -d -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
      */
 
-    EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-            .host("localhost")
-            .port(19530)
-            .collectionName("collection_" + randomUUID().replace("-", ""))
-            .dimension(384)
-            .build();
+    private static final String METADATA_KEY = "test-key";
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    private final RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+
+    private EmbeddingStore<TextSegment> embeddingStore;
+
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    @BeforeAll
+    void setup() {
+        redis.start();
+    }
+
+    @AfterAll
+    void teardown() {
+        redis.close();
+    }
+
+    @BeforeEach
+    void initEmptyRedisEmbeddingStore() {
+
+        flushDB();
+
+        embeddingStore = RedisEmbeddingStore.builder()
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
+                .dimension(384)
+                .build();
+    }
+
+    private void flushDB() {
+        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
+            jedis.flushDB();
+        }
+    }
 
     @Test
     void should_add_embedding() {
@@ -51,7 +83,7 @@ class MilvusEmbeddingStoreTest {
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
+        assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
     }
 
@@ -69,7 +101,7 @@ class MilvusEmbeddingStoreTest {
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
+        assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
     }
 
@@ -88,7 +120,35 @@ class MilvusEmbeddingStoreTest {
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(1, withPercentage(1));
         assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
+        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedded()).isEqualTo(segment);
+    }
+
+    @Test
+    void should_add_embedding_with_segment_with_metadata() {
+
+        flushDB();
+
+        embeddingStore = RedisEmbeddingStore.builder()
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
+                .dimension(384)
+                .metadataFieldsName(singletonList(METADATA_KEY))
+                .build();
+
+        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
+        Embedding embedding = embeddingModel.embed(segment.text()).content();
+
+        String id = embeddingStore.add(embedding, segment);
+        assertThat(id).isNotNull();
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        assertThat(relevant).hasSize(1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertThat(match.embeddingId()).isEqualTo(id);
+        assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
     }
 
@@ -107,13 +167,13 @@ class MilvusEmbeddingStoreTest {
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isNull();
+        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
         assertThat(firstMatch.embedded()).isNull();
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isBetween(0d, 1d);
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isNull();
+        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isNull();
     }
 
@@ -137,13 +197,13 @@ class MilvusEmbeddingStoreTest {
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
         assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isNull();
+        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isBetween(0d, 1d);
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isNull();
+        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
     }
 
@@ -212,63 +272,5 @@ class MilvusEmbeddingStoreTest {
                 RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
                 withPercentage(1)
         );
-    }
-
-    @Test
-    void should_retrieve_embeddings_when_searching() {
-
-        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-                .host("localhost")
-                .port(19530)
-                .collectionName("collection_" + randomUUID().replace("-", ""))
-                .dimension(384)
-                .retrieveEmbeddingsOnSearch(true)
-                .build();
-
-        Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
-        Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
-
-        List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
-        assertThat(ids).hasSize(2);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
-        assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
-        assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
-        assertThat(firstMatch.embedded()).isNull();
-
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isBetween(0d, 1d);
-        assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
-        assertThat(secondMatch.embedded()).isNull();
-    }
-
-    @Test
-    void should_use_cloud_instance() {
-
-        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-                .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com")
-                .token(System.getenv("MILVUS_API_KEY"))
-                .collectionName("test")
-                .dimension(384)
-                .metricType(IP) // COSINE is not supported at the moment
-                .build();
-
-        Embedding embedding = embeddingModel.embed(randomUUID()).content();
-
-        String id = embeddingStore.add(embedding);
-        assertThat(id).isNotNull();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
-        assertThat(match.embedded()).isNull();
     }
 }

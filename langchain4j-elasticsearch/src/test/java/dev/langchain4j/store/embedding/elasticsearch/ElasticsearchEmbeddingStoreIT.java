@@ -1,5 +1,6 @@
-package dev.langchain4j.store.embedding.weaviate;
+package dev.langchain4j.store.embedding.elasticsearch;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -8,8 +9,8 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
 
@@ -18,26 +19,32 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@EnabledIfEnvironmentVariable(named = "WEAVIATE_API_KEY", matches = ".+")
-class WeaviateEmbeddingStoreTest {
+@Disabled("needs Elasticsearch to be running locally")
+class ElasticsearchEmbeddingStoreIT {
 
-    EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
-            .apiKey(System.getenv("WEAVIATE_API_KEY"))
-            .scheme("https")
-            .host("test3-bwsieg9y.weaviate.network")
-            .objectClass("Test" + randomUUID().replace("-", ""))
+    /**
+     * First start elasticsearch locally:
+     * docker pull docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+     * docker run -d -p 9200:9200 -p 9300:9300 -e discovery.type=single-node -e xpack.security.enabled=false docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+     */
+
+    private final EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
+            .serverUrl("http://localhost:9200")
+            .indexName(randomUUID())
             .build();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @Test
-    void should_add_embedding() {
+    void should_add_embedding() throws InterruptedException {
 
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         String id = embeddingStore.add(embedding);
         assertThat(id).isNotNull();
 
+        Thread.sleep(2000);
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -49,13 +56,15 @@ class WeaviateEmbeddingStoreTest {
     }
 
     @Test
-    void should_add_embedding_with_id() {
+    void should_add_embedding_with_id() throws InterruptedException {
 
         String id = randomUUID();
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         embeddingStore.add(id, embedding);
 
+        Thread.sleep(2000);
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -67,13 +76,15 @@ class WeaviateEmbeddingStoreTest {
     }
 
     @Test
-    void should_add_embedding_with_segment() {
+    void should_add_embedding_with_segment() throws InterruptedException {
 
         TextSegment segment = TextSegment.from(randomUUID());
         Embedding embedding = embeddingModel.embed(segment.text()).content();
 
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -86,13 +97,36 @@ class WeaviateEmbeddingStoreTest {
     }
 
     @Test
-    void should_add_multiple_embeddings() {
+    void should_add_embedding_with_segment_with_metadata() throws InterruptedException {
+
+        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from("test-key", "test-value"));
+        Embedding embedding = embeddingModel.embed(segment.text()).content();
+
+        String id = embeddingStore.add(embedding, segment);
+        assertThat(id).isNotNull();
+
+        Thread.sleep(2000);
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        assertThat(relevant).hasSize(1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertThat(match.embeddingId()).isEqualTo(id);
+        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedded()).isEqualTo(segment);
+    }
+
+    @Test
+    void should_add_multiple_embeddings() throws InterruptedException {
 
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
 
         List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
         assertThat(ids).hasSize(2);
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -111,7 +145,7 @@ class WeaviateEmbeddingStoreTest {
     }
 
     @Test
-    void should_add_multiple_embeddings_with_segments() {
+    void should_add_multiple_embeddings_with_segments() throws InterruptedException {
 
         TextSegment firstSegment = TextSegment.from(randomUUID());
         Embedding firstEmbedding = embeddingModel.embed(firstSegment.text()).content();
@@ -123,6 +157,8 @@ class WeaviateEmbeddingStoreTest {
                 asList(firstSegment, secondSegment)
         );
         assertThat(ids).hasSize(2);
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -141,7 +177,7 @@ class WeaviateEmbeddingStoreTest {
     }
 
     @Test
-    void should_find_with_min_score() {
+    void should_find_with_min_score() throws InterruptedException {
 
         String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
@@ -150,6 +186,8 @@ class WeaviateEmbeddingStoreTest {
         String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
         embeddingStore.add(secondId, secondEmbedding);
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -188,7 +226,7 @@ class WeaviateEmbeddingStoreTest {
     }
 
     @Test
-    void should_return_correct_score() {
+    void should_return_correct_score() throws InterruptedException {
 
         Embedding embedding = embeddingModel.embed("hello").content();
 
@@ -196,6 +234,8 @@ class WeaviateEmbeddingStoreTest {
         assertThat(id).isNotNull();
 
         Embedding referenceEmbedding = embeddingModel.embed("hi").content();
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
         assertThat(relevant).hasSize(1);
