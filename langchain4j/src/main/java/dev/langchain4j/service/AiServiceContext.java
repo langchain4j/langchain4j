@@ -13,28 +13,33 @@ import dev.langchain4j.retriever.Retriever;
 import java.util.List;
 import java.util.Map;
 
-class AiServiceContext {
+public class AiServiceContext {
 
-    Class<?> aiServiceClass;
+    public final Class<?> aiServiceClass;
 
-    ChatLanguageModel chatModel;
-    StreamingChatLanguageModel streamingChatModel;
+    public ChatLanguageModel chatModel;
+    public StreamingChatLanguageModel streamingChatModel;
 
-    Map</* id */ Object, ChatMemory> chatMemories;
-    ChatMemoryProvider chatMemoryProvider;
+    public Map</* id */ Object, ChatMemory> chatMemories;
+    public ChatMemoryProvider chatMemoryProvider;
 
-    ModerationModel moderationModel;
+    public ModerationModel moderationModel;
 
-    List<ToolSpecification> toolSpecifications;
-    Map<String, ToolExecutor> toolExecutors;
+    public List<ToolSpecification> toolSpecifications;
+    public Map<String, ToolExecutor> toolExecutors;
 
-    Retriever<TextSegment> retriever;
+    public Retriever<TextSegment> retriever;
 
-    boolean hasChatMemory() {
+    public AiServiceContext(Class<?> aiServiceClass) {
+        this.aiServiceClass = aiServiceClass;
+    }
+
+    public boolean hasChatMemory() {
         return chatMemories != null;
     }
 
-    ChatMemory chatMemory(Object memoryId) {
+
+    public ChatMemory chatMemory(Object memoryId) {
         return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
     }
 }

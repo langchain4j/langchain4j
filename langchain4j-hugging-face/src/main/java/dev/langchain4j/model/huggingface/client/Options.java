@@ -1,8 +1,8 @@
-package dev.langchain4j.model.huggingface;
+package dev.langchain4j.model.huggingface.client;
 
 import java.util.Objects;
 
-class Options {
+public class Options {
 
     private final Boolean waitForModel;
     private final Boolean useCache;
@@ -40,28 +40,28 @@ class Options {
                 + " }";
     }
 
-    static Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
-    static final class Builder {
+    public static final class Builder {
 
         private Boolean waitForModel = true;
         private Boolean useCache;
 
-        Builder waitForModel(Boolean waitForModel) {
+        public Builder waitForModel(Boolean waitForModel) {
             if (waitForModel != null) {
                 this.waitForModel = waitForModel;
             }
             return this;
         }
 
-        Builder useCache(Boolean useCache) {
+        public Builder useCache(Boolean useCache) {
             this.useCache = useCache;
             return this;
         }
 
-        Options build() {
+        public Options build() {
             return new Options(this);
         }
     }
