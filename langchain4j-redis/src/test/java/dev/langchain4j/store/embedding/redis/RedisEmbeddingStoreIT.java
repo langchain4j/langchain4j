@@ -1,34 +1,73 @@
-package dev.langchain4j.store.embedding.pinecone;
+package dev.langchain4j.store.embedding.redis;
 
+import com.redis.testcontainers.RedisStackContainer;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
+import redis.clients.jedis.JedisPooled;
 
 import java.util.List;
 
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
+import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@EnabledIfEnvironmentVariable(named = "PINECONE_API_KEY", matches = ".+")
-class PineconeEmbeddingStoreTest {
+@TestInstance(Lifecycle.PER_CLASS)
+class RedisEmbeddingStoreIT {
 
-    private final PineconeEmbeddingStore embeddingStore = PineconeEmbeddingStore.builder()
-            .apiKey(System.getenv("PINECONE_API_KEY"))
-            .environment("asia-southeast1-gcp-free")
-            .projectId("75dc67a")
-            .index("test")
-            .nameSpace(randomUUID())
-            .build();
+    /**
+     * First start Redis locally:
+     * docker pull redis/redis-stack:latest
+     * docker run -d -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
+     */
+
+    private static final String METADATA_KEY = "test-key";
+
+    private final RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
+
+    private EmbeddingStore<TextSegment> embeddingStore;
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    @BeforeAll
+    void setup() {
+        redis.start();
+    }
+
+    @AfterAll
+    void teardown() {
+        redis.close();
+    }
+
+    @BeforeEach
+    void initEmptyRedisEmbeddingStore() {
+
+        flushDB();
+
+        embeddingStore = RedisEmbeddingStore.builder()
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
+                .dimension(384)
+                .build();
+    }
+
+    private void flushDB() {
+        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
+            jedis.flushDB();
+        }
+    }
 
     @Test
     void should_add_embedding() {
@@ -70,6 +109,34 @@ class PineconeEmbeddingStoreTest {
     void should_add_embedding_with_segment() {
 
         TextSegment segment = TextSegment.from(randomUUID());
+        Embedding embedding = embeddingModel.embed(segment.text()).content();
+
+        String id = embeddingStore.add(embedding, segment);
+        assertThat(id).isNotNull();
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        assertThat(relevant).hasSize(1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertThat(match.embeddingId()).isEqualTo(id);
+        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedded()).isEqualTo(segment);
+    }
+
+    @Test
+    void should_add_embedding_with_segment_with_metadata() {
+
+        flushDB();
+
+        embeddingStore = RedisEmbeddingStore.builder()
+                .host(redis.getHost())
+                .port(redis.getFirstMappedPort())
+                .dimension(384)
+                .metadataFieldsName(singletonList(METADATA_KEY))
+                .build();
+
+        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
         Embedding embedding = embeddingModel.embed(segment.text()).content();
 
         String id = embeddingStore.add(embedding, segment);

@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.redis;
+package dev.langchain4j.store.embedding.pgvector;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -9,70 +9,50 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-
-import com.redis.testcontainers.RedisStackContainer;
-
-import redis.clients.jedis.JedisPooled;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@TestInstance(Lifecycle.PER_CLASS)
-class RedisEmbeddingStoreTest {
+@Disabled("Comment this line if you want to run locally")
+public class PgVectorEmbeddingStoreIT {
 
-    /**
-     * First start Redis locally:
-     * docker pull redis/redis-stack:latest
-     * docker run -d -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
-     */
-
-    private static final String METADATA_KEY = "test-key";
-    
-    private final RedisStackContainer redis = new RedisStackContainer(RedisStackContainer.DEFAULT_IMAGE_NAME.withTag(RedisStackContainer.DEFAULT_TAG));;
+    @Container
+    private static final PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>(
+            DockerImageName.parse("ankane/pgvector:v0.5.1").asCompatibleSubstituteFor("postgres")
+    );
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-    
+
     @BeforeAll
-    void setup() {
-        // Redis container setup
-        redis.start();
-    }
-    
-    @AfterAll
-    void teardown() {
-        redis.close();
+    static void beforeAll() {
+        pgVector.start();
     }
 
     @BeforeEach
-    void initEmptyRedisEmbeddingStore() {
-
-        flushDB();
-
-        embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
+    void beforeEach() {
+        embeddingStore = PgVectorEmbeddingStore.builder()
+                .host(pgVector.getHost())
+                .port(pgVector.getFirstMappedPort())
+                .user("test")
+                .password("test")
+                .database("test")
+                .table("test")
                 .dimension(384)
+                .dropTableFirst(true)
                 .build();
-    }
-
-    private void flushDB() {
-        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
-            jedis.flushDB();
-        }
     }
 
     @Test
@@ -133,16 +113,8 @@ class RedisEmbeddingStoreTest {
     @Test
     void should_add_embedding_with_segment_with_metadata() {
 
-        flushDB();
-
-        embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .dimension(384)
-                .metadataFieldsName(singletonList(METADATA_KEY))
-                .build();
-
-        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
+        TextSegment segment =
+                TextSegment.from(randomUUID(), Metadata.from("test-key", "test-value"));
         Embedding embedding = embeddingModel.embed(segment.text()).content();
 
         String id = embeddingStore.add(embedding, segment);
@@ -167,7 +139,8 @@ class RedisEmbeddingStoreTest {
         List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
         assertThat(ids).hasSize(2);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant =
+                embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
@@ -191,13 +164,14 @@ class RedisEmbeddingStoreTest {
         TextSegment secondSegment = TextSegment.from(randomUUID());
         Embedding secondEmbedding = embeddingModel.embed(secondSegment.text()).content();
 
-        List<String> ids = embeddingStore.addAll(
-                asList(firstEmbedding, secondEmbedding),
-                asList(firstSegment, secondSegment)
-        );
+        List<String> ids =
+                embeddingStore.addAll(
+                        asList(firstEmbedding, secondEmbedding),
+                        asList(firstSegment, secondSegment));
         assertThat(ids).hasSize(2);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant =
+                embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
 
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
@@ -224,7 +198,8 @@ class RedisEmbeddingStoreTest {
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
         embeddingStore.add(secondId, secondEmbedding);
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant =
+                embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
         EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
@@ -233,29 +208,20 @@ class RedisEmbeddingStoreTest {
         assertThat(secondMatch.score()).isBetween(0d, 1d);
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
-        List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score() - 0.01
-        );
+        List<EmbeddingMatch<TextSegment>> relevant2 =
+                embeddingStore.findRelevant(firstEmbedding, 10, secondMatch.score() - 0.01);
         assertThat(relevant2).hasSize(2);
         assertThat(relevant2.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(relevant2.get(1).embeddingId()).isEqualTo(secondId);
 
-        List<EmbeddingMatch<TextSegment>> relevant3 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score()
-        );
+        List<EmbeddingMatch<TextSegment>> relevant3 =
+                embeddingStore.findRelevant(firstEmbedding, 10, secondMatch.score());
         assertThat(relevant3).hasSize(2);
         assertThat(relevant3.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(relevant3.get(1).embeddingId()).isEqualTo(secondId);
 
-        List<EmbeddingMatch<TextSegment>> relevant4 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score() + 0.01
-        );
+        List<EmbeddingMatch<TextSegment>> relevant4 =
+                embeddingStore.findRelevant(firstEmbedding, 10, secondMatch.score() + 0.01);
         assertThat(relevant4).hasSize(1);
         assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
     }
@@ -270,13 +236,15 @@ class RedisEmbeddingStoreTest {
 
         Embedding referenceEmbedding = embeddingModel.embed("hi").content();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
+        List<EmbeddingMatch<TextSegment>> relevant =
+                embeddingStore.findRelevant(referenceEmbedding, 1);
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
-                withPercentage(1)
-        );
+        assertThat(match.score())
+                .isCloseTo(
+                        RelevanceScore.fromCosineSimilarity(
+                                CosineSimilarity.between(embedding, referenceEmbedding)),
+                        withPercentage(1));
     }
 }

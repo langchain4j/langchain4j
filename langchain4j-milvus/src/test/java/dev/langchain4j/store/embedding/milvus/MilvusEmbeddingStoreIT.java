@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 @Disabled("needs Milvus running locally")
-class MilvusEmbeddingStoreTest {
+class MilvusEmbeddingStoreIT {
 
     /**
      * First run Milvus locally:

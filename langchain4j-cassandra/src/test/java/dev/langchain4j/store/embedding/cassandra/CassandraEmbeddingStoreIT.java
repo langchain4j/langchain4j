@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Work with Cassandra Embedding Store.
  */
-class CassandraEmbeddingStoreTest {
+class CassandraEmbeddingStoreIT {
 
     @Test
     @Disabled("To run this test, you must have a local Cassandra instance, a docker-compose is provided")
