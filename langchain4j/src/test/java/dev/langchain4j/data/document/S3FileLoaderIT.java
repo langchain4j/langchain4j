@@ -27,6 +27,8 @@ public class S3FileLoaderIT {
 
     @BeforeAll
     public static void setUpClass() {
+        System.setProperty("aws.accessKeyId", "test");
+        System.setProperty("aws.secretAccessKey", "test");
         System.setProperty("aws.region", "us-east-1");
     }
 
@@ -91,6 +93,8 @@ public class S3FileLoaderIT {
 
     @AfterAll
     public static void tearDownClass() {
+        System.clearProperty("aws.accessKeyId");
+        System.clearProperty("aws.secretAccessKey");
         System.clearProperty("aws.region");
     }
 
