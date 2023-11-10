@@ -2,10 +2,12 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("needs Ollama running locally")
 class OllamaLanguageModelIT {
 
     LanguageModel model = OllamaLanguageModel.builder()

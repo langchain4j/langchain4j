@@ -11,13 +11,13 @@ import java.util.function.Consumer;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-class AiServiceTokenStream implements TokenStream {
+public class AiServiceTokenStream implements TokenStream {
 
     private final List<ChatMessage> messagesToSend;
     private final AiServiceContext context;
     private final Object memoryId;
 
-    AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object memoryId) {
+    public AiServiceTokenStream(List<ChatMessage> messagesToSend, AiServiceContext context, Object memoryId) {
         this.messagesToSend = ensureNotEmpty(messagesToSend, "messagesToSend");
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
