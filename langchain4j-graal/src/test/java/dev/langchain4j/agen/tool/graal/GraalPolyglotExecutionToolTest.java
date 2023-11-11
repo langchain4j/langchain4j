@@ -20,7 +20,7 @@ class GraalPolyglotExecutionToolTest {
     public void testJavascriptTool() throws NoSuchMethodException
     {
         GraalJavascriptExecutionTool jsTool =  new GraalJavascriptExecutionTool();
-        String jsCode = "function fibonacci(num) {                  \n" +
+        String pythonCode = "function fibonacci(num) {                  \n" +
                 "  if (num <= 1) return 1;                          \n" +
                 "                                                   \n" +
                 "  return fibonacci(num - 1) + fibonacci(num - 2);  \n" +
@@ -28,7 +28,7 @@ class GraalPolyglotExecutionToolTest {
                 "fibonacci(10)";
 
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .arguments( new Gson().toJson(Map.of("arg0", jsCode)))
+                .arguments( new Gson().toJson(Map.of("arg0", pythonCode)))
                 .build();
 
         ToolExecutor toolExecutor = new ToolExecutor(jsTool, GraalJavascriptExecutionTool.class.getDeclaredMethod("executeJavaScriptCode", String.class));
@@ -43,14 +43,14 @@ class GraalPolyglotExecutionToolTest {
     public void testPythonTool() throws NoSuchMethodException
     {
         GraalPythonExecutionTool jsTool =  new GraalPythonExecutionTool();
-        String jsCode = "def fibonacci_of(n):\n" +
+        String pythonCode = "def fibonacci_of(n):\n" +
                 "     if n <= 1:  # Base case\n" +
                 "         return 1\n" +
                 "     return fibonacci_of(n - 1) + fibonacci_of(n - 2)  # Recursive case\n" +
                 "fibonacci_of(10)";
 
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                .arguments( new Gson().toJson(Map.of("arg0", jsCode)))
+                .arguments( new Gson().toJson(Map.of("arg0", pythonCode)))
                 .build();
 
         ToolExecutor toolExecutor = new ToolExecutor(jsTool, GraalPythonExecutionTool.class.getDeclaredMethod("executePythonCode", String.class));

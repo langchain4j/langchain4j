@@ -3,9 +3,10 @@ package dev.langchain4j.agen.tool.graal;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.SandboxPolicy;
 
 /**
- * A tool that executes JS code using Graal JS
+ * A tool that executes Python code using GraalPython
  */
 public class GraalPythonExecutionTool {
 
@@ -17,12 +18,12 @@ public class GraalPythonExecutionTool {
             "You might know the answer without running any code, but you should still run the code to get the answer.\n" +
             "If it does not seem like you can write code to answer the question, just return \"I don't know\" as the answer")
     public String executePythonCode(
-            @P("JavaScript code to execute, result MUST be printed to console")
-            String javaScriptCode
+            @P("Python code to execute, result MUST be printed to console")
+            String pythonCode
     ) {
-        try (Context context = Context.create("python")) {
+        try (Context context = Context.newBuilder("python").sandbox(SandboxPolicy.UNTRUSTED).build()) {
 
-            return String.valueOf(context.eval("python", javaScriptCode).as(Object.class));
+            return String.valueOf(context.eval("python", pythonCode).as(Object.class));
         }
     }
 }

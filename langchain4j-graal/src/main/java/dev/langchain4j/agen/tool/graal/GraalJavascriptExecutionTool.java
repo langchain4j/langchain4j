@@ -3,6 +3,7 @@ package dev.langchain4j.agen.tool.graal;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.SandboxPolicy;
 
 /**
  * A tool that executes JS code using Graal JS
@@ -20,7 +21,7 @@ public class GraalJavascriptExecutionTool {
             @P("JavaScript code to execute, result MUST be printed to console")
             String javaScriptCode
     ) {
-        try (Context context = Context.create("js")) {
+        try (Context context = Context.newBuilder("js").sandbox(SandboxPolicy.UNTRUSTED).build()) {
             return String.valueOf(context.eval("js", javaScriptCode).as(Object.class));
         }
     }
