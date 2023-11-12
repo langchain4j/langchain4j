@@ -33,6 +33,9 @@ public class ToolSpecifications {
                 .description(description);
 
         for (Parameter parameter : method.getParameters()) {
+            if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
+                continue;
+            }
             builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
         }
 
