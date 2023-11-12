@@ -33,6 +33,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
+import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,12 +145,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         verifyModerationIfNeeded(moderationFuture);
 
                         ToolExecutionRequest toolExecutionRequest;
+                        TokenUsage tokenUsage = new TokenUsage();
                         while (true) { // TODO limit number of cycles
 
                             if (context.hasChatMemory()) {
                                 context.chatMemory(memoryId).add(response.content());
                             }
 
+                            tokenUsage.add(response.tokenUsage());
                             toolExecutionRequest = response.content().toolExecutionRequest();
                             if (toolExecutionRequest == null) {
                                 break;
@@ -165,6 +169,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
                         }
 
+                        response = Response.from(response.content(), tokenUsage, response.finishReason());
                         return ServiceOutputParser.parse(response, method.getReturnType());
                     }
 
