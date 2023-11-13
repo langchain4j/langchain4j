@@ -31,12 +31,12 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 ## News
 
 12 November:
-- Integration with [OpenSearch](https://opensearch.org/) by @riferrei
-- Add support for loading documents from S3 by @jmgang 
-- Integration with [PGVector](https://github.com/pgvector/pgvector) by @kevin-wu-os 
-- Integration with [Ollama](https://ollama.ai/) by @Martin7-1 
-- Integration with [Amazon Bedrock](https://aws.amazon.com/bedrock/) by @pascalconfluent 
-- Adding Memory Id to Tool Method Call by @benedictstrube
+- Integration with [OpenSearch](https://opensearch.org/) by [@riferrei](https://github.com/riferrei)
+- Add support for loading documents from S3 by [@jmgang](https://github.com/jmgang)
+- Integration with [PGVector](https://github.com/pgvector/pgvector) by [@kevin-wu-os](https://github.com/kevin-wu-os)
+- Integration with [Ollama](https://ollama.ai/) by  [@Martin7-1](https://github.com/Martin7-1)
+- Integration with [Amazon Bedrock](https://aws.amazon.com/bedrock/) by [@pascalconfluent](https://github.com/pascalconfluent)
+- Adding Memory Id to Tool Method Call by [@benedictstrube](https://github.com/benedictstrube)
 - [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.24.0)
 
 29 September:
