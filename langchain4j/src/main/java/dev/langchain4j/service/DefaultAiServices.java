@@ -152,7 +152,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.chatMemory(memoryId).add(response.content());
                             }
 
-                            tokenUsage.add(response.tokenUsage());
+                            tokenUsage = tokenUsage.add(response.tokenUsage());
                             toolExecutionRequest = response.content().toolExecutionRequest();
                             if (toolExecutionRequest == null) {
                                 break;
