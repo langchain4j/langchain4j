@@ -20,6 +20,7 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import java.lang.reflect.Array;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -33,6 +34,7 @@ import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,6 +144,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
+                        TokenUsage tokenUsage = new TokenUsage();
                         ToolExecutionRequest toolExecutionRequest;
                         while (true) { // TODO limit number of cycles
 
@@ -149,6 +152,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.chatMemory(memoryId).add(response.content());
                             }
 
+                            tokenUsage.add(response.tokenUsage());
                             toolExecutionRequest = response.content().toolExecutionRequest();
                             if (toolExecutionRequest == null) {
                                 break;
@@ -165,6 +169,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
                         }
 
+                        response = Response.from(response.content(), tokenUsage, response.finishReason());
                         return ServiceOutputParser.parse(response, method.getReturnType());
                     }
 
