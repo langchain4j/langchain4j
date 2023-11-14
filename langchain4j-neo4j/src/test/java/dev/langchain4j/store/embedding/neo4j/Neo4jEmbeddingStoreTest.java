@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_LABEL;
-import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_METADATA_PREFIX;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_TEXT_PROP;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.ID_ROW_KEY;
 import static java.util.Arrays.asList;
@@ -146,28 +145,23 @@ class Neo4jEmbeddingStoreTest {
 
     @Test
     void should_add_embedding_with_segment_with_metadata() {
-
-        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
-        Embedding embedding = embeddingModel.embed(segment.text()).content();
-
-        String id = embeddingStore.add(embedding, segment);
-        assertThat(id).isNotNull();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isEqualTo(embedding);
-        assertThat(match.embedded()).isEqualTo(segment);
-
-        checkEntitiesCreated(relevant.size(), 
-                iterator -> {
-            List<String> otherProps = List.of(DEFAULT_TEXT_PROP, DEFAULT_METADATA_PREFIX + METADATA_KEY);
-            checkDefaultProps(embedding, match, iterator.next(), otherProps);
-        });
+        checkSegmentWithMetadata(METADATA_KEY);
     }
+
+    @Test
+    void should_add_embedding_with_segment_with_custom_metadata_prefix() {
+        String metadataPrefix = "metadata.";
+        embeddingStore = Neo4jEmbeddingStore.builder()
+                .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
+                .dimension(384)
+                .metadataPrefix(metadataPrefix)
+                .build();
+        
+        String metadataCompleteKey = metadataPrefix + METADATA_KEY;
+
+        checkSegmentWithMetadata(metadataCompleteKey);
+    }
+
 
     @Test
     void should_add_multiple_embeddings() {
@@ -311,6 +305,29 @@ class Neo4jEmbeddingStoreTest {
         
         checkEntitiesCreated(relevant.size(),
                 iterator -> checkDefaultProps(embedding, match, iterator.next()));
+    }
+
+    private void checkSegmentWithMetadata(String metadataKey) {
+        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
+        Embedding embedding = embeddingModel.embed(segment.text()).content();
+
+        String id = embeddingStore.add(embedding, segment);
+        assertThat(id).isNotNull();
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
+        assertThat(relevant).hasSize(1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertThat(match.embeddingId()).isEqualTo(id);
+        assertThat(match.embedding()).isEqualTo(embedding);
+        assertThat(match.embedded()).isEqualTo(segment);
+
+        checkEntitiesCreated(relevant.size(),
+                iterator -> {
+                    List<String> otherProps = List.of(DEFAULT_TEXT_PROP, metadataKey);
+                    checkDefaultProps(embedding, match, iterator.next(), otherProps);
+                });
     }
 
     private void checkEntitiesCreated(int expectedSize, Consumer<Iterator<Node>> nodeConsumer) {

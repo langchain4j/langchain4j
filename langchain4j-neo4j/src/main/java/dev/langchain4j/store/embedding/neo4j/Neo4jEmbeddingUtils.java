@@ -11,6 +11,7 @@ import org.neo4j.driver.Values;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Neo4jEmbeddingUtils {
     
@@ -19,11 +20,10 @@ public class Neo4jEmbeddingUtils {
     public static final String ID_ROW_KEY = "id";
     
     /* default configs */
-    public static final String DEFAULT_EMBEDDING_PROP = "embeddingProp";
+    public static final String DEFAULT_EMBEDDING_PROP = "embedding";
     public static final String PROPS = "props";
     public static final String DEFAULT_IDX_NAME = "langchain-embedding-index";
     public static final String DEFAULT_LABEL = "Document";
-    public static final String DEFAULT_METADATA_PREFIX = "metadata.";
     public static final String DEFAULT_TEXT_PROP = "text";
     
 
@@ -32,8 +32,9 @@ public class Neo4jEmbeddingUtils {
 
         var metaData = new HashMap<String, String>();
         node.keys().forEach(key -> {
-            if (key.startsWith(store.getMetadataPrefix())) {
-                metaData.put(key.substring(key.indexOf(".") + 1), node.get(key).asString());
+            Set<String> notMetaKeys = Set.of(ID_ROW_KEY, store.getEmbeddingProperty(), store.getText());
+            if (!notMetaKeys.contains(key)) {
+                metaData.put(key.replace(store.getMetadataPrefix(), ""), node.get(key).asString());
             }
         });
 

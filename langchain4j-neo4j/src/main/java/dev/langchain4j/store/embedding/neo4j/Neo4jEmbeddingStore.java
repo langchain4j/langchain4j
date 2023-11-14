@@ -66,9 +66,9 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dimension: the dimension (required)
      * @param config: the {@link SessionConfig}  (optional, default is `SessionConfig.forDatabase("neo4j")`)
      * @param label: the optional label name (default: "Document")
-     * @param property: the optional property name (default: "embeddingProp")
+     * @param property: the optional property name (default: "embedding")
      * @param distanceType: the optional distanceType (default: "cosine")
-     * @param metadataPrefix: the optional metadata prefix (default: "metadata.")
+     * @param metadataPrefix: the optional metadata prefix (default: "")
      * @param text: the optional text property name (default: "text")
      * @param indexName: the optional index name (default: "langchain-embedding-index")
      */
@@ -97,7 +97,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.embeddingProperty = getOrDefault(property, DEFAULT_EMBEDDING_PROP);
         this.distanceType = getOrDefault(distanceType, Neo4jDistanceType.COSINE);
         this.indexName = getOrDefault(indexName, DEFAULT_IDX_NAME);
-        this.metadataPrefix = getOrDefault(metadataPrefix, DEFAULT_METADATA_PREFIX);
+        this.metadataPrefix = getOrDefault(metadataPrefix, "");
         this.text = getOrDefault(text, DEFAULT_TEXT_PROP);
         
         /* auto-index creation */
