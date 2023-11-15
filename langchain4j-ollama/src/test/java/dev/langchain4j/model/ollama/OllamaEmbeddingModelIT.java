@@ -3,12 +3,10 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("needs Ollama running locally")
 class OllamaEmbeddingModelIT {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()

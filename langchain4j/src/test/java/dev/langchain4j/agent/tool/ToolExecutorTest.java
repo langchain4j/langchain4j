@@ -217,10 +217,10 @@ class ToolExecutorTest {
                 .arguments(arguments)
                 .build();
 
-        DefaultToolExecutor toolExecutor =
-                new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
+        DefaultToolExecutor
+                toolExecutor = new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
 
-        String result = toolExecutor.execute(request, "DEFAULT");
+        String result = toolExecutor.execute(request);
 
         assertThat(result).isEqualTo(expectedResult);
     }
@@ -230,10 +230,10 @@ class ToolExecutorTest {
                 .arguments(arguments)
                 .build();
 
-        DefaultToolExecutor toolExecutor =
-                new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
+        DefaultToolExecutor
+                toolExecutor = new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
 
-        assertThatThrownBy(() -> toolExecutor.execute(request, "DEFAULT"))
+        assertThatThrownBy(() -> toolExecutor.execute(request))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(expectedError);
     }

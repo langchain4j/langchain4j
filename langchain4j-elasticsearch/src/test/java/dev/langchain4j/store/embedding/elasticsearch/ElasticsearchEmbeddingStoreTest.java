@@ -1,6 +1,5 @@
-package dev.langchain4j.store.embedding.redis;
+package dev.langchain4j.store.embedding.elasticsearch;
 
-import com.redis.testcontainers.RedisStackContainer;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -10,73 +9,42 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-import redis.clients.jedis.JedisPooled;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
-import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@TestInstance(Lifecycle.PER_CLASS)
-class RedisEmbeddingStoreIT {
+@Disabled("needs Elasticsearch to be running locally")
+class ElasticsearchEmbeddingStoreTest {
 
     /**
-     * First start Redis locally:
-     * docker pull redis/redis-stack:latest
-     * docker run -d -p 6379:6379 -p 8001:8001 redis/redis-stack:latest
+     * First start elasticsearch locally:
+     * docker pull docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+     * docker run -d -p 9200:9200 -p 9300:9300 -e discovery.type=single-node -e xpack.security.enabled=false docker.elastic.co/elasticsearch/elasticsearch:8.9.0
      */
 
-    private static final String METADATA_KEY = "test-key";
-
-    private final RedisStackContainer redis = new RedisStackContainer(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));
-
-    private EmbeddingStore<TextSegment> embeddingStore;
+    private final EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
+            .serverUrl("http://localhost:9200")
+            .indexName(randomUUID())
+            .build();
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    @BeforeAll
-    void setup() {
-        redis.start();
-    }
-
-    @AfterAll
-    void teardown() {
-        redis.close();
-    }
-
-    @BeforeEach
-    void initEmptyRedisEmbeddingStore() {
-
-        flushDB();
-
-        embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .dimension(384)
-                .build();
-    }
-
-    private void flushDB() {
-        try (JedisPooled jedis = new JedisPooled(redis.getHost(), redis.getFirstMappedPort())) {
-            jedis.flushDB();
-        }
-    }
-
     @Test
-    void should_add_embedding() {
+    void should_add_embedding() throws InterruptedException {
 
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         String id = embeddingStore.add(embedding);
         assertThat(id).isNotNull();
 
+        Thread.sleep(2000);
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -88,13 +56,15 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_embedding_with_id() {
+    void should_add_embedding_with_id() throws InterruptedException {
 
         String id = randomUUID();
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         embeddingStore.add(id, embedding);
 
+        Thread.sleep(2000);
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -106,7 +76,7 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_embedding_with_segment() {
+    void should_add_embedding_with_segment() throws InterruptedException {
 
         TextSegment segment = TextSegment.from(randomUUID());
         Embedding embedding = embeddingModel.embed(segment.text()).content();
@@ -114,6 +84,8 @@ class RedisEmbeddingStoreIT {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
+        Thread.sleep(2000);
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -125,23 +97,16 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_embedding_with_segment_with_metadata() {
+    void should_add_embedding_with_segment_with_metadata() throws InterruptedException {
 
-        flushDB();
-
-        embeddingStore = RedisEmbeddingStore.builder()
-                .host(redis.getHost())
-                .port(redis.getFirstMappedPort())
-                .dimension(384)
-                .metadataFieldsName(singletonList(METADATA_KEY))
-                .build();
-
-        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from(METADATA_KEY, "test-value"));
+        TextSegment segment = TextSegment.from(randomUUID(), Metadata.from("test-key", "test-value"));
         Embedding embedding = embeddingModel.embed(segment.text()).content();
 
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
+        Thread.sleep(2000);
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -153,13 +118,15 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_multiple_embeddings() {
+    void should_add_multiple_embeddings() throws InterruptedException {
 
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
 
         List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
         assertThat(ids).hasSize(2);
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -178,7 +145,7 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_multiple_embeddings_with_segments() {
+    void should_add_multiple_embeddings_with_segments() throws InterruptedException {
 
         TextSegment firstSegment = TextSegment.from(randomUUID());
         Embedding firstEmbedding = embeddingModel.embed(firstSegment.text()).content();
@@ -190,6 +157,8 @@ class RedisEmbeddingStoreIT {
                 asList(firstSegment, secondSegment)
         );
         assertThat(ids).hasSize(2);
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -208,7 +177,7 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_find_with_min_score() {
+    void should_find_with_min_score() throws InterruptedException {
 
         String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
@@ -217,6 +186,8 @@ class RedisEmbeddingStoreIT {
         String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
         embeddingStore.add(secondId, secondEmbedding);
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -255,7 +226,7 @@ class RedisEmbeddingStoreIT {
     }
 
     @Test
-    void should_return_correct_score() {
+    void should_return_correct_score() throws InterruptedException {
 
         Embedding embedding = embeddingModel.embed("hello").content();
 
@@ -263,6 +234,8 @@ class RedisEmbeddingStoreIT {
         assertThat(id).isNotNull();
 
         Embedding referenceEmbedding = embeddingModel.embed("hi").content();
+
+        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
         assertThat(relevant).hasSize(1);

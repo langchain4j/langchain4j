@@ -32,11 +32,10 @@ import static java.util.stream.Collectors.toList;
 public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final String DEFAULT_NAMESPACE = "default"; // do not change, will break backward compatibility!
-    private static final String DEFAULT_METADATA_TEXT_KEY = "text_segment"; // do not change, will break backward compatibility!
+    private static final String METADATA_TEXT_SEGMENT = "text_segment"; // do not change, will break backward compatibility!
 
     private final PineconeConnection connection;
     private final String nameSpace;
-    private final String metadataTextKey;
 
     /**
      * Creates an instance of PineconeEmbeddingStore.
@@ -47,14 +46,12 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      *                    The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
      * @param index       The name of the index (e.g., "test").
      * @param nameSpace   (Optional) Namespace. If not provided, "default" will be used.
-     * @param metadataTextKey   (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
      */
     public PineconeEmbeddingStore(String apiKey,
                                   String environment,
                                   String projectId,
                                   String index,
-                                  String nameSpace,
-                                  String metadataTextKey) {
+                                  String nameSpace) {
 
         PineconeClientConfig configuration = new PineconeClientConfig()
                 .withApiKey(apiKey)
@@ -68,7 +65,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         this.connection = pineconeClient.connect(connectionConfig);
         this.nameSpace = nameSpace == null ? DEFAULT_NAMESPACE : nameSpace;
-        this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
     }
 
     @Override
@@ -134,7 +130,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
             if (textSegments != null) {
                 vectorBuilder.setMetadata(Struct.newBuilder()
-                        .putFields(metadataTextKey, Value.newBuilder()
+                        .putFields(METADATA_TEXT_SEGMENT, Value.newBuilder()
                                 .setStringValue(textSegments.get(i).text())
                                 .build()));
             }
@@ -192,10 +188,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         return matches;
     }
 
-    private EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
+    private static EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
         Value textSegmentValue = vector.getMetadata()
                 .getFieldsMap()
-                .get(metadataTextKey);
+                .get(METADATA_TEXT_SEGMENT);
 
         Embedding embedding = Embedding.from(vector.getValuesList());
         double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
@@ -219,7 +215,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String projectId;
         private String index;
         private String nameSpace;
-        private String metadataTextKey;
 
         /**
          * @param apiKey The Pinecone API key.
@@ -262,16 +257,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        /**
-         * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
-         */
-        public Builder metadataTextKey(String metadataTextKey) {
-            this.metadataTextKey = metadataTextKey;
-            return this;
-        }
-
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, environment, projectId, index, nameSpace, metadataTextKey);
+            return new PineconeEmbeddingStore(apiKey, environment, projectId, index, nameSpace);
         }
     }
 }

@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.elasticsearch;
+package dev.langchain4j.store.embedding.chroma;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -19,32 +19,31 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs Elasticsearch to be running locally")
-class ElasticsearchEmbeddingStoreIT {
+@Disabled("needs Chroma running locally")
+class ChromaEmbeddingStoreTest {
 
     /**
-     * First start elasticsearch locally:
-     * docker pull docker.elastic.co/elasticsearch/elasticsearch:8.9.0
-     * docker run -d -p 9200:9200 -p 9300:9300 -e discovery.type=single-node -e xpack.security.enabled=false docker.elastic.co/elasticsearch/elasticsearch:8.9.0
+     * First ensure you have Chroma running locally. If not, then:
+     * - Execute "docker pull ghcr.io/chroma-core/chroma:0.4.6"
+     * - Execute "docker run -d -p 8000:8000 ghcr.io/chroma-core/chroma:0.4.6"
+     * - Wait until Chroma is ready to serve (may take a few minutes)
      */
 
-    private final EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
-            .serverUrl("http://localhost:9200")
-            .indexName(randomUUID())
+    private final EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
+            .baseUrl("http://localhost:8000")
+            .collectionName(randomUUID())
             .build();
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @Test
-    void should_add_embedding() throws InterruptedException {
+    void should_add_embedding() {
 
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         String id = embeddingStore.add(embedding);
         assertThat(id).isNotNull();
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -56,15 +55,13 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_embedding_with_id() throws InterruptedException {
+    void should_add_embedding_with_id() {
 
         String id = randomUUID();
         Embedding embedding = embeddingModel.embed(randomUUID()).content();
 
         embeddingStore.add(id, embedding);
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -76,7 +73,7 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_embedding_with_segment() throws InterruptedException {
+    void should_add_embedding_with_segment() {
 
         TextSegment segment = TextSegment.from(randomUUID());
         Embedding embedding = embeddingModel.embed(segment.text()).content();
@@ -84,8 +81,6 @@ class ElasticsearchEmbeddingStoreIT {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -97,7 +92,7 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_embedding_with_segment_with_metadata() throws InterruptedException {
+    void should_add_embedding_with_segment_with_metadata() {
 
         TextSegment segment = TextSegment.from(randomUUID(), Metadata.from("test-key", "test-value"));
         Embedding embedding = embeddingModel.embed(segment.text()).content();
@@ -105,8 +100,6 @@ class ElasticsearchEmbeddingStoreIT {
         String id = embeddingStore.add(embedding, segment);
         assertThat(id).isNotNull();
 
-        Thread.sleep(2000);
-
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
 
@@ -118,15 +111,13 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_multiple_embeddings() throws InterruptedException {
+    void should_add_multiple_embeddings() {
 
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
 
         List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
         assertThat(ids).hasSize(2);
-
-        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -145,7 +136,7 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_add_multiple_embeddings_with_segments() throws InterruptedException {
+    void should_add_multiple_embeddings_with_segments() {
 
         TextSegment firstSegment = TextSegment.from(randomUUID());
         Embedding firstEmbedding = embeddingModel.embed(firstSegment.text()).content();
@@ -157,8 +148,6 @@ class ElasticsearchEmbeddingStoreIT {
                 asList(firstSegment, secondSegment)
         );
         assertThat(ids).hasSize(2);
-
-        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -177,7 +166,7 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_find_with_min_score() throws InterruptedException {
+    void should_find_with_min_score() {
 
         String firstId = randomUUID();
         Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
@@ -186,8 +175,6 @@ class ElasticsearchEmbeddingStoreIT {
         String secondId = randomUUID();
         Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
         embeddingStore.add(secondId, secondEmbedding);
-
-        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -226,7 +213,7 @@ class ElasticsearchEmbeddingStoreIT {
     }
 
     @Test
-    void should_return_correct_score() throws InterruptedException {
+    void should_return_correct_score() {
 
         Embedding embedding = embeddingModel.embed("hello").content();
 
@@ -234,8 +221,6 @@ class ElasticsearchEmbeddingStoreIT {
         assertThat(id).isNotNull();
 
         Embedding referenceEmbedding = embeddingModel.embed("hi").content();
-
-        Thread.sleep(2000);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
         assertThat(relevant).hasSize(1);

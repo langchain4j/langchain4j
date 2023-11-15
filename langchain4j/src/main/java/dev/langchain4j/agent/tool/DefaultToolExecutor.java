@@ -11,8 +11,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Map;
 
-import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
-
 public class DefaultToolExecutor implements ToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultToolExecutor.class);
@@ -25,12 +23,12 @@ public class DefaultToolExecutor implements ToolExecutor {
         this.method = method;
     }
 
-    public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        log.debug("About to execute {} for memoryId {}", toolExecutionRequest, memoryId);
+    public String execute(ToolExecutionRequest toolExecutionRequest) {
+        log.debug("About to execute {}", toolExecutionRequest);
 
         // TODO ensure this method never throws exceptions
 
-        Object[] arguments = prepareArguments(method, argumentsAsMap(toolExecutionRequest.arguments()), memoryId);
+        Object[] arguments = prepareArguments(method, ToolExecutionRequestUtil.argumentsAsMap(toolExecutionRequest.arguments()));
         try {
             String result = execute(arguments);
             log.debug("Tool execution result: {}", result);
@@ -63,17 +61,11 @@ public class DefaultToolExecutor implements ToolExecutor {
         return Json.toJson(result);
     }
 
-    private static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
+    private static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap) {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
 
         for (int i = 0; i < parameters.length; i++) {
-
-            if (parameters[i].isAnnotationPresent(ToolMemoryId.class)) {
-                arguments[i] = memoryId;
-                continue;
-            }
-
             String parameterName = parameters[i].getName();
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);

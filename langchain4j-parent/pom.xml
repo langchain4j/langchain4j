@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.24.0</version>
+    <version>0.23.0</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -213,12 +213,6 @@
             </dependency>
 
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-configuration-processor</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
                 <version>${httpclient5.version}</version>
@@ -302,14 +296,12 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers</artifactId>
                 <version>${testcontainers.version}</version>
-                <scope>test</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.testcontainers</groupId>
                 <artifactId>localstack</artifactId>
                 <version>${testcontainers.version}</version>
-                <scope>test</scope>
             </dependency>
         </dependencies>
 

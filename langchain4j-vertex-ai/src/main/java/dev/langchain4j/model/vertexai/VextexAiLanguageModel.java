@@ -24,14 +24,14 @@ import static java.util.Collections.singletonList;
  * Represents a Google Vertex AI language model with a text interface, such as text-bison.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview">here</a>.
  */
-public class VertexAiLanguageModel implements LanguageModel {
+public class VextexAiLanguageModel implements LanguageModel {
 
     private final PredictionServiceSettings settings;
     private final EndpointName endpointName;
     private final VertexAiParameters vertexAiParameters;
     private final Integer maxRetries;
 
-    public VertexAiLanguageModel(String endpoint,
+    public VextexAiLanguageModel(String endpoint,
                                  String project,
                                  String location,
                                  String publisher,
@@ -162,8 +162,8 @@ public class VertexAiLanguageModel implements LanguageModel {
             return this;
         }
 
-        public VertexAiLanguageModel build() {
-            return new VertexAiLanguageModel(
+        public VextexAiLanguageModel build() {
+            return new VextexAiLanguageModel(
                     endpoint,
                     project,
                     location,
