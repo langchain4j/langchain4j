@@ -10,7 +10,7 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-class EmbeddingMatchDocument {
+public class EmbeddingMatchDocument {
     private String id;
     private List<Double> embedding;
     private String text;

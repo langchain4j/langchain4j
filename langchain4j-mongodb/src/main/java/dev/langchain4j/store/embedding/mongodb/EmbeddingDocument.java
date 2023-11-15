@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.SuperBuilder;
 import org.bson.codecs.pojo.annotations.BsonId;
 
 import java.util.List;
@@ -15,8 +14,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @RequiredArgsConstructor
-@SuperBuilder
-class EmbeddingDocument {
+public class EmbeddingDocument {
     @BsonId
     @NonNull
     private String id;

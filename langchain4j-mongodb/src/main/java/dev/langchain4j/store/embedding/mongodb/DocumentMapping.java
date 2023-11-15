@@ -20,7 +20,11 @@ public class DocumentMapping {
 
 
     EmbeddingMatch<TextSegment> asTextSegmentEmbeddingMatch(EmbeddingMatchDocument d) {
-        return new EmbeddingMatch<>(d.getScore(), d.getId(), new Embedding(asFloatArray(d.getEmbedding())), new TextSegment(d.getText(), new Metadata(d.getMetadata())));
+        TextSegment textSegment = null;
+        if(d.getMetadata()!=null) {
+            textSegment = new TextSegment(d.getText(), new Metadata(d.getMetadata()));
+        }
+        return new EmbeddingMatch<>(d.getScore(), d.getId(), new Embedding(asFloatArray(d.getEmbedding())), textSegment);
     }
 
     private List<Double> asDoublesList(float[] input) {

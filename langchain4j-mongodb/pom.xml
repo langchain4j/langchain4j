@@ -63,6 +63,12 @@
             <artifactId>slf4j-tinylog</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+            <version>4.2.0</version>
+        </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>

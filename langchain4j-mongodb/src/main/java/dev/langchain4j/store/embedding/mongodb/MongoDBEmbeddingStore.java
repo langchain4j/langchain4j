@@ -8,6 +8,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.search.VectorSearchOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -30,6 +31,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static com.mongodb.client.model.Aggregates.match;
 import static com.mongodb.client.model.Aggregates.project;
 import static com.mongodb.client.model.Aggregates.vectorSearch;
 import static com.mongodb.client.model.Projections.fields;
@@ -64,12 +66,16 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final QueryMapping queryMapping = new QueryMapping();
     private boolean shouldCreateIndex;
 
+
+
     MongoDBEmbeddingStore(MongoClient mongoClient, String database, String collection, String indexName, long maxResultRatio, Bson filter, boolean shouldCreateIndex) {
 
 
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .automatic(true).build());
+                .register(EmbeddingDocument.class,EmbeddingMatchDocument.class)
+                .build());
         codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+
         this.indexName = indexName;
         this.maxResultRatio = maxResultRatio;
         this.collection = mongoClient.getDatabase(database).getCollection(collection, EmbeddingDocument.class).withCodecRegistry(codecRegistry);
@@ -166,7 +172,11 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
                                 metaVectorSearchScore("score"),
                                 include("embedding", "metadata", "text")
                         )
+                ),
+                match(
+                        Filters.gte("score", minScore)
                 ));
+
         try {
             AggregateIterable<EmbeddingMatchDocument> results = collection.aggregate(pipeline, EmbeddingMatchDocument.class);
 
