@@ -4,21 +4,17 @@ import org.bson.BsonDocument;
 import org.bson.BsonDocumentWriter;
 import org.bson.conversions.Bson;
 import org.bson.json.JsonWriterSettings;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class DebugUtils {
-    private static final Logger log = LoggerFactory.getLogger(DebugUtils.class);
-
-    private static JsonWriterSettings settings = JsonWriterSettings.builder().indent(true).build();
+class BsonUtils {
+    private static final JsonWriterSettings settings = JsonWriterSettings.builder().indent(true).build();
 
     public static String asJson(List<Bson> bsonArray) {
         return bsonArray.stream()
-                .map(DebugUtils::asJson)
+                .map(BsonUtils::asJson)
                 .collect(Collectors.joining(", "));
 
     }
@@ -38,7 +34,7 @@ public class DebugUtils {
                 writer.writeStartDocument("fields");
                 writeEmbedding(dimensions, writer);
 
-                if(metadataFields != null && !metadataFields.isEmpty()){
+                if( metadataFields != null && !metadataFields.isEmpty()){
                     writeMetadata(metadataFields, writer);
                 }
                 writer.writeEndDocument();
