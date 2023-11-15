@@ -15,6 +15,7 @@ import dev.langchain4j.store.embedding.RelevanceScore;
 import org.awaitility.Awaitility;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -25,7 +26,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-//@Disabled("needs a Cloud MongoDB Atlas running")
+@Disabled("needs a Cloud MongoDB Atlas running")
 class MongoDBEmbeddingStoreTest {
 
     public static final String MONGODB_URI = "mongodb+srv://%user%:%pwd%@%cluster%.xxx.gcp.mongodb.net/admin?retryWrites=false&replicaSet=%replicaSet%&readPreference=primary&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-1";
