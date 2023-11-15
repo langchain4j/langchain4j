@@ -4,15 +4,11 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.mongodb.document.EmbeddingDocument;
-import dev.langchain4j.store.embedding.mongodb.document.EmbeddingMatchDocument;
-import org.assertj.core.util.Maps;
 import org.assertj.core.util.Maps;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -36,6 +32,19 @@ class DocumentMappingTest {
     }
 
     @Test
+    void generateDocumentWithoutTextSegment() {
+        String id = "id";
+        Embedding embedding = new Embedding(new float[]{1.0f, 2.0f});
+
+        EmbeddingDocument embeddingDocument = documentMapping.generateDocument(id, embedding, null);
+
+        assertThat(embeddingDocument.getId()).isEqualTo(id);
+        assertThat(embeddingDocument.getEmbedding()).isEqualTo(Arrays.asList(1.0D, 2.0D));
+        assertThat(embeddingDocument.getText()).isNull();
+        assertThat(embeddingDocument.getMetadata()).isNull();
+    }
+
+    @Test
     void generateDocumentFloatPrecisionIssue() {
         String id = "id";
         Embedding embedding = new Embedding(new float[]{1 / 3f});
@@ -48,16 +57,12 @@ class DocumentMappingTest {
 
     @Test
     void asDoublesListRequiredEmbedding() {
-        assertThrows(NullPointerException.class, () -> {
-            documentMapping.generateDocument(null, null, new TextSegment("test", Metadata.from("key", "value")));
-        });
+        assertThrows(NullPointerException.class, () -> documentMapping.generateDocument(null, null, new TextSegment("test", Metadata.from("key", "value"))));
     }
 
     @Test
     void asDoublesListRequiredTextSegment() {
-        assertThrows(NullPointerException.class, () -> {
-            documentMapping.generateDocument(null, new Embedding(new float[]{1 / 3f}), null);
-        });
+        assertThrows(NullPointerException.class, () -> documentMapping.generateDocument(null, new Embedding(new float[]{1 / 3f}), null));
     }
 
     @Test
@@ -65,7 +70,6 @@ class DocumentMappingTest {
         Double score = 1 / 3D;
         List<Double> embedding = Arrays.asList(1.0D, 2.0D, 1 / 3D);
         EmbeddingMatchDocument matchDocument = new EmbeddingMatchDocument("id", embedding, "text", Maps.newHashMap("key", "value"), score);
-
         EmbeddingMatch<TextSegment> match = documentMapping.asTextSegmentEmbeddingMatch(matchDocument);
 
         assertThat(match).isEqualTo(new EmbeddingMatch<>(
@@ -79,4 +83,5 @@ class DocumentMappingTest {
             documentMapping.asTextSegmentEmbeddingMatch(null);
         });
     }
+
 }
