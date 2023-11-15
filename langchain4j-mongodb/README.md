@@ -30,7 +30,7 @@ Make sure you have the following prerequisites installed:
    <!-- Maven Dependency -->
       <dependency>
          <groupId>dev.langchain4j</groupId>
-         <artifactId>langchain4j</artifactId>
+         <artifactId>langchain4j-mongodb</artifactId>
          <version>0.23.0</version>
      </dependency>
    ```
