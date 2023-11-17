@@ -1,11 +1,7 @@
 package dev.langchain4j.data.message;
 
-import com.google.gson.reflect.TypeToken;
-
+import static dev.langchain4j.data.message.ChatMessageSerializer.CODEC;
 import java.util.List;
-
-import static dev.langchain4j.data.message.ChatMessageSerializer.GSON;
-import static java.util.Collections.emptyList;
 
 public class ChatMessageDeserializer {
 
@@ -17,7 +13,7 @@ public class ChatMessageDeserializer {
      * @see ChatMessageSerializer For details on serialization.
      */
     public static ChatMessage messageFromJson(String json) {
-        return GSON.fromJson(json, ChatMessage.class);
+        return CODEC.messageFromJson(json);
     }
 
     /**
@@ -28,8 +24,6 @@ public class ChatMessageDeserializer {
      * @see ChatMessageSerializer For details on serialization.
      */
     public static List<ChatMessage> messagesFromJson(String json) {
-        List<ChatMessage> messages = GSON.fromJson(json, new TypeToken<List<ChatMessage>>() {
-        }.getType());
-        return messages == null ? emptyList() : messages;
+        return CODEC.messagesFromJson(json);
     }
 }

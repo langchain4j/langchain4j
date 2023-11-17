@@ -1,10 +1,16 @@
 package dev.langchain4j;
 
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
 class ChatModel {
 
+    @NestedConfigurationProperty
     private ModelProvider provider;
+    @NestedConfigurationProperty
     private OpenAi openAi;
+    @NestedConfigurationProperty
     private HuggingFace huggingFace;
+    @NestedConfigurationProperty
     private LocalAi localAi;
 
     public ModelProvider getProvider() {
