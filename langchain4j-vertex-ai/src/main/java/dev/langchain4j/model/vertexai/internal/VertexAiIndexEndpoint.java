@@ -5,6 +5,7 @@ import com.google.cloud.aiplatform.v1.*;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.util.List;
@@ -102,7 +103,7 @@ public class VertexAiIndexEndpoint {
         try {
             IndexServiceSettings.Builder serviceSettings = IndexServiceSettings
                     .newBuilder()
-                    .setEndpoint(endpoint);
+                    .setEndpoint(resolveEndpoint());
             if (credentialsProvider != null) {
                 serviceSettings.setCredentialsProvider(credentialsProvider);
             }
@@ -132,7 +133,7 @@ public class VertexAiIndexEndpoint {
         try {
             IndexEndpointServiceSettings.Builder serviceSettings = IndexEndpointServiceSettings
                     .newBuilder()
-                    .setEndpoint(endpoint);
+                    .setEndpoint(resolveEndpoint());
             if (credentialsProvider != null) {
                 serviceSettings.setCredentialsProvider(credentialsProvider);
             }
@@ -144,4 +145,9 @@ public class VertexAiIndexEndpoint {
         }
     }
 
+    public String resolveEndpoint() {
+        return (StringUtils.isEmpty(endpoint))
+                ? location + "-aiplatform.googleapis.com:443"
+                : endpoint;
+    }
 }

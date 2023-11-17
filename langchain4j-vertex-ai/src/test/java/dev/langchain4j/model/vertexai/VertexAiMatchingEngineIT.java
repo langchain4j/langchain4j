@@ -28,6 +28,7 @@ public class VertexAiMatchingEngineIT {
 
         VertexAiMatchingEngine matchingEngine = VertexAiMatchingEngine
                 .builder()
+                .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .embeddingModel(embeddingModel)
                 .bucketName("[BUCKET_NAME]")
                 .indexId("[INDEX_ID]")
