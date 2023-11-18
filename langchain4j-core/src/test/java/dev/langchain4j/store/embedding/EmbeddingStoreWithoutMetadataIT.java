@@ -21,7 +21,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
     @BeforeEach
     void beforeEach() {
+        clearStore();
         ensureStoreIsEmpty();
+    }
+
+    protected void clearStore() {
     }
 
     protected void ensureStoreIsEmpty() {
