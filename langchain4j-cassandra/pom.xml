@@ -22,8 +22,7 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>${parent.version}</version>
+            <artifactId>langchain4j-core</artifactId>
         </dependency>
 
         <dependency>
@@ -70,6 +69,13 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>${parent.version}</version>
             <scope>test</scope>
         </dependency>
 
