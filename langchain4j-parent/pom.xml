@@ -444,6 +444,10 @@
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
                                 </license>
                                 <license>
+                                    <name>Apache 2.0</name>
+                                    <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+                                </license>
+                                <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
                                     <url>(https?://opensource.org/licenses/MIT|https://projectlombok.org/LICENSE)</url>
                                 </license>
