@@ -17,6 +17,25 @@ public class Utils {
     return string == null || string.trim().isEmpty();
   }
 
+  public static boolean isNotNullOrBlank(String string) {
+    return !isNullOrBlank(string);
+  }
+
+  public static boolean areNotNullOrBlank(String... strings) {
+    if (strings == null || strings.length == 0) {
+      return false;
+    }
+
+    for (String string : strings) {
+      if (isNullOrBlank(string)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+
   public static boolean isCollectionEmpty(Collection<?> collection) {
     return collection == null || collection.isEmpty();
   }

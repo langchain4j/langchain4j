@@ -1,7 +1,7 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
 [![](https://img.shields.io/twitter/follow/langchain4j)](https://twitter.com/intent/follow?screen_name=langchain4j)
-[![](https://dcbadge.vercel.app/api/server/V5qHrWNVf?compact=true&style=flat)](https://discord.gg/V5qHrWNVf)
+[![](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?compact=true&style=flat)](https://discord.gg/JzTFvyjG6R)
 
 ## Project goals
 
@@ -29,6 +29,15 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## News
+
+12 November:
+- Integration with [OpenSearch](https://opensearch.org/) by [@riferrei](https://github.com/riferrei)
+- Add support for loading documents from S3 by [@jmgang](https://github.com/jmgang)
+- Integration with [PGVector](https://github.com/pgvector/pgvector) by [@kevin-wu-os](https://github.com/kevin-wu-os)
+- Integration with [Ollama](https://ollama.ai/) by  [@Martin7-1](https://github.com/Martin7-1)
+- Integration with [Amazon Bedrock](https://aws.amazon.com/bedrock/) by [@pascalconfluent](https://github.com/pascalconfluent)
+- Adding Memory Id to Tool Method Call by [@benedictstrube](https://github.com/benedictstrube)
+- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.24.0)
 
 29 September:
 - Updates to models API: return `Response<T>` instead of `T`. `Response<T>` contains token usage and finish reason.
@@ -211,12 +220,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.23.0</version>
+          <version>0.24.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.23.0'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.24.0'
       ```
 
 2. Import your OpenAI API key:

@@ -6,12 +6,13 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.23.0</version>
+    <version>0.24.0</version>
     <packaging>pom</packaging>
 
     <modules>
 
         <module>langchain4j-parent</module>
+        <module>langchain4j-bom</module>
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
@@ -19,11 +20,13 @@
 
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
+        <module>langchain4j-bedrock</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
+        <module>langchain4j-ollama</module>
 
         <!-- image generation model providers -->
         <module>langchain4j-open-ai-dall-e</module>
@@ -35,9 +38,11 @@
         <module>langchain4j-milvus</module>
 <!--        <module>langchain4j-opensearch</module>-->
         <module>langchain4j-pinecone</module>
+        <module>langchain4j-pgvector</module>
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+
     </modules>
 
 </project>

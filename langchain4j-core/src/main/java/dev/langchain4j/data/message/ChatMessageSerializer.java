@@ -1,19 +1,22 @@
 package dev.langchain4j.data.message;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
+import dev.langchain4j.spi.ServiceHelper;
+import dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory;
+import java.util.Collection;
 import java.util.List;
 
 public class ChatMessageSerializer {
 
-    static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(ChatMessage.class, new GsonChatMessageAdapter())
-            .registerTypeAdapter(SystemMessage.class, new GsonChatMessageAdapter())
-            .registerTypeAdapter(UserMessage.class, new GsonChatMessageAdapter())
-            .registerTypeAdapter(AiMessage.class, new GsonChatMessageAdapter())
-            .registerTypeAdapter(ToolExecutionResultMessage.class, new GsonChatMessageAdapter())
-            .create();
+    static final ChatMessageJsonCodec CODEC = loadCodec();
+
+    private static ChatMessageJsonCodec loadCodec() {
+        Collection<ChatMessageJsonCodecFactory> factories = ServiceHelper.loadFactories(ChatMessageJsonCodecFactory.class);
+        for (ChatMessageJsonCodecFactory factory : factories) {
+            return factory.create();
+        }
+        // fallback to default
+        return new GsonChatMessageJsonCodec();
+    }
 
     /**
      * Serializes a chat message into a JSON string.
@@ -23,7 +26,7 @@ public class ChatMessageSerializer {
      * @see ChatMessageDeserializer For details on deserialization.
      */
     public static String messageToJson(ChatMessage message) {
-        return GSON.toJson(message);
+        return CODEC.messageToJson(message);
     }
 
     /**
@@ -34,6 +37,6 @@ public class ChatMessageSerializer {
      * @see ChatMessageDeserializer For details on deserialization.
      */
     public static String messagesToJson(List<ChatMessage> messages) {
-        return GSON.toJson(messages);
+        return CODEC.messagesToJson(messages);
     }
 }

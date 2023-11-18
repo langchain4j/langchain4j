@@ -1,13 +1,18 @@
 package dev.langchain4j;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 @ConfigurationProperties(prefix = "langchain4j")
 public class LangChain4jProperties {
 
+    @NestedConfigurationProperty
     private ChatModel chatModel;
+    @NestedConfigurationProperty
     private LanguageModel languageModel;
+    @NestedConfigurationProperty
     private EmbeddingModel embeddingModel;
+    @NestedConfigurationProperty
     private ModerationModel moderationModel;
 
     public ChatModel getChatModel() {

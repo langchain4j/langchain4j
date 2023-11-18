@@ -14,6 +14,7 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.JsonData;
+import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
@@ -98,6 +99,15 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.objectMapper = new ObjectMapper();
     }
 
+    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName) {
+        JsonpMapper mapper = new JacksonJsonpMapper();
+        ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
+
+        this.client = new ElasticsearchClient(transport);
+        this.indexName = ensureNotNull(indexName, "indexName");
+        this.objectMapper = new ObjectMapper();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -108,10 +118,12 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String apiKey;
         private String userName;
         private String password;
+        private RestClient restClient;
         private String indexName = "default";
 
         /**
          * @param serverUrl Elasticsearch Server URL
+         * @return builder
          */
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
@@ -146,8 +158,19 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
+         * @param restClient Elasticsearch RestClient (optional).
+         *                   Effectively overrides all other connection parameters like serverUrl, etc.
+         * @return builder
+         */
+        public Builder restClient(RestClient restClient) {
+            this.restClient = restClient;
+            return this;
+        }
+
+        /**
          * @param indexName Elasticsearch index name (optional).
          *                  Default value: "default".
+         * @return builder
          */
         public Builder indexName(String indexName) {
             this.indexName = indexName;
@@ -155,7 +178,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         public ElasticsearchEmbeddingStore build() {
-            return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+            if (restClient != null) {
+                return new ElasticsearchEmbeddingStore(restClient, indexName);
+            } else {
+                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+            }
         }
     }
 

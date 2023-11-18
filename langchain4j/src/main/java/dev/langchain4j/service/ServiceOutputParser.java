@@ -19,7 +19,7 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-class ServiceOutputParser {
+public class ServiceOutputParser {
 
     private static final Map<Class<?>, OutputParser<?>> OUTPUT_PARSERS = new HashMap<>();
 
@@ -55,7 +55,7 @@ class ServiceOutputParser {
         OUTPUT_PARSERS.put(LocalDateTime.class, new LocalDateTimeOutputParser());
     }
 
-    static Object parse(Response<AiMessage> response, Class<?> returnType) {
+    public static Object parse(Response<AiMessage> response, Class<?> returnType) {
 
         if (returnType == Response.class) {
             return response;
@@ -87,7 +87,7 @@ class ServiceOutputParser {
         return Json.fromJson(text, returnType);
     }
 
-    static String outputFormatInstructions(Class<?> returnType) {
+    public static String outputFormatInstructions(Class<?> returnType) {
 
         if (returnType == String.class
                 || returnType == AiMessage.class

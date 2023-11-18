@@ -1,8 +1,12 @@
 package dev.langchain4j;
 
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
+
 class ModerationModel {
 
+    @NestedConfigurationProperty
     private ModelProvider provider;
+    @NestedConfigurationProperty
     private OpenAi openAi;
 
     public ModelProvider getProvider() {
