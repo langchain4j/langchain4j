@@ -14,7 +14,7 @@ import java.net.InetSocketAddress;
  * Test Cassandra Chat Memory Store with a Saas DB.
  */
 @Testcontainers
-class ChatMemoryStoreCassandraIT extends AbstractChatMemoryStoreTestSupport {
+class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSupport {
     static final String DATACENTER = "datacenter1";
     static final DockerImageName CASSANDRA_IMAGE = DockerImageName.parse("cassandra:5.0");
     static CassandraContainer<?> cassandraContainer;

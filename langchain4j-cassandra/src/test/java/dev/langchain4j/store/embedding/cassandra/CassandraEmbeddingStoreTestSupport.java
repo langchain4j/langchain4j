@@ -4,6 +4,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.astradb.AstraDbEmbeddingStore;
 import dev.langchain4j.store.memory.chat.cassandra.CassandraChatMemoryStore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -19,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-abstract class AbstractEmbeddingStoreTestSupport {
+abstract class CassandraEmbeddingStoreTestSupport {
 
     protected static final String KEYSPACE = "langchain4j";
 
@@ -39,7 +41,6 @@ abstract class AbstractEmbeddingStoreTestSupport {
     @DisplayName("2. Connection to the database")
     void shouldConnectToDatabase() {
         embeddingStore = createEmbeddingStore();
-        // Connection to Cassandra is established
         Assertions.assertTrue(embeddingStore.getCassandraSession()
                 .getMetadata()
                 .getKeyspace(KEYSPACE)
@@ -62,7 +63,7 @@ abstract class AbstractEmbeddingStoreTestSupport {
     @Test
     @Order(4)
     @DisplayName("4. Insert Items ")
-    public void testAddEmbeddingAndFindRelevant() {
+    void testAddEmbeddingAndFindRelevant() {
 
         Embedding embedding = Embedding.from(new float[]{9.9F, 4.5F, 3.5F, 1.3F, 1.7F, 5.7F, 6.4F, 5.5F, 8.2F, 9.3F, 1.5F});
         TextSegment textSegment = TextSegment.from("Text", Metadata.from("Key", "Value"));

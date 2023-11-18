@@ -17,6 +17,8 @@
     <properties>
         <astra-db-client.version>1.0.1-SNAPSHOT</astra-db-client.version>
         <testcontainers.version>1.19.2</testcontainers.version>
+        <!-- jackson 2.15 is needed,overriding parent -->
+        <jackson.version>2.15.2</jackson.version>
     </properties>
 
     <dependencies>
@@ -44,10 +46,31 @@
             <version>${astra-db-client.version}</version>
             <exclusions>
                 <exclusion>
+                    <groupId>com.datastax.stargate</groupId>
+                    <artifactId>stargate-sdk-document</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.datastax.stargate</groupId>
+                    <artifactId>stargate-sdk-grpc</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.datastax.stargate</groupId>
+                    <artifactId>stargate-sdk-graphql</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.datastax.stargate</groupId>
+                    <artifactId>stargate-sdk-rest</artifactId>
+                </exclusion>
+                <exclusion>
                     <groupId>ch.qos.logback</groupId>
                     <artifactId>logback-classic</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.datastax.stargate</groupId>
+            <artifactId>stargate-sdk-json</artifactId>
+            <version>2.1.4-SNAPSHOT</version>
         </dependency>
         <!-- removing cve -->
         <dependency>
@@ -71,12 +94,6 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${assertj.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <version>${parent.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

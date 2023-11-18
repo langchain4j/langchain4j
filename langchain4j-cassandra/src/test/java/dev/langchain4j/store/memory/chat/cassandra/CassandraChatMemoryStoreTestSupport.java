@@ -11,7 +11,6 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.UUID;
 
@@ -21,7 +20,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-abstract class AbstractChatMemoryStoreTestSupport {
+abstract class CassandraChatMemoryStoreTestSupport {
     protected final String KEYSPACE = "langchain4j";
     protected static CassandraChatMemoryStore chatMemoryStore;
 

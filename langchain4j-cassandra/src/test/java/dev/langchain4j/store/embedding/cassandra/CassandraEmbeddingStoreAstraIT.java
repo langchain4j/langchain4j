@@ -10,11 +10,10 @@ import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
- * Testing implementation of Embedding Store using AstraDB.
+ * Integration test where Cassandra is running in AstraDB (dbaas).
  */
 @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
-class CassandraEmbeddingStoreWithinAstraIT extends AbstractEmbeddingStoreTestSupport {
-
+class CassandraEmbeddingStoreAstraIT extends CassandraEmbeddingStoreTestSupport {
 
     static final String DB = "test_langchain4j";
     static String token;

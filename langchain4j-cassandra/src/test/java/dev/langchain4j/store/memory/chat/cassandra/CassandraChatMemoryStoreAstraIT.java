@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * Test Cassandra Chat Memory Store with a Saas DB.
  */
 @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
-class ChatMemoryStoreCassandraWithinAstraIT extends AbstractChatMemoryStoreTestSupport {
+class CassandraChatMemoryStoreAstraIT extends CassandraChatMemoryStoreTestSupport {
 
     static final String DB = "test_langchain4j";
     static String token;
