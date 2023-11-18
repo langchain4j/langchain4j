@@ -1,7 +1,5 @@
-package dev.langchain4j.store.embedding.cassandra;
+package dev.langchain4j.store.embedding.astradb;
 
-import com.datastax.astra.sdk.AstraClient;
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.dtsx.astra.sdk.cassio.MetadataVectorCassandraTable;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
@@ -11,13 +9,13 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
  * @see EmbeddingStore
  * @see MetadataVectorCassandraTable
  */
-public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
+public class AstraDbEmbeddingStore {
 
     /**
      * Build the store from the configuration.
      *
      * @param config configuration
-     */
+
     public AstraDbEmbeddingStore(AstraDbEmbeddingConfiguration config) {
         CqlSession cqlSession = AstraClient.builder()
                 .withToken(config.getToken())
@@ -36,17 +34,17 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
 
     /**
      * Syntax Sugar Builder.
-     */
+     *
     public static class Builder {
 
         /**
          * Configuration built with the builder
-         */
+         *
         private final AstraDbEmbeddingConfiguration.AstraDbEmbeddingConfigurationBuilder conf;
 
         /**
          * Initialization
-         */
+         *
         public Builder() {
             conf = AstraDbEmbeddingConfiguration.builder();
         }
@@ -56,7 +54,7 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
          *
          * @param token token
          * @return current reference
-         */
+         *
         public Builder token(String token) {
             conf.token(token);
             return this;
@@ -68,7 +66,7 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
          * @param databaseId     database Identifier
          * @param databaseRegion database region
          * @return current reference
-         */
+         *
         public Builder database(String databaseId, String databaseRegion) {
             conf.databaseId(databaseId);
             conf.databaseRegion(databaseRegion);
@@ -80,7 +78,7 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
          *
          * @param dimension model dimension
          * @return current reference
-         */
+         *
         public Builder vectorDimension(int dimension) {
             conf.dimension(dimension);
             return this;
@@ -92,7 +90,7 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
          * @param keyspace keyspace name
          * @param table    table name
          * @return current reference
-         */
+         *
         public Builder table(String keyspace, String table) {
             conf.keyspace(keyspace);
             conf.table(table);
@@ -103,9 +101,9 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
          * Building the Store.
          *
          * @return store for Astra.
-         */
+         *
         public AstraDbEmbeddingStore build() {
             return new AstraDbEmbeddingStore(conf.build());
         }
-    }
+    }*/
 }

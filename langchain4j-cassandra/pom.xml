@@ -15,7 +15,8 @@
     </parent>
 
     <properties>
-        <astra-sdk.version>0.6.11</astra-sdk.version>
+        <astra-db-client.version>1.0.1-SNAPSHOT</astra-db-client.version>
+        <testcontainers.version>1.19.2</testcontainers.version>
     </properties>
 
     <dependencies>
@@ -39,8 +40,8 @@
 
         <dependency>
             <groupId>com.datastax.astra</groupId>
-            <artifactId>astra-sdk-vector</artifactId>
-            <version>${astra-sdk.version}</version>
+            <artifactId>astra-db-client</artifactId>
+            <version>${astra-db-client.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>ch.qos.logback</groupId>
@@ -60,23 +61,34 @@
             <version>1.9.4</version>
         </dependency>
 
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
             <version>${parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>cassandra</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
 

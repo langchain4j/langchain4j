@@ -1,6 +1,5 @@
-package dev.langchain4j.store.embedding.cassandra;
+package dev.langchain4j.store.rag;
 
-import com.dtsx.astra.sdk.utils.TestUtils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentType;
@@ -71,13 +70,14 @@ class SampleDocumentLoaderAndRagWithAstraTest {
                 .build();
 
         // Embed the document and it in the store
-        EmbeddingStore<TextSegment> embeddingStore = AstraDbEmbeddingStore.builder()
+        EmbeddingStore<TextSegment> embeddingStore = null;
+        /*AstraDbCqlEmbeddingStore.builder()
                 .token(astraToken)
                 .database(databaseId, TestUtils.TEST_REGION)
                 .table("langchain4j", "table_story")
                 .vectorDimension(1536)
                 .build();
-
+*/
         // Ingest method 2
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(splitter)
