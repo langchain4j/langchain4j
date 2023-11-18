@@ -1,5 +1,34 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import static dev.langchain4j.internal.Utils.isCollectionEmpty;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.apache.http.Header;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.message.BasicHeader;
+import org.elasticsearch.client.RestClient;
+import org.elasticsearch.client.RestClientBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
@@ -14,40 +43,16 @@ import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.JsonData;
+import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.endpoints.BooleanResponse;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.apache.http.Header;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.message.BasicHeader;
-import org.elasticsearch.client.RestClient;
-import org.elasticsearch.client.RestClientBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
@@ -98,6 +103,15 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.objectMapper = new ObjectMapper();
     }
 
+    public ElasticsearchEmbeddingStore(RestClient client, String indexName) {
+        JsonpMapper mapper = new JacksonJsonpMapper();
+        ElasticsearchTransport transport = new RestClientTransport(client, mapper);
+
+        this.client = new ElasticsearchClient(transport);
+        this.indexName = ensureNotNull(indexName, "indexName");
+        this.objectMapper = new ObjectMapper();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -108,6 +122,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String apiKey;
         private String userName;
         private String password;
+        private RestClient client;
         private String indexName = "default";
 
         /**
@@ -146,6 +161,15 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
+         * @param restClient Elasticsearch RestClient (optional).
+         *                   Effectively overrides all other connection parameters serverUrl, etc.
+         */
+        public Builder restClient(RestClient client) {
+            this.client = client;
+            return this;
+        }
+
+        /**
          * @param indexName Elasticsearch index name (optional).
          *                  Default value: "default".
          */
@@ -155,7 +179,11 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         public ElasticsearchEmbeddingStore build() {
-            return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+            if (client != null) {
+                return new ElasticsearchEmbeddingStore(client, indexName);
+            } else {
+                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+            }
         }
     }
 
