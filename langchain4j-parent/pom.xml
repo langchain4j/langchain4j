@@ -288,6 +288,13 @@
                     </exclusion>
                 </exclusions>
             </dependency>
+
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>4.2.0</version>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>
@@ -442,7 +449,11 @@
                             <scopes>compile,runtime,provided,test</scopes>
                             <acceptableLicenses>
                                 <license>
-                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)</name>
+                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)</name>
+                                    <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
+                                </license>
+                                <license>
+                                    <name>(The Apache Software License, Version 2\.0)</name>
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
                                 </license>
                                 <license>
