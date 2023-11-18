@@ -28,7 +28,7 @@
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.19.1</testcontainers.version>
+        <testcontainers.version>1.19.2</testcontainers.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
@@ -43,7 +43,6 @@
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.20.149</aws.java.sdk.version>
-        <testcontainers.version>1.19.0</testcontainers.version>
         <netty.version>4.1.100.Final</netty.version>
     </properties>
 
@@ -136,14 +135,10 @@
 
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>junit-jupiter</artifactId>
+                <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers</artifactId>
-                <version>${testcontainers.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
             </dependency>
 
             <dependency>
@@ -199,12 +194,6 @@
                 <artifactId>snakeyaml</artifactId>
                 <version>${snakeyaml.version}</version>
             </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-configuration-processor</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-configuration-processor</artifactId>
@@ -284,18 +273,6 @@
                         <artifactId>netty-handler</artifactId>
                     </exclusion>
                 </exclusions>
-            </dependency>
-
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers</artifactId>
-                <version>${testcontainers.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>localstack</artifactId>
-                <version>${testcontainers.version}</version>
             </dependency>
         </dependencies>
 
@@ -453,6 +430,10 @@
                                 <license>
                                     <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)</name>
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
+                                </license>
+                                <license>
+                                    <name>Apache 2.0</name>
+                                    <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>
