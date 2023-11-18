@@ -39,6 +39,7 @@
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-chatglm</module>
 
     </modules>
 
