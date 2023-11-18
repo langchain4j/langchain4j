@@ -131,7 +131,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
       retrieveEmbeddingsOnSearch
     );
 
-    return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
+    return matches.stream()
+            .filter(match -> match.score() >= minScore)
+            .collect(toList());
   }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
