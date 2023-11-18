@@ -5,44 +5,21 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 
-import java.util.ArrayList;
-import java.util.List;
-
 
 public class DocumentMapping {
 
     EmbeddingDocument generateDocument(String id, Embedding embedding, TextSegment textSegment) {
         if (textSegment == null) {
-            return new EmbeddingDocument(id, asDoublesList(embedding.vector()));
+            return new EmbeddingDocument(id, embedding.vectorAsList());
         }
-        return new EmbeddingDocument(id, asDoublesList(embedding.vector()), textSegment.text(), textSegment.metadata().asMap());
+        return new EmbeddingDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
     }
-
 
     EmbeddingMatch<TextSegment> asTextSegmentEmbeddingMatch(EmbeddingMatchDocument d) {
         TextSegment textSegment = null;
-        if(d.getMetadata()!=null) {
+        if (d.getMetadata() != null) {
             textSegment = new TextSegment(d.getText(), new Metadata(d.getMetadata()));
         }
-        return new EmbeddingMatch<>(d.getScore(), d.getId(), new Embedding(asFloatArray(d.getEmbedding())), textSegment);
+        return new EmbeddingMatch<>(d.getScore(), d.getId(), Embedding.from(d.getEmbedding()), textSegment);
     }
-
-    private List<Double> asDoublesList(float[] input) {
-        List<Double> result = new ArrayList<>();
-        for (double d : input) {
-            result.add(d);
-        }
-        return result;
-    }
-
-    private float[] asFloatArray(List<Double> input) {
-        float[] floats = new float[input.size()];
-        for (int i = 0; i < input.size(); i++) {
-            floats[i] = input.get(i).floatValue();
-        }
-        return floats;
-
-    }
-
-
 }

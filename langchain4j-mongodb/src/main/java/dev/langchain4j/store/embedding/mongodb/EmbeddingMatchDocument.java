@@ -12,7 +12,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class EmbeddingMatchDocument {
     private String id;
-    private List<Double> embedding;
+    private List<Float> embedding;
     private String text;
     private Map<String, String> metadata;
     private Double score;

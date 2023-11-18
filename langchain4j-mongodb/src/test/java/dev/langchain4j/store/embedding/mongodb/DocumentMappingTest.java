@@ -52,7 +52,7 @@ class DocumentMappingTest {
 
         EmbeddingDocument embeddingDocument = documentMapping.generateDocument(id, embedding, textSegment);
 
-        assertThat(embeddingDocument.getEmbedding().get(0)).isEqualTo(1 / 3d, within(0.00000001d));
+        assertThat(embeddingDocument.getEmbedding().get(0)).isEqualTo(1 / 3f, within(0.00000001f));
     }
 
     @Test
@@ -68,7 +68,7 @@ class DocumentMappingTest {
     @Test
     void asTextSegmentEmbeddingMatch() {
         Double score = 1 / 3D;
-        List<Double> embedding = Arrays.asList(1.0D, 2.0D, 1 / 3D);
+        List<Float> embedding = Arrays.asList(1.0F, 2.0F, 1 / 3F);
         EmbeddingMatchDocument matchDocument = new EmbeddingMatchDocument("id", embedding, "text", Maps.newHashMap("key", "value"), score);
         EmbeddingMatch<TextSegment> match = documentMapping.asTextSegmentEmbeddingMatch(matchDocument);
 

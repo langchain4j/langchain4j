@@ -19,7 +19,7 @@ public class EmbeddingDocument {
     @NonNull
     private String id;
     @NonNull
-    private List<Double> embedding;
+    private List<Float> embedding;
 
     private String text;
     private Map<String, String> metadata;

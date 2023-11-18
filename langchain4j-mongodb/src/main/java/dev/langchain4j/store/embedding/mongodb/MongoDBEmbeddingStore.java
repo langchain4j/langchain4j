@@ -136,7 +136,7 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         return ids;
     }
 
-    private void createIndexIfNotExist(List<Double> embedding, Map<String, String> metaData) {
+    private void createIndexIfNotExist(List<Float> embedding, Map<String, String> metaData) {
         if (shouldCreateIndex) {
             Optional<Document> existing = StreamSupport.stream(collection.listSearchIndexes().spliterator(), false)
                     .filter(index -> indexName.equals(index.getString("name")))
