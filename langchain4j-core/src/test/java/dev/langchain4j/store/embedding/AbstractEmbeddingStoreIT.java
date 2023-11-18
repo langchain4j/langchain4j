@@ -7,21 +7,17 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
-import static org.awaitility.Awaitility.await;
 
 /**
  * A minimum set of tests that each implementation of {@link EmbeddingStore} must pass.
  */
 public abstract class AbstractEmbeddingStoreIT {
-
-    private static final Duration TIMEOUT = Duration.ofSeconds(2);
 
     protected abstract EmbeddingStore<TextSegment> embeddingStore();
 
@@ -29,6 +25,10 @@ public abstract class AbstractEmbeddingStoreIT {
 
     @BeforeEach
     void beforeEach() {
+        ensureStoreIsEmpty();
+    }
+
+    protected void ensureStoreIsEmpty() {
         Embedding embedding = embeddingModel().embed("hello").content();
         assertThat(embeddingStore().findRelevant(embedding, Integer.MAX_VALUE)).isEmpty();
     }
@@ -41,7 +41,7 @@ public abstract class AbstractEmbeddingStoreIT {
         String id = embeddingStore().add(embedding);
         assertThat(id).isNotBlank();
 
-        awaitUntilPersisted(embedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -61,7 +61,7 @@ public abstract class AbstractEmbeddingStoreIT {
 
         embeddingStore().add(id, embedding);
 
-        awaitUntilPersisted(embedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -82,7 +82,7 @@ public abstract class AbstractEmbeddingStoreIT {
         String id = embeddingStore().add(embedding, segment);
         assertThat(id).isNotBlank();
 
-        awaitUntilPersisted(embedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -103,7 +103,7 @@ public abstract class AbstractEmbeddingStoreIT {
         String id = embeddingStore().add(embedding, segment);
         assertThat(id).isNotBlank();
 
-        awaitUntilPersisted(embedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -127,8 +127,7 @@ public abstract class AbstractEmbeddingStoreIT {
         assertThat(ids.get(1)).isNotBlank();
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
-        awaitUntilPersisted(firstEmbedding);
-        awaitUntilPersisted(secondEmbedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -167,8 +166,7 @@ public abstract class AbstractEmbeddingStoreIT {
         assertThat(ids.get(1)).isNotBlank();
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
-        awaitUntilPersisted(firstEmbedding);
-        awaitUntilPersisted(secondEmbedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -200,8 +198,7 @@ public abstract class AbstractEmbeddingStoreIT {
         Embedding secondEmbedding = embeddingModel().embed("hi").content();
         embeddingStore().add(secondId, secondEmbedding);
 
-        awaitUntilPersisted(firstEmbedding);
-        awaitUntilPersisted(secondEmbedding);
+        awaitUntilPersisted();
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -250,7 +247,7 @@ public abstract class AbstractEmbeddingStoreIT {
         String id = embeddingStore().add(embedding);
         assertThat(id).isNotBlank();
 
-        awaitUntilPersisted(embedding);
+        awaitUntilPersisted();
 
         Embedding referenceEmbedding = embeddingModel().embed("hi").content();
 
@@ -264,10 +261,7 @@ public abstract class AbstractEmbeddingStoreIT {
         );
     }
 
-    private void awaitUntilPersisted(Embedding embedding) {
-        await().atMost(TIMEOUT).until(() -> {
-            List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, Integer.MAX_VALUE);
-            return !relevant.isEmpty() && relevant.get(0).embedding().equals(embedding);
-        });
+    protected void awaitUntilPersisted() {
+        // not waiting by default
     }
 }
