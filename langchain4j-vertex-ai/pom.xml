@@ -14,7 +14,7 @@
     <artifactId>langchain4j-vertex-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Vertex AI</name>
+    <name>LangChain4j integration with Google Vertex AI</name>
 
     <dependencies>
 
