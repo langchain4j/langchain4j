@@ -24,9 +24,16 @@ public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
     public static final String DALL_E_SIZE_1024_x_1024 = "1024x1024"; // for 2 & 3
     public static final String DALL_E_SIZE_1792_x_1024 = "1792x1024"; // for 3 only
     public static final String DALL_E_SIZE_1024_x_1792 = "1024x1792"; // for 3 only
+    public static final String DALL_E_QUALITY_STANDARD = "standard";
+    public static final String DALL_E_QUALITY_HD = "hd";
+    public static final String DALL_E_STYLE_VIVID = "vivid";
+    public static final String DALL_E_STYLE_NATURAL = "natural";
 
     private final String model;
     private final String size;
+    private final String quality;
+    private final String style;
+    private final String downloadFolder;
 
     private final OpenAiDalleClient client;
 
@@ -37,14 +44,15 @@ public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
             @NonNull String apiKey,
             String model,
             String size,
+            String quality,
+            String style,
             Duration timeout,
             Integer maxRetries,
             Proxy proxy,
             Boolean logRequests,
-            Boolean logResponses
+            Boolean logResponses,
+            String downloadFolder
     ) {
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
         this.client =
                 OpenAiDalleClient
                         .builder()
@@ -60,15 +68,23 @@ public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
 
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.model = getOrDefault(model, DALL_E_3);
-        this.size = getOrDefault(size, DALL_E_SIZE_1024_x_1024);
+        this.size = size;
+        this.quality = quality;
+        this.style = style;
+        this.downloadFolder = downloadFolder;
     }
 
-    //  @Override
+    @Override
     public Response<Image> generate(String prompt) {
-        OpenAiDalleRequest request = OpenAiDalleRequest.builder().prompt(prompt).size(size).model(model).build();
+        OpenAiDalleRequest request = OpenAiDalleRequest.builder().prompt(prompt).size(size).model(model).quality(quality).style(style).build();
 
         OpenAiDalleResponse response = withRetry(() -> client.generate(request), maxRetries);
+        String url = response.getData().get(0).getUrl();
+        if (downloadFolder != null) {
+            url = OpenAiImageDownloader.downloadFile(url, downloadFolder);
+        }
+        Image image = Image.builder().url(url).build();
 
-        return Response.from(Image.builder().url(response.getData().get(0).getUrl()).build());
+        return Response.from(image);
     }
 }

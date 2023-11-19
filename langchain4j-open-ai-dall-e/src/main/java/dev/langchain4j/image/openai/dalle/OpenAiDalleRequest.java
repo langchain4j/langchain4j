@@ -1,89 +1,17 @@
 package dev.langchain4j.image.openai.dalle;
 
+import lombok.Builder;
+import lombok.Data;
+
+@Builder
+@Data
 public class OpenAiDalleRequest {
-
-  private String model;
-  private String prompt;
-  private int n;
-  private String size;
-
-  public static Builder builder() {
-    return new Builder();
-  }
-
-  public static class Builder {
 
     private String model;
     private String prompt;
+    @Builder.Default
     private int n = 1;
     private String size;
-
-    public Builder model(String model) {
-      this.model = model;
-      return this;
-    }
-
-    public Builder prompt(String prompt) {
-      this.prompt = prompt;
-      return this;
-    }
-
-    public Builder n(int n) {
-      this.n = n;
-      return this;
-    }
-
-    public Builder size(String size) {
-      this.size = size;
-      return this;
-    }
-
-    public OpenAiDalleRequest build() {
-      return new OpenAiDalleRequest(this);
-    }
-  }
-
-  private OpenAiDalleRequest(Builder builder) {
-    this.model = builder.model;
-    this.prompt = builder.prompt;
-    this.n = builder.n;
-    this.size = builder.size;
-  }
-
-  public String getModel() {
-    return model;
-  }
-
-  public void setModel(String model) {
-    this.model = model;
-  }
-
-  public String getPrompt() {
-    return prompt;
-  }
-
-  public void setPrompt(String prompt) {
-    this.prompt = prompt;
-  }
-
-  public int getN() {
-    return n;
-  }
-
-  public void setN(int n) {
-    this.n = n;
-  }
-
-  public String getSize() {
-    return size;
-  }
-
-  public void setSize(String size) {
-    this.size = size;
-  }
-
-  @Override
-  public String toString() {
-    return "ImageRequest{" + "prompt='" + prompt + '\'' + ", n=" + n + ", size='" + size + '\'' + '}';
-  }
+    private String quality;
+    private String style;
 }
