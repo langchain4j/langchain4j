@@ -33,7 +33,7 @@ public class Embedding {
         return list;
     }
 
-    public int dimensions() {
+    public int dimension() {
         return vector.length;
     }
 

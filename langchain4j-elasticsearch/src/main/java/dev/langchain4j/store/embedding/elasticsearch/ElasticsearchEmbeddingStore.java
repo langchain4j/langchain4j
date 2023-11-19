@@ -45,8 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -65,17 +64,20 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     /**
      * Creates an instance of ElasticsearchEmbeddingStore.
      *
-     * @param serverUrl Elasticsearch Server URL
+     * @param serverUrl Elasticsearch Server URL (mandatory)
      * @param apiKey    Elasticsearch API key (optional)
      * @param userName  Elasticsearch userName (optional)
      * @param password  Elasticsearch password (optional)
-     * @param indexName Elasticsearch index name (optional). Default value: "default"
+     * @param indexName Elasticsearch index name (optional). Default value: "default".
+     *                  Index will be created automatically if not exists.
+     * @param dimension Embedding vector dimension (mandatory when index does not exist yet).
      */
     public ElasticsearchEmbeddingStore(String serverUrl,
                                        String apiKey,
                                        String userName,
                                        String password,
-                                       String indexName) {
+                                       String indexName,
+                                       Integer dimension) {
 
         RestClientBuilder restClientBuilder = RestClient
                 .builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
@@ -97,15 +99,19 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
+
+        createIndexIfNotExist(indexName, dimension);
     }
 
-    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName) {
+    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName, Integer dimension) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
+
+        createIndexIfNotExist(indexName, dimension);
     }
 
     public static Builder builder() {
@@ -120,6 +126,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String password;
         private RestClient restClient;
         private String indexName = "default";
+        private Integer dimension;
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -168,8 +175,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * @param indexName Elasticsearch index name (optional).
-         *                  Default value: "default".
+         * @param indexName Elasticsearch index name (optional). Default value: "default".
+         *                  Index will be created automatically if not exists.
          * @return builder
          */
         public Builder indexName(String indexName) {
@@ -177,11 +184,20 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return this;
         }
 
+        /**
+         * @param dimension Embedding vector dimension (mandatory when index does not exist yet).
+         * @return builder
+         */
+        public Builder dimension(Integer dimension) {
+            this.dimension = dimension;
+            return this;
+        }
+
         public ElasticsearchEmbeddingStore build() {
             if (restClient != null) {
-                return new ElasticsearchEmbeddingStore(restClient, indexName);
+                return new ElasticsearchEmbeddingStore(restClient, indexName, dimension);
             } else {
-                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName);
+                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName, dimension);
             }
         }
     }
@@ -256,8 +272,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         try {
-            createIndexIfNotExist(embeddings.get(0).dimensions());
-
             bulk(ids, embeddings, embedded);
         } catch (IOException e) {
             log.error("[ElasticSearch encounter I/O Exception]", e);
@@ -265,18 +279,23 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
-    private void createIndexIfNotExist(int dim) throws IOException {
-        BooleanResponse response = client.indices().exists(c -> c.index(indexName));
-        if (!response.value()) {
-            client.indices().create(c -> c.index(indexName)
-                    .mappings(getDefaultMappings(dim)));
+    private void createIndexIfNotExist(String indexName, Integer dimension) {
+        try {
+            BooleanResponse response = client.indices().exists(c -> c.index(indexName));
+            if (!response.value()) {
+                ensureGreaterThanZero(dimension, "dimension");
+                client.indices().create(c -> c.index(indexName)
+                        .mappings(getDefaultMappings(dimension)));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
-    private TypeMapping getDefaultMappings(int dim) {
+    private TypeMapping getDefaultMappings(int dimension) {
         Map<String, Property> properties = new HashMap<>(4);
         properties.put("text", Property.of(p -> p.text(TextProperty.of(t -> t))));
-        properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dim)))));
+        properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dimension)))));
         return TypeMapping.of(c -> c.properties(properties));
     }
 
