@@ -33,6 +33,8 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build modules requiring JDK 17
+        env:
+          MAVEN_OPTS: "--add-opens java.logging/org.bouncycastle.provider=java.logging"
         run: mvn --batch-mode install -DskipITs -pl langchain4j-graal
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
