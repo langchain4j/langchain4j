@@ -296,7 +296,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         try {
-            createIndexIfNotExist(embeddings.get(0).dimensions());
+            createIndexIfNotExist(embeddings.get(0).dimension());
             bulk(ids, embeddings, embedded);
         } catch (IOException ex) {
             log.error("[I/O OpenSearch Exception]", ex);
