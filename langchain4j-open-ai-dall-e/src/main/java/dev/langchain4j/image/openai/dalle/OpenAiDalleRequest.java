@@ -7,11 +7,13 @@ import lombok.Data;
 @Data
 public class OpenAiDalleRequest {
 
-    private String model;
-    private String prompt;
-    @Builder.Default
-    private int n = 1;
-    private String size;
-    private String quality;
-    private String style;
+  private String model;
+  private String prompt;
+
+  @Builder.Default
+  private int n = 1;
+
+  private String size;
+  private String quality;
+  private String style;
 }

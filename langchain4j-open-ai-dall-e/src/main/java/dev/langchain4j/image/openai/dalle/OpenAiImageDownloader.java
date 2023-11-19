@@ -11,27 +11,27 @@ import java.util.regex.Pattern;
 
 class OpenAiImageDownloader {
 
-    static String downloadFile(String fileUrl, String destination) {
-        try {
-            URL netUrl = new URL(fileUrl);
-            String destinationFilePath = destination + "/" + extractFileName(fileUrl);
-            try (
-                    InputStream inputStream = netUrl.openStream();
-                    ReadableByteChannel channel = Channels.newChannel(inputStream);
-                    FileOutputStream outputStream = new FileOutputStream(destinationFilePath)
-            ) {
-                outputStream.getChannel().transferFrom(channel, 0, Long.MAX_VALUE);
-            }
-            return destinationFilePath;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+  static String downloadFile(String fileUrl, String destination) {
+    try {
+      URL netUrl = new URL(fileUrl);
+      String destinationFilePath = destination + "/" + extractFileName(fileUrl);
+      try (
+        InputStream inputStream = netUrl.openStream();
+        ReadableByteChannel channel = Channels.newChannel(inputStream);
+        FileOutputStream outputStream = new FileOutputStream(destinationFilePath)
+      ) {
+        outputStream.getChannel().transferFrom(channel, 0, Long.MAX_VALUE);
+      }
+      return destinationFilePath;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
+  }
 
-    private static String extractFileName(String url) {
-        Pattern pattern = Pattern.compile(".*/([^/?]+)\\?.*");
-        Matcher matcher = pattern.matcher(url);
+  private static String extractFileName(String url) {
+    Pattern pattern = Pattern.compile(".*/([^/?]+)\\?.*");
+    Matcher matcher = pattern.matcher(url);
 
-        return matcher.find() ? matcher.group(1) : "image.png";
-    }
+    return matcher.find() ? matcher.group(1) : "image.png";
+  }
 }
