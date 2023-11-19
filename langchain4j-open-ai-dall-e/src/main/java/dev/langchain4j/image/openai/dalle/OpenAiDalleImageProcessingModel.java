@@ -58,8 +58,8 @@ public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
         .readTimeout(timeout)
         .writeTimeout(timeout)
         .proxy(proxy)
-        .logRequests(logRequests)
-        .logResponses(logResponses)
+        .logRequests(getOrDefault(logRequests, false))
+        .logResponses(getOrDefault(logResponses, false))
         .build();
 
     this.maxRetries = getOrDefault(maxRetries, 3);
