@@ -6,6 +6,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
+import io.milvus.exception.ParamException;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 
@@ -47,10 +48,15 @@ class Mapper {
                                                                 boolean queryForVectorOnSearch) {
         List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>();
 
-        List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(ID_FIELD_NAME).getFieldData();
         Map<String, Embedding> idToEmbedding = new HashMap<>();
         if (queryForVectorOnSearch) {
-            idToEmbedding.putAll(queryEmbeddings(milvusClient, collectionName, rowIds, consistencyLevel));
+            try {
+                List<String> rowIds = (List<String>) resultsWrapper.getFieldWrapper(ID_FIELD_NAME).getFieldData();
+                idToEmbedding.putAll(queryEmbeddings(milvusClient, collectionName, rowIds, consistencyLevel));
+            } catch (ParamException e) {
+                // There is no way to check if the result is empty or not.
+                // If the result is empty, the exception will be thrown.
+            }
         }
 
         for (int i = 0; i < resultsWrapper.getRowRecords().size(); i++) {
