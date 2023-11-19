@@ -47,8 +47,8 @@ public class VertexAiEmbeddingIndex {
                         ? metadata.asMap()
                         : null));
 
-        if (embedding.dimensions() > dimensions) {
-            dimensions = embedding.dimensions();
+        if (embedding.dimension() > dimensions) {
+            dimensions = embedding.dimension();
         }
 
         return id;
@@ -80,8 +80,8 @@ public class VertexAiEmbeddingIndex {
                     embedding.vectorAsList(),
                     null));
 
-            if (embedding.dimensions() > dimensions) {
-                dimensions = embedding.dimensions();
+            if (embedding.dimension() > dimensions) {
+                dimensions = embedding.dimension();
             }
         }
 
