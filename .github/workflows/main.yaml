@@ -30,11 +30,9 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: '17'
-          distribution: 'temurin'
+          distribution: 'adopt'
           cache: 'maven'
       - name: Build modules requiring JDK 17
-        env:
-          MAVEN_OPTS: "--add-opens java.logging/java.util.logging=org.bouncycastle.provider"
         run: mvn --batch-mode install -DskipITs -pl langchain4j-graal
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
