@@ -143,26 +143,4 @@
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>compliance</id>
-            <activation>
-                <property>
-                    <name>compliance</name>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.honton.chas</groupId>
-                        <artifactId>license-maven-plugin</artifactId>
-                        <configuration>
-                            <skipCompliance>true</skipCompliance>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
-
 </project>
