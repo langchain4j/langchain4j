@@ -11,6 +11,10 @@ import java.time.Duration;
 import lombok.Builder;
 import lombok.NonNull;
 
+/**
+ * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
+ * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
+ */
 public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
 
   public static final String DALL_E_2 = "dall-e-2"; // anyone still needs that? :)
@@ -35,6 +39,14 @@ public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
 
   private final Integer maxRetries;
 
+  /**
+   * Instantiates OpenAI DALL·E image processing model.
+   * Find the parameters description <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
+   * Only one image can be generated pro request currently.
+   *
+   * @param model dall-e-3 is default one
+   * @param downloadFolder specifies the local folder where the generated image will be downloaded to (in case provided).
+   */
   @Builder
   public OpenAiDalleImageProcessingModel(
     @NonNull String apiKey,
