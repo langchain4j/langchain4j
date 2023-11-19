@@ -1,6 +1,6 @@
-package dev.langchain4j.data.image;
+package dev.langchain4j.image.openai.dalle;
 
-public class ImageRequest {
+public class OpenAiDalleRequest {
 
   private String model;
   private String prompt;
@@ -38,12 +38,12 @@ public class ImageRequest {
       return this;
     }
 
-    public ImageRequest build() {
-      return new ImageRequest(this);
+    public OpenAiDalleRequest build() {
+      return new OpenAiDalleRequest(this);
     }
   }
 
-  private ImageRequest(Builder builder) {
+  private OpenAiDalleRequest(Builder builder) {
     this.model = builder.model;
     this.prompt = builder.prompt;
     this.n = builder.n;

@@ -1,8 +1,12 @@
+package dev.langchain4j.image.openai.dalle;
+
 import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
+import lombok.NoArgsConstructor;
 import okhttp3.Headers;
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -11,12 +15,10 @@ import okio.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@NoArgsConstructor
 class RequestLoggingInterceptor implements Interceptor {
     private static final Logger log = LoggerFactory.getLogger(RequestLoggingInterceptor.class);
     private static final Pattern BEARER_PATTERN = Pattern.compile("(Bearer\\s*sk-)(\\w{2})(\\w+)(\\w{2})");
-
-    RequestLoggingInterceptor() {
-    }
 
     public Response intercept(Interceptor.Chain chain) throws IOException {
         Request request = chain.request();
@@ -26,7 +28,7 @@ class RequestLoggingInterceptor implements Interceptor {
 
     private static void log(Request request) {
         try {
-            log.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}", new Object[]{request.method(), request.url(), inOneLine(request.headers()), getBody(request)});
+            log.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}", request.method(), request.url(), inOneLine(request.headers()), getBody(request));
         } catch (Exception var2) {
             log.warn("Failed to log request", var2);
         }
@@ -34,9 +36,9 @@ class RequestLoggingInterceptor implements Interceptor {
     }
 
     static String inOneLine(Headers headers) {
-        return (String)StreamSupport.stream(headers.spliterator(), false).map((header) -> {
-            String headerKey = (String)header.component1();
-            String headerValue = (String)header.component2();
+        return StreamSupport.stream(headers.spliterator(), false).map((header) -> {
+            String headerKey = header.component1();
+            String headerValue = header.component2();
             if (headerKey.equals("Authorization")) {
                 headerValue = maskAuthorizationHeaderValue(headerValue);
             } else if (headerKey.equals("api-key")) {
@@ -52,7 +54,7 @@ class RequestLoggingInterceptor implements Interceptor {
             Matcher matcher = BEARER_PATTERN.matcher(authorizationHeaderValue);
             StringBuffer sb = new StringBuffer();
 
-            while(matcher.find()) {
+            while (matcher.find()) {
                 matcher.appendReplacement(sb, matcher.group(1) + matcher.group(2) + "..." + matcher.group(4));
             }
 

@@ -1,36 +1,35 @@
 package dev.langchain4j.data.image;
 
-import java.util.List;
-
 public class Image {
-    private long created;
-    private List<ImageData> data;
+    private String url;
 
-    public long getCreated() {
-        return created;
+    public String getUrl() {
+        return url;
     }
 
-    public void setCreated(long created) {
-        this.created = created;
+    public void setUrl(String url) {
+        this.url = url;
     }
 
-    public List<ImageData> getData() {
-        return data;
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public void setData(List<ImageData> data) {
-        this.data = data;
-    }
+    public static class Builder {
 
-    public static class ImageData {
         private String url;
 
-        public String getUrl() {
-            return url;
+        public Builder url(String url) {
+            this.url = url;
+            return this;
         }
 
-        public void setUrl(String url) {
-            this.url = url;
+        public Image build() {
+            return new Image(this);
         }
+    }
+
+    private Image(Builder builder) {
+        this.url = builder.url;
     }
 }

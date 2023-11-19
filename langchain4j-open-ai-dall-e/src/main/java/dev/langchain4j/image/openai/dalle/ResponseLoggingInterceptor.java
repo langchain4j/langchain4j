@@ -1,15 +1,17 @@
+package dev.langchain4j.image.openai.dalle;
+
 import java.io.IOException;
+
+import lombok.NoArgsConstructor;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@NoArgsConstructor
 class ResponseLoggingInterceptor implements Interceptor {
     private static final Logger log = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);
-
-    ResponseLoggingInterceptor() {
-    }
 
     public Response intercept(Interceptor.Chain chain) throws IOException {
         Request request = chain.request();
@@ -20,7 +22,7 @@ class ResponseLoggingInterceptor implements Interceptor {
 
     static void log(Response response) {
         try {
-            log.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}", new Object[]{response.code(), RequestLoggingInterceptor.inOneLine(response.headers()), getBody(response)});
+            log.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}", response.code(), RequestLoggingInterceptor.inOneLine(response.headers()), getBody(response));
         } catch (IOException var2) {
             log.warn("Failed to log response", var2);
         }

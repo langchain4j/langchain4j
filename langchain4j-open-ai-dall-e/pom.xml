@@ -14,7 +14,8 @@
     <artifactId>langchain4j-open-ai-dall-e</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with OpenAI DALL·E models to generate or manipulate images</name>
+    <name>LangChain4j integration with OpenAI DALL·E</name>
+    <description>Integration with OpenAI DALL·E models to generate artistic images</description>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

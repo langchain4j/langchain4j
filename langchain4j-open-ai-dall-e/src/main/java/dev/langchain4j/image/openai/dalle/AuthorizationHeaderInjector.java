@@ -1,15 +1,18 @@
+package dev.langchain4j.image.openai.dalle;
+
 import java.io.IOException;
+
+import lombok.RequiredArgsConstructor;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.jetbrains.annotations.NotNull;
 
-class AuthorizationHeaderInjector implements Interceptor {
-    private final String apiKey;
 
-    AuthorizationHeaderInjector(String apiKey) {
-        this.apiKey = apiKey;
-    }
+@RequiredArgsConstructor
+class AuthorizationHeaderInjector implements Interceptor {
+
+    private final String apiKey;
 
     @NotNull
     public Response intercept(Interceptor.Chain chain) throws IOException {
