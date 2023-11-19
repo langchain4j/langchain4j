@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
           cache: 'maven'
       - name: Build modules requiring JDK 17
         run: mvn --batch-mode install -DskipITs -pl langchain4j-graal
