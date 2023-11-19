@@ -40,6 +40,9 @@
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
 
+        <!-- other -->
+        <module>langchain4j-graal</module>
+
     </modules>
 
 </project>
