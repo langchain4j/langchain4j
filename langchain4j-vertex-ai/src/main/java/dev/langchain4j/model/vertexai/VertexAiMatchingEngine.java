@@ -22,9 +22,14 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.Utils.isCollectionEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.singletonList;
 
 /**
  * A matching engine that uses Vertex AI to store and match embeddings.
@@ -52,13 +57,13 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
     private final CredentialsProvider credentialsProvider;
 
     /**
-     * Adds the text to the index.
+     * Add the text to the index.
      *
      * @param text the text
      * @return the id of the text
      */
     public String addText(String text) {
-        return addAllSegments(Lists.asList(TextSegment.from(text), new TextSegment[]{})).get(0);
+        return addAllSegments(singletonList(TextSegment.from(text))).get(0);
     }
 
     @Override
@@ -73,10 +78,7 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
 
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
-        return addAll(
-                Lists.asList(embedding, new Embedding[]{}),
-                Lists.asList(textSegment, new TextSegment[]{}))
-                .get(0);
+        return addAll(singletonList(embedding), singletonList(textSegment)).get(0);
     }
 
     /**
@@ -100,6 +102,11 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
      */
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
+        if (isCollectionEmpty(embeddings)) {
+            log.info("Empty embeddings - no ops");
+            return new ArrayList<>();
+        }
+
         final VertexAiEmbeddingIndex index = new VertexAiEmbeddingIndex();
         final List<String> ids = embeddings
                 .stream()
@@ -130,6 +137,12 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
      */
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
+        if (isCollectionEmpty(embeddings)) {
+            log.info("Empty embeddings - no ops");
+            return new ArrayList<>();
+        }
+        ensureTrue(embedded != null, "embedded is null");
+        ensureTrue(embedded.size() == embeddings.size(), "embeddings size is not equal to embedded size");
 
         final VertexAiEmbeddingIndex index = new VertexAiEmbeddingIndex();
 
