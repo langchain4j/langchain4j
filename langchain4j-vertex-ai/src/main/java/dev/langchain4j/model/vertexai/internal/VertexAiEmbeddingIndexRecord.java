@@ -7,6 +7,8 @@ import lombok.Setter;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.*;
+
 /**
  * This class is used to serialize the embedding index record to JSON.
  */
@@ -20,6 +22,10 @@ public class VertexAiEmbeddingIndexRecord {
     private Map<String, String> metadata;
 
     public VertexAiEmbeddingIndexRecord(String id, List<Float> embedding, Map<String, String> metadata) {
+        ensureNotBlank(id, "id cannot be blank");
+        ensureNotNull(embedding, "embedding cannot be null");
+        ensureNotEmpty(embedding, "embedding cannot be empty");
+
         this.id = id;
         this.embedding = embedding;
         this.metadata = metadata != null && !metadata.isEmpty()

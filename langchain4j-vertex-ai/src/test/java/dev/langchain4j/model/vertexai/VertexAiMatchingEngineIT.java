@@ -38,6 +38,8 @@ public class VertexAiMatchingEngineIT {
                 .project("[PROJECT_ID]")
                 .build();
 
+        assertThat(matchingEngine.isAvoidDups()).isTrue();
+
         final List<EmbeddingMatch<TextSegment>> matches = matchingEngine.findRelevant("lunch", 2, 0.5);
         assertThat(matches).hasSize(2);
         assertThat(matches.get(0).score()).isGreaterThan(0.5);

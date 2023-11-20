@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.ValidationUtils.*;
+
 /**
  * Represents an embedding index.
  */
@@ -33,13 +35,11 @@ public class VertexAiEmbeddingIndex {
     /**
      * Adds an embedding to the index.
      *
+     * @param id        the id of the embedding
      * @param embedding the embedding
      * @param metadata  the metadata
-     * @return the id of the embedding
      */
-    public String addEmbedding(Embedding embedding, Metadata metadata) {
-        final String id = UUID.randomUUID().toString();
-
+    public void addEmbedding(String id, Embedding embedding, Metadata metadata) {
         records.add(new VertexAiEmbeddingIndexRecord(
                 id,
                 embedding.vectorAsList(),
@@ -50,18 +50,20 @@ public class VertexAiEmbeddingIndex {
         if (embedding.dimension() > dimensions) {
             dimensions = embedding.dimension();
         }
-
-        return id;
     }
 
     /**
      * Adds an embedding to the index.
      *
+     * @param id        the id of the embedding
      * @param embedding the embedding
-     * @return the id of the embedding
      */
-    public String addEmbedding(Embedding embedding) {
-        return addEmbedding(embedding, null);
+    public void addEmbedding(String id, Embedding embedding) {
+        ensureNotBlank(id, "id cannot be blank");
+        ensureNotNull(embedding, "embedding cannot be null");
+        ensureTrue(embedding.dimension() > 0, "embedding must have at least one dimension");
+
+        addEmbedding(id, embedding, null);
     }
 
     /**

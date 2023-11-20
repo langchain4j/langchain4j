@@ -15,6 +15,7 @@ import dev.langchain4j.model.vertexai.internal.VertexAiEmbeddingIndex;
 import dev.langchain4j.model.vertexai.internal.VertexAiIndexEndpoint;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +28,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.Utils.isCollectionEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 
@@ -55,6 +56,9 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
     @Getter(lazy = true)
     private final VertexAiIndexEndpoint indexEndpoint = initIndexEndpoint();
     private final CredentialsProvider credentialsProvider;
+    @Builder.Default
+    @Getter
+    private final boolean avoidDups = true;
 
     /**
      * Add the text to the index.
@@ -110,7 +114,11 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
         final VertexAiEmbeddingIndex index = new VertexAiEmbeddingIndex();
         final List<String> ids = embeddings
                 .stream()
-                .map(index::addEmbedding)
+                .map(embedding -> {
+                    final String id = randomUUID();
+                    index.addEmbedding(id, embedding);
+                    return id;
+                })
                 .collect(Collectors.toList());
 
         final String filename = "indexes/" + UUID.randomUUID() + ".json";
@@ -152,7 +160,9 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
                         ImmutablePair::new)
                 .map(pair -> {
                     final TextSegment textSegment = pair.getRight();
-                    final String id = index.addEmbedding(pair.getLeft(), textSegment.metadata());
+                    final String id = avoidDups ? generateUUIDFrom(textSegment.text()) : randomUUID();
+
+                    index.addEmbedding(id, pair.getLeft(), textSegment.metadata());
                     upload(textSegment.text(), "documents/" + id);
 
                     return id;
