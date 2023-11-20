@@ -97,11 +97,12 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
 
             if (useIndex) {
+                final String indexName = table + "_ivfflat_index";
                 connection.createStatement().executeUpdate(String.format(
-                        "CREATE INDEX IF NOT EXISTS ON %s " +
+                        "CREATE INDEX IF NOT EXISTS %s ON %s " +
                                 "USING ivfflat (embedding vector_cosine_ops) " +
                                 "WITH (lists = %s)",
-                        table, ensureGreaterThanZero(indexListSize, "indexListSize")));
+                        indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize")));
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
