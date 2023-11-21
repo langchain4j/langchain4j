@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -26,10 +27,11 @@ public class VertexAiMatchingEngineIT {
                 .maxRetries(3)
                 .build();
 
+        final Embedding embedding = embeddingModel.embed("lunch").content();
+
         VertexAiMatchingEngine matchingEngine = VertexAiMatchingEngine
                 .builder()
                 .endpoint("us-central1-aiplatform.googleapis.com:443")
-                .embeddingModel(embeddingModel)
                 .bucketName("[BUCKET_NAME]")
                 .indexId("[INDEX_ID]")
                 .deployedIndexId("[DEPLOYED_INDEX_ID]")
@@ -40,7 +42,7 @@ public class VertexAiMatchingEngineIT {
 
         assertThat(matchingEngine.isAvoidDups()).isTrue();
 
-        final List<EmbeddingMatch<TextSegment>> matches = matchingEngine.findRelevant("lunch", 2, 0.5);
+        final List<EmbeddingMatch<TextSegment>> matches = matchingEngine.findRelevant(embedding, 2, 0.5);
         assertThat(matches).hasSize(2);
         assertThat(matches.get(0).score()).isGreaterThan(0.5);
         assertThat(matches.get(1).score()).isGreaterThan(0.5);
