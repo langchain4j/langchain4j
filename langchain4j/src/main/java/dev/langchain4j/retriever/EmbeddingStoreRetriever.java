@@ -34,9 +34,9 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
         List<EmbeddingMatch<TextSegment>> relevant;
         if (minScore == null) {
-            relevant = embeddingStore.findRelevant(embeddedText, maxResults);
+            relevant = embeddingStore.findRelevant(text,embeddedText, maxResults);
         } else {
-            relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore);
+            relevant = embeddingStore.findRelevant(text,embeddedText, maxResults, minScore);
         }
 
         return relevant.stream()
