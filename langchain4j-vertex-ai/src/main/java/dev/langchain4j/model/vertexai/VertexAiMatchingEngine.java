@@ -16,6 +16,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,25 +37,33 @@ import static java.util.Collections.singletonList;
 @Slf4j
 public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
 
+    @NonNull
     private final String endpoint;
+    @NonNull
+    private final String bucketName;
+    @NonNull
+    private final String project;
+    @NonNull
+    private final String location;
+    @NonNull
+    private final String indexEndpointId;
+    @NonNull
+    private final String deployedIndexId;
+    @NonNull
+    private final String indexId;
+    private final CredentialsProvider credentialsProvider;
+    @Getter
+    @Builder.Default
+    private final boolean avoidDups = true;
+
     @Getter(lazy = true)
     private final MatchServiceClient client = initMatchingClient();
-    private final String bucketName;
-    private final String project;
-    private final String location;
-    private final String indexEndpointId;
-    private final String deployedIndexId;
-    private final String indexId;
     @Getter(lazy = true)
     private final Bucket bucket = initBucket();
     @Getter(lazy = true)
     private final Storage storage = initStorage();
     @Getter(lazy = true)
     private final VertexAiIndexEndpoint indexEndpoint = initIndexEndpoint();
-    private final CredentialsProvider credentialsProvider;
-    @Builder.Default
-    @Getter
-    private final boolean avoidDups = true;
 
     @Override
     public String add(Embedding embedding) {
@@ -123,8 +132,10 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
                 metadata.add("idxFileId", indexFileId);
             }
 
+            // Add the embedding to the index
             index.addEmbedding(id, embedding, metadata);
 
+            // Upload the text segment to GCS
             if (textSegment != null) {
                 upload(textSegment.text(), "documents/" + id);
             }

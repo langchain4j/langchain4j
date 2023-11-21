@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai.internal;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.aiplatform.v1.*;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -15,10 +16,15 @@ import java.util.stream.Collectors;
 @SuperBuilder
 public class VertexAiIndexEndpoint {
 
+    @NonNull
     private final String endpoint;
+    @NonNull
     private final String location;
+    @NonNull
     private final String project;
+    @NonNull
     private final String indexEndpointId;
+    @NonNull
     private final String indexId;
     @Getter(lazy = true)
     private final IndexEndpointServiceClient client = initClient();
@@ -111,6 +117,7 @@ public class VertexAiIndexEndpoint {
             return IndexServiceClient.create(serviceSettings.build());
         } catch (IOException exception) {
             log.error("Failed to create IndexServiceClient", exception);
+
             throw new RuntimeException("Failed to create IndexServiceClient", exception);
         }
     }
