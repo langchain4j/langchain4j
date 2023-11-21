@@ -261,6 +261,10 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
         return matches;
     }
+    @Override
+    public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
+        return findRelevant(referenceEmbedding, maxResults,minScore);
+    }
 
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
 

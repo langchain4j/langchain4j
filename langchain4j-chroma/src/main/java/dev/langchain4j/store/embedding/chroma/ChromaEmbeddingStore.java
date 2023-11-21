@@ -170,6 +170,10 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .filter(match -> match.score() >= minScore)
                 .collect(toList());
     }
+    @Override
+    public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
+        return findRelevant(referenceEmbedding, maxResults, minScore);
+    }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();

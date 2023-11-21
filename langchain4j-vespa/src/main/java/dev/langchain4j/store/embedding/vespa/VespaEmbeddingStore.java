@@ -206,7 +206,9 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
       throw new RuntimeException(e);
     }
   }
-
+  public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
+    return findRelevant(referenceEmbedding, maxResults,minScore);
+  }
   private String add(String id, Embedding embedding, TextSegment textSegment) {
     AtomicReference<String> resId = new AtomicReference<>();
 

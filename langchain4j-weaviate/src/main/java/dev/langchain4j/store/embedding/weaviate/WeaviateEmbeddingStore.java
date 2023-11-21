@@ -173,6 +173,15 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     return resItems.stream().map(WeaviateEmbeddingStore::toEmbeddingMatch).collect(toList());
   }
 
+  @Override
+  public List<EmbeddingMatch<TextSegment>> findRelevant(String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
+    return findRelevant( referenceEmbedding,maxResults,minScore);
+  }
+
+
+
+
+
   private List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
     if (embedded != null && embeddings.size() != embedded.size()) {
       throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");

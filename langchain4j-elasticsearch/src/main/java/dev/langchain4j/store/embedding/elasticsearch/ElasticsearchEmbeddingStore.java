@@ -259,6 +259,26 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
+    @Override
+    public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
+        try {
+            // Use Script Score and cosineSimilarity to calculate
+            // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
+            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
+            SearchResponse<Document> response = client.search(
+                    SearchRequest.of(s -> s.index(indexName)
+                            .query(n -> n.scriptScore(scriptScoreQuery))
+                            .size(maxResults)),
+                    Document.class
+            );
+
+            return toEmbeddingMatch(response);
+        } catch (IOException e) {
+            log.error("[ElasticSearch encounter I/O Exception]", e);
+            throw new ElasticsearchRequestFailedException(e.getMessage());
+        }
+    }
+
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }

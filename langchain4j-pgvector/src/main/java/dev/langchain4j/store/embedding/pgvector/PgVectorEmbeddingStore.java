@@ -231,7 +231,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         return result;
     }
-
+    @Override
+    public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
+        return findRelevant(referenceEmbedding, maxResults,minScore);
+    }
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(
                 singletonList(id),
