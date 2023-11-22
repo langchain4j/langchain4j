@@ -8,7 +8,6 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -81,5 +80,4 @@ public class ChatMemoryStoreAstraTest {
                     .execute("TRUNCATE TABLE " + table);
         }
     }
-
 }
