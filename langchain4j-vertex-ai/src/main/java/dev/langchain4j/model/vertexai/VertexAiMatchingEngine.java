@@ -1,17 +1,9 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.api.gax.core.CredentialsProvider;
-import com.google.cloud.aiplatform.v1.*;
-import com.google.cloud.storage.Blob;
-import com.google.cloud.storage.Bucket;
-import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
-import com.google.common.collect.Lists;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.vertexai.internal.VertexAiEmbeddingIndex;
-import dev.langchain4j.model.vertexai.internal.VertexAiIndexEndpoint;
+import dev.langchain4j.model.vertexai.internal.*;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
@@ -20,13 +12,12 @@ import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 
@@ -55,26 +46,46 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
     @Getter
     @Builder.Default
     private final boolean avoidDups = true;
+    @Getter
+    @Builder.Default
+    private final boolean returnFullDatapoint = true;
 
     @Getter(lazy = true)
-    private final MatchServiceClient client = initMatchingClient();
+    private final MatchingService matchingService = initMatchingService();
     @Getter(lazy = true)
-    private final Bucket bucket = initBucket();
+    private final GcpBlobService gcpBlobService = initBlob();
     @Getter(lazy = true)
-    private final Storage storage = initStorage();
-    @Getter(lazy = true)
-    private final VertexAiIndexEndpoint indexEndpoint = initIndexEndpoint();
+    private final IndexEndpointService indexEndpointService = initIndexEndpoint();
 
+    /**
+     * Adds the embedding to the index.
+     *
+     * @param embedding The embedding to be added to the store.
+     * @return the id of the embedding
+     */
     @Override
     public String add(Embedding embedding) {
-        return addAll(Lists.asList(embedding, new Embedding[]{})).get(0);
+        return addAll(singletonList(embedding)).get(0);
     }
 
+    /**
+     * Adds the embedding to the index.
+     *
+     * @param id        The id of the embedding.
+     * @param embedding The embedding to be added to the store.
+     */
     @Override
     public void add(String id, Embedding embedding) {
-        addAll(Lists.asList(embedding, new Embedding[]{}));
+        addAll(singletonList(id), singletonList(embedding), null);
     }
 
+    /**
+     * Adds the embedding to the index.
+     *
+     * @param embedding   The embedding to be added to the store.
+     * @param textSegment The text segment to be added to the store.
+     * @return the id of the embedding
+     */
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
         return addAll(singletonList(embedding), singletonList(textSegment)).get(0);
@@ -91,11 +102,26 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
         return addAll(null, embeddings, null);
     }
 
+    /**
+     * Adds all the embeddings to the index.
+     *
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of text segments to be added to the store.
+     * @return the ids of the embeddings
+     */
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         return addAll(null, embeddings, embedded);
     }
 
+    /**
+     * Adds all the embeddings to the index.
+     *
+     * @param ids        the ids of the embeddings
+     * @param embeddings A list of embeddings to be added to the store.
+     * @param embedded   A list of text segments to be added to the store.
+     * @return the ids of the embeddings
+     */
     public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isCollectionEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
@@ -105,54 +131,46 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
         ensureTrue(ids == null || ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
 
         final VertexAiEmbeddingIndex index = new VertexAiEmbeddingIndex();
-
+        final List<String> insertedIds = new ArrayList<>();
         final String indexFileId = randomUUID();
+
         for (int embeddingIndex = 0; embeddingIndex < embeddings.size(); embeddingIndex++) {
             final Embedding embedding = embeddings.get(embeddingIndex);
 
             TextSegment textSegment;
-            Metadata metadata;
             String id;
             if (embedded != null) {
                 textSegment = embedded.get(embeddingIndex);
-                metadata = textSegment.metadata();
                 id = (ids != null)
                         ? ids.get(embeddingIndex)
                         : (avoidDups ? generateUUIDFrom(textSegment.text()) : randomUUID());
             } else {
                 textSegment = null;
-                metadata = null;
                 id = (ids != null)
                         ? ids.get(embeddingIndex)
                         : randomUUID();
             }
-            if (metadata == null) {
-                metadata = Metadata.metadata("idxFileId", indexFileId);
-            } else {
-                metadata.add("idxFileId", indexFileId);
-            }
 
             // Add the embedding to the index
-            index.addEmbedding(id, embedding, metadata);
+            index.addEmbedding(id, embedding);
+            insertedIds.add(id);
 
-            // Upload the text segment to GCS
-            if (textSegment != null) {
-                upload(textSegment.text(), "documents/" + id);
-            }
+            // Upload the document to GCS
+            getGcpBlobService().upload("documents/" + id, new VertexAIDocument(indexFileId, textSegment));
         }
 
         final String filename = "indexes/" + indexFileId + ".json";
         log.info("Uploading {} index to GCS.", filename);
 
         // Upload the index to GCS
-        upload(index.toString(), filename);
+        getGcpBlobService().upload(filename, index.toString());
 
         // Update the index
-        getIndexEndpoint().upsertEmbedding(index);
+        getIndexEndpointService().upsertEmbedding(index);
 
         log.info("Uploaded {} index to GCS.", filename);
 
-        return ids;
+        return insertedIds;
     }
 
     /**
@@ -166,51 +184,50 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
      */
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        final IndexDatapoint datapoint = IndexDatapoint
-                .newBuilder()
-                .addAllFeatureVector(referenceEmbedding.vectorAsList())
-                .build();
-        final FindNeighborsRequest.Query query = FindNeighborsRequest.Query
-                .newBuilder()
-                .setDatapoint(datapoint)
-                .setNeighborCount(maxResults)
-                .build();
-        final FindNeighborsRequest request = FindNeighborsRequest
-                .newBuilder()
-                .setIndexEndpoint(IndexEndpointName.of(project, location, indexEndpointId).toString())
-                .setDeployedIndexId(deployedIndexId)
-                .addQueries(query)
-                .build();
-
-        final FindNeighborsResponse response = getClient().findNeighbors(request);
-        return response.getNearestNeighborsList()
-                .stream()
-                .flatMap(neighbor -> neighbor.getNeighborsList().stream())
-                .filter(neighbor -> neighbor.getDistance() > minScore)
-                .map(neighbor -> {
-                    final String id = neighbor.getDatapoint().getDatapointId();
-                    final String path = "documents/" + id;
-                    final Blob blob = getBucket().get(path);
-                    final TextSegment segment = (blob.exists())
-                            ? TextSegment.from(new String(blob.getContent(), StandardCharsets.UTF_8))
-                            : null;
-                    final IndexDatapoint resultDatapoint = neighbor.getDatapoint();
-                    return new EmbeddingMatch<>(neighbor.getDistance(),
-                            id,
-                            Embedding.from(resultDatapoint.getFeatureVectorList()),
-                            segment);
-                })
-                .collect(Collectors.toList());
+        return getMatchingService().findRelevant(referenceEmbedding, maxResults, minScore);
     }
 
     /**
-     * Uploads content to a specified path.
+     * Deletes the index.
      *
-     * @param content the content
-     * @param path    the path
+     * @param index the index
      */
-    private void upload(final String content, final String path) {
-        getBucket().create(path, content.getBytes(StandardCharsets.UTF_8));
+    public void deleteIndex(final String index) {
+        // Delete index and all documents
+        final String path = "indexes/" + index + ".json";
+        final String json = getGcpBlobService().download(path);
+        if (json != null) {
+            final VertexAiEmbeddingIndex embeddingIndex = VertexAiEmbeddingIndex.fromJson(json);
+            final List<String> indicesToDelete = embeddingIndex
+                    .getRecords()
+                    .stream()
+                    .map(VertexAiEmbeddingIndexRecord::getId)
+                    .collect(Collectors.toList());
+
+            // Delete documents
+            indicesToDelete.forEach(id -> getGcpBlobService().delete("documents/" + id));
+
+            // Delete index
+            getIndexEndpointService().deleteIndices(indicesToDelete);
+        }
+
+        // Delete index file
+        getGcpBlobService().delete(path);
+    }
+
+    /**
+     * Get all indices.
+     *
+     * @return the list of indices
+     */
+    public List<String> allIndices() {
+        final String prefix = "indexes/";
+
+        return getGcpBlobService()
+                .list()
+                .filter(name -> name.startsWith(prefix))
+                .map(name -> name.substring(prefix.length(), name.length() - 5))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -218,51 +235,40 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
      *
      * @return the storage
      */
-    private Storage initStorage() {
-        if (credentialsProvider != null) {
-            try {
-                return StorageOptions
-                        .newBuilder()
-                        .setCredentials(credentialsProvider.getCredentials())
-                        .build()
-                        .getService();
-            } catch (IOException e) {
-                log.error("Failed to create storage client.", e);
-                throw new RuntimeException(e);
-            }
-        }
+    private GcpBlobService initBlob() {
+        ensureNotNull(bucketName, "bucketName is null");
+        ensureNotNull(project, "project is null");
 
-        return StorageOptions.getDefaultInstance().getService();
+        return GcpBlobService.builder()
+                .bucketName(bucketName)
+                .credentialsProvider(credentialsProvider)
+                .project(project)
+                .build();
     }
 
     /**
-     * Initializes the bucket.
+     * Initializes the matching service.
      *
-     * @return the bucket
+     * @return the matching service
      */
-    private Bucket initBucket() {
-        return getStorage().get(bucketName);
-    }
+    private MatchingService initMatchingService() {
+        ensureNotNull(deployedIndexId, "deployedIndexId is null");
+        ensureNotNull(indexId, "indexId is null");
+        ensureNotNull(indexEndpointId, "indexEndpointId is null");
+        ensureNotNull(project, "project is null");
+        ensureNotNull(location, "location is null");
 
-    /**
-     * Initializes the matching client.
-     *
-     * @return the matching client
-     */
-    private MatchServiceClient initMatchingClient() {
-        try {
-            final MatchServiceSettings.Builder settings = MatchServiceSettings
-                    .newBuilder()
-                    .setEndpoint(getIndexEndpoint().getPublicEndpoint());
-            if (credentialsProvider != null) {
-                settings.setCredentialsProvider(credentialsProvider);
-            }
-
-            return MatchServiceClient.create(settings.build());
-        } catch (Exception e) {
-            log.error("Failed to create matching client.", e);
-            throw new RuntimeException(e);
-        }
+        return MatchingService.builder()
+                .gcpBlobService(getGcpBlobService())
+                .deployedIndexId(deployedIndexId)
+                .credentialsProvider(credentialsProvider)
+                .returnFullDatapoint(returnFullDatapoint)
+                .indexEndpointId(indexEndpointId)
+                .indexId(indexId)
+                .project(project)
+                .location(location)
+                .endpoint(getIndexEndpointService().getPublicEndpoint())
+                .build();
     }
 
     /**
@@ -270,8 +276,14 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
      *
      * @return the index endpoint
      */
-    private VertexAiIndexEndpoint initIndexEndpoint() {
-        return VertexAiIndexEndpoint
+    private IndexEndpointService initIndexEndpoint() {
+        ensureNotNull(endpoint, "endpoint is null");
+        ensureNotNull(location, "location is null");
+        ensureNotNull(project, "project is null");
+        ensureNotNull(indexId, "indexId is null");
+        ensureNotNull(indexEndpointId, "indexEndpointId is null");
+
+        return IndexEndpointService
                 .builder()
                 .endpoint(endpoint)
                 .location(location)

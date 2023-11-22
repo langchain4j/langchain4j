@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @SuperBuilder
-public class VertexAiIndexEndpoint {
+public class IndexEndpointService {
 
     @NonNull
     private final String endpoint;
@@ -27,30 +27,17 @@ public class VertexAiIndexEndpoint {
     @NonNull
     private final String indexId;
     @Getter(lazy = true)
-    private final IndexEndpointServiceClient client = initClient();
-    @Getter(lazy = true)
-    private final IndexEndpoint indexEndpoint = initEndpoint();
-    @Getter(lazy = true)
-    private final IndexEndpointName indexEndpointName = initIndexEndpointName();
-    @Getter(lazy = true)
-    private final IndexServiceClient indexServiceClient = initIndexServiceClient();
+    private final IndexServiceSettings indexServiceSettings = initIndexServiceClientSettings();
     private final CredentialsProvider credentialsProvider;
-
-    /**
-     * Gets the public endpoint.
-     *
-     * @return the public endpoint
-     */
-    public String getPublicEndpoint() {
-        return getIndexEndpoint().getPublicEndpointDomainName() + ":443";
-    }
+    @Getter(lazy = true)
+    private final String publicEndpoint = initPublicEndpoint();
 
     /**
      * Deletes the embedding index.
      *
      * @param embeddingIndices the embedding indices
      */
-    public void deleteEmbedding(List<String> embeddingIndices) {
+    public void deleteIndices(List<String> embeddingIndices) {
         IndexName name = IndexName.of(project, location, indexId);
 
         final RemoveDatapointsRequest request = RemoveDatapointsRequest.newBuilder()
@@ -58,7 +45,12 @@ public class VertexAiIndexEndpoint {
                 .addAllDatapointIds(embeddingIndices)
                 .build();
 
-        getIndexServiceClient().removeDatapoints(request);
+        try (IndexServiceClient indexServiceClient = IndexServiceClient.create(getIndexServiceSettings())) {
+            indexServiceClient.removeDatapoints(request);
+        } catch (IOException exception) {
+            log.error("Failed to create IndexServiceClient", exception);
+            throw new RuntimeException("Failed to create IndexServiceClient", exception);
+        }
     }
 
     /**
@@ -84,28 +76,47 @@ public class VertexAiIndexEndpoint {
                 .setIndex(name.toString())
                 .build();
 
-        getIndexServiceClient().upsertDatapoints(request);
+        try (IndexServiceClient indexServiceClient = IndexServiceClient.create(getIndexServiceSettings())) {
+            indexServiceClient.upsertDatapoints(request);
+        } catch (IOException exception) {
+            log.error("Failed to create IndexServiceClient", exception);
+            throw new RuntimeException("Failed to create IndexServiceClient", exception);
+        }
     }
 
     /**
-     * Gets the embedding index.
+     * Gets the public endpoint.
      *
-     * @return the embedding index
+     * @return the public endpoint
      */
-    private IndexEndpointName initIndexEndpointName() {
-        return IndexEndpointName.newBuilder()
+    private String initPublicEndpoint() {
+        final IndexEndpointName indexEndpointName = IndexEndpointName.newBuilder()
                 .setIndexEndpoint(indexEndpointId)
                 .setProject(project)
                 .setLocation(location)
                 .build();
+
+        final IndexEndpointServiceSettings.Builder serviceSettings = IndexEndpointServiceSettings
+                .newBuilder()
+                .setEndpoint(resolveEndpoint());
+        if (credentialsProvider != null) {
+            serviceSettings.setCredentialsProvider(credentialsProvider);
+        }
+
+        try (IndexEndpointServiceClient client = IndexEndpointServiceClient.create(serviceSettings.build())) {
+            return client.getIndexEndpoint(indexEndpointName).getPublicEndpointDomainName() + ":443";
+        } catch (IOException exception) {
+            log.error("Failed to create IndexEndpointServiceClient", exception);
+            throw new RuntimeException("Failed to create IndexEndpointServiceClient", exception);
+        }
     }
 
     /**
-     * Initializes the index service client.
+     * Initializes the index service client settings.
      *
-     * @return the index service client
+     * @return the client settings
      */
-    private IndexServiceClient initIndexServiceClient() {
+    private IndexServiceSettings initIndexServiceClientSettings() {
         try {
             IndexServiceSettings.Builder serviceSettings = IndexServiceSettings
                     .newBuilder()
@@ -114,44 +125,17 @@ public class VertexAiIndexEndpoint {
                 serviceSettings.setCredentialsProvider(credentialsProvider);
             }
 
-            return IndexServiceClient.create(serviceSettings.build());
-        } catch (IOException exception) {
-            log.error("Failed to create IndexServiceClient", exception);
-
-            throw new RuntimeException("Failed to create IndexServiceClient", exception);
+            return serviceSettings.build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
     /**
-     * Initializes the endpoint.
+     * Resolves the endpoint.
      *
      * @return the endpoint
      */
-    private IndexEndpoint initEndpoint() {
-        return getClient().getIndexEndpoint(getIndexEndpointName());
-    }
-
-    /**
-     * Initializes the client.
-     *
-     * @return the client
-     */
-    private IndexEndpointServiceClient initClient() {
-        try {
-            IndexEndpointServiceSettings.Builder serviceSettings = IndexEndpointServiceSettings
-                    .newBuilder()
-                    .setEndpoint(resolveEndpoint());
-            if (credentialsProvider != null) {
-                serviceSettings.setCredentialsProvider(credentialsProvider);
-            }
-
-            return IndexEndpointServiceClient.create(serviceSettings.build());
-        } catch (IOException exception) {
-            log.error("Failed to create IndexEndpointServiceClient", exception);
-            throw new RuntimeException("Failed to create IndexEndpointServiceClient", exception);
-        }
-    }
-
     public String resolveEndpoint() {
         return (StringUtils.isEmpty(endpoint))
                 ? location + "-aiplatform.googleapis.com:443"

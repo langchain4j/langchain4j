@@ -5,7 +5,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
-import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
@@ -19,21 +18,21 @@ public class VertexAiEmbeddingIndexRecord {
 
     private String id;
     private List<Float> embedding;
-    private Map<String, String> metadata;
 
-    public VertexAiEmbeddingIndexRecord(String id, List<Float> embedding, Map<String, String> metadata) {
+    public VertexAiEmbeddingIndexRecord(String id, List<Float> embedding) {
         ensureNotBlank(id, "id cannot be blank");
         ensureNotNull(embedding, "embedding cannot be null");
         ensureNotEmpty(embedding, "embedding cannot be empty");
 
         this.id = id;
         this.embedding = embedding;
-        this.metadata = metadata != null && !metadata.isEmpty()
-                ? metadata
-                : null;
     }
 
     public String toJson() {
         return GSON.toJson(this);
+    }
+
+    public static VertexAiEmbeddingIndexRecord fromJson(String json) {
+        return GSON.fromJson(json, VertexAiEmbeddingIndexRecord.class);
     }
 }
