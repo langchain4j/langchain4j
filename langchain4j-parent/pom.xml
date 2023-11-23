@@ -28,7 +28,7 @@
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.19.1</testcontainers.version>
+        <testcontainers.version>1.19.2</testcontainers.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
@@ -43,7 +43,6 @@
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.20.149</aws.java.sdk.version>
-        <testcontainers.version>1.19.0</testcontainers.version>
         <netty.version>4.1.100.Final</netty.version>
     </properties>
 
@@ -51,9 +50,41 @@
         <dependencies>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-core</artifactId>
+                <version>${project.version}</version>
+                <classifier>tests</classifier>
+                <type>test-jar</type>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>dev.ai4j</groupId>
                 <artifactId>openai4j</artifactId>
                 <version>${openai4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+                <version>${project.version}</version>
             </dependency>
 
             <dependency>
@@ -136,14 +167,10 @@
 
             <dependency>
                 <groupId>org.testcontainers</groupId>
-                <artifactId>junit-jupiter</artifactId>
+                <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers</artifactId>
-                <version>${testcontainers.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
             </dependency>
 
             <dependency>
@@ -206,12 +233,6 @@
             </dependency>
 
             <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-configuration-processor</artifactId>
-                <version>${spring-boot.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>org.apache.httpcomponents.client5</groupId>
                 <artifactId>httpclient5</artifactId>
                 <version>${httpclient5.version}</version>
@@ -260,12 +281,6 @@
             </dependency>
 
             <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
                 <groupId>redis.clients</groupId>
                 <artifactId>jedis</artifactId>
                 <version>${jedis.version}</version>
@@ -286,17 +301,6 @@
                 </exclusions>
             </dependency>
 
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers</artifactId>
-                <version>${testcontainers.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>localstack</artifactId>
-                <version>${testcontainers.version}</version>
-            </dependency>
         </dependencies>
 
     </dependencyManagement>
@@ -451,8 +455,16 @@
                             <scopes>compile,runtime,provided,test</scopes>
                             <acceptableLicenses>
                                 <license>
-                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)|(The Apache Software License, Version 2\.0)</name>
+                                    <name>(The )?(Apache License, Version 2\.0)|(Apache-2\.0)</name>
                                     <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
+                                </license>
+                                <license>
+                                    <name>(The Apache Software License, Version 2\.0)</name>
+                                    <url>https?://www\.apache\.org/licenses/LICENSE-2\.0</url>
+                                </license>
+                                <license>
+                                    <name>Apache 2.0</name>
+                                    <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
                                 </license>
                                 <license>
                                     <name>(The MIT License|MIT License|MIT)</name>

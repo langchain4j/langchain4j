@@ -4,6 +4,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.dtsx.astra.sdk.cassio.SimilarityMetric;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Work with Cassandra Embedding Store.
  */
+@Disabled("No Docker in the CI")
 @Testcontainers
 class CassandraEmbeddingStoreDockerIT extends CassandraEmbeddingStoreTestSupport {
 

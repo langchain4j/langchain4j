@@ -3,6 +3,7 @@ package dev.langchain4j.store.memory.chat.cassandra;
 import com.datastax.oss.driver.api.core.CqlSession;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.CassandraContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -13,6 +14,7 @@ import java.net.InetSocketAddress;
 /**
  * Test Cassandra Chat Memory Store with a Saas DB.
  */
+@Disabled("No Docker in the CI")
 @Testcontainers
 class CassandraChatMemoryStoreDockerIT extends CassandraChatMemoryStoreTestSupport {
     static final String DATACENTER = "datacenter1";

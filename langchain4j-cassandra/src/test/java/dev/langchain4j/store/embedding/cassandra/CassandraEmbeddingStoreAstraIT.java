@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.cassandra;
 
 import com.dtsx.astra.sdk.cassio.SimilarityMetric;
 import com.dtsx.astra.sdk.utils.AstraEnvironment;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static com.dtsx.astra.sdk.utils.TestUtils.TEST_REGION;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * Integration test where Cassandra is running in AstraDB (dbaas).
  */
+@Disabled("AstraDB is not available in the CI")
 @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
 class CassandraEmbeddingStoreAstraIT extends CassandraEmbeddingStoreTestSupport {
 
