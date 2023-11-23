@@ -24,7 +24,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build modules requiring JDK 11
-        run: mvn --batch-mode install -DskipITs -pl langchain4j-opensearch, !langchain4j-cassandra
+        run: mvn --batch-mode install -DskipITs -pl langchain4j-opensearch,langchain4j-cassandra
 
       - name: Set up JDK 17
         uses: actions/setup-java@v3
