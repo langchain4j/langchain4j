@@ -52,7 +52,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         question = ensureNotBlank(question, "question");
 
-        List<TextSegment> relevantSegments = retriever.findRelevant(question);
+        List<TextSegment> relevantSegments = retriever.findRelevant("default",question);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("question", question);

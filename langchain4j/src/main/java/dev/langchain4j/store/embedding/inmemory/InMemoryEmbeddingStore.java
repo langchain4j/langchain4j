@@ -137,7 +137,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<EmbeddingMatch<Embedded>> findRelevant(String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
         return findRelevant(referenceEmbedding, maxResults, minScore);
     }
 

@@ -4,5 +4,5 @@ import java.util.List;
 
 public interface Retriever<T> {
 
-    List<T> findRelevant(String text);
+    List<T> findRelevant(Object memoryId,String text);
 }

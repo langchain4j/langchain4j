@@ -94,9 +94,11 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
                         ChatMessage userMessage = prepareUserMessage(method, args);
+                        Object memoryId = memoryId(method, args).orElse(DEFAULT);
 
                         if (context.retriever != null) { // TODO extract method/class
-                            List<TextSegment> relevant = context.retriever.findRelevant(userMessage.text());
+
+                            List<TextSegment> relevant = context.retriever.findRelevant(memoryId,userMessage.text());
 
                             if (relevant == null || relevant.isEmpty()) {
                                 log.debug("No relevant information was found");
@@ -113,7 +115,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        Object memoryId = memoryId(method, args).orElse(DEFAULT);
+
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);

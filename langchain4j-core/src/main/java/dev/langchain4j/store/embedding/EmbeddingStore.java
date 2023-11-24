@@ -90,8 +90,8 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    default List<EmbeddingMatch<Embedded>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults) {
-        return findRelevant(originText,referenceEmbedding, maxResults, 0);
+    default List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,String originText,Embedding referenceEmbedding, int maxResults) {
+        return findRelevant(memoryId,originText,referenceEmbedding, maxResults, 0);
     }
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
@@ -104,6 +104,6 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    List<EmbeddingMatch<Embedded>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore);
+    List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,String originText,Embedding referenceEmbedding, int maxResults, double minScore);
 
 }
