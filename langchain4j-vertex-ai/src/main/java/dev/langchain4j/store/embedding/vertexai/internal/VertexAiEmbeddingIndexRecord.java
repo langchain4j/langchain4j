@@ -20,9 +20,9 @@ public class VertexAiEmbeddingIndexRecord {
     private List<Float> embedding;
 
     public VertexAiEmbeddingIndexRecord(String id, List<Float> embedding) {
-        ensureNotBlank(id, "id cannot be blank");
-        ensureNotNull(embedding, "embedding cannot be null");
-        ensureNotEmpty(embedding, "embedding cannot be empty");
+        ensureNotBlank(id, "id");
+        ensureNotNull(embedding, "embedding");
+        ensureNotEmpty(embedding, "embedding");
 
         this.id = id;
         this.embedding = embedding;
