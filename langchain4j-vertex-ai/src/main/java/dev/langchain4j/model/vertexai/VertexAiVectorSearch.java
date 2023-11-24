@@ -22,7 +22,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 
 /**
- * A matching engine that uses Vertex AI to store and match embeddings.
+ * Vector search support for Google Vertex AI.
  */
 @SuperBuilder
 @Slf4j
