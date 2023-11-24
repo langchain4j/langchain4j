@@ -12,9 +12,9 @@ import org.junit.jupiter.api.Disabled;
 import java.util.List;
 
 @Disabled("To run this test, you must have provide your own endpoint, project and location")
-public class VertexAiMatchingEngineIT extends EmbeddingStoreIT {
+public class VertexAiVectorSearchIT extends EmbeddingStoreIT {
 
-    private VertexAiMatchingEngine matchingEngine;
+    private VertexAiVectorSearch matchingEngine;
     private EmbeddingModel embeddingModel;
 
     @BeforeEach
@@ -28,7 +28,7 @@ public class VertexAiMatchingEngineIT extends EmbeddingStoreIT {
                 .maxRetries(3)
                 .build();
 
-        matchingEngine = VertexAiMatchingEngine
+        matchingEngine = VertexAiVectorSearch
                 .builder()
                 .endpoint("us-central1-aiplatform.googleapis.com:443")
                 .bucketName("[BUCKET_NAME]")

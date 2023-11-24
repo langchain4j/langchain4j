@@ -26,7 +26,7 @@ import static java.util.Collections.singletonList;
  */
 @SuperBuilder
 @Slf4j
-public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
+public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
 
     @NonNull
     private final String endpoint;
