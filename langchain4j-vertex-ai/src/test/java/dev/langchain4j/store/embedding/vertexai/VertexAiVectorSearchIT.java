@@ -1,13 +1,12 @@
 package dev.langchain4j.store.embedding.vertexai;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.model.vertexai.VertexAiEmbeddingModel;
+import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.vertexai.VertexAiVectorSearch;
 import org.junit.jupiter.api.Disabled;
 
 import java.util.List;
@@ -25,14 +24,7 @@ public class VertexAiVectorSearchIT extends EmbeddingStoreIT {
             .location("us-central1")
             .project("[PROJECT]")
             .build();
-    private final EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
-            .endpoint("us-central1-aiplatform.googleapis.com:443")
-            .project("[PROJECT]")
-            .location("us-central1")
-            .publisher("google")
-            .modelName("textembedding-gecko@001")
-            .maxRetries(3)
-            .build();
+    private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @Override
     protected void clearStore() {
