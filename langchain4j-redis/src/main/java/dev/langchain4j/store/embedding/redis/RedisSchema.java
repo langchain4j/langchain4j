@@ -29,8 +29,7 @@ class RedisSchema {
 
     /* Redis schema field settings */
 
-    @Builder.Default
-    private String indexName = "embedding-index";
+    private String indexName;
     @Builder.Default
     private String prefix = "embedding:";
     @Builder.Default

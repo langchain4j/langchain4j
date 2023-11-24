@@ -14,8 +14,8 @@ jobs:
           java-version: '8'
           distribution: 'temurin'
           cache: 'maven'
-      - name: Build with JDK 8 (excluding modules requiring JDK 11)
-        run: mvn --batch-mode install -DskipITs -pl !langchain4j-opensearch
+      - name: Build with JDK 8 (excluding modules requiring JDK 11 and 17)
+        run: mvn --batch-mode install -DskipITs -pl !langchain4j-opensearch,!langchain4j-graal
 
       - name: Set up JDK 11
         uses: actions/setup-java@v3
@@ -42,7 +42,8 @@ jobs:
         run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
 
 # TODO's
-#  - setup integration tests
-#     - these require an openAI (and hugging face, etc) token
-#     - do so that they always run for commits on main
-#     - make the running be manually triggered for PRs (we don't want to burn through credits)
+# - enable JDK 17 build for langchain4j-graal
+# - setup integration tests
+# - these require an openAI (and hugging face, etc) token
+# - do so that they always run for commits on main
+# - make the running be manually triggered for PRs (we don't want to burn through credits)
