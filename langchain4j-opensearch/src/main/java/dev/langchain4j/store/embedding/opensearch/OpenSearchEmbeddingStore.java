@@ -139,8 +139,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * Creates an instance of OpenSearchEmbeddingStore to connect with
-     * OpenSearch clusters running as a fully managed service at AWS.
+     * Creates an instance of OpenSearchEmbeddingStore using provided OpenSearchClient
      *
      * @param openSearchClient OpenSearch client provided
      * @param indexName   OpenSearch index name (optional). Default value: "default"
@@ -148,7 +147,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     public OpenSearchEmbeddingStore(OpenSearchClient openSearchClient,
                                     String indexName) {
 
-        this.client = openSearchClient;
+        this.client = ensureNotNull(openSearchClient, "openSearchClient");
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 
