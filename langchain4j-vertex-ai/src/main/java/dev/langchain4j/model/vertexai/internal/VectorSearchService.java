@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Builder
-public class MatchingService {
+public class VectorSearchService {
 
     @NonNull
     private final String endpoint;

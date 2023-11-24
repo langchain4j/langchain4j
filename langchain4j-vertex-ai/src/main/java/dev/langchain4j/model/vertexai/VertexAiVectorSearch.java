@@ -48,7 +48,7 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
     private final boolean returnFullDatapoint = true;
 
     @Getter(lazy = true)
-    private final MatchingService matchingService = initMatchingService();
+    private final VectorSearchService vectorSearchService = initMatchingService();
     @Getter(lazy = true)
     private final GcpBlobService gcpBlobService = initBlob();
     @Getter(lazy = true)
@@ -181,7 +181,7 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      */
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        return getMatchingService().findRelevant(referenceEmbedding, maxResults, minScore);
+        return getVectorSearchService().findRelevant(referenceEmbedding, maxResults, minScore);
     }
 
     /**
@@ -248,14 +248,14 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      *
      * @return the matching service
      */
-    private MatchingService initMatchingService() {
+    private VectorSearchService initMatchingService() {
         ensureNotNull(deployedIndexId, "deployedIndexId is null");
         ensureNotNull(indexId, "indexId is null");
         ensureNotNull(indexEndpointId, "indexEndpointId is null");
         ensureNotNull(project, "project is null");
         ensureNotNull(location, "location is null");
 
-        return MatchingService.builder()
+        return VectorSearchService.builder()
                 .gcpBlobService(getGcpBlobService())
                 .deployedIndexId(deployedIndexId)
                 .credentialsProvider(credentialsProvider)
