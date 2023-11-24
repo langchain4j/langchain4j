@@ -5,10 +5,14 @@ import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.querybuilder.SchemaBuilder;
 import com.dtsx.astra.sdk.cassio.MetadataVectorCassandraTable;
 import com.dtsx.astra.sdk.cassio.SimilarityMetric;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
 import java.net.InetSocketAddress;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Implementation of {@link EmbeddingStore} using Cassandra AstraDB.
@@ -64,6 +68,11 @@ public class CassandraEmbeddingStore extends CassandraEmbeddingStoreSupport {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    @Override
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
+        return super.findRelevant(referenceEmbedding, maxResults, minScore);
     }
 
     /**

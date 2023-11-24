@@ -206,6 +206,12 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
       throw new RuntimeException(e);
     }
   }
+
+  @Override
+  public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
+    return findRelevant(referenceEmbedding, maxResults,minScore);
+  }
+
   public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
     return findRelevant(referenceEmbedding, maxResults,minScore);
   }

@@ -191,10 +191,13 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         return matches;
     }
+
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
         return findRelevant(referenceEmbedding, maxResults,minScore);
     }
+
+
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
         Value textSegmentValue = vector.getMetadata()
                 .getFieldsMap()
