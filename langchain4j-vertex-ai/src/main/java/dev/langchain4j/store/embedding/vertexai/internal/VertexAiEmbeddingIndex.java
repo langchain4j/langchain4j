@@ -44,8 +44,7 @@ public class VertexAiEmbeddingIndex {
         }
     }
 
-    @Override
-    public String toString() {
+    public String toJson() {
         return records.stream()
                 .map(VertexAiEmbeddingIndexRecord::toJson)
                 .collect(Collectors.joining("\n"));

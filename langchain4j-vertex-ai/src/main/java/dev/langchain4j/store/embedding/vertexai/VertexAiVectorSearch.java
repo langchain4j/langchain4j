@@ -159,7 +159,7 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
         log.info("Uploading {} index to GCS.", filename);
 
         // Upload the index to GCS
-        getGcpBlobService().upload(filename, index.toString());
+        getGcpBlobService().upload(filename, index.toJson());
 
         // Update the index
         getIndexEndpointService().upsertEmbedding(index);
