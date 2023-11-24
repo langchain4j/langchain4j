@@ -138,6 +138,20 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 
+    /**
+     * Creates an instance of OpenSearchEmbeddingStore to connect with
+     * OpenSearch clusters running as a fully managed service at AWS.
+     *
+     * @param openSearchClient OpenSearch client provided
+     * @param indexName   OpenSearch index name (optional). Default value: "default"
+     */
+    public OpenSearchEmbeddingStore(OpenSearchClient openSearchClient,
+                                    String indexName) {
+
+        this.client = openSearchClient;
+        this.indexName = ensureNotNull(indexName, "indexName");
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -152,6 +166,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String region;
         private AwsSdk2TransportOptions options;
         private String indexName = "default";
+        private OpenSearchClient openSearchClient;
 
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
@@ -193,7 +208,14 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder openSearchClient(OpenSearchClient openSearchClient) {
+            this.openSearchClient = openSearchClient;
+            return this;
+        }
         public OpenSearchEmbeddingStore build() {
+            if (openSearchClient != null) {
+                return new OpenSearchEmbeddingStore(openSearchClient, indexName);
+            }
             if (!isNullOrBlank(serviceName) && !isNullOrBlank(region) && options != null) {
                 return new OpenSearchEmbeddingStore(serverUrl, serviceName, region, options, indexName);
             }
