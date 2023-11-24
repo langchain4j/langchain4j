@@ -36,11 +36,8 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
     private final String project;
     @NonNull
     private final String location;
-    @NonNull
     private final String indexEndpointId;
-    @NonNull
     private final String deployedIndexId;
-    @NonNull
     private final String indexId;
     private final CredentialsProvider credentialsProvider;
     @Getter
@@ -280,8 +277,6 @@ public class VertexAiMatchingEngine implements EmbeddingStore<TextSegment> {
         ensureNotNull(endpoint, "endpoint is null");
         ensureNotNull(location, "location is null");
         ensureNotNull(project, "project is null");
-        ensureNotNull(indexId, "indexId is null");
-        ensureNotNull(indexEndpointId, "indexEndpointId is null");
 
         return IndexEndpointService
                 .builder()

@@ -22,9 +22,7 @@ public class IndexEndpointService {
     private final String location;
     @NonNull
     private final String project;
-    @NonNull
     private final String indexEndpointId;
-    @NonNull
     private final String indexId;
     @Getter(lazy = true)
     private final IndexServiceSettings indexServiceSettings = initIndexServiceClientSettings();
@@ -38,6 +36,11 @@ public class IndexEndpointService {
      * @param embeddingIndices the embedding indices
      */
     public void deleteIndices(List<String> embeddingIndices) {
+        if (StringUtils.isEmpty(indexId)) {
+            log.warn("Index is not specified, skipping delete.");
+            return;
+        }
+
         IndexName name = IndexName.of(project, location, indexId);
 
         final RemoveDatapointsRequest request = RemoveDatapointsRequest.newBuilder()
@@ -59,6 +62,11 @@ public class IndexEndpointService {
      * @param embeddingIndex the embedding index
      */
     public void upsertEmbedding(VertexAiEmbeddingIndex embeddingIndex) {
+        if (StringUtils.isEmpty(indexId)) {
+            log.warn("IndexID is not specified, skipping upsert.");
+            return;
+        }
+
         IndexName name = IndexName.of(project, location, indexId);
 
         final List<IndexDatapoint> dataPoints = embeddingIndex
