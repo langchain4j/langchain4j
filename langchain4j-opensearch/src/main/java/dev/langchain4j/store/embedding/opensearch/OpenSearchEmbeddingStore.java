@@ -70,7 +70,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param apiKey    OpenSearch API key (optional)
      * @param userName  OpenSearch username (optional)
      * @param password  OpenSearch password (optional)
-     * @param indexName OpenSearch index name (optional). Default value: "default"
+     * @param indexName OpenSearch index name.
      */
     public OpenSearchEmbeddingStore(String serverUrl,
                                     String apiKey,
@@ -121,7 +121,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param serviceName The AWS signing service name, one of `es` (Amazon OpenSearch) or `aoss` (Amazon OpenSearch Serverless).
      * @param region      The AWS region for which requests will be signed. This should typically match the region in `serverUrl`.
      * @param options     The options to establish connection with the service. It must include which credentials should be used.
-     * @param indexName   OpenSearch index name (optional). Default value: "default"
+     * @param indexName   OpenSearch index name.
      */
     public OpenSearchEmbeddingStore(String serverUrl,
                                     String serviceName,
@@ -142,7 +142,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Creates an instance of OpenSearchEmbeddingStore using provided OpenSearchClient
      *
      * @param openSearchClient OpenSearch client provided
-     * @param indexName   OpenSearch index name (optional). Default value: "default"
+     * @param indexName        OpenSearch index name.
      */
     public OpenSearchEmbeddingStore(OpenSearchClient openSearchClient,
                                     String indexName) {
