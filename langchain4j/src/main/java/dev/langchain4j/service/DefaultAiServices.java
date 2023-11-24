@@ -1,12 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.joining;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.AiMessage;
@@ -21,22 +14,22 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.lang.reflect.Array;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.Proxy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.reflect.*;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
+import static java.util.Collections.singletonMap;
+import static java.util.stream.Collectors.joining;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -138,13 +131,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
-                        Response<AiMessage> response = context.toolSpecifications != null ?
-                                context.chatModel.generate(messages, context.toolSpecifications) :
-                                context.chatModel.generate(messages);
+                        Response<AiMessage> response = context.toolSpecifications == null
+                                ? context.chatModel.generate(messages)
+                                : context.chatModel.generate(messages, context.toolSpecifications);
+                        TokenUsage tokenUsageAccumulator = response.tokenUsage();
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        TokenUsage tokenUsage = new TokenUsage();
                         ToolExecutionRequest toolExecutionRequest;
                         while (true) { // TODO limit number of cycles
 
@@ -152,7 +145,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 context.chatMemory(memoryId).add(response.content());
                             }
 
-                            tokenUsage = tokenUsage.add(response.tokenUsage());
                             toolExecutionRequest = response.content().toolExecutionRequest();
                             if (toolExecutionRequest == null) {
                                 break;
@@ -167,9 +159,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                             chatMemory.add(toolExecutionResultMessage);
 
                             response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
+                            tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
                         }
 
-                        response = Response.from(response.content(), tokenUsage, response.finishReason());
+                        response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
                         return ServiceOutputParser.parse(response, method.getReturnType());
                     }
 
@@ -252,7 +245,6 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
 
-
     private Optional<Object> memoryId(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
@@ -267,7 +259,6 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
         return Optional.empty();
     }
-
 
 
     private static String getUserName(Parameter[] parameters, Object[] args) {
