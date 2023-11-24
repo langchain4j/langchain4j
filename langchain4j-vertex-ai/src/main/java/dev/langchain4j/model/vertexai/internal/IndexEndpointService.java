@@ -6,11 +6,12 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 @Slf4j
 @SuperBuilder
@@ -36,7 +37,7 @@ public class IndexEndpointService {
      * @param embeddingIndices the embedding indices
      */
     public void deleteIndices(List<String> embeddingIndices) {
-        if (StringUtils.isEmpty(indexId)) {
+        if (isNullOrBlank(indexId)) {
             log.warn("Index is not specified, skipping delete.");
             return;
         }
@@ -62,7 +63,7 @@ public class IndexEndpointService {
      * @param embeddingIndex the embedding index
      */
     public void upsertEmbedding(VertexAiEmbeddingIndex embeddingIndex) {
-        if (StringUtils.isEmpty(indexId)) {
+        if (isNullOrBlank(indexId)) {
             log.warn("IndexID is not specified, skipping upsert.");
             return;
         }
@@ -145,7 +146,7 @@ public class IndexEndpointService {
      * @return the endpoint
      */
     public String resolveEndpoint() {
-        return (StringUtils.isEmpty(endpoint))
+        return (isNullOrBlank(endpoint))
                 ? location + "-aiplatform.googleapis.com:443"
                 : endpoint;
     }
