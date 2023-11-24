@@ -93,7 +93,7 @@ public class GcpBlobService {
      * @param blobName the blob name
      * @param document the document
      */
-    public void upload(String blobName, VertexAIDocument document) {
+    public void upload(String blobName, VertexAiDocument document) {
         upload(blobName, document.toJson());
     }
 

@@ -74,7 +74,7 @@ public class VectorSearchService {
                         final String id = neighbor.getDatapoint().getDatapointId();
                         final String path = "documents/" + id;
                         final String content = gcpBlobService.download(path);
-                        final VertexAIDocument document = VertexAIDocument.fromJson(content);
+                        final VertexAiDocument document = VertexAiDocument.fromJson(content);
                         final IndexDatapoint resultDatapoint = neighbor.getDatapoint();
                         return new EmbeddingMatch<>(neighbor.getDistance(),
                                 id,

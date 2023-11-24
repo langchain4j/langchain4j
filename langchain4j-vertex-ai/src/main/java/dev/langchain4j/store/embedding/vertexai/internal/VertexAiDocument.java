@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class VertexAIDocument {
+public class VertexAiDocument {
     private static final Gson GSON = new Gson();
 
     private String memberOfIndex;
@@ -22,11 +22,11 @@ public class VertexAIDocument {
         return GSON.toJson(this);
     }
 
-    public static VertexAIDocument fromJson(String json) {
+    public static VertexAiDocument fromJson(String json) {
         if (json == null) {
             return null;
         }
 
-        return GSON.fromJson(json, VertexAIDocument.class);
+        return GSON.fromJson(json, VertexAiDocument.class);
     }
 }
