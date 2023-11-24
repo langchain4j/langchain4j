@@ -79,11 +79,10 @@ public class VectorSearchService {
                         return new EmbeddingMatch<>(neighbor.getDistance(),
                                 id,
                                 Embedding.from(resultDatapoint.getFeatureVectorList()),
-                                (document != null) ? document.getSegment() : null);
+                                (document != null) ? document.toTextSegment() : null);
                     })
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.error("Error finding neighbors", e);
             throw new RuntimeException(e);
         }
     }
@@ -104,7 +103,6 @@ public class VectorSearchService {
 
             return settings.build();
         } catch (Exception e) {
-            log.error("Error initializing Vertex AI MatchServiceSettings", e);
             throw new RuntimeException(e);
         }
     }

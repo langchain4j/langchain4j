@@ -152,7 +152,9 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
             insertedIds.add(id);
 
             // Upload the document to GCS
-            getGcpBlobService().upload("documents/" + id, new VertexAiDocument(indexFileId, textSegment));
+            getGcpBlobService().upload(
+                    "documents/" + id,
+                    new VertexAiDocument(indexFileId, textSegment).toJson());
         }
 
         final String filename = "indexes/" + indexFileId + ".json";
@@ -232,13 +234,10 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      * @return the storage
      */
     private GcpBlobService initBlob() {
-        ensureNotNull(bucketName, "bucketName is null");
-        ensureNotNull(project, "project is null");
-
         return GcpBlobService.builder()
-                .bucketName(bucketName)
+                .bucketName(ensureNotNull(bucketName, "bucketName"))
                 .credentialsProvider(credentialsProvider)
-                .project(project)
+                .project(ensureNotNull(project, "project"))
                 .build();
     }
 
@@ -248,21 +247,15 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      * @return the matching service
      */
     private VectorSearchService initMatchingService() {
-        ensureNotNull(deployedIndexId, "deployedIndexId is null");
-        ensureNotNull(indexId, "indexId is null");
-        ensureNotNull(indexEndpointId, "indexEndpointId is null");
-        ensureNotNull(project, "project is null");
-        ensureNotNull(location, "location is null");
-
         return VectorSearchService.builder()
                 .gcpBlobService(getGcpBlobService())
-                .deployedIndexId(deployedIndexId)
+                .deployedIndexId(ensureNotNull(deployedIndexId, "deployedIndexId"))
                 .credentialsProvider(credentialsProvider)
                 .returnFullDatapoint(returnFullDatapoint)
-                .indexEndpointId(indexEndpointId)
-                .indexId(indexId)
-                .project(project)
-                .location(location)
+                .indexEndpointId(ensureNotNull(indexEndpointId, "indexEndpointId"))
+                .indexId(ensureNotNull(indexId, "indexId"))
+                .project(ensureNotNull(project, "project"))
+                .location(ensureNotNull(location, "location"))
                 .endpoint(getIndexEndpointService().getPublicEndpoint())
                 .build();
     }
@@ -273,15 +266,11 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      * @return the index endpoint
      */
     private IndexEndpointService initIndexEndpoint() {
-        ensureNotNull(endpoint, "endpoint is null");
-        ensureNotNull(location, "location is null");
-        ensureNotNull(project, "project is null");
-
         return IndexEndpointService
                 .builder()
-                .endpoint(endpoint)
-                .location(location)
-                .project(project)
+                .endpoint(ensureNotNull(endpoint, "endpoint"))
+                .location(ensureNotNull(location, "location"))
+                .project(ensureNotNull(project, "project"))
                 .indexId(indexId)
                 .indexEndpointId(indexEndpointId)
                 .build();

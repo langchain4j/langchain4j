@@ -141,7 +141,6 @@ public class GcpBlobService {
                         .build()
                         .getService();
             } catch (IOException e) {
-                log.error("Failed to create storage client.", e);
                 throw new RuntimeException(e);
             }
         }

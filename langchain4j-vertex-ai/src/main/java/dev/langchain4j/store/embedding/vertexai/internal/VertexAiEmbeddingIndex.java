@@ -33,11 +33,12 @@ public class VertexAiEmbeddingIndex {
      * @param embedding the embedding
      */
     public void addEmbedding(String id, Embedding embedding) {
-        ensureNotBlank(id, "id");
         ensureNotNull(embedding, "embedding");
         ensureTrue(embedding.dimension() > 0, "embedding must have at least one dimension");
 
-        records.add(new VertexAiEmbeddingIndexRecord(id, embedding.vectorAsList()));
+        records.add(new VertexAiEmbeddingIndexRecord(
+                ensureNotBlank(id, "id"),
+                embedding.vectorAsList()));
 
         if (embedding.dimension() > dimensions) {
             dimensions = embedding.dimension();
