@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertexai.internal;
+package dev.langchain4j.store.embedding.vertexai.internal;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.cloud.aiplatform.v1.*;

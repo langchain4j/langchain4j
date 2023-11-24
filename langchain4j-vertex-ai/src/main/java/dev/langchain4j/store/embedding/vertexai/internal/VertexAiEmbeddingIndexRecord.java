@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertexai.internal;
+package dev.langchain4j.store.embedding.vertexai.internal;
 
 import com.google.gson.Gson;
 import lombok.Getter;

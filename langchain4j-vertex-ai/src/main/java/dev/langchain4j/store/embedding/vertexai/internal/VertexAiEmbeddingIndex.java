@@ -1,4 +1,4 @@
-package dev.langchain4j.model.vertexai.internal;
+package dev.langchain4j.store.embedding.vertexai.internal;
 
 import dev.langchain4j.data.embedding.Embedding;
 import lombok.AllArgsConstructor;
@@ -25,7 +25,7 @@ public class VertexAiEmbeddingIndex {
         this.records = new ArrayList<>();
         this.dimensions = 0;
     }
-    
+
     /**
      * Adds an embedding to the index.
      *

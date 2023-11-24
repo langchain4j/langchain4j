@@ -1,9 +1,9 @@
-package dev.langchain4j.model.vertexai;
+package dev.langchain4j.store.embedding.vertexai;
 
 import com.google.api.gax.core.CredentialsProvider;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.vertexai.internal.*;
+import dev.langchain4j.store.embedding.vertexai.internal.*;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
