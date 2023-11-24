@@ -42,10 +42,13 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
     @Getter
     @Builder.Default
     private final boolean avoidDups = true;
+    /**
+     * If true, the full datapoint will be returned in the response.
+     * Default is false for performance reasons.
+     */
     @Getter
     @Builder.Default
-    private final boolean returnFullDatapoint = true;
-
+    private final boolean returnFullDatapoint = false;
     @Getter(lazy = true)
     private final VectorSearchService vectorSearchService = initMatchingService();
     @Getter(lazy = true)
