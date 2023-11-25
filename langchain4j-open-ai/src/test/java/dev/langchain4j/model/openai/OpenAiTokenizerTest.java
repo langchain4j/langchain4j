@@ -11,6 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
@@ -72,6 +73,9 @@ class OpenAiTokenizerTest {
         int temperature(String location, TemperatureUnit temperatureUnit) {
             return 0;
         }
+
+        @Tool()
+        int randomInt() {return new Random().nextInt();}
     }
 
     enum TemperatureUnit {
@@ -81,7 +85,7 @@ class OpenAiTokenizerTest {
     @Test
     void should_count_tokens_in_tools() {
         int tokenCount = tokenizer.estimateTokenCountInTools(new Tools());
-        assertThat(tokenCount).isEqualTo(93); // found experimentally while playing with OpenAI API
+        assertThat(tokenCount).isEqualTo(107); // found experimentally while playing with OpenAI API
     }
 
     @Test
