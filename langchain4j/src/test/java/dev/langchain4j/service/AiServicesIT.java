@@ -15,6 +15,7 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.Builder;
@@ -657,7 +658,7 @@ public class AiServicesIT {
 
     interface Assistant {
 
-        String chat(String userMessage);
+        Response<AiMessage> chat(String userMessage);
     }
 
     static class Calculator {
@@ -683,9 +684,12 @@ public class AiServicesIT {
 
         String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
 
-        String answer = assistant.chat(userMessage);
+        Response<AiMessage> answer = assistant.chat(userMessage);
 
-        assertThat(answer).contains("6.97");
+        assertThat(answer.content().text()).contains("6.97");
+        assertThat(answer.tokenUsage().inputTokenCount()).isEqualTo(72 + 110);
+        assertThat(answer.tokenUsage().outputTokenCount()).isEqualTo(21 + 28);
+        assertThat(answer.tokenUsage().totalTokenCount()).isEqualTo(93 + 138);
 
 
         verify(calculator).squareRoot(485906798473894056.0);

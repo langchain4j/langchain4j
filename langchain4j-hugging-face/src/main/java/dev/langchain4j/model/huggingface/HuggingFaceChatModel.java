@@ -1,6 +1,5 @@
 package dev.langchain4j.model.huggingface;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -87,16 +86,6 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         TextGenerationResponse textGenerationResponse = client.chat(request);
 
         return Response.from(AiMessage.from(textGenerationResponse.generatedText()));
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new IllegalArgumentException("Tools are currently not supported for HuggingFace models");
     }
 
     public static Builder builder() {
