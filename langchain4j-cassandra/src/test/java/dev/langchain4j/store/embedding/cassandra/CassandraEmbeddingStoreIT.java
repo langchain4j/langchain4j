@@ -4,8 +4,11 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.CassandraContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 
@@ -17,10 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Work with Cassandra Embedding Store.
  */
+@Testcontainers
 class CassandraEmbeddingStoreIT {
 
+    private static final DockerImageName CASSANDRA_IMAGE = DockerImageName.parse("stargateio/dse-next:4.0.7-e47eb8e14b96")
+            .asCompatibleSubstituteFor("cassandra");
+
+    @Container
+    private static final CassandraContainer<?> cassandra = new CassandraContainer<>(CASSANDRA_IMAGE);
+
     @Test
-    @Disabled("To run this test, you must have a local Cassandra instance, a docker-compose is provided")
     public void testAddEmbeddingAndFindRelevant() {
 
         CassandraEmbeddingStore cassandraEmbeddingStore = initStore();
@@ -43,9 +52,9 @@ class CassandraEmbeddingStoreIT {
 
     private CassandraEmbeddingStore initStore() {
         return CassandraEmbeddingStore.builder()
-                .contactPoints("127.0.0.1")
-                .port(9042)
-                .localDataCenter("datacenter1")
+                .contactPoints(cassandra.getHost())
+                .port(cassandra.getMappedPort(9042))
+                .localDataCenter(cassandra.getLocalDatacenter())
                 .table("langchain4j", "table_" + randomUUID().replace("-", ""))
                 .vectorDimension(11)
                 .build();
