@@ -4,7 +4,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.model.chat.ImageProcessingModel;
+import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.net.Proxy;
 import java.time.Duration;
@@ -15,7 +15,7 @@ import lombok.NonNull;
  * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
  */
-public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
+public class OpenAiDalleImageModel implements ImageModel {
 
   public static final String DALL_E_2 = "dall-e-2"; // anyone still needs that? :)
   public static final String DALL_E_3 = "dall-e-3"; // default here
@@ -48,7 +48,7 @@ public class OpenAiDalleImageProcessingModel implements ImageProcessingModel {
    * @param downloadFolder specifies the local folder where the generated image will be downloaded to (in case provided).
    */
   @Builder
-  public OpenAiDalleImageProcessingModel(
+  public OpenAiDalleImageModel(
     @NonNull String apiKey,
     String model,
     String size,
