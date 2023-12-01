@@ -2,7 +2,6 @@ package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
-import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.ChatCompletions;
 import com.azure.ai.openai.models.ChatCompletionsOptions;
 import com.azure.ai.openai.models.FunctionCallConfig;
@@ -27,7 +26,6 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
@@ -35,7 +33,7 @@ import static java.util.Collections.singletonList;
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
  * <p>
- * Mandatory parameters for initialization are: endpoint, apiVersion and apiKey.
+ * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -53,7 +51,7 @@ import static java.util.Collections.singletonList;
 public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAIClient client;
-    private final String modelName;
+    private final String deploymentName;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
@@ -63,9 +61,9 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private final Tokenizer tokenizer;
 
     public AzureOpenAiChatModel(String endpoint,
-                                String apiVersion,
+                                String serviceVersion,
                                 String apiKey,
-                                String modelName,
+                                String deploymentName,
                                 Tokenizer tokenizer,
                                 Double temperature,
                                 Double topP,
@@ -96,12 +94,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         this.client = new OpenAIClientBuilder()
                 .endpoint(ensureNotBlank(endpoint, "endpoint"))
                 .credential(new AzureKeyCredential(apiKey))
-                .serviceVersion(OpenAIServiceVersion.valueOf(apiVersion))
+                .serviceVersion(getOpenAIServiceVersion(serviceVersion))
                 .httpClient(httpClient)
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
 
-        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
+        this.deploymentName = getOrDefault(deploymentName, "gpt-3.5-turbo");
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -144,7 +142,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
         }
 
-        ChatCompletions chatCompletions = withRetry(() -> client.getChatCompletions(modelName, options), maxRetries);
+        ChatCompletions chatCompletions = withRetry(() -> client.getChatCompletions(deploymentName, options), maxRetries);
 
         return Response.from(
                 aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
@@ -165,9 +163,9 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     public static class Builder {
 
         private String endpoint;
-        private String apiVersion;
+        private String serviceVersion;
         private String apiKey;
-        private String modelName;
+        private String deploymentName;
         private Tokenizer tokenizer;
         private Double temperature;
         private Double topP;
@@ -193,11 +191,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         /**
          * Sets the Azure OpenAI API version. This is a mandatory parameter.
          *
-         * @param apiVersion The Azure OpenAI api version in the format: 2023-05-15
+         * @param serviceVersion The Azure OpenAI service version in the format: 2023-05-15
          * @return builder
          */
-        public Builder apiVersion(String apiVersion) {
-            this.apiVersion = apiVersion;
+        public Builder serviceVersion(String serviceVersion) {
+            this.serviceVersion = serviceVersion;
             return this;
         }
 
@@ -212,8 +210,14 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
+        /**
+         * Sets the deployment name in Azure OpenAI. This is a mandatory parameter.
+         *
+         * @param deploymentName The Deployment name.
+         * @return builder
+         */
+        public Builder deploymentName(String deploymentName) {
+            this.deploymentName = deploymentName;
             return this;
         }
 
@@ -270,9 +274,9 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         public AzureOpenAiChatModel build() {
             return new AzureOpenAiChatModel(
                     endpoint,
-                    apiVersion,
+                    serviceVersion,
                     apiKey,
-                    modelName,
+                    deploymentName,
                     tokenizer,
                     temperature,
                     topP,

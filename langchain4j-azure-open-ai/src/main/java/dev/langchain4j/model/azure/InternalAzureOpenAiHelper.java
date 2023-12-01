@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -17,6 +18,15 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
 public class InternalAzureOpenAiHelper {
+
+    public static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
+        for (OpenAIServiceVersion version : OpenAIServiceVersion.values()) {
+            if (version.getVersion().equals(serviceVersion)) {
+                return version;
+            }
+        }
+        return OpenAIServiceVersion.getLatest();
+    }
 
     public static List<com.azure.ai.openai.models.ChatMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
