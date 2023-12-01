@@ -18,11 +18,6 @@ import static java.util.stream.Collectors.toList;
 
 public class InternalAzureOpenAiHelper {
 
-    static final String OPENAI_URL = "https://api.openai.com/v1";
-
-    static final String OPENAI_DEMO_API_KEY = "demo";
-    static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
-
     public static List<com.azure.ai.openai.models.ChatMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
