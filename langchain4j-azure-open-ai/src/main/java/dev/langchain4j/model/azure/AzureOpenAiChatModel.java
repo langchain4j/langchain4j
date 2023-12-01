@@ -1,8 +1,18 @@
 package dev.langchain4j.model.azure;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.chat.ChatCompletionRequest;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.OpenAIClientBuilder;
+import com.azure.ai.openai.OpenAIServiceVersion;
+import com.azure.ai.openai.models.ChatCompletions;
+import com.azure.ai.openai.models.ChatCompletionsOptions;
+import com.azure.ai.openai.models.FunctionCallConfig;
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.http.policy.HttpLogOptions;
+import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -11,26 +21,26 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
  * <p>
- * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
+ * Mandatory parameters for initialization are: endpoint, apiVersion and apiKey.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
  * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
- * API Key in the "api-key" HTTP header.
+ * API Key in the "Authorization" HTTP header as follows: `Authorization: Bearer OPENAI_API_KEY`
  * <p>
  * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
  * authentication/access token in the "Authorization" HTTP header.
@@ -42,7 +52,8 @@ import static java.util.Collections.singletonList;
  */
 public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
-    private final OpenAiClient client;
+    private final OpenAIClient client;
+    private final String modelName;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
@@ -51,9 +62,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    public AzureOpenAiChatModel(String baseUrl,
+    public AzureOpenAiChatModel(String endpoint,
                                 String apiVersion,
                                 String apiKey,
+                                String modelName,
                                 Tokenizer tokenizer,
                                 Double temperature,
                                 Double topP,
@@ -62,24 +74,34 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Double frequencyPenalty,
                                 Duration timeout,
                                 Integer maxRetries,
-                                Proxy proxy,
-                                Boolean logRequests,
-                                Boolean logResponses) {
+                                ProxyOptions proxyOptions,
+                                Boolean logRequests) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        this.client = OpenAiClient.builder()
-                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .azureApiKey(apiKey)
-                .apiVersion(apiVersion)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .build();
+        HttpClientOptions clientOptions = new HttpClientOptions();
+        clientOptions.setConnectTimeout(timeout);
+        clientOptions.setResponseTimeout(timeout);
+        clientOptions.setReadTimeout(timeout);
+        clientOptions.setWriteTimeout(timeout);
+        clientOptions.setProxyOptions(proxyOptions);
+
+        HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
+
+        HttpLogOptions httpLogOptions = new HttpLogOptions();
+        if (logRequests != null) {
+            httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
+        }
+
+        this.client = new OpenAIClientBuilder()
+                .endpoint(ensureNotBlank(endpoint, "endpoint"))
+                .credential(new AzureKeyCredential(apiKey))
+                .serviceVersion(OpenAIServiceVersion.valueOf(apiVersion))
+                .httpClient(httpClient)
+                .httpLogOptions(httpLogOptions)
+                .buildClient();
+
+        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -108,29 +130,26 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                          List<ToolSpecification> toolSpecifications,
                                          ToolSpecification toolThatMustBeExecuted
     ) {
-        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
-                .messages(toOpenAiMessages(messages))
-                .temperature(temperature)
-                .topP(topP)
-                .maxTokens(maxTokens)
-                .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty);
+        ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
+                .setTemperature(temperature)
+                .setTopP(topP)
+                .setMaxTokens(maxTokens)
+                .setPresencePenalty(presencePenalty)
+                .setFrequencyPenalty(frequencyPenalty);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            requestBuilder.functions(toFunctions(toolSpecifications));
+            options.setFunctions(toFunctions(toolSpecifications));
         }
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
         }
 
-        ChatCompletionRequest request = requestBuilder.build();
-
-        ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
+        ChatCompletions chatCompletions = withRetry(() -> client.getChatCompletions(modelName, options), maxRetries);
 
         return Response.from(
-                aiMessageFrom(response),
-                tokenUsageFrom(response.usage()),
-                finishReasonFrom(response.choices().get(0).finishReason())
+                aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
+                tokenUsageFrom(chatCompletions.getUsage()),
+                finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
         );
     }
 
@@ -145,9 +164,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     public static class Builder {
 
-        private String baseUrl;
+        private String endpoint;
         private String apiVersion;
         private String apiKey;
+        private String modelName;
         private Tokenizer tokenizer;
         private Double temperature;
         private Double topP;
@@ -156,18 +176,17 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private Double frequencyPenalty;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
+        private ProxyOptions proxyOptions;
         private Boolean logRequests;
-        private Boolean logResponses;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
          *
-         * @param baseUrl The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/openai/deployments/{deployment}
+         * @param endpoint The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/openai/deployments/{deployment}
          * @return builder
          */
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
             return this;
         }
 
@@ -190,6 +209,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
             return this;
         }
 
@@ -233,8 +257,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder proxy(Proxy proxy) {
-            this.proxy = proxy;
+        public Builder ProxyOptions(ProxyOptions proxyOptions) {
+            this.proxyOptions = proxyOptions;
             return this;
         }
 
@@ -243,16 +267,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
         public AzureOpenAiChatModel build() {
             return new AzureOpenAiChatModel(
-                    baseUrl,
+                    endpoint,
                     apiVersion,
                     apiKey,
+                    modelName,
                     tokenizer,
                     temperature,
                     topP,
@@ -261,9 +281,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                     frequencyPenalty,
                     timeout,
                     maxRetries,
-                    proxy,
-                    logRequests,
-                    logResponses
+                    proxyOptions,
+                    logRequests
             );
         }
     }
