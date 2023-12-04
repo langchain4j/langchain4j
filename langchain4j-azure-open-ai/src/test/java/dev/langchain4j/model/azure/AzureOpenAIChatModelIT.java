@@ -81,7 +81,7 @@ public class AzureOpenAIChatModelIT {
                 .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
                 .build();
 
-        UserMessage userMessage = userMessage("What should I wear in Boston depending on the weather?");
+        UserMessage userMessage = userMessage("What should I wear in Paris, France depending on the weather?");
 
         // This test will use the function called "getCurrentWeather" which is defined below.
         String toolName = "getCurrentWeather";
@@ -107,14 +107,14 @@ public class AzureOpenAIChatModelIT {
         if (Objects.equals(toolExecutionRequest.name(), toolName)) {
             currentWeather = getCurrentWeather(weatherLocation);
         }
-        String weatherInBoston = String.format("The weather in %s is %d degrees %s.",
+        String weather = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
 
-        assertThat(weatherInBoston).isEqualTo("The weather in Boston, MA is 35 degrees celsius.");
+        assertThat(weather).isEqualTo("The weather in Paris, France is 35 degrees celsius.");
 
         // Now that we know the function's result, we can call the model again with the result as input.
-        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weatherInBoston);
+        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weather);
         SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
 
         List<ChatMessage> chatMessages = new ArrayList<>();
