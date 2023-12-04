@@ -1,22 +1,28 @@
 package dev.langchain4j.model.azure;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.completion.CompletionChoice;
-import dev.ai4j.openai4j.completion.CompletionRequest;
-import dev.ai4j.openai4j.completion.CompletionResponse;
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.OpenAIClientBuilder;
+import com.azure.ai.openai.models.Completions;
+import com.azure.ai.openai.models.CompletionsOptions;
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.http.HttpClient;
+import com.azure.core.http.ProxyOptions;
+import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.http.policy.HttpLogOptions;
+import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 
-import java.net.Proxy;
 import java.time.Duration;
+import java.util.Collections;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -24,12 +30,12 @@ import static java.time.Duration.ofSeconds;
  * However, it's recommended to use {@link AzureOpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>
- * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
+ * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
  * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
- * API Key in the "api-key" HTTP header.
+ * API Key in the "Authorization" HTTP header as follows: `Authorization: Bearer OPENAI_API_KEY`
  * <p>
  * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
  * authentication/access token in the "Authorization" HTTP header.
@@ -41,37 +47,61 @@ import static java.time.Duration.ofSeconds;
  */
 public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
-    private final OpenAiClient client;
+    private final OpenAIClient client;
+    private final String deploymentName;
     private final Double temperature;
+    private final Double topP;
+    private final Integer maxTokens;
+    private final Double presencePenalty;
+    private final Double frequencyPenalty;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
-    public AzureOpenAiLanguageModel(String baseUrl,
-                                    String apiVersion,
+    public AzureOpenAiLanguageModel(String endpoint,
+                                    String serviceVersion,
                                     String apiKey,
+                                    String deploymentName,
                                     Tokenizer tokenizer,
                                     Double temperature,
+                                    Double topP,
+                                    Integer maxTokens,
+                                    Double presencePenalty,
+                                    Double frequencyPenalty,
                                     Duration timeout,
                                     Integer maxRetries,
-                                    Proxy proxy,
-                                    Boolean logRequests,
-                                    Boolean logResponses) {
+                                    ProxyOptions proxyOptions,
+                                    Boolean logRequests) {
 
-        timeout = timeout == null ? ofSeconds(60) : timeout;
+        timeout = getOrDefault(timeout, ofSeconds(60));
 
-        this.client = OpenAiClient.builder()
-                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .azureApiKey(apiKey)
-                .apiVersion(apiVersion)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .build();
+        HttpClientOptions clientOptions = new HttpClientOptions();
+        clientOptions.setConnectTimeout(timeout);
+        clientOptions.setResponseTimeout(timeout);
+        clientOptions.setReadTimeout(timeout);
+        clientOptions.setWriteTimeout(timeout);
+        clientOptions.setProxyOptions(proxyOptions);
+
+        HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
+
+        HttpLogOptions httpLogOptions = new HttpLogOptions();
+        if (logRequests != null) {
+            httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
+        }
+
+        this.client = new OpenAIClientBuilder()
+                .endpoint(ensureNotBlank(endpoint, "endpoint"))
+                .credential(new AzureKeyCredential(apiKey))
+                .serviceVersion(getOpenAIServiceVersion(serviceVersion))
+                .httpClient(httpClient)
+                .httpLogOptions(httpLogOptions)
+                .buildClient();
+
+        this.deploymentName = getOrDefault(deploymentName, "text-davinci-003");
         this.temperature = getOrDefault(temperature, 0.7);
+        this.topP = topP;
+        this.maxTokens = maxTokens;
+        this.presencePenalty = presencePenalty;
+        this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = tokenizer;
     }
@@ -79,18 +109,20 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     @Override
     public Response<String> generate(String prompt) {
 
-        CompletionRequest request = CompletionRequest.builder()
-                .prompt(prompt)
-                .temperature(temperature)
-                .build();
+        CompletionsOptions options = new CompletionsOptions(Collections.singletonList(prompt))
+                .setModel(deploymentName)
+                .setTemperature(temperature)
+                .setTopP(topP)
+                .setMaxTokens(maxTokens)
+                .setPresencePenalty(presencePenalty)
+                .setFrequencyPenalty(frequencyPenalty);
 
-        CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
+        Completions completions = withRetry(() -> client.getCompletions(deploymentName, options), maxRetries);
 
-        CompletionChoice completionChoice = response.choices().get(0);
         return Response.from(
-                completionChoice.text(),
-                tokenUsageFrom(response.usage()),
-                finishReasonFrom(completionChoice.finishReason())
+                completions.getChoices().get(0).getText(),
+                tokenUsageFrom(completions.getUsage()),
+                finishReasonFrom(completions.getChoices().get(0).getFinishReason())
         );
     }
 
@@ -105,36 +137,40 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
     public static class Builder {
 
-        private String baseUrl;
-        private String apiVersion;
+        private String endpoint;
+        private String serviceVersion;
         private String apiKey;
+        private String deploymentName;
         private Tokenizer tokenizer;
         private Double temperature;
+        private Double topP;
+        private Integer maxTokens;
+        private Double presencePenalty;
+        private Double frequencyPenalty;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
+        private ProxyOptions proxyOptions;
         private Boolean logRequests;
-        private Boolean logResponses;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
          *
-         * @param baseUrl The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/openai/deployments/{deployment}
+         * @param endpoint The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/
          * @return builder
          */
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
             return this;
         }
 
         /**
          * Sets the Azure OpenAI API version. This is a mandatory parameter.
          *
-         * @param apiVersion The Azure OpenAI api version in the format: 2023-05-15
+         * @param serviceVersion The Azure OpenAI api version in the format: 2023-05-15
          * @return builder
          */
-        public Builder apiVersion(String apiVersion) {
-            this.apiVersion = apiVersion;
+        public Builder serviceVersion(String serviceVersion) {
+            this.serviceVersion = serviceVersion;
             return this;
         }
 
@@ -149,6 +185,17 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
+        /**
+         * Sets the deployment name in Azure OpenAI. This is a mandatory parameter.
+         *
+         * @param deploymentName The Deployment name.
+         * @return builder
+         */
+        public Builder deploymentName(String deploymentName) {
+            this.deploymentName = deploymentName;
+            return this;
+        }
+
         public Builder tokenizer(Tokenizer tokenizer) {
             this.tokenizer = tokenizer;
             return this;
@@ -156,6 +203,26 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
+            return this;
+        }
+
+        public Builder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public Builder maxTokens(Integer maxTokens) {
+            this.maxTokens = maxTokens;
+            return this;
+        }
+
+        public Builder presencePenalty(Double presencePenalty) {
+            this.presencePenalty = presencePenalty;
+            return this;
+        }
+
+        public Builder frequencyPenalty(Double frequencyPenalty) {
+            this.frequencyPenalty = frequencyPenalty;
             return this;
         }
 
@@ -169,8 +236,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder proxy(Proxy proxy) {
-            this.proxy = proxy;
+        public Builder ProxyOptions(ProxyOptions proxyOptions) {
+            this.proxyOptions = proxyOptions;
             return this;
         }
 
@@ -179,23 +246,22 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
         public AzureOpenAiLanguageModel build() {
             return new AzureOpenAiLanguageModel(
-                    baseUrl,
-                    apiVersion,
+                    endpoint,
+                    serviceVersion,
                     apiKey,
+                    deploymentName,
                     tokenizer,
                     temperature,
+                    topP,
+                    maxTokens,
+                    presencePenalty,
+                    frequencyPenalty,
                     timeout,
                     maxRetries,
-                    proxy,
-                    logRequests,
-                    logResponses
+                    proxyOptions,
+                    logRequests
             );
         }
     }
