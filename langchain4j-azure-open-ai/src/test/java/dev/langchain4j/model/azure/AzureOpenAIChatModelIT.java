@@ -6,9 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -108,14 +106,22 @@ public class AzureOpenAIChatModelIT {
         String weatherQuestion = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
-        assertThat(weatherQuestion).isEqualTo("The weather in Boston, MA is 35 degrees celsius.");
 
+        assertThat(weatherQuestion).isEqualTo("The weather in Boston, MA is 35 degrees celsius.");
         ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weatherQuestion);
-        Response<AiMessage> response2 = model.generate(toolExecutionResultMessage);
+
+        SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
+
+        List<ChatMessage> chatMessages = new ArrayList<>();
+        chatMessages.add(userMessage);
+        chatMessages.add(systemMessage);
+        chatMessages.add(toolExecutionResultMessage);
+        Response<AiMessage> response2 = model.generate(chatMessages);
 
         System.out.println(response2);
 
         assertThat(response2.content().text()).isNotBlank();
+        assertThat(response2.content().text()).contains("t-shirt");
         assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
