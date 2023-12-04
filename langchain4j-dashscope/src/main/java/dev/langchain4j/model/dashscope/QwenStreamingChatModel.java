@@ -5,7 +5,6 @@ import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -65,20 +64,6 @@ public class QwenStreamingChatModel extends QwenChatModel implements StreamingCh
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public void generate(List<ChatMessage> messages,
-                         List<ToolSpecification> toolSpecifications,
-                         StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
-    }
-
-    @Override
-    public void generate(List<ChatMessage> messages,
-                         ToolSpecification toolSpecification,
-                         StreamingResponseHandler<AiMessage> handler) {
-        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     public static Builder builder() {

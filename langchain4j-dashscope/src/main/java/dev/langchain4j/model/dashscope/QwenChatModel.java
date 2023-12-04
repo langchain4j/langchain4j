@@ -5,7 +5,6 @@ import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
@@ -64,16 +63,6 @@ public class QwenChatModel implements ChatLanguageModel {
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
     }
 
     public static Builder builder() {
