@@ -99,7 +99,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
 
-        this.deploymentName = getOrDefault(deploymentName, "gpt-3.5-turbo");
+        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-0613");
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -180,7 +180,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
          *
-         * @param endpoint The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/openai/deployments/{deployment}
+         * @param endpoint The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/
          * @return builder
          */
         public Builder endpoint(String endpoint) {
