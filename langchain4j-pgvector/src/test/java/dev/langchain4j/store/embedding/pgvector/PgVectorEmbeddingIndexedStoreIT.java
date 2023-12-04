@@ -14,7 +14,7 @@ import org.testcontainers.utility.DockerImageName;
 
 @Disabled("Comment this line if you want to run locally")
 @Testcontainers
-public class PgVectorEmbeddingStoreIT extends EmbeddingStoreIT {
+public class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>(
@@ -35,6 +35,8 @@ public class PgVectorEmbeddingStoreIT extends EmbeddingStoreIT {
                 .database("test")
                 .table("test")
                 .dimension(384)
+                .useIndex(true)
+                .indexListSize(1)
                 .dropTableFirst(true)
                 .build();
     }
