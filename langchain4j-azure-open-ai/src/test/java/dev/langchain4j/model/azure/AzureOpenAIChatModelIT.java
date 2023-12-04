@@ -1,10 +1,13 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -13,9 +16,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class AzureOpenAIChatModelIT {
@@ -82,17 +85,38 @@ public class AzureOpenAIChatModelIT {
 
         UserMessage userMessage = userMessage("What should I wear in Boston depending on the weather?");
 
+        String toolName = "getCurrentWeather";
+
         ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("getCurrentWeather")
+                .name(toolName)
                 .description("Get the current weather")
                 .parameters(getToolParameters())
                 .build();
 
         Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
 
+        assertThat(response.content().text()).isBlank();
+        assertThat(response.content().toolExecutionRequest().name()).isEqualTo(toolName);
         System.out.println(response);
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
+        WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
+        int currentWeather = 0;
+        if (Objects.equals(toolExecutionRequest.name(), toolName)) {
+            currentWeather = getCurrentWeather(weatherLocation);
+        }
+        String weatherQuestion = String.format("The weather in %s is %d degrees %s.",
+                weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
+
+        assertThat(weatherQuestion).isEqualTo("The weather in Boston, MA is 35 degrees celsius.");
+
+        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weatherQuestion);
+        Response<AiMessage> response2 = model.generate(toolExecutionResultMessage);
+
+        System.out.println(response2);
+
+        assertThat(response2.content().text()).isNotBlank();
+        assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
     private static ToolParameters getToolParameters() {
