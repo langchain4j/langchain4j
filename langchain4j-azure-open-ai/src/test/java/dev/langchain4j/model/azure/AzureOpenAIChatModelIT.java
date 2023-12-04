@@ -83,6 +83,7 @@ public class AzureOpenAIChatModelIT {
 
         UserMessage userMessage = userMessage("What should I wear in Boston depending on the weather?");
 
+        // This test will use the function called "getCurrentWeather" which is defined below.
         String toolName = "getCurrentWeather";
 
         ToolSpecification toolSpecification = ToolSpecification.builder()
@@ -95,27 +96,32 @@ public class AzureOpenAIChatModelIT {
 
         assertThat(response.content().text()).isBlank();
         assertThat(response.content().toolExecutionRequest().name()).isEqualTo(toolName);
+
+        // We should get a response telling how to call the "getCurrentWeather" function, with the correct parameters in JSON format.
         System.out.println(response);
 
+        // We can now call the function with the correct parameters.
         ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
         int currentWeather = 0;
         if (Objects.equals(toolExecutionRequest.name(), toolName)) {
             currentWeather = getCurrentWeather(weatherLocation);
         }
-        String weatherQuestion = String.format("The weather in %s is %d degrees %s.",
+        String weatherInBoston = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
 
-        assertThat(weatherQuestion).isEqualTo("The weather in Boston, MA is 35 degrees celsius.");
-        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weatherQuestion);
+        assertThat(weatherInBoston).isEqualTo("The weather in Boston, MA is 35 degrees celsius.");
 
+        // Now that we know the function's result, we can call the model again with the result as input.
+        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weatherInBoston);
         SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
 
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(userMessage);
         chatMessages.add(systemMessage);
         chatMessages.add(toolExecutionResultMessage);
+
         Response<AiMessage> response2 = model.generate(chatMessages);
 
         System.out.println(response2);
