@@ -90,9 +90,9 @@ public class AzureOpenAiStreamingResponseBuilder {
             return;
         }
 
-        String finishReason = completionChoice.getFinishReason().toString();
-        if (finishReason != null) {
-            this.finishReason = finishReason;
+        CompletionsFinishReason completionsFinishReason = completionChoice.getFinishReason();
+        if (completionsFinishReason != null) {
+            this.finishReason = completionsFinishReason.toString();
         }
 
         String token = completionChoice.getText();

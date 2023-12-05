@@ -19,6 +19,7 @@ class AzureOpenAiLanguageModelIT {
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
                 .logRequests(true)
+                .maxTokens(1000)
                 .build();
 
         String prompt = "Hello, how are you?";

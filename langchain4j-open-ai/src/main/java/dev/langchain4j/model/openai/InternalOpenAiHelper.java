@@ -130,6 +130,9 @@ public class InternalOpenAiHelper {
     }
 
     public static FinishReason finishReasonFrom(String openAiFinishReason) {
+        if (openAiFinishReason == null) {
+            return null;
+        }
         switch (openAiFinishReason) {
             case "stop":
                 return STOP;

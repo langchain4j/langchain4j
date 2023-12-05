@@ -32,7 +32,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents an OpenAI language model, hosted on Azure, such as text-davinci-003.
+ * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
  * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
@@ -103,8 +103,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
 
-        this.deploymentName = getOrDefault(deploymentName, "text-davinci-003");
-        this.modelName = getOrDefault(modelName, TEXT_DAVINCI_003);
+        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
+        this.modelName = getOrDefault(modelName, "gpt-3.5-turbo-instruct");
         this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
