@@ -20,6 +20,7 @@
 
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
+        <module>langchain4j-quarkus</module>
         <module>langchain4j-bedrock</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
