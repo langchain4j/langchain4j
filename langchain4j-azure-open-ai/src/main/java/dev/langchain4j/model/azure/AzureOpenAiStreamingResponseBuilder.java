@@ -21,10 +21,8 @@ public class AzureOpenAiStreamingResponseBuilder {
     private final StringBuffer contentBuilder = new StringBuffer();
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
-
     private final Integer inputTokenCount;
     private final AtomicInteger outputTokenCount = new AtomicInteger();
-
     private volatile String finishReason;
 
     public AzureOpenAiStreamingResponseBuilder(Integer inputTokenCount) {

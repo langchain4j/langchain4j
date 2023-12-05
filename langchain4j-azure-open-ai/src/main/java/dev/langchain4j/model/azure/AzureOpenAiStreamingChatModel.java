@@ -56,12 +56,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private final OpenAIClient client;
     private final String deploymentName;
     private final String modelName;
+    private final Tokenizer tokenizer;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private final Tokenizer tokenizer;
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -134,6 +134,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     ) {
         ChatCompletionsOptions options = new ChatCompletionsOptions(InternalAzureOpenAiHelper.toOpenAiMessages(messages))
                 .setStream(true)
+                .setModel(deploymentName)
                 .setTemperature(temperature)
                 .setTopP(topP)
                 .setMaxTokens(maxTokens)

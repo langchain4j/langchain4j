@@ -134,6 +134,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                          ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(messages))
+                .setModel(deploymentName)
                 .setTemperature(temperature)
                 .setTopP(topP)
                 .setMaxTokens(maxTokens)
