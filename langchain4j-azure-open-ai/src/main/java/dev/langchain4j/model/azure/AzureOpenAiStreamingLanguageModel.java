@@ -27,8 +27,8 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.getOpenAIServiceVersion;
-import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -104,7 +104,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .buildClient();
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.modelName = getOrDefault(modelName, "gpt-3.5-turbo-instruct");
+        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
