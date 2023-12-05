@@ -14,6 +14,7 @@ import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -23,6 +24,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
+import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -49,6 +51,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
     private final OpenAIClient client;
     private final String deploymentName;
+    private final String modelName;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
@@ -61,6 +64,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     String serviceVersion,
                                     String apiKey,
                                     String deploymentName,
+                                    String modelName,
                                     Tokenizer tokenizer,
                                     Double temperature,
                                     Double topP,
@@ -97,13 +101,14 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                 .buildClient();
 
         this.deploymentName = getOrDefault(deploymentName, "text-davinci-003");
+        this.modelName = getOrDefault(modelName, TEXT_DAVINCI_003);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = tokenizer;
     }
 
     @Override
@@ -141,6 +146,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         private String serviceVersion;
         private String apiKey;
         private String deploymentName;
+        private String modelName;
         private Tokenizer tokenizer;
         private Double temperature;
         private Double topP;
@@ -193,6 +199,17 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
+            return this;
+        }
+
+        /**
+         * Sets the model name in Azure OpenAI. This is a mandatory parameter.
+         *
+         * @param modelName The model name.
+         * @return builder
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
             return this;
         }
 
@@ -252,6 +269,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                     serviceVersion,
                     apiKey,
                     deploymentName,
+                    modelName,
                     tokenizer,
                     temperature,
                     topP,

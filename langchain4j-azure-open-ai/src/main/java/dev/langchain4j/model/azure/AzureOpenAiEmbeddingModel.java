@@ -17,6 +17,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -28,6 +29,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.getOpenAIServiceVersion;
+import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -54,8 +56,8 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
     private static final int BATCH_SIZE = 16;
 
     private final OpenAIClient client;
-
     private final String deploymentName;
+    private final String modelName;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
@@ -63,6 +65,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      String serviceVersion,
                                      String apiKey,
                                      String deploymentName,
+                                     String modelName,
                                      Tokenizer tokenizer,
                                      Duration timeout,
                                      Integer maxRetries,
@@ -94,8 +97,9 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                 .buildClient();
 
         this.deploymentName = getOrDefault(deploymentName, "text-embedding-ada-002");
+        this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = tokenizer;
     }
 
     /**
@@ -161,6 +165,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         private String serviceVersion;
         private String apiKey;
         private String deploymentName;
+        private String modelName;
         private Tokenizer tokenizer;
         private Duration timeout;
         private Integer maxRetries;
@@ -211,6 +216,17 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             return this;
         }
 
+        /**
+         * Sets the model name in Azure OpenAI. This is a mandatory parameter.
+         *
+         * @param modelName The model name.
+         * @return builder
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
         public Builder tokenizer(Tokenizer tokenizer) {
             this.tokenizer = tokenizer;
             return this;
@@ -242,6 +258,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                     serviceVersion,
                     apiKey,
                     deploymentName,
+                    modelName,
                     tokenizer,
                     timeout,
                     maxRetries,

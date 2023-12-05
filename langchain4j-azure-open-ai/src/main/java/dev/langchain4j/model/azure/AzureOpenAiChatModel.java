@@ -18,6 +18,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -27,13 +28,14 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey, deploymentName and modelName.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -52,18 +54,20 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
 
     private final OpenAIClient client;
     private final String deploymentName;
+    private final String modelName;
+    private final Tokenizer tokenizer;
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
     private final Integer maxRetries;
-    private final Tokenizer tokenizer;
 
     public AzureOpenAiChatModel(String endpoint,
                                 String serviceVersion,
                                 String apiKey,
                                 String deploymentName,
+                                String modelName,
                                 Tokenizer tokenizer,
                                 Double temperature,
                                 Double topP,
@@ -100,13 +104,14 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .buildClient();
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-0613");
+        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = tokenizer;
     }
 
     @Override
@@ -166,6 +171,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private String serviceVersion;
         private String apiKey;
         private String deploymentName;
+        private String modelName;
         private Tokenizer tokenizer;
         private Double temperature;
         private Double topP;
@@ -218,6 +224,17 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
+            return this;
+        }
+
+        /**
+         * Sets the model name in Azure OpenAI. This is a mandatory parameter.
+         *
+         * @param modelName The model name.
+         * @return builder
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
             return this;
         }
 
@@ -277,6 +294,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                     serviceVersion,
                     apiKey,
                     deploymentName,
+                    modelName,
                     tokenizer,
                     temperature,
                     topP,

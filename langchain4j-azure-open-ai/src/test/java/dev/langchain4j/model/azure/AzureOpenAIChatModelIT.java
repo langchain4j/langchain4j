@@ -16,7 +16,8 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class AzureOpenAIChatModelIT {
