@@ -1,0 +1,5 @@
+name: all-minilm-l6-v2
+parameters:
+  model: all-MiniLM-L6-v2
+backend: bert-embeddings
+embeddings: true

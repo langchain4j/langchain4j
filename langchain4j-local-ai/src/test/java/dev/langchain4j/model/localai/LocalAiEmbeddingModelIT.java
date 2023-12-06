@@ -13,7 +13,7 @@ class LocalAiEmbeddingModelIT extends AbstractLocalAiInfrastructure {
 
         EmbeddingModel model = LocalAiEmbeddingModel.builder()
                 .baseUrl(localAi.getBaseUrl())
-                .modelName("ggml-model-q4_0")
+                .modelName("all-minilm-l6-v2")
                 .logRequests(true)
                 .logResponses(true)
                 .build();

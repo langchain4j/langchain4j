@@ -6,6 +6,7 @@ import com.github.dockerjava.api.model.Image;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -22,7 +23,7 @@ public class AbstractLocalAiInfrastructure {
 
     private static final List<String[]> CMDS = Arrays.asList(
             new String[] {"curl", "-o", "/build/models/ggml-gpt4all-j", "https://gpt4all.io/models/ggml-gpt4all-j.bin"},
-            new String[] {"curl", "-o", "/build/models/ggml-model-q4_0.gguf", "https://huggingface.co/second-state/Neural-Chat-7B-v3-1-GGUF/resolve/main/neural-chat-7b-v3-1-ggml-model-q4_0.gguf"});
+            new String[] {"curl", "-o", "/build/models/all-minilm-l6-v2", "https://huggingface.co/skeskinen/ggml/resolve/main/all-MiniLM-L6-v2/ggml-model-q4_0.bin"});
 
     static final LocalAiContainer localAi;
 
@@ -63,6 +64,7 @@ public class AbstractLocalAiInfrastructure {
                     for (String[] cmd : CMDS) {
                         execInContainer(cmd);
                     }
+                   copyFileToContainer(MountableFile.forClasspathResource("all-minilm-l6-v2.yaml"), "/build/models/all-minilm-l6-v2.yaml");
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException("Error downloading the model", e);
                 }
