@@ -38,7 +38,7 @@ import static java.time.Duration.ofSeconds;
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
  * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
- * API Key in the "Authorization" HTTP header as follows: `Authorization: Bearer OPENAI_API_KEY`
+ * API Key in the "api-key" HTTP header as follows: `api-key: OPENAI_API_KEY`Y`
  * <p>
  * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
  * authentication/access token in the "Authorization" HTTP header.
