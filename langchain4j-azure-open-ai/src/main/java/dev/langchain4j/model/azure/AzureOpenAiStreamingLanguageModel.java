@@ -82,7 +82,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .build();
 
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount, tokenizer);
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
@@ -93,7 +93,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(false);
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),

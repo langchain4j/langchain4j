@@ -60,7 +60,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         this.modelName = getOrDefault(modelName, TEXT_DAVINCI_003);
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override

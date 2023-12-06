@@ -38,22 +38,22 @@ class OpenAiTokenizerTest {
         return Stream.of(
                 Arguments.of(singletonList(userMessage("hello")), 8),
                 Arguments.of(singletonList(userMessage("Klaus", "hello")), 11),
-                Arguments.of(asList(userMessage("hello"), aiMessage("hi there")), 14),
+                Arguments.of(asList(userMessage("hello"), aiMessage("hi there")), 16),
                 Arguments.of(asList(
                         userMessage("How much is 2 plus 2?"),
                         aiMessage(ToolExecutionRequest.builder()
                                 .name("calculator")
                                 .arguments("{\"a\":2, \"b\":2}")
                                 .build())
-                ), 35),
+                ), 37),
                 Arguments.of(asList(
                         userMessage("How much is 2 plus 2?"),
                         aiMessage(ToolExecutionRequest.builder()
                                 .name("calculator")
                                 .arguments("{\"a\":2, \"b\":2}")
                                 .build()),
-                        toolExecutionResultMessage("calculator", "4")
-                ), 40)
+                        toolExecutionResultMessage("a", "calculator", "4")
+                ), 42)
         );
     }
 

@@ -1,20 +1,23 @@
 package dev.langchain4j.model.openai;
 
-import dev.ai4j.openai4j.chat.ChatCompletionChoice;
-import dev.ai4j.openai4j.chat.ChatCompletionResponse;
-import dev.ai4j.openai4j.chat.Delta;
-import dev.ai4j.openai4j.chat.FunctionCall;
+import dev.ai4j.openai4j.chat.*;
 import dev.ai4j.openai4j.completion.CompletionChoice;
 import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 
 /**
  * This class needs to be thread safe because it is called when a streaming result comes back
@@ -24,16 +27,26 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
 
-    private final Integer inputTokenCount;
-    private final AtomicInteger outputTokenCount = new AtomicInteger();
+    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
 
     private volatile String finishReason;
 
-    public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
-        this.inputTokenCount = inputTokenCount;
+    private final Integer inputTokenCount;
+    private final Tokenizer tokenizer;
+
+    public OpenAiStreamingResponseBuilder(Integer inputTokenCount, Tokenizer tokenizer) {
+        this.inputTokenCount = ensureGreaterThanZero(inputTokenCount, "inputTokenCount");
+        this.tokenizer = ensureNotNull(tokenizer, "tokenizer");
+    }
+
+    public OpenAiStreamingResponseBuilder() {
+        // to be used by LocalAI only
+        this.inputTokenCount = null;
+        this.tokenizer = null;
     }
 
     public void append(ChatCompletionResponse partialResponse) {
@@ -64,20 +77,39 @@ public class OpenAiStreamingResponseBuilder {
         String content = delta.content();
         if (content != null) {
             contentBuilder.append(content);
-            outputTokenCount.incrementAndGet();
             return;
         }
 
-        FunctionCall functionCall = delta.functionCall();
-        if (functionCall != null) {
+        if (delta.functionCall() != null) {
+            FunctionCall functionCall = delta.functionCall();
+
             if (functionCall.name() != null) {
                 toolNameBuilder.append(functionCall.name());
-                outputTokenCount.incrementAndGet();
             }
 
             if (functionCall.arguments() != null) {
                 toolArgumentsBuilder.append(functionCall.arguments());
-                outputTokenCount.incrementAndGet();
+            }
+        }
+
+        if (delta.toolCalls() != null && !delta.toolCalls().isEmpty()) {
+            ToolCall toolCall = delta.toolCalls().get(0);
+
+            ToolExecutionRequestBuilder toolExecutionRequestBuilder
+                    = indexToToolExecutionRequestBuilder.computeIfAbsent(toolCall.index(), idx -> new ToolExecutionRequestBuilder());
+
+            if (toolCall.id() != null) {
+                toolExecutionRequestBuilder.idBuilder.append(toolCall.id());
+            }
+
+            FunctionCall functionCall = toolCall.function();
+
+            if (functionCall.name() != null) {
+                toolExecutionRequestBuilder.nameBuilder.append(functionCall.name());
+            }
+
+            if (functionCall.arguments() != null) {
+                toolExecutionRequestBuilder.argumentsBuilder.append(functionCall.arguments());
             }
         }
     }
@@ -105,33 +137,82 @@ public class OpenAiStreamingResponseBuilder {
         String token = completionChoice.text();
         if (token != null) {
             contentBuilder.append(token);
-            outputTokenCount.incrementAndGet();
         }
     }
 
-    public Response<AiMessage> build() {
+    public Response<AiMessage> build(boolean forcefulToolExecution) {
 
         String content = contentBuilder.toString();
         if (!content.isEmpty()) {
             return Response.from(
                     AiMessage.from(content),
-                    new TokenUsage(inputTokenCount, outputTokenCount.get()),
+                    tokenUsageIncluding(content),
                     finishReasonFrom(finishReason)
             );
         }
 
         String toolName = toolNameBuilder.toString();
         if (!toolName.isEmpty()) {
+            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                    .name(toolName)
+                    .arguments(toolArgumentsBuilder.toString())
+                    .build();
             return Response.from(
-                    AiMessage.from(ToolExecutionRequest.builder()
-                            .name(toolName)
-                            .arguments(toolArgumentsBuilder.toString())
-                            .build()),
-                    new TokenUsage(inputTokenCount, outputTokenCount.get()),
+                    AiMessage.from(toolExecutionRequest),
+                    tokenUsageIncluding(singletonList(toolExecutionRequest), forcefulToolExecution),
+                    finishReasonFrom(finishReason)
+            );
+        }
+
+        if (!indexToToolExecutionRequestBuilder.isEmpty()) {
+            List<ToolExecutionRequest> toolExecutionRequests = indexToToolExecutionRequestBuilder.values().stream()
+                    .map(it -> ToolExecutionRequest.builder()
+                            .id(it.idBuilder.toString())
+                            .name(it.nameBuilder.toString())
+                            .arguments(it.argumentsBuilder.toString())
+                            .build())
+                    .collect(toList());
+            return Response.from(
+                    AiMessage.from(toolExecutionRequests),
+                    tokenUsageIncluding(toolExecutionRequests, forcefulToolExecution),
                     finishReasonFrom(finishReason)
             );
         }
 
         return null;
+    }
+
+    private TokenUsage tokenUsageIncluding(String content) {
+        if (tokenizer == null) {
+            return null;
+        }
+
+        int outputTokenCount = tokenizer.estimateTokenCountInText(content);
+        return new TokenUsage(inputTokenCount, outputTokenCount);
+    }
+
+    private TokenUsage tokenUsageIncluding(List<ToolExecutionRequest> toolExecutionRequests, boolean forcefulToolExecution) {
+        if (tokenizer == null) {
+            return null;
+        }
+
+        int outputTokenCount = 0;
+        if (forcefulToolExecution) {
+            // OpenAI calculates output tokens differently when tool is executed forcefully
+            for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
+                outputTokenCount += tokenizer.estimateTokenCountInForcefulToolExecutionRequest(toolExecutionRequest);
+            }
+        } else {
+            outputTokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
+        }
+
+        return new TokenUsage(inputTokenCount, outputTokenCount);
+    }
+
+    private static class ToolExecutionRequestBuilder {
+
+        private final StringBuffer idBuilder = new StringBuffer();
+        private final StringBuffer nameBuilder = new StringBuffer();
+        private final StringBuffer argumentsBuilder = new StringBuffer();
     }
 }

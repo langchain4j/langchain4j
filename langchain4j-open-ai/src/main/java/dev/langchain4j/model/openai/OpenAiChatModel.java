@@ -83,7 +83,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override
@@ -116,10 +116,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .frequencyPenalty(frequencyPenalty);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            requestBuilder.functions(toFunctions(toolSpecifications));
+            requestBuilder.tools(toTools(toolSpecifications));
         }
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+            requestBuilder.toolChoice(toolThatMustBeExecuted.name()); // TODO test
         }
 
         ChatCompletionRequest request = requestBuilder.build();

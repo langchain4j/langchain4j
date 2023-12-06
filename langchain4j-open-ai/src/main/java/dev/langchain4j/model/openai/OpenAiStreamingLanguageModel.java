@@ -57,7 +57,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_DAVINCI_003);
         this.temperature = getOrDefault(temperature, 0.7);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override
@@ -70,7 +70,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .build();
 
         int inputTokenCount = tokenizer.estimateTokenCountInText(prompt);
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount, tokenizer);
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
@@ -81,7 +81,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(false);
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),
