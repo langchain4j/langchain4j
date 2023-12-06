@@ -23,7 +23,7 @@ public class AbstractLocalAiInfrastructure {
 
     private static final List<String[]> CMDS = Arrays.asList(
             new String[] {"curl", "-o", "/build/models/ggml-gpt4all-j", "https://gpt4all.io/models/ggml-gpt4all-j.bin"},
-            new String[] {"curl", "-o", "/build/models/all-minilm-l6-v2", "https://huggingface.co/skeskinen/ggml/resolve/main/all-MiniLM-L6-v2/ggml-model-q4_0.bin"});
+            new String[] {"curl", "-Lo", "/build/models/ggml-model-q4_0", "https://huggingface.co/LangChain4j/localai-embeddings/resolve/main/ggml-model-q4_0"});
 
     static final LocalAiContainer localAi;
 
@@ -64,7 +64,7 @@ public class AbstractLocalAiInfrastructure {
                     for (String[] cmd : CMDS) {
                         execInContainer(cmd);
                     }
-                   copyFileToContainer(MountableFile.forClasspathResource("all-minilm-l6-v2.yaml"), "/build/models/all-minilm-l6-v2.yaml");
+                   copyFileToContainer(MountableFile.forClasspathResource("ggml-model-q4_0.yaml"), "/build/models/ggml-model-q4_0.yaml");
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException("Error downloading the model", e);
                 }
