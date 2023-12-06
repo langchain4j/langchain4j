@@ -77,7 +77,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Duration timeout,
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
-                                Boolean logRequests) {
+                                boolean logRequests) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -91,7 +91,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequests != null) {
+        if (logRequests) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
@@ -182,7 +182,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private Duration timeout;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
-        private Boolean logRequests;
+        private boolean logRequests;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.

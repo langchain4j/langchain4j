@@ -75,7 +75,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Duration timeout,
                                     Integer maxRetries,
                                     ProxyOptions proxyOptions,
-                                    Boolean logRequests) {
+                                    boolean logRequests) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -89,7 +89,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequests != null) {
+        if (logRequests) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
@@ -157,7 +157,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         private Duration timeout;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
-        private Boolean logRequests;
+        private boolean logRequests;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -259,7 +259,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
+        public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }

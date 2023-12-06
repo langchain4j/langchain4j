@@ -76,7 +76,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double frequencyPenalty,
                                          Duration timeout,
                                          ProxyOptions proxyOptions,
-                                         Boolean logRequests) {
+                                         boolean logRequests) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -90,7 +90,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequests != null) {
+        if (logRequests) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
@@ -206,7 +206,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private ProxyOptions proxyOptions;
-        private Boolean logRequests;
+        private boolean logRequests;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -303,7 +303,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
+        public Builder logRequests(boolean logRequests) {
             this.logRequests = logRequests;
             return this;
         }

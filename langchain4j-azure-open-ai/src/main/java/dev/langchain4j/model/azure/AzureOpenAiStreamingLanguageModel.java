@@ -77,7 +77,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Double frequencyPenalty,
                                              Duration timeout,
                                              ProxyOptions proxyOptions,
-                                             Boolean logRequests) {
+                                             boolean logRequests) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -91,7 +91,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequests != null) {
+        if (logRequests) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
@@ -179,7 +179,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private ProxyOptions proxyOptions;
-        private Boolean logRequests;
+        private boolean logRequests;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
