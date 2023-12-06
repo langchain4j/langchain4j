@@ -1,19 +1,17 @@
 package dev.langchain4j.model.localai;
 
 import dev.langchain4j.model.language.LanguageModel;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiLanguageModelIT {
+class LocalAiLanguageModelIT extends AbstractLocalAiInfrastructure {
 
     @Test
-    @Disabled("until we host LocalAI instance somewhere")
     void should_send_prompt_and_return_answer() {
 
         LanguageModel model = LocalAiLanguageModel.builder()
-                .baseUrl("http://localhost:8080")
+                .baseUrl(localAi.getBaseUrl())
                 .modelName("ggml-gpt4all-j")
                 .maxTokens(3)
                 .logRequests(true)
