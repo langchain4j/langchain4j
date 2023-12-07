@@ -112,9 +112,8 @@ public class AzureOpenAIChatModelIT {
         ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
         int currentWeather = 0;
-        if (Objects.equals(toolExecutionRequest.name(), toolName)) {
-            currentWeather = getCurrentWeather(weatherLocation);
-        }
+        currentWeather = getCurrentWeather(weatherLocation);
+
         String weather = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
