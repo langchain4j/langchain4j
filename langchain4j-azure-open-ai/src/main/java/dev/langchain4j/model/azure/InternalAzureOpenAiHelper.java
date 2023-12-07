@@ -32,7 +32,7 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
-public class InternalAzureOpenAiHelper {
+class InternalAzureOpenAiHelper {
 
     public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, String apiKey, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
         timeout = getOrDefault(timeout, ofSeconds(60));
