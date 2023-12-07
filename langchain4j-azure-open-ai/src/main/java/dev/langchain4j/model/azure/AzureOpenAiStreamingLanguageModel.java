@@ -118,19 +118,23 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
-        client.getCompletionsStream(deploymentName, options)
-                .stream()
-                .forEach(completions -> {
-                    responseBuilder.append(completions);
-                    handle(completions, handler);
-                });
+        try {
+            client.getCompletionsStream(deploymentName, options)
+                    .stream()
+                    .forEach(completions -> {
+                        responseBuilder.append(completions);
+                        handle(completions, handler);
+                    });
 
-        Response<AiMessage> response = responseBuilder.build();
-        handler.onComplete(Response.from(
-                response.content().text(),
-                response.tokenUsage(),
-                response.finishReason()
-        ));
+            Response<AiMessage> response = responseBuilder.build();
+            handler.onComplete(Response.from(
+                    response.content().text(),
+                    response.tokenUsage(),
+                    response.finishReason()
+            ));
+        } catch (Exception exception) {
+            handler.onError(exception);
+        }
     }
 
     private static void handle(Completions completions,

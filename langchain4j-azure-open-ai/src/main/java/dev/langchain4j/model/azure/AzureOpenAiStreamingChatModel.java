@@ -149,14 +149,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
-        client.getChatCompletionsStream(deploymentName, options)
-                .stream()
-                .forEach(chatCompletions -> {
-                    responseBuilder.append(chatCompletions);
-                    handle(chatCompletions, handler);
-                });
-
-        handler.onComplete(responseBuilder.build());
+        try {
+            client.getChatCompletionsStream(deploymentName, options)
+                    .stream()
+                    .forEach(chatCompletions -> {
+                        responseBuilder.append(chatCompletions);
+                        handle(chatCompletions, handler);
+                    });
+            handler.onComplete(responseBuilder.build());
+        } catch (Exception exception) {
+            handler.onError(exception);
+        }
     }
 
     private static void handle(ChatCompletions chatCompletions,
