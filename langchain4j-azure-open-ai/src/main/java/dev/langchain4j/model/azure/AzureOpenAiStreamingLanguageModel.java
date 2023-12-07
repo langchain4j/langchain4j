@@ -1,17 +1,10 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
-import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
-import com.azure.core.http.policy.HttpLogDetailLevel;
-import com.azure.core.http.policy.HttpLogOptions;
-import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
@@ -26,10 +19,8 @@ import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.getOpenAIServiceVersion;
-import static java.time.Duration.ofSeconds;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -88,34 +79,12 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Double presencePenalty,
                                              Double frequencyPenalty,
                                              Duration timeout,
+                                             Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
-        HttpClientOptions clientOptions = new HttpClientOptions();
-        clientOptions.setConnectTimeout(timeout);
-        clientOptions.setResponseTimeout(timeout);
-        clientOptions.setReadTimeout(timeout);
-        clientOptions.setWriteTimeout(timeout);
-        clientOptions.setProxyOptions(proxyOptions);
-
-        HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
-
-        HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequestsAndResponses) {
-            httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
-        }
-
-        this.client = new OpenAIClientBuilder()
-                .endpoint(ensureNotBlank(endpoint, "endpoint"))
-                .credential(new AzureKeyCredential(apiKey))
-                .serviceVersion(getOpenAIServiceVersion(serviceVersion))
-                .httpClient(httpClient)
-                .httpLogOptions(httpLogOptions)
-                .buildClient();
+        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiStreamingLanguageModel(String deploymentName,
@@ -199,6 +168,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Duration timeout;
+        private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
@@ -282,6 +252,11 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
+        public Builder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
         public Builder ProxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
@@ -317,6 +292,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         presencePenalty,
                         frequencyPenalty,
                         timeout,
+                        maxRetries,
                         proxyOptions,
                         logRequestsAndResponses
                 );

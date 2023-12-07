@@ -1,17 +1,10 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.EmbeddingItem;
 import com.azure.ai.openai.models.Embeddings;
 import com.azure.ai.openai.models.EmbeddingsOptions;
-import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
-import com.azure.core.http.policy.HttpLogDetailLevel;
-import com.azure.core.http.policy.HttpLogOptions;
-import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
@@ -25,12 +18,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.getOpenAIServiceVersion;
-import static java.time.Duration.ofSeconds;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -58,14 +48,12 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
     private AzureOpenAiEmbeddingModel(OpenAIClient client,
                                       String deploymentName,
-                                      Tokenizer tokenizer,
-                                      Integer maxRetries) {
-        this(deploymentName, tokenizer, maxRetries);
+                                      Tokenizer tokenizer) {
+        this(deploymentName, tokenizer);
         this.client = client;
     }
 
@@ -78,40 +66,16 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
                                      boolean logRequestsAndResponses) {
-        this(deploymentName, tokenizer, maxRetries);
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
-        HttpClientOptions clientOptions = new HttpClientOptions();
-        clientOptions.setConnectTimeout(timeout);
-        clientOptions.setResponseTimeout(timeout);
-        clientOptions.setReadTimeout(timeout);
-        clientOptions.setWriteTimeout(timeout);
-        clientOptions.setProxyOptions(proxyOptions);
-
-        HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
-
-        HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequestsAndResponses) {
-            httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
-        }
-
-        this.client = new OpenAIClientBuilder()
-                .endpoint(ensureNotBlank(endpoint, "endpoint"))
-                .credential(new AzureKeyCredential(apiKey))
-                .serviceVersion(getOpenAIServiceVersion(serviceVersion))
-                .httpClient(httpClient)
-                .httpLogOptions(httpLogOptions)
-                .buildClient();
+        this(deploymentName, tokenizer);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
-                                      Tokenizer tokenizer,
-                                      Integer maxRetries) {
+                                      Tokenizer tokenizer) {
 
         this.deploymentName = getOrDefault(deploymentName, "text-embedding-ada-002");
         this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002));
-        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     /**
@@ -141,7 +105,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
 
             EmbeddingsOptions options = new EmbeddingsOptions(batch);
-            Embeddings response =  withRetry(() -> client.getEmbeddings(deploymentName, options), maxRetries);
+            Embeddings response =  client.getEmbeddings(deploymentName, options);
 
             for (EmbeddingItem embeddingItem : response.getData()) {
                 List<Double> openAiVector = embeddingItem.getEmbedding();
@@ -281,8 +245,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                 return new AzureOpenAiEmbeddingModel(
                         openAIClient,
                         deploymentName,
-                        tokenizer,
-                        maxRetries
+                        tokenizer
                 );
             }
         }

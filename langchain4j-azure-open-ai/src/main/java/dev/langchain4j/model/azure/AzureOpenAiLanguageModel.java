@@ -1,16 +1,9 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
-import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
-import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
-import com.azure.core.http.policy.HttpLogDetailLevel;
-import com.azure.core.http.policy.HttpLogOptions;
-import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
@@ -20,12 +13,9 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 import java.util.Collections;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
-import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -57,7 +47,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
     public AzureOpenAiLanguageModel(OpenAIClient client,
@@ -67,9 +56,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Double topP,
                                     Integer maxTokens,
                                     Double presencePenalty,
-                                    Double frequencyPenalty,
-                                    Integer maxRetries) {
-        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty, maxRetries);
+                                    Double frequencyPenalty) {
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
         this.client = client;
     }
 
@@ -87,33 +75,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Integer maxRetries,
                                     ProxyOptions proxyOptions,
                                     boolean logRequestsAndResponses) {
-        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty, maxRetries);
-
-        timeout = getOrDefault(timeout, ofSeconds(60));
-
-        HttpClientOptions clientOptions = new HttpClientOptions();
-        clientOptions.setConnectTimeout(timeout);
-        clientOptions.setResponseTimeout(timeout);
-        clientOptions.setReadTimeout(timeout);
-        clientOptions.setWriteTimeout(timeout);
-        clientOptions.setProxyOptions(proxyOptions);
-
-        HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
-
-        HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequestsAndResponses) {
-            httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
-        }
-
-        this.client = new OpenAIClientBuilder()
-                .endpoint(ensureNotBlank(endpoint, "endpoint"))
-                .credential(new AzureKeyCredential(apiKey))
-                .serviceVersion(getOpenAIServiceVersion(serviceVersion))
-                .httpClient(httpClient)
-                .httpLogOptions(httpLogOptions)
-                .buildClient();
-
-
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiLanguageModel(String deploymentName,
@@ -122,8 +85,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                      Double topP,
                                      Integer maxTokens,
                                      Double presencePenalty,
-                                     Double frequencyPenalty,
-                                     Integer maxRetries) {
+                                     Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
         this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT));
@@ -132,7 +94,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override
@@ -146,7 +107,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
 
-        Completions completions = withRetry(() -> client.getCompletions(deploymentName, options), maxRetries);
+        Completions completions = client.getCompletions(deploymentName, options);
 
         return Response.from(
                 completions.getChoices().get(0).getText(),
@@ -314,8 +275,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                         topP,
                         maxTokens,
                         presencePenalty,
-                        frequencyPenalty,
-                        maxRetries
+                        frequencyPenalty
                 );
             }
         }
