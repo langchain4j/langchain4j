@@ -4,6 +4,8 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -15,12 +17,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AzureOpenAiStreamingLanguageModelIT {
 
+    Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingLanguageModelIT.class);
+
     StreamingLanguageModel model = AzureOpenAiStreamingLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
-            .logRequests(true)
+            .logRequestsAndResponses(true)
             .build();
 
     @Test
@@ -35,13 +39,13 @@ class AzureOpenAiStreamingLanguageModelIT {
 
             @Override
             public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
+                logger.info("onNext: '" + token + "'");
                 answerBuilder.append(token);
             }
 
             @Override
             public void onComplete(Response<String> response) {
-                System.out.println("onComplete: '" + response + "'");
+                logger.info("onComplete: '" + response + "'");
                 futureAnswer.complete(answerBuilder.toString());
                 futureResponse.complete(response);
             }

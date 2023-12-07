@@ -77,7 +77,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Double frequencyPenalty,
                                              Duration timeout,
                                              ProxyOptions proxyOptions,
-                                             boolean logRequests) {
+                                             boolean logRequestsAndResponses) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -91,7 +91,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequests) {
+        if (logRequestsAndResponses) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
@@ -179,7 +179,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private ProxyOptions proxyOptions;
-        private boolean logRequests;
+        private boolean logRequestsAndResponses;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -276,8 +276,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
+        public Builder logRequestsAndResponses(Boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
         }
 
@@ -296,7 +296,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                     frequencyPenalty,
                     timeout,
                     proxyOptions,
-                    logRequests
+                    logRequestsAndResponses
             );
         }
     }

@@ -76,7 +76,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double frequencyPenalty,
                                          Duration timeout,
                                          ProxyOptions proxyOptions,
-                                         boolean logRequests) {
+                                         boolean logRequestsAndResponses) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -90,7 +90,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
-        if (logRequests) {
+        if (logRequestsAndResponses) {
             httpLogOptions.setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS);
         }
 
@@ -206,7 +206,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private Double frequencyPenalty;
         private Duration timeout;
         private ProxyOptions proxyOptions;
-        private boolean logRequests;
+        private boolean logRequestsAndResponses;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -303,8 +303,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
-        public Builder logRequests(boolean logRequests) {
-            this.logRequests = logRequests;
+        public Builder logRequestsAndResponses(boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
         }
 
@@ -323,7 +323,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     frequencyPenalty,
                     timeout,
                     proxyOptions,
-                    logRequests
+                    logRequestsAndResponses
             );
         }
     }
