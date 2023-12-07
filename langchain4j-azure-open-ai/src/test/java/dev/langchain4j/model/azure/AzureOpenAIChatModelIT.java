@@ -125,8 +125,8 @@ public class AzureOpenAIChatModelIT {
         SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
 
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(userMessage);
         chatMessages.add(systemMessage);
+        chatMessages.add(userMessage);
         chatMessages.add(toolExecutionResultMessage);
 
         Response<AiMessage> response2 = model.generate(chatMessages);
