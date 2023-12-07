@@ -16,7 +16,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom
  * and there is no guarantee that this thread will be the same as the one that initiated the request,
  * in fact it almost certainly won't be.
  */
-public class AzureOpenAiStreamingResponseBuilder {
+class AzureOpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
     private final StringBuffer toolNameBuilder = new StringBuffer();
