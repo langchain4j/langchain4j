@@ -56,7 +56,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final String modelName;
     private final Tokenizer tokenizer;
     private final Double temperature;
     private final Double topP;
@@ -66,7 +65,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
     public AzureOpenAiStreamingChatModel(OpenAIClient client,
                                          String deploymentName,
-                                         String modelName,
                                          Tokenizer tokenizer,
                                          Double temperature,
                                          Double topP,
@@ -74,7 +72,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double presencePenalty,
                                          Double frequencyPenalty) {
 
-        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
         this.client = client;
     }
 
@@ -82,7 +80,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          String serviceVersion,
                                          String apiKey,
                                          String deploymentName,
-                                         String modelName,
                                          Tokenizer tokenizer,
                                          Double temperature,
                                          Double topP,
@@ -93,7 +90,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          ProxyOptions proxyOptions,
                                          boolean logRequestsAndResponses) {
 
-        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -123,7 +120,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     private AzureOpenAiStreamingChatModel(String deploymentName,
-                                         String modelName,
                                          Tokenizer tokenizer,
                                          Double temperature,
                                          Double topP,
@@ -132,8 +128,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-0613");
-        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
@@ -226,7 +221,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private String serviceVersion;
         private String apiKey;
         private String deploymentName;
-        private String modelName;
         private Tokenizer tokenizer;
         private Double temperature;
         private Double topP;
@@ -279,17 +273,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
-            return this;
-        }
-
-        /**
-         * Sets the model name in Azure OpenAI. This is a mandatory parameter.
-         *
-         * @param modelName The model name.
-         * @return builder
-         */
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
             return this;
         }
 
@@ -356,7 +339,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         serviceVersion,
                         apiKey,
                         deploymentName,
-                        modelName,
                         tokenizer,
                         temperature,
                         topP,
@@ -371,7 +353,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 return new AzureOpenAiStreamingChatModel(
                         openAIClient,
                         deploymentName,
-                        modelName,
                         tokenizer,
                         temperature,
                         topP,
