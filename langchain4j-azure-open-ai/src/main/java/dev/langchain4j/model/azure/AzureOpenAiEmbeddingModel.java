@@ -149,9 +149,9 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         private OpenAIClient openAIClient;
 
         /**
-         * Sets the Azure OpenAI base URL. This is a mandatory parameter.
+         * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
          *
-         * @param endpoint The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/
+         * @param endpoint The Azure OpenAI endpoint in the format: https://{resource}.openai.azure.com/
          * @return builder
          */
         public Builder endpoint(String endpoint) {
