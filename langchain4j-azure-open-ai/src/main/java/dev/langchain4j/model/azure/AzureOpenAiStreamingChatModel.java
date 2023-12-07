@@ -37,6 +37,7 @@ import static java.util.Collections.singletonList;
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * <p>
  * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -53,7 +54,7 @@ import static java.util.Collections.singletonList;
  */
 public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
-    private final OpenAIClient client;
+    private OpenAIClient client;
     private final String deploymentName;
     private final String modelName;
     private final Tokenizer tokenizer;
@@ -62,6 +63,20 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
+
+    public AzureOpenAiStreamingChatModel(OpenAIClient client,
+                                         String deploymentName,
+                                         String modelName,
+                                         Tokenizer tokenizer,
+                                         Double temperature,
+                                         Double topP,
+                                         Integer maxTokens,
+                                         Double presencePenalty,
+                                         Double frequencyPenalty) {
+
+        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this.client = client;
+    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -77,6 +92,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Duration timeout,
                                          ProxyOptions proxyOptions,
                                          boolean logRequestsAndResponses) {
+
+        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -101,6 +118,18 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .httpClient(httpClient)
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
+
+
+    }
+
+    private AzureOpenAiStreamingChatModel(String deploymentName,
+                                         String modelName,
+                                         Tokenizer tokenizer,
+                                         Double temperature,
+                                         Double topP,
+                                         Integer maxTokens,
+                                         Double presencePenalty,
+                                         Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-0613");
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
@@ -207,6 +236,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private Duration timeout;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
+        private OpenAIClient openAIClient;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -308,23 +338,48 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        /**
+         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         *
+         * @param openAIClient The Azure OpenAI client.
+         * @return builder
+         */
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
+            return this;
+        }
+
         public AzureOpenAiStreamingChatModel build() {
-            return new AzureOpenAiStreamingChatModel(
-                    endpoint,
-                    serviceVersion,
-                    apiKey,
-                    deploymentName,
-                    modelName,
-                    tokenizer,
-                    temperature,
-                    topP,
-                    maxTokens,
-                    presencePenalty,
-                    frequencyPenalty,
-                    timeout,
-                    proxyOptions,
-                    logRequestsAndResponses
-            );
+            if (openAIClient == null) {
+                return new AzureOpenAiStreamingChatModel(
+                        endpoint,
+                        serviceVersion,
+                        apiKey,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        temperature,
+                        topP,
+                        maxTokens,
+                        presencePenalty,
+                        frequencyPenalty,
+                        timeout,
+                        proxyOptions,
+                        logRequestsAndResponses
+                );
+            } else {
+                return new AzureOpenAiStreamingChatModel(
+                        openAIClient,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        temperature,
+                        topP,
+                        maxTokens,
+                        presencePenalty,
+                        frequencyPenalty
+                );
+            }
         }
     }
 }

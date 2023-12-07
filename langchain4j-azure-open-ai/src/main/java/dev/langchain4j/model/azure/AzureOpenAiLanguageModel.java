@@ -34,6 +34,7 @@ import static java.time.Duration.ofSeconds;
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>
  * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -50,7 +51,7 @@ import static java.time.Duration.ofSeconds;
  */
 public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
-    private final OpenAIClient client;
+    private OpenAIClient client;
     private final String deploymentName;
     private final String modelName;
     private final Double temperature;
@@ -60,6 +61,20 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     private final Double frequencyPenalty;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
+
+    public AzureOpenAiLanguageModel(OpenAIClient client,
+                                    String deploymentName,
+                                    String modelName,
+                                    Tokenizer tokenizer,
+                                    Double temperature,
+                                    Double topP,
+                                    Integer maxTokens,
+                                    Double presencePenalty,
+                                    Double frequencyPenalty,
+                                    Integer maxRetries) {
+        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty, maxRetries);
+        this.client = client;
+    }
 
     public AzureOpenAiLanguageModel(String endpoint,
                                     String serviceVersion,
@@ -76,6 +91,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Integer maxRetries,
                                     ProxyOptions proxyOptions,
                                     boolean logRequestsAndResponses) {
+        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty, maxRetries);
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -100,6 +116,19 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                 .httpClient(httpClient)
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
+
+
+    }
+
+    private AzureOpenAiLanguageModel(String deploymentName,
+                                     String modelName,
+                                     Tokenizer tokenizer,
+                                     Double temperature,
+                                     Double topP,
+                                     Integer maxTokens,
+                                     Double presencePenalty,
+                                     Double frequencyPenalty,
+                                     Integer maxRetries) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
@@ -158,6 +187,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
+        private OpenAIClient openAIClient;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -264,24 +294,50 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
+        /**
+         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         *
+         * @param openAIClient The Azure OpenAI client.
+         * @return builder
+         */
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
+            return this;
+        }
+
         public AzureOpenAiLanguageModel build() {
-            return new AzureOpenAiLanguageModel(
-                    endpoint,
-                    serviceVersion,
-                    apiKey,
-                    deploymentName,
-                    modelName,
-                    tokenizer,
-                    temperature,
-                    topP,
-                    maxTokens,
-                    presencePenalty,
-                    frequencyPenalty,
-                    timeout,
-                    maxRetries,
-                    proxyOptions,
-                    logRequestsAndResponses
-            );
+            if (openAIClient == null) {
+                return new AzureOpenAiLanguageModel(
+                        endpoint,
+                        serviceVersion,
+                        apiKey,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        temperature,
+                        topP,
+                        maxTokens,
+                        presencePenalty,
+                        frequencyPenalty,
+                        timeout,
+                        maxRetries,
+                        proxyOptions,
+                        logRequestsAndResponses
+                );
+            } else {
+                return new AzureOpenAiLanguageModel(
+                        openAIClient,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        temperature,
+                        topP,
+                        maxTokens,
+                        presencePenalty,
+                        frequencyPenalty,
+                        maxRetries
+                );
+            }
         }
     }
 }

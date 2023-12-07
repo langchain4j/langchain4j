@@ -37,6 +37,7 @@ import static java.util.stream.Collectors.toList;
  * Represents an OpenAI embedding model, hosted on Azure, such as text-embedding-ada-002.
  * <p>
  * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -55,11 +56,20 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
     private static final int BATCH_SIZE = 16;
 
-    private final OpenAIClient client;
+    private OpenAIClient client;
     private final String deploymentName;
     private final String modelName;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
+
+    private AzureOpenAiEmbeddingModel(OpenAIClient client,
+                                      String deploymentName,
+                                      String modelName,
+                                      Tokenizer tokenizer,
+                                      Integer maxRetries) {
+        this(deploymentName, modelName, tokenizer, maxRetries);
+        this.client = client;
+    }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
                                      String serviceVersion,
@@ -71,6 +81,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
                                      boolean logRequestsAndResponses) {
+        this(deploymentName, modelName, tokenizer, maxRetries);
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -95,6 +106,12 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                 .httpClient(httpClient)
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
+    }
+
+    private AzureOpenAiEmbeddingModel(String deploymentName,
+                                      String modelName,
+                                      Tokenizer tokenizer,
+                                      Integer maxRetries) {
 
         this.deploymentName = getOrDefault(deploymentName, "text-embedding-ada-002");
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
@@ -171,6 +188,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
+        private OpenAIClient openAIClient;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -252,19 +270,40 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             return this;
         }
 
+        /**
+         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         *
+         * @param openAIClient The Azure OpenAI client.
+         * @return builder
+         */
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
+            return this;
+        }
+
         public AzureOpenAiEmbeddingModel build() {
-            return new AzureOpenAiEmbeddingModel(
-                    endpoint,
-                    serviceVersion,
-                    apiKey,
-                    deploymentName,
-                    modelName,
-                    tokenizer,
-                    timeout,
-                    maxRetries,
-                    proxyOptions,
-                    logRequestsAndResponses
-            );
+            if (openAIClient == null) {
+                return new AzureOpenAiEmbeddingModel(
+                        endpoint,
+                        serviceVersion,
+                        apiKey,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        timeout,
+                        maxRetries,
+                        proxyOptions,
+                        logRequestsAndResponses
+                );
+            } else {
+                return new AzureOpenAiEmbeddingModel(
+                        openAIClient,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        maxRetries
+                );
+            }
         }
     }
 }

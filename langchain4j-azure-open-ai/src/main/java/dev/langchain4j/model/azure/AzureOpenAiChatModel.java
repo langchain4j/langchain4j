@@ -36,6 +36,7 @@ import static java.util.Collections.singletonList;
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
  * <p>
  * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey, deploymentName and modelName.
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
@@ -52,7 +53,7 @@ import static java.util.Collections.singletonList;
  */
 public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
-    private final OpenAIClient client;
+    private OpenAIClient client;
     private final String deploymentName;
     private final String modelName;
     private final Tokenizer tokenizer;
@@ -62,6 +63,21 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
     private final Double presencePenalty;
     private final Double frequencyPenalty;
     private final Integer maxRetries;
+
+    public AzureOpenAiChatModel(OpenAIClient client,
+                                String deploymentName,
+                                String modelName,
+                                Tokenizer tokenizer,
+                                Double temperature,
+                                Double topP,
+                                Integer maxTokens,
+                                Double presencePenalty,
+                                Double frequencyPenalty,
+                                Integer maxRetries) {
+
+        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty, maxRetries);
+        this.client = client;
+    }
 
     public AzureOpenAiChatModel(String endpoint,
                                 String serviceVersion,
@@ -78,6 +94,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses) {
+
+        this(deploymentName, modelName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty, maxRetries);
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -102,6 +120,17 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .httpClient(httpClient)
                 .httpLogOptions(httpLogOptions)
                 .buildClient();
+    }
+
+    private AzureOpenAiChatModel(String deploymentName,
+                                 String modelName,
+                                 Tokenizer tokenizer,
+                                 Double temperature,
+                                 Double topP,
+                                 Integer maxTokens,
+                                 Double presencePenalty,
+                                 Double frequencyPenalty,
+                                 Integer maxRetries) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-0613");
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
@@ -183,6 +212,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
+        private OpenAIClient openAIClient;
 
         /**
          * Sets the Azure OpenAI base URL. This is a mandatory parameter.
@@ -289,24 +319,50 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
+        /**
+         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         *
+         * @param openAIClient The Azure OpenAI client.
+         * @return builder
+         */
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
+            return this;
+        }
+
         public AzureOpenAiChatModel build() {
-            return new AzureOpenAiChatModel(
-                    endpoint,
-                    serviceVersion,
-                    apiKey,
-                    deploymentName,
-                    modelName,
-                    tokenizer,
-                    temperature,
-                    topP,
-                    maxTokens,
-                    presencePenalty,
-                    frequencyPenalty,
-                    timeout,
-                    maxRetries,
-                    proxyOptions,
-                    logRequestsAndResponses
-            );
+            if (openAIClient == null) {
+                return new AzureOpenAiChatModel(
+                        endpoint,
+                        serviceVersion,
+                        apiKey,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        temperature,
+                        topP,
+                        maxTokens,
+                        presencePenalty,
+                        frequencyPenalty,
+                        timeout,
+                        maxRetries,
+                        proxyOptions,
+                        logRequestsAndResponses
+                );
+            } else {
+                return new AzureOpenAiChatModel(
+                        openAIClient,
+                        deploymentName,
+                        modelName,
+                        tokenizer,
+                        temperature,
+                        topP,
+                        maxTokens,
+                        presencePenalty,
+                        frequencyPenalty,
+                        maxRetries
+                );
+            }
         }
     }
 }
