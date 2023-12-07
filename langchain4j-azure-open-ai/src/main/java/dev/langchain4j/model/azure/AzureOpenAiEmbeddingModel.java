@@ -108,13 +108,8 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             Embeddings response =  client.getEmbeddings(deploymentName, options);
 
             for (EmbeddingItem embeddingItem : response.getData()) {
-                List<Double> openAiVector = embeddingItem.getEmbedding();
-                float[] langChainVector = new float[openAiVector.size()];
-                for (int index = 0; index < openAiVector.size(); index++) {
-                    langChainVector[index] = openAiVector.get(index).floatValue();
-                }
-                Embedding langChainEmbedding = Embedding.from(langChainVector);
-                embeddings.add(langChainEmbedding);
+                Embedding embedding = from(embeddingItem.getEmbedding());
+                embeddings.add(embedding);
             }
 
             inputTokenCount += response.getUsage().getPromptTokens();
@@ -124,6 +119,14 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                 embeddings,
                 new TokenUsage(inputTokenCount)
         );
+    }
+
+    private static Embedding from(List<Double> vector) {
+        float[] langChainVector = new float[vector.size()];
+        for (int index = 0; index < vector.size(); index++) {
+            langChainVector[index] = vector.get(index).floatValue();
+        }
+        return Embedding.from(langChainVector);
     }
 
     @Override
