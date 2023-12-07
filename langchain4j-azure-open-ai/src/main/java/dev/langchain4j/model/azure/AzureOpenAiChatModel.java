@@ -257,7 +257,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder ProxyOptions(ProxyOptions proxyOptions) {
+        public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
         }

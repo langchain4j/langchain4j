@@ -284,7 +284,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
-        public Builder ProxyOptions(ProxyOptions proxyOptions) {
+        public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
         }

@@ -257,7 +257,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
-        public Builder ProxyOptions(ProxyOptions proxyOptions) {
+        public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
         }

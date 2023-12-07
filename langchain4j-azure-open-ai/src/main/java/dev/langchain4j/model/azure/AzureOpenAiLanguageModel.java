@@ -227,7 +227,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder ProxyOptions(ProxyOptions proxyOptions) {
+        public Builder proxyOptions(ProxyOptions proxyOptions) {
             this.proxyOptions = proxyOptions;
             return this;
         }
