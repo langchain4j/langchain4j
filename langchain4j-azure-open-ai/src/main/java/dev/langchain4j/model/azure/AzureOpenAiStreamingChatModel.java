@@ -215,9 +215,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         }
 
         /**
-         * Sets the Azure OpenAI API version. This is a mandatory parameter.
+         * Sets the Azure OpenAI API service version. This is a mandatory parameter.
          *
-         * @param serviceVersion The Azure OpenAI api version in the format: 2023-05-15
+         * @param serviceVersion The Azure OpenAI API service version in the format: 2023-05-15
          * @return builder
          */
         public Builder serviceVersion(String serviceVersion) {
