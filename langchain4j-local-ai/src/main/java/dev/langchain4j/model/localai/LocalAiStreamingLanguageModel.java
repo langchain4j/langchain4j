@@ -14,6 +14,9 @@ import java.time.Duration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
+/**
+ * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
+ */
 public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
 
     private final OpenAiClient client;

@@ -19,6 +19,9 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
+/**
+ * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
+ */
 public class LocalAiChatModel implements ChatLanguageModel {
 
     private final OpenAiClient client;

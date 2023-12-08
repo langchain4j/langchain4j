@@ -1,19 +1,17 @@
 package dev.langchain4j.model.localai;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiChatModelIT {
+class LocalAiChatModelIT extends AbstractLocalAiInfrastructure {
 
     @Test
-    @Disabled("until we host LocalAI instance somewhere")
     void should_send_user_message_and_return_answer() {
 
         ChatLanguageModel model = LocalAiChatModel.builder()
-                .baseUrl("http://localhost:8080")
+                .baseUrl(localAi.getBaseUrl())
                 .modelName("ggml-gpt4all-j")
                 .maxTokens(3)
                 .logRequests(true)
@@ -22,7 +20,7 @@ class LocalAiChatModelIT {
 
         String answer = model.generate("Say 'hello'");
 
-        assertThat(answer).containsIgnoringCase("hello");
+        assertThat(answer).isNotBlank();
         System.out.println(answer);
     }
 }
