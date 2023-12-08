@@ -12,6 +12,8 @@ class EmbeddingModel {
     private HuggingFace huggingFace;
     @NestedConfigurationProperty
     private LocalAi localAi;
+    @NestedConfigurationProperty
+    private Ollama ollama;
 
     public ModelProvider getProvider() {
         return provider;
@@ -43,5 +45,13 @@ class EmbeddingModel {
 
     public void setLocalAi(LocalAi localAi) {
         this.localAi = localAi;
+    }
+
+    public Ollama getOllama() {
+        return ollama;
+    }
+
+    public void setOllama(Ollama ollama) {
+        this.ollama = ollama;
     }
 }

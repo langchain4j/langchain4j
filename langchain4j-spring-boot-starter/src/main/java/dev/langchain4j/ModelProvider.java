@@ -4,5 +4,6 @@ enum ModelProvider {
 
     OPEN_AI,
     HUGGING_FACE,
-    LOCAL_AI
+    LOCAL_AI,
+    OLLAMA
 }

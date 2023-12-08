@@ -13,6 +13,9 @@ class LanguageModel {
     @NestedConfigurationProperty
     private LocalAi localAi;
 
+    @NestedConfigurationProperty
+    private Ollama ollama;
+
     public ModelProvider getProvider() {
         return provider;
     }
@@ -43,5 +46,13 @@ class LanguageModel {
 
     public void setLocalAi(LocalAi localAi) {
         this.localAi = localAi;
+    }
+
+    public Ollama getOllama() {
+        return ollama;
+    }
+
+    public void setOllama(Ollama ollama) {
+        this.ollama = ollama;
     }
 }

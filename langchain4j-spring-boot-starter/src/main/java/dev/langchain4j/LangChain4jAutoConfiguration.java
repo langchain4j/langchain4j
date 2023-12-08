@@ -9,7 +9,10 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.localai.LocalAiChatModel;
 import dev.langchain4j.model.localai.LocalAiEmbeddingModel;
 import dev.langchain4j.model.localai.LocalAiLanguageModel;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.ollama.OllamaLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiLanguageModel;
@@ -95,6 +98,22 @@ public class LangChain4jAutoConfiguration {
                         .logResponses(localAi.getLogResponses())
                         .build();
 
+            case OLLAMA:
+                Ollama ollama = properties.getChatModel().getOllama();
+                if (ollama == null || isNullOrBlank(ollama.getBaseUrl())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.ollama.base-url' property");
+                }
+                if (isNullOrBlank(ollama.getModelName())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.ollama.model-name' property");
+                }
+                return OllamaChatModel.builder()
+                        .baseUrl(ollama.getBaseUrl())
+                        .modelName(ollama.getModelName())
+                        .temperature(ollama.getTemperature())
+                        .timeout(ollama.getTimeout())
+                        .maxRetries(ollama.getMaxRetries())
+                        .build();
+
             default:
                 throw illegalConfiguration("Unsupported chat model provider: %s", properties.getChatModel().getProvider());
         }
@@ -162,6 +181,22 @@ public class LangChain4jAutoConfiguration {
                         .logResponses(localAi.getLogResponses())
                         .build();
 
+            case OLLAMA:
+                Ollama ollama  = properties.getLanguageModel().getOllama();
+                if (ollama == null || isNullOrBlank(ollama.getBaseUrl())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model.ollama.base-url' property");
+                }
+                if (isNullOrBlank(ollama.getModelName())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model.ollama.model-name' property");
+                }
+                return OllamaLanguageModel.builder()
+                        .baseUrl(ollama.getBaseUrl())
+                        .modelName(ollama.getModelName())
+                        .temperature(ollama.getTemperature())
+                        .timeout(ollama.getTimeout())
+                        .maxRetries(ollama.getMaxRetries())
+                        .build();
+
             default:
                 throw illegalConfiguration("Unsupported language model provider: %s", properties.getLanguageModel().getProvider());
         }
@@ -220,6 +255,21 @@ public class LangChain4jAutoConfiguration {
                         .maxRetries(localAi.getMaxRetries())
                         .logRequests(localAi.getLogRequests())
                         .logResponses(localAi.getLogResponses())
+                        .build();
+
+            case OLLAMA:
+                Ollama ollama = properties.getEmbeddingModel().getOllama();
+                if (ollama == null || isNullOrBlank(ollama.getBaseUrl())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model.ollama.base-url' property");
+                }
+                if (isNullOrBlank(ollama.getModelName())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model.ollama.model-name' property");
+                }
+                return OllamaEmbeddingModel.builder()
+                        .baseUrl(ollama.getBaseUrl())
+                        .modelName(ollama.getModelName())
+                        .timeout(ollama.getTimeout())
+                        .maxRetries(ollama.getMaxRetries())
                         .build();
 
             default:
