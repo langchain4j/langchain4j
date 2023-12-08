@@ -2,17 +2,15 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("needs Ollama running locally")
-class OllamaLanguageModelIT {
+class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
 
     LanguageModel model = OllamaLanguageModel.builder()
-            .baseUrl("http://localhost:11434")
-            .modelName("orca-mini")
+            .baseUrl(getBaseUrl())
+            .modelName(ORCA_MINI_MODEL)
             .build();
 
     @Test

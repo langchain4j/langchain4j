@@ -1,0 +1,5 @@
+name: ggml-model-q4_0
+parameters:
+  model: ggml-model-q4_0
+backend: bert-embeddings
+embeddings: true

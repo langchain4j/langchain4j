@@ -5,22 +5,21 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import org.junit.jupiter.api.Disabled;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@Disabled("needs Chroma running locally")
+@Testcontainers
 class ChromaEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    /**
-     * First ensure you have Chroma running locally. If not, then:
-     * - Execute "docker pull ghcr.io/chroma-core/chroma:0.4.6"
-     * - Execute "docker run -d -p 8000:8000 ghcr.io/chroma-core/chroma:0.4.6"
-     * - Wait until Chroma is ready to serve (may take a few minutes)
-     */
+    @Container
+    private static final GenericContainer<?> chroma = new GenericContainer<>("ghcr.io/chroma-core/chroma:0.4.6")
+            .withExposedPorts(8000);
 
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
-            .baseUrl("http://localhost:8000")
+            .baseUrl(String.format("http://%s:%d", chroma.getHost(), chroma.getMappedPort(8000)))
             .collectionName(randomUUID())
             .build();
 
