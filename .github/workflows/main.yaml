@@ -1,6 +1,12 @@
 name: Java CI
 
-on: [pull_request]
+on:
+  push:
+    branches:
+        - main
+        - support-java21
+  pull_request:
+    branches: *
 
 jobs:
   build:
