@@ -16,9 +16,9 @@ jobs:
         java_version: [11, 17, 21]
         include:
           - java_version: '11'
-            included_modules: 'langchain4j-opensearch'
+            included_modules: 'langchain4j-core,langchain4j-opensearch'
           - java_version: '17'
-            included_modules: 'langchain4j-graal'
+            included_modules: 'langchain4j-core,langchain4j-graal'
           - java_version: '21'
             included_modules: '!langchain4j-opensearch,!langchain4j-graal'
     runs-on: ubuntu-latest
