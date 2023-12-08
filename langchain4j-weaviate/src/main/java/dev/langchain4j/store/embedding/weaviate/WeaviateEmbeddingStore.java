@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.weaviate;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
@@ -66,7 +67,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
   ) {
     try {
       Config config = new Config(ensureNotBlank(scheme, "scheme"), ensureNotBlank(host, "host"));
-      this.client = WeaviateAuthClient.apiKey(config, ensureNotBlank(apiKey, "apiKey"));
+      this.client = WeaviateAuthClient.apiKey(config, ensureNotNull(apiKey, "apiKey"));
     } catch (AuthException e) {
       throw new IllegalArgumentException(e);
     }
