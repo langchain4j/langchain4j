@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -36,17 +34,9 @@ public class OpenAiStreamingResponseBuilder {
     private volatile String finishReason;
 
     private final Integer inputTokenCount;
-    private final Tokenizer tokenizer;
 
-    public OpenAiStreamingResponseBuilder(Integer inputTokenCount, Tokenizer tokenizer) {
-        this.inputTokenCount = ensureGreaterThanZero(inputTokenCount, "inputTokenCount");
-        this.tokenizer = ensureNotNull(tokenizer, "tokenizer");
-    }
-
-    public OpenAiStreamingResponseBuilder() {
-        // to be used by LocalAI only
-        this.inputTokenCount = null;
-        this.tokenizer = null;
+    public OpenAiStreamingResponseBuilder(Integer inputTokenCount) {
+        this.inputTokenCount = inputTokenCount;
     }
 
     public void append(ChatCompletionResponse partialResponse) {
@@ -140,13 +130,13 @@ public class OpenAiStreamingResponseBuilder {
         }
     }
 
-    public Response<AiMessage> build(boolean forcefulToolExecution) {
+    public Response<AiMessage> build(Tokenizer tokenizer, boolean forcefulToolExecution) {
 
         String content = contentBuilder.toString();
         if (!content.isEmpty()) {
             return Response.from(
                     AiMessage.from(content),
-                    tokenUsageIncluding(content),
+                    tokenUsage(content, tokenizer),
                     finishReasonFrom(finishReason)
             );
         }
@@ -159,7 +149,7 @@ public class OpenAiStreamingResponseBuilder {
                     .build();
             return Response.from(
                     AiMessage.from(toolExecutionRequest),
-                    tokenUsageIncluding(singletonList(toolExecutionRequest), forcefulToolExecution),
+                    tokenUsage(singletonList(toolExecutionRequest), tokenizer, forcefulToolExecution),
                     finishReasonFrom(finishReason)
             );
         }
@@ -174,7 +164,7 @@ public class OpenAiStreamingResponseBuilder {
                     .collect(toList());
             return Response.from(
                     AiMessage.from(toolExecutionRequests),
-                    tokenUsageIncluding(toolExecutionRequests, forcefulToolExecution),
+                    tokenUsage(toolExecutionRequests, tokenizer, forcefulToolExecution),
                     finishReasonFrom(finishReason)
             );
         }
@@ -182,16 +172,15 @@ public class OpenAiStreamingResponseBuilder {
         return null;
     }
 
-    private TokenUsage tokenUsageIncluding(String content) {
+    private TokenUsage tokenUsage(String content, Tokenizer tokenizer) {
         if (tokenizer == null) {
             return null;
         }
-
         int outputTokenCount = tokenizer.estimateTokenCountInText(content);
         return new TokenUsage(inputTokenCount, outputTokenCount);
     }
 
-    private TokenUsage tokenUsageIncluding(List<ToolExecutionRequest> toolExecutionRequests, boolean forcefulToolExecution) {
+    private TokenUsage tokenUsage(List<ToolExecutionRequest> toolExecutionRequests, Tokenizer tokenizer, boolean forcefulToolExecution) {
         if (tokenizer == null) {
             return null;
         }

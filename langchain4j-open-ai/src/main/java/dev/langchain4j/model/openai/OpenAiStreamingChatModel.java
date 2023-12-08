@@ -125,7 +125,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount, tokenizer);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
@@ -133,7 +133,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build(toolThatMustBeExecuted != null);
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

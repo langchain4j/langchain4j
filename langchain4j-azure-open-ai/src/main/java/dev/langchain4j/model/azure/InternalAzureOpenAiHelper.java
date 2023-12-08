@@ -105,9 +105,10 @@ class InternalAzureOpenAiHelper {
     private static FunctionCall functionCallFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
-            if (aiMessage.toolExecutionRequest() != null) {
-                return new FunctionCall(aiMessage.toolExecutionRequest().name(),
-                        aiMessage.toolExecutionRequest().arguments());
+            if (aiMessage.hasToolExecutionRequests()) {
+                // TODO switch to tools once supported
+                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+                return new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments());
             }
         }
 

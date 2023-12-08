@@ -24,7 +24,6 @@ public class OpenAiModelName {
 
     // Use with OpenAiLanguageModel and OpenAiStreamingLanguageModel
     public static final String GPT_3_5_TURBO_INSTRUCT = "gpt-3.5-turbo-instruct";
-    public static final String TEXT_DAVINCI_003 = "text-davinci-003";
 
 
     // Use with OpenAiEmbeddingModel

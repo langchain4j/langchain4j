@@ -42,7 +42,7 @@ public class InternalOpenAiHelper {
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
             return dev.ai4j.openai4j.chat.UserMessage.builder()
-                    .addText(userMessage.text())
+                    .content(userMessage.text())
                     .name(userMessage.name())
                     .build();
         }

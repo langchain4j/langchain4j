@@ -100,6 +100,10 @@ public class LocalAiChatModel implements ChatLanguageModel {
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        return Response.from(aiMessageFrom(response));
+        return Response.from(
+                aiMessageFrom(response),
+                null,
+                finishReasonFrom(response.choices().get(0).finishReason())
+        );
     }
 }
