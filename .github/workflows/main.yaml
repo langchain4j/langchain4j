@@ -16,11 +16,11 @@ jobs:
         java_version: [11, 17, 21]
         include:
           - java_version: '11'
-            included_modules: 'langchain4j-core,langchain4j-opensearch'
+            included_modules: ''
           - java_version: '17'
-            included_modules: 'langchain4j-core,!langchain4j-graal'
+            included_modules: ''
           - java_version: '21'
-            included_modules: '!langchain4j-opensearch'
+            included_modules: ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,7 +31,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn --batch-mode install -DskipITs -pl ${{ matrix.included_modules }}
+        run: mvn --batch-mode install -DskipITs ${{ matrix.included_modules }}
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
