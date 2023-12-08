@@ -17,6 +17,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * See <a href="https://localai.io/features/embeddings/">LocalAI documentation</a> for more details.
+ */
 public class LocalAiEmbeddingModel implements EmbeddingModel {
 
     private final OpenAiClient client;
