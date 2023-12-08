@@ -7,7 +7,7 @@ on:
       - support-java21
   pull_request:
     branches:
-      - *
+      - main
 
 jobs:
   build:
