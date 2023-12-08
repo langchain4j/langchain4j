@@ -16,9 +16,9 @@ jobs:
         java_version: [11, 17, 21]
         include:
           - java_version: '11'
-            included_modules: ''
+            included_modules: '-pl !langchain4j-graal'
           - java_version: '17'
-            included_modules: ''
+            included_modules: '-pl !langchain4j-graal'
           - java_version: '21'
             included_modules: ''
     runs-on: ubuntu-latest
