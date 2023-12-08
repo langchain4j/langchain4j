@@ -184,6 +184,100 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
+    void should_execute_concrete_tool_then_stream_answer() throws Exception {
+
+        // given
+        UserMessage userMessage = userMessage("2+2=?");
+
+        // when
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        model.generate(singletonList(userMessage), calculator, new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                System.out.println("onNext: '" + token + "'");
+                Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
+                futureResponse.completeExceptionally(e);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                System.out.println("onComplete: '" + response + "'");
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        AiMessage aiMessage = response.content();
+
+        // then
+        assertThat(aiMessage.text()).isNull();
+
+        List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
+        assertThat(toolExecutionRequests).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = toolExecutionRequests.get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(89); // TODO should be 53?
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0); // TODO should be 22?
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP); // not sure if a bug in OpenAI or stop is expected here
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        // when
+        CompletableFuture<Response<AiMessage>> secondFutureResponse = new CompletableFuture<>();
+
+        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                System.out.println("onNext: '" + token + "'");
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                System.out.println("onComplete: '" + response + "'");
+                secondFutureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                secondFutureResponse.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> secondResponse = secondFutureResponse.get(30, SECONDS);
+        AiMessage secondAiMessage = secondResponse.content();
+
+        // then
+        assertThat(secondAiMessage.text()).contains("4");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(43);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
     void should_execute_multiple_tools_in_parallel_then_stream_answer() throws Exception {
 
         // given

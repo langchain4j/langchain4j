@@ -200,11 +200,11 @@ public class InternalOpenAiHelper {
             case "content_filter":
                 return CONTENT_FILTER;
             default:
-                return null; // TODO throw an exception?
+                return null;
         }
     }
 
-    public static Role roleFrom(ChatMessage message) {
+    public static Role roleFrom(ChatMessage message) { // TODO remove
         if (message instanceof AiMessage) {
             return ASSISTANT;
         } else if (message instanceof ToolExecutionResultMessage) {

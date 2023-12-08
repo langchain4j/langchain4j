@@ -67,13 +67,12 @@ public class OpenAiTokenizer implements Tokenizer {
         return tokenCount;
     }
 
-
     @Override
     public int estimateTokenCountInMessage(ChatMessage message) {
         int tokenCount = 0;
         tokenCount += extraTokensPerMessage();
         tokenCount += estimateTokenCountInText(message.text());
-        tokenCount += estimateTokenCountInText(roleFrom(message).toString());
+        tokenCount += estimateTokenCountInText(roleFrom(message).toString().toLowerCase());
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;

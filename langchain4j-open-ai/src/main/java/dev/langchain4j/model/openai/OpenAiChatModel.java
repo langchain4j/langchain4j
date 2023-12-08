@@ -119,7 +119,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             requestBuilder.tools(toTools(toolSpecifications));
         }
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.toolChoice(toolThatMustBeExecuted.name()); // TODO test
+            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
         }
 
         ChatCompletionRequest request = requestBuilder.build();

@@ -85,7 +85,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_execute_a_tool_then_answer() { // TODO test localai tool execution
+    void should_execute_a_tool_then_answer() {
 
         // given
         UserMessage userMessage = userMessage("2+2=?");
@@ -111,6 +111,55 @@ class OpenAiChatModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage
+                = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        // when
+        Response<AiMessage> secondResponse = model.generate(messages);
+
+        // then
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("4");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_execute_concrete_tool_then_answer() {
+
+        // given
+        UserMessage userMessage = userMessage("2+2=?");
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(userMessage), calculator);
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotBlank();
+        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(59);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(16);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP); // not sure if a bug in OpenAI or stop is expected here
 
         // given
         ToolExecutionResultMessage toolExecutionResultMessage

@@ -124,7 +124,7 @@ public class AzureOpenAiChatModelIT {
         assertThat(weather).isEqualTo("The weather in Paris, France is 35 degrees celsius.");
 
         // Now that we know the function's result, we can call the model again with the result as input.
-        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(null, toolName, weather);
+        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, weather);
         SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
 
         List<ChatMessage> chatMessages = new ArrayList<>();
