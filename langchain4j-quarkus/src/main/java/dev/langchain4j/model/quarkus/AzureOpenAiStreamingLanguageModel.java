@@ -19,7 +19,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents an OpenAI language model, hosted on Azure, such as text-davinci-003.
+ * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
  * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
@@ -93,7 +93,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, false);
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),

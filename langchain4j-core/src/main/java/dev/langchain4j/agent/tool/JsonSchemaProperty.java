@@ -3,6 +3,7 @@ package dev.langchain4j.agent.tool;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static java.util.Collections.singletonMap;
 
 public class JsonSchemaProperty {
 
@@ -94,5 +95,9 @@ public class JsonSchemaProperty {
         }
 
         return from("enum", enumClass.getEnumConstants());
+    }
+
+    public static JsonSchemaProperty items(JsonSchemaProperty type) {
+        return from("items", singletonMap(type.key, type.value));
     }
 }

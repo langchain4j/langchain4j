@@ -52,7 +52,7 @@ class OpenAiTokenizerTest {
                                 .name("calculator")
                                 .arguments("{\"a\":2, \"b\":2}")
                                 .build()),
-                        toolExecutionResultMessage("calculator", "4")
+                        toolExecutionResultMessage("a", "calculator", "4")
                 ), 40)
         );
     }
