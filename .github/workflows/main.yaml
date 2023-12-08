@@ -10,20 +10,17 @@ on:
       - main
 
 jobs:
-  java_matrix:
+  java_build:
     strategy:
       matrix:
-        java_version: [8, 11, 17, 21]
+        java_version: [11, 17, 21]
         include:
-          - java_version: '8'
-            #excluding modules requiring JDK 11, 17 and 21
-            included_modules: '!langchain4j,!langchain4j-opensearch,!langchain4j-graal'
           - java_version: '11'
             included_modules: 'langchain4j-opensearch'
           - java_version: '17'
             included_modules: 'langchain4j-graal'
           - java_version: '21'
-            included_modules: 'langchain4j'
+            included_modules: '!langchain4j-opensearch,!langchain4j-graal'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
