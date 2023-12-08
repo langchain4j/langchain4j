@@ -3,10 +3,11 @@ name: Java CI
 on:
   push:
     branches:
-        - main
-        - support-java21
+      - main
+      - support-java21
   pull_request:
-    branches: *
+    branches:
+      - *
 
 jobs:
   build:
