@@ -6,14 +6,13 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 @Testcontainers
-class WeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
+class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     @Container
     static GenericContainer<?> weaviate = new GenericContainer<>("semitechnologies/weaviate:1.22.4")
@@ -25,7 +24,6 @@ class WeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             .withExposedPorts(8080);
 
     EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
-            .apiKey("")
             .scheme("http")
             .host(String.format("%s:%d", weaviate.getHost(), weaviate.getMappedPort(8080)))
             .objectClass("Test" + randomUUID().replace("-", ""))

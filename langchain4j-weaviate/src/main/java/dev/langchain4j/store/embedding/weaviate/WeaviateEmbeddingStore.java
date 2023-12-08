@@ -46,7 +46,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
   /**
    * Creates a new WeaviateEmbeddingStore instance.
    *
-   * @param apiKey           Your Weaviate API key
+   * @param apiKey           Your Weaviate API key. Not required for local deployment.
    * @param scheme           The scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
    * @param host             The host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
    *                         Find in under Details of your Weaviate cluster.
@@ -67,7 +67,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
   ) {
     try {
       Config config = new Config(ensureNotBlank(scheme, "scheme"), ensureNotBlank(host, "host"));
-      this.client = WeaviateAuthClient.apiKey(config, ensureNotNull(apiKey, "apiKey"));
+      this.client = WeaviateAuthClient.apiKey(config, getOrDefault(apiKey, ""));
     } catch (AuthException e) {
       throw new IllegalArgumentException(e);
     }
