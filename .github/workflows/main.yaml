@@ -24,11 +24,9 @@ jobs:
             included_modules: langchain4j-graal
           - java_version: 21
             included_modules: langchain4j
-  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up JDK ${{ matrix.java_version }}
         uses: actions/setup-java@v3
         with:
