@@ -30,7 +30,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.DEFAULT_EMBEDDING_PROP;
@@ -400,6 +402,51 @@ class Neo4jEmbeddingStoreTest {
                     DEFAULT_EMBEDDING_PROP);
             assertThat(e.getMessage()).contains(errMsg);
         }
+    }
+
+    @Test
+    void test_row_batches_single_element() {
+        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(1);
+        assertThat(rowsBatched).hasSize(1);
+        assertThat(rowsBatched.get(0)).hasSize(1);
+    }
+
+    @Test
+    void test_row_batches_empty() {
+        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(0);
+        assertThat(rowsBatched).isEmpty();
+    }
+
+    @Test
+    void test_row_batches_10000_elements() {
+        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(10000);
+        assertThat(rowsBatched).hasSize(1);
+        assertThat(rowsBatched.get(0)).hasSize(10000);
+    }
+
+    @Test
+    void test_row_batches_20000_elements() {
+        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(20000);
+        assertThat(rowsBatched).hasSize(2);
+        assertThat(rowsBatched.get(0)).hasSize(10000);
+        assertThat(rowsBatched.get(1)).hasSize(10000);
+    }
+
+    @Test
+    void test_row_batches_11001_elements() {
+        List<List<Map<String, Object>>> rowsBatched = getListRowsBatched(11001);
+        assertThat(rowsBatched).hasSize(2);
+        assertThat(rowsBatched.get(0)).hasSize(10000);
+        assertThat(rowsBatched.get(1)).hasSize(1001);
+    }
+
+    private List<List<Map<String, Object>>> getListRowsBatched(int numElements) {
+        List<TextSegment> embedded = IntStream.range(0, numElements).mapToObj(i -> TextSegment.from("text-" + i)).toList();
+        List<String> ids = IntStream.range(0, numElements).mapToObj(i -> "id-" + i).toList();
+        List<Embedding> embeddings = embeddingModel.embedAll(embedded).content();
+
+        return Neo4jEmbeddingUtils.getRowsBatched((Neo4jEmbeddingStore) embeddingStore, ids, embeddings, embedded)
+                .toList();
     }
 
     private void checkSegmentWithMetadata(String metadataKey, String labelName) {

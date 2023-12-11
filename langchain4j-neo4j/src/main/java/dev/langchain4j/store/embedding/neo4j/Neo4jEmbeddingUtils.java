@@ -9,7 +9,6 @@ import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
 
@@ -92,13 +92,20 @@ public class Neo4jEmbeddingUtils {
         return row;
     }
 
-    public static Collection<List<Map<String, Object>>> getRowsBatched(Neo4jEmbeddingStore store, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+    public static Stream<List<Map<String, Object>>> getRowsBatched(Neo4jEmbeddingStore store, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         int batchSize = 10_000;
         AtomicInteger batchCounter = new AtomicInteger();
-        return IntStream.range(0, ids.size())
-                .mapToObj(idx -> toRecord(store, idx, ids, embeddings, embedded))
-                .collect(Collectors.groupingBy(it -> batchCounter.getAndIncrement() / batchSize))
-                .values();
+        int total = ids.size();
+        int batchNumber = (int) Math.ceil( (double) total / batchSize );
+        return IntStream.range(0, batchNumber)
+                .mapToObj(part -> {
+                    List<Map<String, Object>> maps = ids.subList(Math.min(part * batchSize, total), Math.min((part + 1) * batchSize, total))
+                                    .stream()
+                                    .map(i -> toRecord(store, batchCounter.getAndIncrement(), ids, embeddings, embedded))
+                                    .toList();
+                            return maps;
+                        }
+                );
     }
 
     public static String sanitizeOrThrows(String value, String config) {

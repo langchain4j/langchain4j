@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isCollectionEmpty;
@@ -213,7 +214,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void bulk(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        Collection<List<Map<String, Object>>> rowsBatched = getRowsBatched(this, ids, embeddings, embedded);
+        Stream<List<Map<String, Object>>> rowsBatched = getRowsBatched(this, ids, embeddings, embedded);
 
         rowsBatched.forEach(rows -> {
             try (var session = session()) {
