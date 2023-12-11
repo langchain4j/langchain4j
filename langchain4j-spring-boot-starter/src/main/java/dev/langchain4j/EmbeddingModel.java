@@ -12,6 +12,8 @@ class EmbeddingModel {
     private HuggingFace huggingFace;
     @NestedConfigurationProperty
     private LocalAi localAi;
+    @NestedConfigurationProperty
+    private AzureOpenAi azureOpenAi;
 
     public ModelProvider getProvider() {
         return provider;
@@ -43,5 +45,13 @@ class EmbeddingModel {
 
     public void setLocalAi(LocalAi localAi) {
         this.localAi = localAi;
+    }
+
+    public AzureOpenAi getAzureOpenAi() {
+        return azureOpenAi;
+    }
+
+    public void setAzureOpenAi(AzureOpenAi azureOpenAi) {
+        this.azureOpenAi = azureOpenAi;
     }
 }
