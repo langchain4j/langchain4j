@@ -30,7 +30,8 @@
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
         <testcontainers.version>1.19.2</testcontainers.version>
-        <mockito.version>5.8.0</mockito.version>
+        <bytebuddy.version>1.14.10</bytebuddy.version>
+        <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
         <spring-boot.version>2.7.14</spring-boot.version>
@@ -196,6 +197,12 @@
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-junit-jupiter</artifactId>
                 <version>${mockito.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${bytebuddy.version}</version>
             </dependency>
 
             <dependency>
