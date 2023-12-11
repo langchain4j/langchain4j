@@ -119,7 +119,8 @@ class AzureOpenAiStreamingChatModelIT {
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequest();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
