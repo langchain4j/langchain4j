@@ -1,35 +1,60 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+name: Java CI
 
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-
-name: Java CI with Maven
-
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: [pull_request]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml
+      - uses: actions/checkout@v4
 
-    # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
-    - name: Update dependency graph
-      uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Build with JDK 8 (excluding modules requiring JDK 11, 17 and 21)
+        run: mvn --batch-mode install -DskipITs -pl !langchain4j-opensearch,!langchain4j-graal
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Build modules requiring JDK 11
+        run: mvn --batch-mode install -DskipITs -pl !langchain4j-graal
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Build modules requiring JDK 17
+        run: mvn --batch-mode install -DskipTests -DskipITs -pl !langchain4j-graal
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+      - name: Build modules requiring JDK 21
+        run: mvn --batch-mode install -DskipTests -DskipITs
+
+  # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
+  compliance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+        # Check we only rely on permissive licenses in the main parts of the library:
+      - name: License Compliance
+        run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
