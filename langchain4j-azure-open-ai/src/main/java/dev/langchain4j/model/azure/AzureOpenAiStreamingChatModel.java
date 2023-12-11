@@ -14,6 +14,7 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
+import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
 import static java.util.Collections.singletonList;
 
 /**
@@ -135,7 +137,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            options.setFunctions(InternalAzureOpenAiHelper.toFunctions(toolSpecifications));
+            options.setFunctions(toFunctions(toolSpecifications));
             if (tokenizer != null) {
                 inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
             }
@@ -156,7 +158,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         responseBuilder.append(chatCompletions);
                         handle(chatCompletions, handler);
                     });
-            handler.onComplete(responseBuilder.build());
+            Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+            handler.onComplete(response);
         } catch (Exception exception) {
             handler.onError(exception);
         }

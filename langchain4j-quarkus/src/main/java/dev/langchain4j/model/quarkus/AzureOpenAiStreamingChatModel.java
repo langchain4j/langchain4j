@@ -145,7 +145,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

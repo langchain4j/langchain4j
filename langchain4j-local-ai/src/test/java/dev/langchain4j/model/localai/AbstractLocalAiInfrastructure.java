@@ -22,8 +22,8 @@ public class AbstractLocalAiInfrastructure {
     private static final String LOCAL_LOCAL_AI_IMAGE = String.format("%s:%s", LOCAL_IMAGE_NAME, DockerImageName.parse(LOCAL_AI_IMAGE).getVersionPart());
 
     private static final List<String[]> CMDS = Arrays.asList(
-            new String[] {"curl", "-o", "/build/models/ggml-gpt4all-j", "https://gpt4all.io/models/ggml-gpt4all-j.bin"},
-            new String[] {"curl", "-Lo", "/build/models/ggml-model-q4_0", "https://huggingface.co/LangChain4j/localai-embeddings/resolve/main/ggml-model-q4_0"});
+            new String[]{"curl", "-o", "/build/models/ggml-gpt4all-j", "https://gpt4all.io/models/ggml-gpt4all-j.bin"},
+            new String[]{"curl", "-Lo", "/build/models/ggml-model-q4_0", "https://huggingface.co/LangChain4j/localai-embeddings/resolve/main/ggml-model-q4_0"});
 
     static final LocalAiContainer localAi;
 
@@ -64,7 +64,7 @@ public class AbstractLocalAiInfrastructure {
                     for (String[] cmd : CMDS) {
                         execInContainer(cmd);
                     }
-                   copyFileToContainer(MountableFile.forClasspathResource("ggml-model-q4_0.yaml"), "/build/models/ggml-model-q4_0.yaml");
+                    copyFileToContainer(MountableFile.forClasspathResource("ggml-model-q4_0.yaml"), "/build/models/ggml-model-q4_0.yaml");
                 } catch (IOException | InterruptedException e) {
                     throw new RuntimeException("Error downloading the model", e);
                 }
