@@ -6,28 +6,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up JDK 8
-        uses: actions/setup-java@v3
-        with:
-          java-version: '8'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Build with JDK 8 (excluding modules requiring JDK 11, 17 and 21)
-        run: mvn --batch-mode install -DskipITs -pl !langchain4j-opensearch,!langchain4j-graal
-
-      - name: Set up JDK 11
-        uses: actions/setup-java@v3
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-          cache: 'maven'
-      - name: Build modules requiring JDK 11
-        run: mvn --batch-mode install -DskipITs -pl langchain4j-opensearch
+      - uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -36,7 +18,7 @@ jobs:
         run: mvn --batch-mode install -DskipTests -DskipITs -pl langchain4j-graal
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -48,9 +30,9 @@ jobs:
   compliance:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -58,10 +40,3 @@ jobs:
         # Check we only rely on permissive licenses in the main parts of the library:
       - name: License Compliance
         run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
-
-# TODO's
-# - enable JDK 17 unit tests for langchain4j-graal
-# - setup integration tests
-# - these require an openAI (and hugging face, etc) token
-# - do so that they always run for commits on main
-# - make the running be manually triggered for PRs (we don't want to burn through credits)
