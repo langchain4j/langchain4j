@@ -70,7 +70,7 @@ public class LangChain4jAutoConfiguration {
                 }
 
                 return AzureOpenAiChatModel.builder()
-                    .endpoint(azureOpenAi.getEndPoint())
+                    .endpoint(azureOpenAi.getEndpoint())
                     .apiKey(azureOpenAi.getApiKey())
                     .deploymentName(azureOpenAi.getDeploymentName())
                     .temperature(azureOpenAi.getTemperature())
@@ -153,11 +153,11 @@ public class LangChain4jAutoConfiguration {
             case AZURE_OPEN_AI:
                 AzureOpenAi azureOpenAi = properties.getChatModel().getAzureOpenAi();
                 if (azureOpenAi == null || isNullOrBlank(azureOpenAi.getApiKey())) {
-                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.azure-openai.api-key' property");
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model.azure-openai.api-key' property");
                 }
 
                 return AzureOpenAiLanguageModel.builder()
-                    .endpoint(azureOpenAi.getEndPoint())
+                    .endpoint(azureOpenAi.getEndpoint())
                     .apiKey(azureOpenAi.getApiKey())
                     .deploymentName(azureOpenAi.getDeploymentName())
                     .temperature(azureOpenAi.getTemperature())
@@ -239,11 +239,11 @@ public class LangChain4jAutoConfiguration {
             case AZURE_OPEN_AI:
                 AzureOpenAi azureOpenAi = properties.getChatModel().getAzureOpenAi();
                 if (azureOpenAi == null || isNullOrBlank(azureOpenAi.getApiKey())) {
-                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.azure-openai.api-key' property");
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model.azure-openai.api-key' property");
                 }
 
                 return AzureOpenAiEmbeddingModel.builder()
-                    .endpoint(azureOpenAi.getEndPoint())
+                    .endpoint(azureOpenAi.getEndpoint())
                     .apiKey(azureOpenAi.getApiKey())
                     .deploymentName(azureOpenAi.getDeploymentName())
                     .timeout(azureOpenAi.getTimeout())
