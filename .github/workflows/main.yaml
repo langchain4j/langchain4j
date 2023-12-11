@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 8
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '8'
           distribution: 'temurin'
@@ -18,13 +18,13 @@ jobs:
         run: mvn --batch-mode install -DskipITs -pl !langchain4j-opensearch,!langchain4j-graal
 
       - name: Set up JDK 11
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: '11'
           distribution: 'temurin'
           cache: 'maven'
       - name: Build modules requiring JDK 11
-        run: mvn --batch-mode install -DskipITs -pl !langchain4j-opensearch,!langchain4j-graal
+        run: mvn --batch-mode install -DskipITs -pl !langchain4j-graal
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -33,7 +33,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build modules requiring JDK 17
-        run: mvn --batch-mode install -DskipTests -DskipITs -pl langchain4j-opensearch,!langchain4j-graal
+        run: mvn --batch-mode install -DskipTests -DskipITs -pl !langchain4j-graal
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -42,7 +42,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build modules requiring JDK 21
-        run: mvn --batch-mode install -DskipTests -DskipITs -pl langchain4j-graal
+        run: mvn --batch-mode install -DskipTests -DskipITs
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
