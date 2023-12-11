@@ -5,7 +5,7 @@ import java.time.Duration;
 
 public class AzureOpenAi {
 
-  private String endPoint;
+  private String endpoint;
   private String serviceVersion;
   private String apiKey;
   private String deploymentName;
@@ -18,13 +18,12 @@ public class AzureOpenAi {
   private Integer maxRetries;
   private boolean logRequestsAndResponses;
 
-
-  public String getEndPoint() {
-    return endPoint;
+  public String getEndpoint() {
+    return endpoint;
   }
 
-  public void setEndPoint(String endPoint) {
-    this.endPoint = endPoint;
+  public void setEndpoint(String endpoint) {
+    this.endpoint = endpoint;
   }
 
   public String getServiceVersion() {
