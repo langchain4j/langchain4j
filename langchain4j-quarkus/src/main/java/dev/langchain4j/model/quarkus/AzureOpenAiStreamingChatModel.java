@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
@@ -103,7 +104,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, singletonList(toolSpecification), toolSpecification, handler);
+        generate(messages, null, toolSpecification, handler);
     }
 
     private void generate(List<ChatMessage> messages,
@@ -122,16 +123,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.functions(toFunctions(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+            if (tokenizer != null) {
+                inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+            }
+        } else if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.functions(toFunctions(toolSpecifications));
             if (tokenizer != null) {
                 inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-            }
-        }
-        if (toolThatMustBeExecuted != null) {
-            requestBuilder.functionCall(toolThatMustBeExecuted.name());
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
             }
         }
 

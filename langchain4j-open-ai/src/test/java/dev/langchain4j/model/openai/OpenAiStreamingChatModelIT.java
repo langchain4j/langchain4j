@@ -10,6 +10,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeoutException;
 
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
@@ -26,6 +28,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 
 class OpenAiStreamingChatModelIT {
 
@@ -42,6 +45,8 @@ class OpenAiStreamingChatModelIT {
             .addParameter("first", INTEGER)
             .addParameter("second", INTEGER)
             .build();
+
+    Percentage tokenizerPrecision = withPercentage(5);
 
     @Test
     void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
@@ -133,15 +138,15 @@ class OpenAiStreamingChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(50); // TODO should be 53?
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0); // TODO should be 22?
+        assertThat(tokenUsage.inputTokenCount()).isCloseTo(53, tokenizerPrecision);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(22, tokenizerPrecision);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
 
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
@@ -175,7 +180,7 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(43);
+        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(41, tokenizerPrecision);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -184,7 +189,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_execute_concrete_tool_then_stream_answer() throws Exception {
+    void should_execute_tool_forcefully_then_stream_answer() throws Exception {
 
         // given
         UserMessage userMessage = userMessage("2+2=?");
@@ -227,15 +232,15 @@ class OpenAiStreamingChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(89); // TODO should be 53?
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0); // TODO should be 22?
+        assertThat(tokenUsage.inputTokenCount()).isCloseTo(59, tokenizerPrecision);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(16, tokenizerPrecision);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP); // not sure if a bug in OpenAI or stop is expected here
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
 
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
@@ -269,7 +274,7 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(43);
+        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(41, tokenizerPrecision);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -332,16 +337,16 @@ class OpenAiStreamingChatModelIT {
         assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(55); // TODO should be 57?
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(0); // TODO should be 51?
+        assertThat(tokenUsage.inputTokenCount()).isCloseTo(57, tokenizerPrecision);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(51, tokenizerPrecision);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
-        ToolExecutionResultMessage toolExecutionResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
+        ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
 
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
 
@@ -375,7 +380,7 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(66); // TODO should be 83?
+        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(83, tokenizerPrecision);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
