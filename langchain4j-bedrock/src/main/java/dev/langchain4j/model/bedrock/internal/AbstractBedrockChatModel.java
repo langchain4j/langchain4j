@@ -1,6 +1,5 @@
 package dev.langchain4j.model.bedrock.internal;
 
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -80,16 +79,6 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
         return new Response<>(new AiMessage(result.getOutputText()),
                 result.getTokenUsage(),
                 result.getFinishReason());
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        throw new IllegalArgumentException("Tools are currently not supported for Bedrock models");
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new IllegalArgumentException("Tools are currently not supported for Bedrock models");
     }
 
     /**

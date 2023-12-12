@@ -78,7 +78,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override
@@ -115,11 +115,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            requestBuilder.functions(toFunctions(toolSpecifications));
+            requestBuilder.tools(toTools(toolSpecifications));
             inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.functionCall(toolThatMustBeExecuted.name());
+            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
             inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
         }
 
@@ -133,7 +133,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

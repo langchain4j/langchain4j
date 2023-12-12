@@ -5,12 +5,12 @@ import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import lombok.Builder;
 
 import java.util.List;
 
@@ -19,117 +19,68 @@ import static dev.langchain4j.model.dashscope.QwenHelper.*;
 
 public class QwenChatModel implements ChatLanguageModel {
 
-    protected final String apiKey;
-    protected final String modelName;
-    protected final Double topP;
-    protected final Integer topK;
-    protected final Boolean enableSearch;
-    protected final Integer seed;
-    protected final Generation generation;
+    private final String apiKey;
+    private final String modelName;
+    private final Double topP;
+    private final Integer topK;
+    private final Boolean enableSearch;
+    private final Integer seed;
+    private final Float repetitionPenalty;
+    private final Float temperature;
+    private final List<String> stops;
+    private final Generation generation;
 
+    @Builder
     protected QwenChatModel(String apiKey,
                             String modelName,
                             Double topP,
                             Integer topK,
                             Boolean enableSearch,
-                            Integer seed) {
+                            Integer seed,
+                            Float repetitionPenalty,
+                            Float temperature,
+                            List<String> stops) {
+        if (Utils.isNullOrBlank(apiKey)) {
+            throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
+        }
+        this.modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.QWEN_PLUS : modelName;
+        this.enableSearch = enableSearch != null && enableSearch;
         this.apiKey = apiKey;
-        this.modelName = modelName;
         this.topP = topP;
         this.topK = topK;
-        this.enableSearch = enableSearch;
         this.seed = seed;
+        this.repetitionPenalty = repetitionPenalty;
+        this.temperature = temperature;
+        this.stops = stops;
         this.generation = new Generation();
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         try {
-            QwenParam param = QwenParam.builder()
+            QwenParam.QwenParamBuilder<?, ?> builder = QwenParam.builder()
                     .apiKey(apiKey)
                     .model(modelName)
                     .topP(topP)
                     .topK(topK)
                     .enableSearch(enableSearch)
                     .seed(seed)
+                    .repetitionPenalty(repetitionPenalty)
+                    .temperature(temperature)
                     .messages(toQwenMessages(messages))
-                    .resultFormat(MESSAGE)
-                    .build();
+                    .resultFormat(MESSAGE);
 
-            GenerationResult generationResult = generation.call(param);
+            if (stops != null) {
+                builder.stopStrings(stops);
+            }
+
+            GenerationResult generationResult = generation.call(builder.build());
             String answer = answerFrom(generationResult);
 
             return Response.from(AiMessage.from(answer),
                     tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        throw new IllegalArgumentException("Tools are currently not supported for qwen models");
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-
-        protected String apiKey;
-        protected String modelName;
-        protected Double topP;
-        protected Integer topK;
-        protected Boolean enableSearch;
-        protected Integer seed;
-
-        public Builder apiKey(String apiKey) {
-            this.apiKey = apiKey;
-            return this;
-        }
-
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
-            return this;
-        }
-
-        public Builder topP(Double topP) {
-            this.topP = topP;
-            return this;
-        }
-
-        public Builder topK(Integer topK) {
-            this.topK = topK;
-            return this;
-        }
-
-        public Builder enableSearch(Boolean enableSearch) {
-            this.enableSearch = enableSearch;
-            return this;
-        }
-
-        public Builder seed(Integer seed) {
-            this.seed = seed;
-            return this;
-        }
-
-        protected void ensureOptions() {
-            if (Utils.isNullOrBlank(apiKey)) {
-                throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
-            }
-            modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.QWEN_PLUS : modelName;
-            enableSearch = enableSearch != null && enableSearch;
-        }
-
-        public QwenChatModel build() {
-            ensureOptions();
-            return new QwenChatModel(apiKey, modelName, topP, topK, enableSearch, seed);
         }
     }
 }

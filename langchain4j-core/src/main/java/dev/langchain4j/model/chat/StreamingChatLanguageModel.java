@@ -47,7 +47,11 @@ public interface StreamingChatLanguageModel {
      * @param handler            The handler for streaming the response.
      *                           {@link AiMessage} can contain either a textual response or a request to execute one of the tools.
      */
-    void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler);
+    default void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+        throw new IllegalArgumentException("Tools are currently not supported by this model");
+    }
 
-    void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler);
+    default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        throw new IllegalArgumentException("Tools are currently not supported by this model");
+    }
 }

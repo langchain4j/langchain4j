@@ -4,12 +4,17 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
-import org.junit.jupiter.api.Disabled;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
@@ -19,235 +24,79 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
-@Disabled("needs Milvus running locally")
-class MilvusEmbeddingStoreIT {
+@Testcontainers
+class MilvusEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
-    /**
-     * First run Milvus locally:
-     * Run "docker compose up -d" inside "langchain4j-milvus/src/test/resources" directory.
-     * If you want to create a fresh Milvus instance, don't forget to remove "langchain4j-milvus/src/test/resources/volumes" directory.
-     */
+    private static final Network network = Network.newNetwork();
+
+    private static final MinIOContainer minio = new MinIOContainer("minio/minio:RELEASE.2023-03-20T20-16-18Z")
+            .withNetwork(network)
+            .withNetworkAliases("minio");
+
+    private static final GenericContainer<?> etcd = new GenericContainer<>("quay.io/coreos/etcd:v3.5.5")
+            .withNetwork(network)
+            .withNetworkAliases("etcd")
+            .withCommand("etcd", "-advertise-client-urls=http://127.0.0.1:2379", "-listen-client-urls=http://0.0.0.0:2379",
+                    "--data-dir=/etcd")
+            .withEnv("ETCD_AUTO_COMPACTION_MODE", "revision")
+            .withEnv("ETCD_AUTO_COMPACTION_RETENTION", "1000")
+            .withEnv("ETCD_QUOTA_BACKEND_BYTES", "4294967296")
+            .withEnv("ETCD_SNAPSHOT_COUNT", "50000")
+            .waitingFor(Wait.forLogMessage(".*ready to serve client requests.*", 1));
+
+    @Container
+    private static final GenericContainer<?> milvus = new GenericContainer<>("milvusdb/milvus:v2.3.1")
+            .withExposedPorts(19530)
+            .dependsOn(minio, etcd)
+            .withNetwork(network)
+            .withCommand("milvus", "run", "standalone")
+            .withEnv("ETCD_ENDPOINTS", "etcd:2379")
+            .withEnv("MINIO_ADDRESS", "minio:9000")
+            .waitingFor(Wait.forLogMessage(".*Proxy successfully started.*\\s", 1));
 
     EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-            .host("localhost")
-            .port(19530)
+            .host(milvus.getHost())
+            .port(milvus.getMappedPort(19530))
             .collectionName("collection_" + randomUUID().replace("-", ""))
             .dimension(384)
+            .retrieveEmbeddingsOnSearch(true)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    @Test
-    void should_add_embedding() {
+    @Override
+    protected EmbeddingStore<TextSegment> embeddingStore() {
+        return embeddingStore;
+    }
 
-        Embedding embedding = embeddingModel.embed(randomUUID()).content();
-
-        String id = embeddingStore.add(embedding);
-        assertThat(id).isNotNull();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
-        assertThat(match.embedded()).isNull();
+    @Override
+    protected EmbeddingModel embeddingModel() {
+        return embeddingModel;
     }
 
     @Test
-    void should_add_embedding_with_id() {
-
-        String id = randomUUID();
-        Embedding embedding = embeddingModel.embed(randomUUID()).content();
-
-        embeddingStore.add(id, embedding);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
-        assertThat(match.embedded()).isNull();
-    }
-
-    @Test
-    void should_add_embedding_with_segment() {
-
-        TextSegment segment = TextSegment.from(randomUUID());
-        Embedding embedding = embeddingModel.embed(segment.text()).content();
-
-        String id = embeddingStore.add(embedding, segment);
-        assertThat(id).isNotNull();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(1, withPercentage(1));
-        assertThat(match.embeddingId()).isEqualTo(id);
-        assertThat(match.embedding()).isNull();
-        assertThat(match.embedded()).isEqualTo(segment);
-    }
-
-    @Test
-    void should_add_multiple_embeddings() {
-
-        Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
-        Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
-
-        List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
-        assertThat(ids).hasSize(2);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
-        assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
-        assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isNull();
-        assertThat(firstMatch.embedded()).isNull();
-
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isBetween(0d, 1d);
-        assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isNull();
-        assertThat(secondMatch.embedded()).isNull();
-    }
-
-    @Test
-    void should_add_multiple_embeddings_with_segments() {
-
-        TextSegment firstSegment = TextSegment.from(randomUUID());
-        Embedding firstEmbedding = embeddingModel.embed(firstSegment.text()).content();
-        TextSegment secondSegment = TextSegment.from(randomUUID());
-        Embedding secondEmbedding = embeddingModel.embed(secondSegment.text()).content();
-
-        List<String> ids = embeddingStore.addAll(
-                asList(firstEmbedding, secondEmbedding),
-                asList(firstSegment, secondSegment)
-        );
-        assertThat(ids).hasSize(2);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
-        assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
-        assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isNull();
-        assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
-
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isBetween(0d, 1d);
-        assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isNull();
-        assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
-    }
-
-    @Test
-    void should_find_with_min_score() {
-
-        String firstId = randomUUID();
-        Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
-        embeddingStore.add(firstId, firstEmbedding);
-
-        String secondId = randomUUID();
-        Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
-        embeddingStore.add(secondId, secondEmbedding);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
-        assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
-        assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isBetween(0d, 1d);
-        assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
-
-        List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score() - 0.01
-        );
-        assertThat(relevant2).hasSize(2);
-        assertThat(relevant2.get(0).embeddingId()).isEqualTo(firstId);
-        assertThat(relevant2.get(1).embeddingId()).isEqualTo(secondId);
-
-        List<EmbeddingMatch<TextSegment>> relevant3 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score()
-        );
-        assertThat(relevant3).hasSize(2);
-        assertThat(relevant3.get(0).embeddingId()).isEqualTo(firstId);
-        assertThat(relevant3.get(1).embeddingId()).isEqualTo(secondId);
-
-        List<EmbeddingMatch<TextSegment>> relevant4 = embeddingStore.findRelevant(
-                firstEmbedding,
-                10,
-                secondMatch.score() + 0.01
-        );
-        assertThat(relevant4).hasSize(1);
-        assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
-    }
-
-    @Test
-    void should_return_correct_score() {
-
-        Embedding embedding = embeddingModel.embed("hello").content();
-
-        String id = embeddingStore.add(embedding);
-        assertThat(id).isNotNull();
-
-        Embedding referenceEmbedding = embeddingModel.embed("hi").content();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(referenceEmbedding, 1);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
-                withPercentage(1)
-        );
-    }
-
-    @Test
-    void should_retrieve_embeddings_when_searching() {
+    void should_not_retrieve_embeddings_when_searching() {
 
         EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-                .host("localhost")
-                .port(19530)
+                .host(milvus.getHost())
+                .port(milvus.getMappedPort(19530))
                 .collectionName("collection_" + randomUUID().replace("-", ""))
                 .dimension(384)
-                .retrieveEmbeddingsOnSearch(true)
+                .retrieveEmbeddingsOnSearch(false)
                 .build();
 
-        Embedding firstEmbedding = embeddingModel.embed(randomUUID()).content();
-        Embedding secondEmbedding = embeddingModel.embed(randomUUID()).content();
-
-        List<String> ids = embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
-        assertThat(ids).hasSize(2);
+        Embedding firstEmbedding = embeddingModel.embed("hello").content();
+        Embedding secondEmbedding = embeddingModel.embed("hi").content();
+        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
-
-        EmbeddingMatch<TextSegment> firstMatch = relevant.get(0);
-        assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
-        assertThat(firstMatch.embeddingId()).isEqualTo(ids.get(0));
-        assertThat(firstMatch.embedding()).isEqualTo(firstEmbedding);
-        assertThat(firstMatch.embedded()).isNull();
-
-        EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isBetween(0d, 1d);
-        assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
-        assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
-        assertThat(secondMatch.embedded()).isNull();
+        assertThat(relevant.get(0).embedding()).isNull();
+        assertThat(relevant.get(1).embedding()).isNull();
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "MILVUS_API_KEY", matches = ".+")
     void should_use_cloud_instance() {
 
         EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()

@@ -20,6 +20,7 @@
 
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
+        <module>langchain4j-quarkus</module>
         <module>langchain4j-bedrock</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
@@ -34,12 +35,15 @@
         <module>langchain4j-elasticsearch</module>
         <module>langchain4j-milvus</module>
         <module>langchain4j-opensearch</module>
-        <module>langchain4j-pinecone</module>
         <module>langchain4j-pgvector</module>
+        <module>langchain4j-pinecone</module>
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
         <module>langchain4j-chatglm</module>
+
+        <!-- other -->
+        <module>langchain4j-graal</module>
 
     </modules>
 

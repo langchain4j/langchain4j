@@ -19,23 +19,17 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>${parent.version}</version>
         </dependency>
 
         <dependency>
             <groupId>io.milvus</groupId>
             <artifactId>milvus-sdk-java</artifactId>
-            <version>2.3.1</version>
+            <version>2.3.3</version>
             <exclusions>
                 <!-- due to CVE-2022-41915 vulnerability -->
                 <exclusion>
                     <groupId>io.netty</groupId>
                     <artifactId>netty-codec</artifactId>
-                </exclusion>
-                <!-- due to CVE-2022-42889 vulnerability -->
-                <exclusion>
-                    <groupId>org.apache.commons</groupId>
-                    <artifactId>commons-text</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -44,10 +38,13 @@
             <artifactId>netty-codec</artifactId>
             <version>${netty.version}</version>
         </dependency>
+
         <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-text</artifactId>
-            <version>1.10.0</version>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -68,6 +65,23 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>minio</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

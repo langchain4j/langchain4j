@@ -16,8 +16,7 @@ import redis.clients.jedis.search.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.Utils.isCollectionEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
 import static java.lang.String.format;
@@ -46,13 +45,15 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param port               Redis Stack Server port
      * @param user               Redis Stack username (optional)
      * @param password           Redis Stack password (optional)
-     * @param dimension          embedding vector dimension
-     * @param metadataFieldsName metadata fields name (optional)
+     * @param indexName          The name of the index (optional). Default value: "embedding-index".
+     * @param dimension          Embedding vector dimension
+     * @param metadataFieldsName Metadata fields name (optional)
      */
     public RedisEmbeddingStore(String host,
                                Integer port,
                                String user,
                                String password,
+                               String indexName,
                                Integer dimension,
                                List<String> metadataFieldsName) {
         ensureNotBlank(host, "host");
@@ -61,6 +62,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
+                .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
                 .metadataFieldsName(metadataFieldsName)
                 .build();
@@ -140,8 +142,8 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private boolean isIndexExist(String indexName) {
-        Set<String> indexSets = client.ftList();
-        return indexSets.contains(indexName);
+        Set<String> indexes = client.ftList();
+        return indexes.contains(indexName);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -149,7 +151,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isCollectionEmpty(ids) || isCollectionEmpty(embeddings)) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("do not add empty embeddings to redis");
             return;
         }
@@ -218,6 +220,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Integer port;
         private String user;
         private String password;
+        private String indexName;
         private Integer dimension;
         private List<String> metadataFieldsName = new ArrayList<>();
 
@@ -254,6 +257,15 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * @param indexName The name of the index (optional). Default value: "embedding-index".
+         * @return builder
+         */
+        public Builder indexName(String indexName) {
+            this.indexName = indexName;
+            return this;
+        }
+
+        /**
          * @param dimension embedding vector dimension
          * @return builder
          */
@@ -271,7 +283,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, dimension, metadataFieldsName);
+            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataFieldsName);
         }
     }
 }

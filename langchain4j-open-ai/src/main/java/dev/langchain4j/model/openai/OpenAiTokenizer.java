@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -39,12 +40,39 @@ public class OpenAiTokenizer implements Tokenizer {
                 .countTokensOrdinary(text);
     }
 
+    //Estimate the number of tokens in the parameters of a tool
+    private int estimateTokenCountInToolParameters(ToolParameters parameters) {
+        //Return early if there are no parameters
+        if (parameters == null) return 0;
+
+        int tokenCount = 0;
+        Map<String, Map<String, Object>> properties = parameters.properties();
+        for (String property : properties.keySet()) {
+            for (Map.Entry<String, Object> entry : properties.get(property).entrySet()) {
+                if ("type".equals(entry.getKey())) {
+                    tokenCount += 3; // found experimentally while playing with OpenAI API
+                    tokenCount += estimateTokenCountInText(entry.getValue().toString());
+                } else if ("description".equals(entry.getKey())) {
+                    tokenCount += 3; // found experimentally while playing with OpenAI API
+                    tokenCount += estimateTokenCountInText(entry.getValue().toString());
+                } else if ("enum".equals(entry.getKey())) {
+                    tokenCount -= 3; // found experimentally while playing with OpenAI API
+                    for (Object enumValue : (Object[]) entry.getValue()) {
+                        tokenCount += 3; // found experimentally while playing with OpenAI API
+                        tokenCount += estimateTokenCountInText(enumValue.toString());
+                    }
+                }
+            }
+        }
+        return tokenCount;
+    }
+
     @Override
     public int estimateTokenCountInMessage(ChatMessage message) {
         int tokenCount = 0;
         tokenCount += extraTokensPerMessage();
         tokenCount += estimateTokenCountInText(message.text());
-        tokenCount += estimateTokenCountInText(roleFrom(message).toString());
+        tokenCount += estimateTokenCountInText(roleFrom(message).toString().toLowerCase());
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
@@ -56,11 +84,12 @@ public class OpenAiTokenizer implements Tokenizer {
 
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
-            if (aiMessage.toolExecutionRequest() != null) {
-                tokenCount += 4; // found experimentally while playing with OpenAI API
-                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequest();
-                tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
-                tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
+            if (aiMessage.hasToolExecutionRequests()) {
+                for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                    tokenCount += 4; // found experimentally while playing with OpenAI API
+                    tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
+                    tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
+                }
             }
         }
 
@@ -90,28 +119,16 @@ public class OpenAiTokenizer implements Tokenizer {
         for (ToolSpecification toolSpecification : toolSpecifications) {
             tokenCount += estimateTokenCountInText(toolSpecification.name());
             tokenCount += estimateTokenCountInText(toolSpecification.description());
-            Map<String, Map<String, Object>> properties = toolSpecification.parameters().properties();
-            for (String property : properties.keySet()) {
-                for (Map.Entry<String, Object> entry : properties.get(property).entrySet()) {
-                    if ("type".equals(entry.getKey())) {
-                        tokenCount += 3; // found experimentally while playing with OpenAI API
-                        tokenCount += estimateTokenCountInText(entry.getValue().toString());
-                    } else if ("description".equals(entry.getKey())) {
-                        tokenCount += 3; // found experimentally while playing with OpenAI API
-                        tokenCount += estimateTokenCountInText(entry.getValue().toString());
-                    } else if ("enum".equals(entry.getKey())) {
-                        tokenCount -= 3; // found experimentally while playing with OpenAI API
-                        for (Object enumValue : (Object[]) entry.getValue()) {
-                            tokenCount += 3; // found experimentally while playing with OpenAI API
-                            tokenCount += estimateTokenCountInText(enumValue.toString());
-                        }
-                    }
-                }
-            }
+            tokenCount += estimateTokenCountInToolParameters(toolSpecification.parameters());
             tokenCount += 12; // found experimentally while playing with OpenAI API
         }
         tokenCount += 12; // found experimentally while playing with OpenAI API
         return tokenCount;
+    }
+
+    @Override
+    public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
+        return 0; // TODO
     }
 
     private int extraTokensPerMessage() {
