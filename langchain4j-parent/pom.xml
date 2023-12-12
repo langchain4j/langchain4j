@@ -30,6 +30,7 @@
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
         <testcontainers.version>1.19.2</testcontainers.version>
+        <bytebuddy.version>1.14.10</bytebuddy.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
@@ -199,6 +200,12 @@
             </dependency>
 
             <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${bytebuddy.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>${assertj.version}</version>
@@ -313,6 +320,15 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.honton.chas</groupId>
+                    <artifactId>license-maven-plugin</artifactId>
+                    <version>0.0.3</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
