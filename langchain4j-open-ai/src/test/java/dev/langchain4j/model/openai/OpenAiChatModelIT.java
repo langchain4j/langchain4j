@@ -15,6 +15,7 @@ import java.util.List;
 
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
@@ -41,17 +42,17 @@ class OpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
-        UserMessage userMessage = userMessage("hello, how are you?");
+        UserMessage userMessage = userMessage("What is the capital of Germany?");
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
 
         // then
-        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.content().text()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -67,7 +68,7 @@ class OpenAiChatModelIT {
                 .maxTokens(3)
                 .build();
 
-        UserMessage userMessage = userMessage("hello, how are you?");
+        UserMessage userMessage = userMessage("What is the capital of Germany?");
 
         // when
         Response<AiMessage> response = model.generate(userMessage);
@@ -76,7 +77,7 @@ class OpenAiChatModelIT {
         assertThat(response.content().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(3);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -113,8 +114,7 @@ class OpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage
-                = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
@@ -135,7 +135,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_execute_concrete_tool_then_answer() {
+    void should_execute_tool_forcefully_then_answer() {
 
         // given
         UserMessage userMessage = userMessage("2+2=?");
@@ -162,8 +162,7 @@ class OpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP); // not sure if a bug in OpenAI or stop is expected here
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage
-                = ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         // when
@@ -221,8 +220,8 @@ class OpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
 
         // given
-        ToolExecutionResultMessage toolExecutionResultMessage1 = ToolExecutionResultMessage.from(toolExecutionRequest1, "4");
-        ToolExecutionResultMessage toolExecutionResultMessage2 = ToolExecutionResultMessage.from(toolExecutionRequest2, "6");
+        ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
 
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
 
