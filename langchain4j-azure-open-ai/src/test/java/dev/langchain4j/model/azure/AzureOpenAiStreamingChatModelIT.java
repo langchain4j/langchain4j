@@ -119,11 +119,12 @@ class AzureOpenAiStreamingChatModelIT {
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
 
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequest();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(50);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(53);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());

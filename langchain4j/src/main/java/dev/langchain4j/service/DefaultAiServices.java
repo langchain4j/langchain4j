@@ -23,17 +23,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
+import static dev.langchain4j.service.ServiceOutputParser.parse;
 import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.joining;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
     private final Logger log = LoggerFactory.getLogger(AiServices.class);
+
+    private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
     DefaultAiServices(AiServiceContext context) {
         super(context);
@@ -138,32 +141,42 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         verifyModerationIfNeeded(moderationFuture);
 
-                        ToolExecutionRequest toolExecutionRequest;
-                        while (true) { // TODO limit number of cycles
+                        int executionsLeft = MAX_SEQUENTIAL_TOOL_EXECUTIONS;
+                        while (true) {
 
-                            if (context.hasChatMemory()) {
-                                context.chatMemory(memoryId).add(response.content());
+                            if (executionsLeft-- == 0) {
+                                throw runtime("Something is wrong, exceeded %s sequential tool executions",
+                                        MAX_SEQUENTIAL_TOOL_EXECUTIONS);
                             }
 
-                            toolExecutionRequest = response.content().toolExecutionRequest();
-                            if (toolExecutionRequest == null) {
+                            AiMessage aiMessage = response.content();
+
+                            if (context.hasChatMemory()) {
+                                context.chatMemory(memoryId).add(aiMessage);
+                            }
+
+                            if (!aiMessage.hasToolExecutionRequests()) {
                                 break;
                             }
 
-                            ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
-                            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                            ToolExecutionResultMessage toolExecutionResultMessage
-                                    = toolExecutionResultMessage(toolExecutionRequest.name(), toolExecutionResult);
-
                             ChatMemory chatMemory = context.chatMemory(memoryId);
-                            chatMemory.add(toolExecutionResultMessage);
+
+                            for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                                String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                                ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                                        toolExecutionRequest,
+                                        toolExecutionResult
+                                );
+                                chatMemory.add(toolExecutionResultMessage);
+                            }
 
                             response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
                             tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        return ServiceOutputParser.parse(response, method.getReturnType());
+                        return parse(response, method.getReturnType());
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
@@ -175,8 +188,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                         return null;
                     }
-
-
                 });
 
         return (T) proxyInstance;

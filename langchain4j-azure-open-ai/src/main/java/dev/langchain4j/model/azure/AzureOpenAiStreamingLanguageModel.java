@@ -126,7 +126,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         handle(completions, handler);
                     });
 
-            Response<AiMessage> response = responseBuilder.build();
+            Response<AiMessage> response = responseBuilder.build(tokenizer, false);
             handler.onComplete(Response.from(
                     response.content().text(),
                     response.tokenUsage(),

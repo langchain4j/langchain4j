@@ -335,7 +335,7 @@ public abstract class AiServices<T> {
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .filter(it -> !(it instanceof ToolExecutionResultMessage))
-                .filter(it -> !(it instanceof AiMessage && ((AiMessage) it).toolExecutionRequest() != null))
+                .filter(it -> !(it instanceof AiMessage && ((AiMessage) it).hasToolExecutionRequests()))
                 .collect(toList());
     }
 

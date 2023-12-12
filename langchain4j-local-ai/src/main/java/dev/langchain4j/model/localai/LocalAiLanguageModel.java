@@ -11,6 +11,7 @@ import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -70,6 +71,10 @@ public class LocalAiLanguageModel implements LanguageModel {
 
         CompletionResponse response = withRetry(() -> client.completion(request).execute(), maxRetries);
 
-        return Response.from(response.text());
+        return Response.from(
+                response.text(),
+                null,
+                finishReasonFrom(response.choices().get(0).finishReason())
+        );
     }
 }

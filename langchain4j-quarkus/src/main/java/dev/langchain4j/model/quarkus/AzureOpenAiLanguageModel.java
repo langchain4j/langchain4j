@@ -20,7 +20,7 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.tokenUsageFrom;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents an OpenAI language model, hosted on Azure, such as text-davinci-003.
+ * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
  * However, it's recommended to use {@link AzureOpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>

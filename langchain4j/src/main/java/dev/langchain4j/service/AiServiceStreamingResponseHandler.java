@@ -10,13 +10,14 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Handles response from a language model for AI Service that is streamed token-by-token.
- * Handles both regular (text) responses and responses with the request to execute a tool.
+ * Handles both regular (text) responses and responses with the request to execute one or multiple tools.
  */
 class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMessage> {
 
@@ -55,20 +56,22 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     @Override
     public void onComplete(Response<AiMessage> response) {
 
+        AiMessage aiMessage = response.content();
+
         if (context.hasChatMemory()) {
-            context.chatMemory(memoryId).add(response.content());
+            context.chatMemory(memoryId).add(aiMessage);
         }
 
-        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
-        if (toolExecutionRequest != null) {
-            ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
-            String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-            ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
-                    toolExecutionRequest.name(),
-                    toolExecutionResult
-            );
-
-            context.chatMemory(memoryId).add(toolExecutionResultMessage);
+        if (aiMessage.hasToolExecutionRequests()) {
+            for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                        toolExecutionRequest,
+                        toolExecutionResult
+                );
+                context.chatMemory(memoryId).add(toolExecutionResultMessage);
+            }
 
             context.streamingChatModel.generate(
                     context.chatMemory(memoryId).messages(),
@@ -85,7 +88,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
         } else {
             if (completionHandler != null) {
                 completionHandler.accept(Response.from(
-                        response.content(),
+                        aiMessage,
                         tokenUsage.add(response.tokenUsage()),
                         response.finishReason())
                 );
