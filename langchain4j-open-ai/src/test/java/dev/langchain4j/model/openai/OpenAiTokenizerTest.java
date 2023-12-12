@@ -1,92 +1,21 @@
 package dev.langchain4j.model.openai;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.ai4j.openai4j.chat.ChatCompletionModel;
+import dev.langchain4j.model.Tokenizer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.stream.Stream;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
+import static dev.langchain4j.model.openai.OpenAiTokenizer.countArguments;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiTokenizerTest {
 
     OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
-
-    @ParameterizedTest
-    @MethodSource
-    void should_count_tokens_in_messages(List<ChatMessage> messages, int expectedTokenCount) {
-        int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
-        assertThat(tokenCount).isEqualTo(expectedTokenCount);
-    }
-
-    static Stream<Arguments> should_count_tokens_in_messages() {
-        // expected token count was taken from real OpenAI responses (usage.prompt_tokens)
-        return Stream.of(
-                Arguments.of(singletonList(userMessage("hello")), 8),
-                Arguments.of(singletonList(userMessage("Klaus", "hello")), 11),
-                Arguments.of(asList(userMessage("hello"), aiMessage("hi there")), 14),
-                Arguments.of(asList(
-                        userMessage("How much is 2 plus 2?"),
-                        aiMessage(ToolExecutionRequest.builder()
-                                .name("calculator")
-                                .arguments("{\"a\":2, \"b\":2}")
-                                .build())
-                ), 35),
-                Arguments.of(asList(
-                        userMessage("How much is 2 plus 2?"),
-                        aiMessage(ToolExecutionRequest.builder()
-                                .name("calculator")
-                                .arguments("{\"a\":2, \"b\":2}")
-                                .build()),
-                        toolExecutionResultMessage("a", "calculator", "4")
-                ), 40)
-        );
-    }
-
-    static class Tools {
-
-        @Tool
-        int add(int a, int b) {
-            return a + b;
-        }
-
-        @Tool("calculates the square root of the provided number")
-        double squareRoot(@P("number to operate on") double number) {
-            return Math.sqrt(number);
-        }
-
-        @Tool
-        int temperature(String location, TemperatureUnit temperatureUnit) {
-            return 0;
-        }
-
-        @Tool()
-        int randomInt() {return new Random().nextInt();}
-    }
-
-    enum TemperatureUnit {
-        F, C
-    }
-
-    @Test
-    void should_count_tokens_in_tools() {
-        int tokenCount = tokenizer.estimateTokenCountInTools(new Tools());
-        assertThat(tokenCount).isEqualTo(107); // found experimentally while playing with OpenAI API
-    }
 
     @Test
     void should_encode_and_decode_text() {
@@ -140,10 +69,45 @@ class OpenAiTokenizerTest {
         assertThat(tokenizer.estimateTokenCountInText(text3)).isEqualTo(100 * 15);
     }
 
-    public static List<String> repeat(String s, int n) {
+    @Test
+    void should_count_arguments() {
+        assertThat(countArguments(null)).isEqualTo(0);
+        assertThat(countArguments("")).isEqualTo(0);
+        assertThat(countArguments(" ")).isEqualTo(0);
+        assertThat(countArguments("{}")).isEqualTo(0);
+        assertThat(countArguments("{ }")).isEqualTo(0);
+
+        assertThat(countArguments("{\"one\":1}")).isEqualTo(1);
+        assertThat(countArguments("{\"one\": 1}")).isEqualTo(1);
+        assertThat(countArguments("{\"one\" : 1}")).isEqualTo(1);
+
+        assertThat(countArguments("{\"one\":1,\"two\":2}")).isEqualTo(2);
+        assertThat(countArguments("{\"one\": 1,\"two\": 2}")).isEqualTo(2);
+        assertThat(countArguments("{\"one\" : 1,\"two\" : 2}")).isEqualTo(2);
+
+        assertThat(countArguments("{\"one\":1,\"two\":2,\"three\":3}")).isEqualTo(3);
+        assertThat(countArguments("{\"one\": 1,\"two\": 2,\"three\": 3}")).isEqualTo(3);
+        assertThat(countArguments("{\"one\" : 1,\"two\" : 2,\"three\" : 3}")).isEqualTo(3);
+    }
+
+    @ParameterizedTest
+    @EnumSource(ChatCompletionModel.class)
+    void should_support_all_models(ChatCompletionModel model) {
+
+        // given
+        Tokenizer tokenizer = new OpenAiTokenizer(model.toString());
+
+        // when
+        int tokenCount = tokenizer.estimateTokenCountInText("a");
+
+        // then
+        assertThat(tokenCount).isEqualTo(1);
+    }
+
+    static List<String> repeat(String strings, int n) {
         List<String> result = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            result.add(s);
+            result.add(strings);
         }
         return result;
     }

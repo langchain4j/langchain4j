@@ -29,11 +29,11 @@ public interface Tokenizer {
         return estimateTokenCountInToolSpecifications(toolSpecifications);
     }
 
-    default int estimateTokenCountInToolSpecification(ToolSpecification toolSpecification) {
+    int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications);
+
+    default int estimateTokenCountInForcefulToolSpecification(ToolSpecification toolSpecification) {
         return estimateTokenCountInToolSpecifications(singletonList(toolSpecification));
     }
-
-    int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications);
 
     int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests);
 
