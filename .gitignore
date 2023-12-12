@@ -35,3 +35,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### .env files contain local environment variables ###
+.env

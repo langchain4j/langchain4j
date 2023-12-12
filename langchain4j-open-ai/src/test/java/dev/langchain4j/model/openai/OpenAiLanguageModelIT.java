@@ -19,15 +19,15 @@ class OpenAiLanguageModelIT {
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
-        String prompt = "Hello, how are you?";
+        String prompt = "What is the capital of Germany?";
 
         Response<String> response = model.generate(prompt);
         System.out.println(response);
 
-        assertThat(response.content()).isNotBlank();
+        assertThat(response.content()).contains("Berlin");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(6);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());

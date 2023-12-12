@@ -1,5 +1,8 @@
 package dev.langchain4j;
 
+import dev.langchain4j.model.azure.AzureOpenAiChatModel;
+import dev.langchain4j.model.azure.AzureOpenAiEmbeddingModel;
+import dev.langchain4j.model.azure.AzureOpenAiLanguageModel;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.huggingface.HuggingFaceChatModel;
@@ -62,6 +65,26 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
+
+            case AZURE_OPEN_AI:
+                AzureOpenAi azureOpenAi = properties.getChatModel().getAzureOpenAi();
+                if (azureOpenAi == null || isNullOrBlank(azureOpenAi.getApiKey())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.chat-model.azure-openai.api-key' property");
+                }
+
+                return AzureOpenAiChatModel.builder()
+                    .endpoint(azureOpenAi.getEndpoint())
+                    .apiKey(azureOpenAi.getApiKey())
+                    .deploymentName(azureOpenAi.getDeploymentName())
+                    .temperature(azureOpenAi.getTemperature())
+                    .topP(azureOpenAi.getTopP())
+                    .maxTokens(azureOpenAi.getMaxTokens())
+                    .presencePenalty(azureOpenAi.getPresencePenalty())
+                    .frequencyPenalty(azureOpenAi.getFrequencyPenalty())
+                    .timeout(azureOpenAi.getTimeout())
+                    .maxRetries(azureOpenAi.getMaxRetries())
+                    .logRequestsAndResponses(azureOpenAi.isLogRequestsAndResponses())
+                    .build();
 
             case HUGGING_FACE:
                 HuggingFace huggingFace = properties.getChatModel().getHuggingFace();
@@ -146,6 +169,26 @@ public class LangChain4jAutoConfiguration {
                         .logResponses(openAi.getLogResponses())
                         .build();
 
+            case AZURE_OPEN_AI:
+                AzureOpenAi azureOpenAi = properties.getChatModel().getAzureOpenAi();
+                if (azureOpenAi == null || isNullOrBlank(azureOpenAi.getApiKey())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.language-model.azure-openai.api-key' property");
+                }
+
+                return AzureOpenAiLanguageModel.builder()
+                    .endpoint(azureOpenAi.getEndpoint())
+                    .apiKey(azureOpenAi.getApiKey())
+                    .deploymentName(azureOpenAi.getDeploymentName())
+                    .temperature(azureOpenAi.getTemperature())
+                    .topP(azureOpenAi.getTopP())
+                    .maxTokens(azureOpenAi.getMaxTokens())
+                    .presencePenalty(azureOpenAi.getPresencePenalty())
+                    .frequencyPenalty(azureOpenAi.getFrequencyPenalty())
+                    .timeout(azureOpenAi.getTimeout())
+                    .maxRetries(azureOpenAi.getMaxRetries())
+                    .logRequestsAndResponses(azureOpenAi.isLogRequestsAndResponses())
+                    .build();
+
             case HUGGING_FACE:
                 HuggingFace huggingFace = properties.getLanguageModel().getHuggingFace();
                 if (huggingFace == null || isNullOrBlank(huggingFace.getAccessToken())) {
@@ -227,6 +270,21 @@ public class LangChain4jAutoConfiguration {
                         .logRequests(openAi.getLogRequests())
                         .logResponses(openAi.getLogResponses())
                         .build();
+
+            case AZURE_OPEN_AI:
+                AzureOpenAi azureOpenAi = properties.getChatModel().getAzureOpenAi();
+                if (azureOpenAi == null || isNullOrBlank(azureOpenAi.getApiKey())) {
+                    throw illegalConfiguration("\n\nPlease define 'langchain4j.embedding-model.azure-openai.api-key' property");
+                }
+
+                return AzureOpenAiEmbeddingModel.builder()
+                    .endpoint(azureOpenAi.getEndpoint())
+                    .apiKey(azureOpenAi.getApiKey())
+                    .deploymentName(azureOpenAi.getDeploymentName())
+                    .timeout(azureOpenAi.getTimeout())
+                    .maxRetries(azureOpenAi.getMaxRetries())
+                    .logRequestsAndResponses(azureOpenAi.isLogRequestsAndResponses())
+                    .build();
 
             case HUGGING_FACE:
                 HuggingFace huggingFace = properties.getEmbeddingModel().getHuggingFace();

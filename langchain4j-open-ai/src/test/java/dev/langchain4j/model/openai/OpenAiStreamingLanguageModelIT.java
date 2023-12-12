@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -57,9 +58,11 @@ class OpenAiStreamingLanguageModelIT {
         assertThat(answer).contains("Berlin");
         assertThat(response.content()).isEqualTo(answer);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
-        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(1);
-        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(8);
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
     }

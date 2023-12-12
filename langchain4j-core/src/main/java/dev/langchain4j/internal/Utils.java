@@ -6,11 +6,16 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 public class Utils {
 
   public static <T> T getOrDefault(T value, T defaultValue) {
     return value != null ? value : defaultValue;
+  }
+
+  public static <T> T getOrDefault(T value, Supplier<T> defaultValueSupplier) {
+    return value != null ? value : defaultValueSupplier.get();
   }
 
   public static boolean isNullOrBlank(String string) {
@@ -35,8 +40,7 @@ public class Utils {
     return true;
   }
 
-
-  public static boolean isCollectionEmpty(Collection<?> collection) {
+  public static boolean isNullOrEmpty(Collection<?> collection) {
     return collection == null || collection.isEmpty();
   }
 

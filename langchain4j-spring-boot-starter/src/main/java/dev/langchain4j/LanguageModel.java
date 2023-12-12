@@ -12,7 +12,8 @@ class LanguageModel {
     private HuggingFace huggingFace;
     @NestedConfigurationProperty
     private LocalAi localAi;
-
+    @NestedConfigurationProperty
+    private AzureOpenAi azureOpenAi;
     @NestedConfigurationProperty
     private Ollama ollama;
 
@@ -48,6 +49,14 @@ class LanguageModel {
         this.localAi = localAi;
     }
 
+    public AzureOpenAi getAzureOpenAi() {
+        return azureOpenAi;
+    }
+
+    public void setAzureOpenAi(AzureOpenAi azureOpenAi) {
+        this.azureOpenAi = azureOpenAi;
+    }
+  
     public Ollama getOllama() {
         return ollama;
     }

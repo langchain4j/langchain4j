@@ -13,6 +13,8 @@ class EmbeddingModel {
     @NestedConfigurationProperty
     private LocalAi localAi;
     @NestedConfigurationProperty
+    private AzureOpenAi azureOpenAi;
+    @NestedConfigurationProperty
     private Ollama ollama;
 
     public ModelProvider getProvider() {
@@ -47,6 +49,14 @@ class EmbeddingModel {
         this.localAi = localAi;
     }
 
+    public AzureOpenAi getAzureOpenAi() {
+        return azureOpenAi;
+    }
+
+    public void setAzureOpenAi(AzureOpenAi azureOpenAi) {
+        this.azureOpenAi = azureOpenAi;
+    }
+  
     public Ollama getOllama() {
         return ollama;
     }
