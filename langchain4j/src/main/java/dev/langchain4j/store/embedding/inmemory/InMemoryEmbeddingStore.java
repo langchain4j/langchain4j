@@ -23,6 +23,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * An {@link EmbeddingStore} that stores embeddings in memory.
@@ -66,7 +67,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         }
     }
 
-    private final List<Entry<Embedded>> entries = new ArrayList<>();
+    private final List<Entry<Embedded>> entries = new CopyOnWriteArrayList<>();
 
     @Override
     public String add(Embedding embedding) {
