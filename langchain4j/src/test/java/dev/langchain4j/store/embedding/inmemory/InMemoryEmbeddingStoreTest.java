@@ -14,6 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
@@ -233,6 +234,7 @@ class InMemoryEmbeddingStoreTest {
         InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromJson(json);
 
         assertThat(deserializedEmbeddingStore).isEqualTo(originalEmbeddingStore);
+        assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
     }
 
     @Test
@@ -245,6 +247,7 @@ class InMemoryEmbeddingStoreTest {
         InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromFile(filePath);
 
         assertThat(deserializedEmbeddingStore).isEqualTo(originalEmbeddingStore);
+        assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
     }
 
     private InMemoryEmbeddingStore<TextSegment> createEmbeddingStore() {

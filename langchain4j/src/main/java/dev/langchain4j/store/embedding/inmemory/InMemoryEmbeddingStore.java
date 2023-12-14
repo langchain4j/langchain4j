@@ -67,7 +67,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         }
     }
 
-    private final List<Entry<Embedded>> entries = new CopyOnWriteArrayList<>();
+    final CopyOnWriteArrayList<Entry<Embedded>> entries = new CopyOnWriteArrayList<>();
 
     @Override
     public String add(Embedding embedding) {
