@@ -151,7 +151,7 @@ class InternalAzureOpenAiHelper {
 
     private static class Parameters {
 
-        private String type = "object";
+        private final String type = "object";
 
         private Map<String, Map<String, Object>> properties = new HashMap<>();
         private List<String> required = new ArrayList<>();
