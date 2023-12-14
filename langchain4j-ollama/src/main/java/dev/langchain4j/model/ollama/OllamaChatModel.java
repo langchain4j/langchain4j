@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -11,9 +12,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.stream.Collectors.joining;
 
 /**
  * Ollama chat model implementation.
@@ -40,14 +39,21 @@ public class OllamaChatModel implements ChatLanguageModel {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        String prompt = messages.stream()
-                .map(ChatMessage::text)
-                .filter(text -> !isNullOrBlank(text))
-                .collect(joining("\n"));
+        StringBuilder prompt = new StringBuilder();
+        StringBuilder system = new StringBuilder();
+
+        for (ChatMessage message : messages) {
+            if (message instanceof SystemMessage) {
+                system.append(message.text()).append("\n");
+            } else {
+                prompt.append(message.text()).append("\n");
+            }
+        }
 
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
-                .prompt(prompt)
+                .prompt(prompt.toString())
+                .system(system.toString())
                 .options(Options.builder()
                         .temperature(temperature)
                         .build())

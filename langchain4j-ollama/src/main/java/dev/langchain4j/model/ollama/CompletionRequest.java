@@ -20,5 +20,6 @@ public class CompletionRequest {
      */
     private String prompt;
     private Options options;
+    private String system;
     private Boolean stream;
 }
