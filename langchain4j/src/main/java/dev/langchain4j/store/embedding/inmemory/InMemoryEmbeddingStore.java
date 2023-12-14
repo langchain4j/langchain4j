@@ -1,29 +1,29 @@
 package dev.langchain4j.store.embedding.inmemory;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.util.Comparator.comparingDouble;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.IntStream;
+
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.nio.file.StandardOpenOption.CREATE;
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.util.Comparator.comparingDouble;
+import static java.util.stream.Collectors.toList;
 
 /**
  * An {@link EmbeddingStore} that stores embeddings in memory.
@@ -38,34 +38,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *                   Typically, it is {@link dev.langchain4j.data.segment.TextSegment}.
  */
 public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
-
-    private static class Entry<Embedded> {
-
-        String id;
-        Embedding embedding;
-        Embedded embedded;
-
-        Entry(String id, Embedding embedding, Embedded embedded) {
-            this.id = id;
-            this.embedding = embedding;
-            this.embedded = embedded;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Entry<?> that = (Entry<?>) o;
-            return Objects.equals(this.id, that.id)
-                    && Objects.equals(this.embedding, that.embedding)
-                    && Objects.equals(this.embedded, that.embedded);
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(id, embedding, embedded);
-        }
-    }
 
     final CopyOnWriteArrayList<Entry<Embedded>> entries = new CopyOnWriteArrayList<>();
 
@@ -94,11 +66,12 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-        List<String> ids = new ArrayList<>();
-        for (Embedding embedding : embeddings) {
-            ids.add(add(embedding));
-        }
-        return ids;
+
+        List<Entry<Embedded>> newEntries = embeddings.stream()
+                .map(embedding -> new Entry<Embedded>(randomUUID(), embedding))
+                .collect(toList());
+
+        return add(newEntries);
     }
 
     @Override
@@ -107,11 +80,20 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
             throw new IllegalArgumentException("The list of embeddings and embedded must have the same size");
         }
 
-        List<String> ids = new ArrayList<>();
-        for (int i = 0; i < embeddings.size(); i++) {
-            ids.add(add(embeddings.get(i), embedded.get(i)));
-        }
-        return ids;
+        List<Entry<Embedded>> newEntries = IntStream.range(0, embeddings.size())
+                .mapToObj(i -> new Entry<>(randomUUID(), embeddings.get(i), embedded.get(i)))
+                .collect(toList());
+
+        return add(newEntries);
+    }
+
+    private List<String> add(List<Entry<Embedded>> newEntries) {
+
+        entries.addAll(newEntries);
+
+        return newEntries.stream()
+                .map(entry -> entry.id)
+                .collect(toList());
     }
 
     @Override
@@ -137,21 +119,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return result;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        InMemoryEmbeddingStore<?> that = (InMemoryEmbeddingStore<?>) o;
-        return Objects.equals(this.entries, that.entries);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(entries);
-    }
-
     public String serializeToJson() {
-        return CODEC.toJson(this);
+        return loadCodec().toJson(this);
     }
 
     public void serializeToFile(Path filePath) {
@@ -167,20 +136,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         serializeToFile(Paths.get(filePath));
     }
 
-    private static final InMemoryEmbeddingStoreJsonCodec CODEC = loadCodec();
-
-    private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
-        Collection<InMemoryEmbeddingStoreJsonCodecFactory> factories = ServiceHelper.loadFactories(
-                InMemoryEmbeddingStoreJsonCodecFactory.class);
-        for (InMemoryEmbeddingStoreJsonCodecFactory factory : factories) {
-            return factory.create();
-        }
-        // fallback to default
-        return new GsonInMemoryEmbeddingStoreJsonCodec();
-    }
-
     public static InMemoryEmbeddingStore<TextSegment> fromJson(String json) {
-        return CODEC.fromJson(json);
+        return loadCodec().fromJson(json);
     }
 
     public static InMemoryEmbeddingStore<TextSegment> fromFile(Path filePath) {
@@ -194,5 +151,45 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
         return fromFile(Paths.get(filePath));
+    }
+
+    private static class Entry<Embedded> {
+
+        String id;
+        Embedding embedding;
+        Embedded embedded;
+
+        Entry(String id, Embedding embedding) {
+            this(id, embedding, null);
+        }
+
+        Entry(String id, Embedding embedding, Embedded embedded) {
+            this.id = ensureNotBlank(id, "id");
+            this.embedding = ensureNotNull(embedding, "embedding");
+            this.embedded = embedded;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Entry<?> that = (Entry<?>) o;
+            return Objects.equals(this.id, that.id)
+                    && Objects.equals(this.embedding, that.embedding)
+                    && Objects.equals(this.embedded, that.embedded);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(id, embedding, embedded);
+        }
+    }
+
+    private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
+        for (InMemoryEmbeddingStoreJsonCodecFactory factory : loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
+            return factory.create();
+        }
+        // fallback to default
+        return new GsonInMemoryEmbeddingStoreJsonCodec();
     }
 }
