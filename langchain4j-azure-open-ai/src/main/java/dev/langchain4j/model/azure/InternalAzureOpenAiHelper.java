@@ -80,12 +80,7 @@ class InternalAzureOpenAiHelper {
     }
 
     public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
-        if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
-            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(userMessage.text());
-            chatRequestUserMessage.setName(nameFrom(message));
-            return chatRequestUserMessage;
-        } else if (message instanceof AiMessage) {
+        if (message instanceof AiMessage) {
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(message.text());
             chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
             return chatRequestAssistantMessage;
@@ -95,7 +90,9 @@ class InternalAzureOpenAiHelper {
         } else if (message instanceof SystemMessage) {
             return new ChatRequestSystemMessage(message.text());
         } else {
-            return new ChatRequestUserMessage(message.text());
+            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(message.text());
+            chatRequestUserMessage.setName(nameFrom(message));
+            return chatRequestUserMessage;
         }
     }
 
