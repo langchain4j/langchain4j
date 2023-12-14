@@ -12,6 +12,7 @@ import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.BinaryData;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -73,21 +74,31 @@ class InternalAzureOpenAiHelper {
         return OpenAIServiceVersion.getLatest();
     }
 
-    public static List<com.azure.ai.openai.models.ChatMessage> toOpenAiMessages(List<ChatMessage> messages) {
+    public static List<com.azure.ai.openai.models.ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
                 .map(InternalAzureOpenAiHelper::toOpenAiMessage)
                 .collect(toList());
     }
 
-    public static com.azure.ai.openai.models.ChatMessage toOpenAiMessage(ChatMessage message) {
-        com.azure.ai.openai.models.ChatMessage chatMessage =
-                new com.azure.ai.openai.models.ChatMessage(roleFrom(message), message.text());
-
-        chatMessage.setName(nameFrom(message));
-        chatMessage.setFunctionCall(functionCallFrom(message));
-
-        return chatMessage;
+    public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
+        if (message instanceof UserMessage) {
+            UserMessage userMessage = (UserMessage) message;
+            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(userMessage.text());
+            chatRequestUserMessage.setName(nameFrom(message));
+            return chatRequestUserMessage;
+        } else if (message instanceof AiMessage) {
+            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(message.text());
+            chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
+            return chatRequestAssistantMessage;
+        } else if (message instanceof ToolExecutionResultMessage) {
+            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+            return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
+        } else if (message instanceof SystemMessage) {
+            return new ChatRequestSystemMessage(message.text());
+        } else {
+            return new ChatRequestUserMessage(message.text());
+        }
     }
 
     private static String nameFrom(ChatMessage message) {
@@ -115,18 +126,6 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    public static ChatRole roleFrom(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            return ASSISTANT;
-        } else if (message instanceof ToolExecutionResultMessage) {
-            return FUNCTION;
-        } else if (message instanceof SystemMessage) {
-            return SYSTEM;
-        } else {
-            return USER;
-        }
-    }
-
     public static List<FunctionDefinition> toFunctions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(InternalAzureOpenAiHelper::toFunction)
@@ -140,14 +139,14 @@ class InternalAzureOpenAiHelper {
         return functionDefinition;
     }
 
-    private static Object toOpenAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
-            return parameters;
+            return BinaryData.fromString("{}");
         }
         parameters.setProperties(toolParameters.properties());
         parameters.setRequired(toolParameters.required());
-        return parameters;
+        return BinaryData.fromObject(parameters);
     }
 
     private static class Parameters {
@@ -178,11 +177,11 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static AiMessage aiMessageFrom(com.azure.ai.openai.models.ChatMessage chatMessage) {
-        if (chatMessage.getContent() != null) {
-            return aiMessage(chatMessage.getContent());
+    public static AiMessage aiMessageFrom(com.azure.ai.openai.models.ChatResponseMessage chatResponseMessage) {
+        if (chatResponseMessage.getContent() != null) {
+            return aiMessage(chatResponseMessage.getContent());
         } else {
-            FunctionCall functionCall = chatMessage.getFunctionCall();
+            FunctionCall functionCall = chatResponseMessage.getFunctionCall();
 
             ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                     .name(functionCall.getName())

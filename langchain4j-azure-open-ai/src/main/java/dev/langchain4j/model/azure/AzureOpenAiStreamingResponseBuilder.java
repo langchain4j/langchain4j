@@ -50,7 +50,7 @@ class AzureOpenAiStreamingResponseBuilder {
             this.finishReason = finishReason;
         }
 
-        com.azure.ai.openai.models.ChatMessage delta = chatCompletionChoice.getDelta();
+        com.azure.ai.openai.models.ChatResponseMessage delta = chatCompletionChoice.getDelta();
         if (delta == null) {
             return;
         }
