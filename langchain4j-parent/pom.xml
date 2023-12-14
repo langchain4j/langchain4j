@@ -23,7 +23,6 @@
         <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
-        <pdfbox.version>2.0.29</pdfbox.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
         <mustache.version>0.9.10</mustache.version>
         <slf4j-api.version>2.0.7</slf4j-api.version>
@@ -44,7 +43,7 @@
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
-        <aws.java.sdk.version>2.20.149</aws.java.sdk.version>
+        <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <netty.version>4.1.100.Final</netty.version>
     </properties>
 
@@ -123,12 +122,6 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.pdfbox</groupId>
-                <artifactId>pdfbox</artifactId>
-                <version>${pdfbox.version}</version>
             </dependency>
 
             <dependency>

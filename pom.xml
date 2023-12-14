@@ -41,7 +41,14 @@
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
 
-        <!-- other -->
+        <!-- document loaders -->
+        <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
+
+        <!-- document parsers -->
+        <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
+        <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+
+        <!-- code execution engines -->
         <module>langchain4j-graal</module>
 
     </modules>
