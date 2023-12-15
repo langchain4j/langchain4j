@@ -17,6 +17,7 @@ import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -185,6 +186,12 @@ class InternalAzureOpenAiHelper {
 
             return aiMessage(toolExecutionRequest);
         }
+    }
+
+    public static Image imageFrom(com.azure.ai.openai.models.ImageGenerationData imageGenerationData) {
+        return Image.builder()
+                .url(imageGenerationData.getUrl())
+                .build();
     }
 
     public static TokenUsage tokenUsageFrom(CompletionsUsage openAiUsage) {
