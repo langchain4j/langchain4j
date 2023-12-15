@@ -1,14 +1,20 @@
 package dev.langchain4j.model.chatglm;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("need local deployment of ChatGLM, see https://github.com/THUDM/ChatGLM-6B")
 class ChatGLMChatModelIT {
 
     ChatLanguageModel model = ChatGLMChatModel.builder()
@@ -17,14 +23,29 @@ class ChatGLMChatModelIT {
 
     @Test
     void should_generate_answer() {
-
-        // given
-        UserMessage userMessage = userMessage("What is the capital of Germany?");
-
-        // when
+        UserMessage userMessage = userMessage("你好，请问一下柏林的首都是哪里呢？");
         Response<AiMessage> response = model.generate(userMessage);
+        assertThat(response.content().text()).isEqualTo("柏林");
+    }
 
-        // then
-        assertThat(response.content().text()).contains("Berlin");
+    @Test
+    void should_generate_answer_from_history() {
+        // init history
+        List<ChatMessage> messages = new ArrayList<>();
+
+        // given question first time
+        UserMessage userMessage = userMessage("你好，请问一下柏林的首都是哪里呢？");
+        Response<AiMessage> response = model.generate(userMessage);
+        assertThat(response.content().text()).isEqualTo("柏林");
+
+        // given question with history
+        messages.add(userMessage);
+        messages.add(response.content());
+
+        UserMessage secondUserMessage = userMessage("你能告诉我上个问题我问了你什么呢？请把我的问题原封不动的告诉我");
+        messages.add(secondUserMessage);
+
+        Response<AiMessage> secondResponse = model.generate(messages);
+        assertThat(secondResponse.content().text()).isEqualTo("你好，请问一下柏林的首都是哪里呢？"); // the answer should be equal to the first question
     }
 }
