@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -39,30 +40,36 @@ public class OllamaChatModel implements ChatLanguageModel {
             throw new IllegalArgumentException("messages must not be null or empty");
         }
 
-        StringBuilder prompt = new StringBuilder();
-        StringBuilder system = new StringBuilder();
+        ArrayList<Message> messageList = new ArrayList<>();
 
-        for (ChatMessage message : messages) {
-            if (message instanceof SystemMessage) {
-                system.append(message.text()).append("\n");
+        messages.forEach(message -> {
+            Role role;
+
+            if(message instanceof SystemMessage) {
+                role = Role.SYSTEM;
+            } else if (message instanceof AiMessage) {
+                role = Role.ASSISTANT;
             } else {
-                prompt.append(message.text()).append("\n");
+                role = Role.USER;
             }
-        }
 
-        CompletionRequest request = CompletionRequest.builder()
+            messageList.add(Message.builder()
+                    .role(role)
+                    .content(message.text())
+                    .build());
+        });
+
+        ChatRequest request = ChatRequest.builder()
                 .model(modelName)
-                .prompt(prompt.toString())
-                .system(system.toString())
+                .messages(messageList)
                 .options(Options.builder()
                         .temperature(temperature)
                         .build())
                 .stream(false)
                 .build();
 
-        CompletionResponse response = withRetry(() -> client.completion(request), maxRetries);
+        ChatResponse response = withRetry(() -> client.completion(request), maxRetries);
 
-        return Response.from(AiMessage.from(response.getResponse()));
-
+        return Response.from(AiMessage.from(String.valueOf(response.getMessage())));
     }
 }

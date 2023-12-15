@@ -20,26 +20,13 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
             .build();
 
     @Test
-    void should_send_messages_and_receive_response() {
+    void should_send_messages_with_roles_and_receive_response() {
 
         List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(systemMessage("You are a good friend of mine, who likes to answer with jokes"));
-        chatMessages.add(userMessage("Hey Bro, what are you doing?"));
-
-        Response<AiMessage> response = model.generate(chatMessages);
-        System.out.println(response);
-
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotEmpty();
-    }
-
-    @Test
-    void should_send_messages_with_system_messages_and_receive_response() {
-
-        List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(userMessage("User: Hello!"));
-        chatMessages.add(systemMessage("AI: Hi, how are you?"));
-        chatMessages.add(userMessage("User: Not too bad, just enjoying a cup of coffee. What about you?"));
+        chatMessages.add(systemMessage("You are a good friend of mine, who likes to answer politely"));
+        chatMessages.add(userMessage("Hello!, How are you?"));
+        chatMessages.add(AiMessage.aiMessage("I'm fine, thanks!"));
+        chatMessages.add(userMessage("Not too bad, just enjoying a cup of coffee. What about you?"));
 
         Response<AiMessage> response = model.generate(chatMessages);
         System.out.println(response);

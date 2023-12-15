@@ -63,6 +63,21 @@ class OllamaClient {
         }
     }
 
+    public ChatResponse completion(ChatRequest request) {
+        try {
+            Response<ChatResponse> retrofitResponse
+                    = ollamaApi.chat(request).execute();
+
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
         ollamaApi.streamingCompletion(request).enqueue(new Callback<ResponseBody>() {
             @Override
