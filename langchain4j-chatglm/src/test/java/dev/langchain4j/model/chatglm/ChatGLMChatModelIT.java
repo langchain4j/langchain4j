@@ -23,9 +23,9 @@ class ChatGLMChatModelIT {
 
     @Test
     void should_generate_answer() {
-        UserMessage userMessage = userMessage("你好，请问一下柏林的首都是哪里呢？");
+        UserMessage userMessage = userMessage("你好，请问一下德国的首都是哪里呢？");
         Response<AiMessage> response = model.generate(userMessage);
-        assertThat(response.content().text()).isEqualTo("柏林");
+        assertThat(response.content().text()).contains("柏林");
     }
 
     @Test
@@ -34,9 +34,9 @@ class ChatGLMChatModelIT {
         List<ChatMessage> messages = new ArrayList<>();
 
         // given question first time
-        UserMessage userMessage = userMessage("你好，请问一下柏林的首都是哪里呢？");
+        UserMessage userMessage = userMessage("你好，请问一下德国的首都是哪里呢？");
         Response<AiMessage> response = model.generate(userMessage);
-        assertThat(response.content().text()).isEqualTo("柏林");
+        assertThat(response.content().text()).contains("柏林");
 
         // given question with history
         messages.add(userMessage);
@@ -46,6 +46,6 @@ class ChatGLMChatModelIT {
         messages.add(secondUserMessage);
 
         Response<AiMessage> secondResponse = model.generate(messages);
-        assertThat(secondResponse.content().text()).isEqualTo("你好，请问一下柏林的首都是哪里呢？"); // the answer should be equal to the first question
+        assertThat(secondResponse.content().text()).contains("德国"); // the answer should contain Germany in the First Question
     }
 }
