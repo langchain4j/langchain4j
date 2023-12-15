@@ -7,7 +7,9 @@ import retrofit2.http.POST;
 
 public interface ChatGLMApi {
 
-    @POST()
+    int OK = 200;
+
+    @POST
     @Headers({"Content-Type: application/json"})
-    Call<CompletionResponse> completion(@Body CompletionRequest completionRequest);
+    Call<ChatCompletionResponse> chatCompletion(@Body ChatCompletionRequest chatCompletionRequest);
 }
