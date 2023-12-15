@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
@@ -93,7 +94,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, singletonList(toolSpecification), toolSpecification, handler);
+        generate(messages, null, toolSpecification, handler);
     }
 
     private void generate(List<ChatMessage> messages,
@@ -114,13 +115,13 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+        if (toolThatMustBeExecuted != null) {
+            requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
+            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+        } else if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications));
             inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-        }
-        if (toolThatMustBeExecuted != null) {
-            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
         }
 
         ChatCompletionRequest request = requestBuilder.build();
