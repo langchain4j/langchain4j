@@ -43,6 +43,9 @@
         <!-- other -->
         <module>langchain4j-graal</module>
 
+        <!-- spring boot starters -->
+        <module>spring-boot-starters/langchain4j-open-ai-spring-boot-starter</module>
+
     </modules>
 
 </project>
