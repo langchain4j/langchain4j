@@ -136,7 +136,10 @@ abstract class CassandraEmbeddingStoreSupport implements EmbeddingStore<TextSegm
                 .collect(toList());
     }
 
-
+    @Override
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
+        return findRelevant(referenceEmbedding,maxResults,minScore);
+    }
 
     /**
      * Map Search result coming from Astra.

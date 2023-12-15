@@ -132,9 +132,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         return findRelevant(referenceEmbedding, maxResults,minScore);
     }
 
-    public List<EmbeddingMatch<TextSegment>> findRelevant(String originText,Embedding referenceEmbedding, int maxResults, double minScore) {
-        return findRelevant(referenceEmbedding, maxResults,minScore);
-    }
+
     private void createIndex(String indexName) {
         IndexDefinition indexDefinition = new IndexDefinition(JSON);
         indexDefinition.setPrefixes(schema.getPrefix());

@@ -39,10 +39,7 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
         return new Builder();
     }
 
-    @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
-        return null;
-    }
+
 
 
     /**

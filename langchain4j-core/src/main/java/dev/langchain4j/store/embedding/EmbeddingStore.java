@@ -83,7 +83,7 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      * By default, minScore is set to 0, which means that the results may include embeddings with low relevance.
-     *@param originText
+     * @param originText the origin text of user input
      * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
      * @param maxResults         The maximum number of embeddings to be returned.
      * @return A list of embedding matches.
@@ -95,7 +95,7 @@ public interface EmbeddingStore<Embedded> {
     }
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
-     * @param originText
+     * @param originText         the origin text of user input
      * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
      * @param maxResults         The maximum number of embeddings to be returned.
      * @param minScore           The minimum relevance score, ranging from 0 to 1 (inclusive).

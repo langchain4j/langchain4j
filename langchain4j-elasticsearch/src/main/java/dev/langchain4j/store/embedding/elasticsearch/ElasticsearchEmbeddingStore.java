@@ -261,7 +261,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
-        return null;
+        return findRelevant(referenceEmbedding, maxResults, minScore);
     }
 
 
