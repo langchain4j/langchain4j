@@ -17,18 +17,14 @@ public class AzureOpenAiImageModelIT {
 
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion("2023-06-01-preview")
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .logRequestsAndResponses(true)
-                .size("1024x1024")
                 .build();
 
-        Response<Image> response = model.generate("An image of a Java developer in Paris, France");
+        Response<Image> response = model.generate("A coffee mug in Paris, France");
 
         logger.info(response.toString());
-
         assertThat(response.content().url()).isNotBlank();
-
     }
 }
