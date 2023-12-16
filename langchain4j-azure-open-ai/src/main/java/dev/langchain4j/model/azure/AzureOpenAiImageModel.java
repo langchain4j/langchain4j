@@ -10,7 +10,6 @@ import dev.langchain4j.model.output.Response;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 
@@ -55,9 +54,9 @@ public class AzureOpenAiImageModel implements ImageModel {
     }
 
     private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
-        this.deploymentName = getOrDefault(deploymentName, GPT_3_5_TURBO);
+        this.deploymentName = getOrDefault(deploymentName, "dall-e-3");
         this.quality = getOrDefault(ImageGenerationQuality.fromString(quality), ImageGenerationQuality.STANDARD);
-        this.size = getOrDefault(ImageSize.fromString(size), ImageSize.SIZE256X256);
+        this.size = getOrDefault(ImageSize.fromString(size), ImageSize.SIZE1024X1024);
         this.user = getOrDefault(user, "");
         this.style = getOrDefault(ImageGenerationStyle.fromString(style), ImageGenerationStyle.NATURAL);
         this.responseFormat = getOrDefault(ImageGenerationResponseFormat.fromString(responseFormat), ImageGenerationResponseFormat.URL);
