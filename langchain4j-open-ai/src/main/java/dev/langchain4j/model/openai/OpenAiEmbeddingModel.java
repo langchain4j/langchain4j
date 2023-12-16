@@ -63,7 +63,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override

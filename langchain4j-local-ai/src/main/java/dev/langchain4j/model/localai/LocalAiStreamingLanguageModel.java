@@ -14,6 +14,9 @@ import java.time.Duration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 
+/**
+ * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
+ */
 public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
 
     private final OpenAiClient client;
@@ -62,7 +65,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 .maxTokens(maxTokens)
                 .build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(0);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(null);
 
         client.completion(request)
                 .onPartialResponse(partialResponse -> {
@@ -73,7 +76,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(null, false);
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),

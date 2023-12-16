@@ -9,7 +9,7 @@ import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -77,7 +77,7 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public List<ChatMessage> messages() {
-        List<ChatMessage> messages = new ArrayList<>(store.getMessages(id));
+        List<ChatMessage> messages = new LinkedList<>(store.getMessages(id));
         ensureCapacity(messages, maxTokens, tokenizer);
         return messages;
     }
