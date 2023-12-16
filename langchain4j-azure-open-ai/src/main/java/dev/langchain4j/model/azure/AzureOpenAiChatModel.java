@@ -19,7 +19,6 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static java.util.Collections.singletonList;
 
@@ -93,7 +92,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                  Double presencePenalty,
                                  Double frequencyPenalty) {
 
-        this.deploymentName = getOrDefault(deploymentName, GPT_3_5_TURBO_0613);
+        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
         this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
