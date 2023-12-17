@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 import static java.time.Duration.ofSeconds;
 
 import dev.ai4j.openai4j.OpenAiClient;
@@ -99,6 +100,16 @@ public class OpenAiImageModel implements ImageModel {
             withPersisting = true;
             return this;
         }
+
+        public OpenAiImageModelBuilder logRequests() {
+            logRequests = true;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder logResponses() {
+            logResponses = true;
+            return this;
+        }
     }
 
     @Override
@@ -112,8 +123,8 @@ public class OpenAiImageModel implements ImageModel {
             .user(user)
             .responseFormat(responseFormat);
 
-        if (model != null) {
-            requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.valueOf(model));
+        if (DALL_E_2.equals(model)) {
+            requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);
         }
 
         GenerateImagesRequest request = requestBuilder.build();
