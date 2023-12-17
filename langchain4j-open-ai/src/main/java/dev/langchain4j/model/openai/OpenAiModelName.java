@@ -20,17 +20,17 @@ public class OpenAiModelName {
     public static final String GPT_4_32K_0613 = "gpt-4-32k-0613"; // 32k context, functions
 
     public static final String GPT_4_1106_PREVIEW = "gpt-4-1106-preview"; // 128k context, parallel functions
-    public static final String GPT_4_VISION_PREVIEW = "gpt-4-vision-preview"; // 128k context, vision
-
-    // Use with OpenAiLanguageModel and OpenAiStreamingLanguageModel
+    public static final String GPT_4_VISION_PREVIEW = "gpt-4-vision-preview"; // 128k context, vision  // Use with OpenAiLanguageModel and OpenAiStreamingLanguageModel
     public static final String GPT_3_5_TURBO_INSTRUCT = "gpt-3.5-turbo-instruct";
-
 
     // Use with OpenAiEmbeddingModel
     public static final String TEXT_EMBEDDING_ADA_002 = "text-embedding-ada-002";
 
-
     // Use with OpenAiModerationModel
     public static final String TEXT_MODERATION_STABLE = "text-moderation-stable";
     public static final String TEXT_MODERATION_LATEST = "text-moderation-latest";
+
+    // Use with OpenAiImageModel
+    public static final String DALL_E_2 = "dall-e-2"; // anyone still needs that? :)
+    public static final String DALL_E_3 = "dall-e-3";
 }
