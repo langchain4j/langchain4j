@@ -1,8 +1,9 @@
 package dev.langchain4j.model.openai;
 
+import static dev.ai4j.openai4j.image.ImageModel.DALL_E_QUALITY_HD;
 import static dev.ai4j.openai4j.image.ImageModel.DALL_E_RESPONSE_FORMAT_B64_JSON;
 import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_256_x_256;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
+import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_3;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
@@ -21,7 +22,7 @@ class OpenAiImagesGenerationIT {
     OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
         .builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .model(DALL_E_2) // so that you pay not much :)
+        .model(DALL_E_3) // so that you pay not much :)
         .size(DALL_E_SIZE_256_x_256)
         .logRequests()
         .logResponses();
@@ -37,6 +38,10 @@ class OpenAiImagesGenerationIT {
         URI remoteImage = response.content().get(0).url();
         log.info("Your remote image is here: {}", remoteImage);
         assertThat(remoteImage).isNotNull();
+
+        String revisedPrompt = response.content().get(0).revisedPrompt();
+        log.info("Your revised prompt: {}", revisedPrompt);
+        assertThat(revisedPrompt).hasSizeGreaterThan(5);
     }
 
     @Test
@@ -63,5 +68,30 @@ class OpenAiImagesGenerationIT {
         URI localImage = response.content().get(0).url();
         log.info("Your local image is here: {}", localImage);
         assertThat(new File(localImage)).exists();
+    }
+
+    @Test
+    void image_generation_with_dalle3_works() {
+        OpenAiImageModel model = OpenAiImageModel
+            .builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .quality(DALL_E_QUALITY_HD)
+            .logRequests()
+            .logResponses()
+            .build();
+
+        Response<List<Image>> response = model.generate(
+            "Beautiful house on country side, cowboy plays guitar, dog sitting at the door"
+        );
+
+        assertThat(response.content()).hasSize(1);
+
+        URI remoteImage = response.content().get(0).url();
+        log.info("Your remote image is here: {}", remoteImage);
+        assertThat(remoteImage).isNotNull();
+
+        String revisedPrompt = response.content().get(0).revisedPrompt();
+        log.info("Your revised prompt: {}", revisedPrompt);
+        assertThat(revisedPrompt).hasSizeGreaterThan(50);
     }
 }
