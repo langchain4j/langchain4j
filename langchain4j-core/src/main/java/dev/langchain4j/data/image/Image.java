@@ -1,5 +1,7 @@
 package dev.langchain4j.data.image;
 
+import static dev.langchain4j.internal.Utils.quoted;
+
 import java.net.URI;
 import java.util.Objects;
 
@@ -84,8 +86,10 @@ public final class Image {
 
     @Override
     public String toString() {
-        return "Image{" + "url='" + url + '\'' +
-                ", base64Data='" + base64Data + '\'' +
-                ", revisedPrompt='" + revisedPrompt + '\'' + '}';
+        return "Image {"
+                + "url=" + quoted(url.toString())
+                + ", base64Data=" + quoted(base64Data)
+                + ", revisedPrompt=" + quoted(revisedPrompt)
+                + " }";
     }
 }
