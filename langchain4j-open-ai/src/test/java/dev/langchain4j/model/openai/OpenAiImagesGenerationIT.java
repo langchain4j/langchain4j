@@ -3,7 +3,7 @@ package dev.langchain4j.model.openai;
 import static dev.ai4j.openai4j.image.ImageModel.DALL_E_QUALITY_HD;
 import static dev.ai4j.openai4j.image.ImageModel.DALL_E_RESPONSE_FORMAT_B64_JSON;
 import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_256_x_256;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_3;
+import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.image.Image;
@@ -22,7 +22,7 @@ class OpenAiImagesGenerationIT {
     OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
         .builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .model(DALL_E_3) // so that you pay not much :)
+        .model(DALL_E_2) // so that you pay not much :)
         .size(DALL_E_SIZE_256_x_256)
         .logRequests()
         .logResponses();
@@ -58,16 +58,24 @@ class OpenAiImagesGenerationIT {
     }
 
     @Test
-    void image_generation_with_base64_works() {
-        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
+    void multiple_images_generation_with_base64_works() {
+        OpenAiImageModel model = modelBuilder
+            .n(2)
+            .responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON)
+            .withPersisting()
+            .build();
 
         Response<List<Image>> response = model.generate("Cute red parrot sings");
 
-        assertThat(response.content()).hasSize(1);
+        assertThat(response.content()).hasSize(2);
 
-        URI localImage = response.content().get(0).url();
-        log.info("Your local image is here: {}", localImage);
-        assertThat(new File(localImage)).exists();
+        URI localImage1 = response.content().get(0).url();
+        log.info("Your first local image is here: {}", localImage1);
+        assertThat(new File(localImage1)).exists();
+
+        URI localImage2 = response.content().get(1).url();
+        log.info("Your second local image is here: {}", localImage2);
+        assertThat(new File(localImage2)).exists();
     }
 
     @Test

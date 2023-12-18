@@ -25,6 +25,7 @@ import lombok.NonNull;
 public class OpenAiImageModel implements ImageModel {
 
     private final String model;
+    private final Integer n;
     private final String size;
     private final String quality;
     private final String style;
@@ -52,6 +53,7 @@ public class OpenAiImageModel implements ImageModel {
     public OpenAiImageModel(
         @NonNull String apiKey,
         String model,
+        Integer n,
         String size,
         String quality,
         String style,
@@ -87,6 +89,7 @@ public class OpenAiImageModel implements ImageModel {
 
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.model = model;
+        this.n = n;
         this.size = size;
         this.quality = quality;
         this.style = style;
@@ -125,6 +128,10 @@ public class OpenAiImageModel implements ImageModel {
 
         if (DALL_E_2.equals(model)) {
             requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);
+        }
+
+        if (n != null) {
+            requestBuilder.n(n);
         }
 
         GenerateImagesRequest request = requestBuilder.build();
