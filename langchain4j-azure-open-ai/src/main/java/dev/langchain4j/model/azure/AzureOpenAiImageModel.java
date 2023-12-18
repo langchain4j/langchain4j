@@ -129,9 +129,6 @@ public class AzureOpenAiImageModel implements ImageModel {
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
-        private boolean withPersisting;
-
-        private Path persistTo;
         private OpenAIClient openAIClient;
 
         /**
