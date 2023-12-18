@@ -5,5 +5,6 @@ import dev.langchain4j.model.output.Response;
 import java.util.List;
 
 public interface ImageModel {
-    Response<List<Image>> generate(String prompt);
+
+    Response<Image> generate(String prompt);
 }

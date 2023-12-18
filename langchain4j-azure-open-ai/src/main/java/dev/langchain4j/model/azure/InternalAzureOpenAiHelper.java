@@ -22,10 +22,8 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.time.Duration;
 import java.util.*;
 
@@ -197,6 +195,7 @@ class InternalAzureOpenAiHelper {
                 .revisedPrompt(imageGenerationData.getRevisedPrompt());
 
         String urlString = imageGenerationData.getUrl();
+        String imageData = imageGenerationData.getBase64Data();
         if (urlString != null) {
             try {
                 URI uri = new URI(urlString);
@@ -204,6 +203,8 @@ class InternalAzureOpenAiHelper {
             } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
             }
+        } else if (imageData != null) {
+            imageBuilder.base64Data(imageData);
         }
 
         return imageBuilder.build();
