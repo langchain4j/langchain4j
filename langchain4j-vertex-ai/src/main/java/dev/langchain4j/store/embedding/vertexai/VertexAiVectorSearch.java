@@ -199,17 +199,17 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
         final String json = getGcpBlobService().download(path);
         if (json != null) {
             final VertexAiEmbeddingIndex embeddingIndex = VertexAiEmbeddingIndex.fromJson(json);
-            final List<String> indicesToDelete = embeddingIndex
+            final List<String> embeddingIdsToDelete = embeddingIndex
                     .getRecords()
                     .stream()
                     .map(VertexAiEmbeddingIndexRecord::getId)
                     .collect(Collectors.toList());
 
             // Delete documents
-            indicesToDelete.forEach(id -> getGcpBlobService().delete("documents/" + id));
+            embeddingIdsToDelete.forEach(id -> getGcpBlobService().delete("documents/" + id));
 
             // Delete index
-            getIndexEndpointService().deleteIndices(indicesToDelete);
+            getIndexEndpointService().deleteIndices(embeddingIdsToDelete);
         }
 
         // Delete index file
