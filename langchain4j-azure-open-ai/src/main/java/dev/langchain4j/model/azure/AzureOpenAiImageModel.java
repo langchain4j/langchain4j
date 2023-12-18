@@ -187,6 +187,17 @@ public class AzureOpenAiImageModel implements ImageModel {
         }
 
         /**
+         * Sets the quality of the image, using the ImageGenerationQuality enum. This is an optional parameter.
+         *
+         * @param imageGenerationQuality The quality of the image.
+         * @return builder
+         */
+        public Builder quality(ImageGenerationQuality imageGenerationQuality) {
+            this.quality = imageGenerationQuality.toString();
+            return this;
+        }
+
+        /**
          * Sets the size of the image. This is an optional parameter.
          *
          * @param size The size of the image.
@@ -194,6 +205,17 @@ public class AzureOpenAiImageModel implements ImageModel {
          */
         public Builder size(String size) {
             this.size = size;
+            return this;
+        }
+
+        /**
+         * Sets the size of the image, using the ImageSize enum. This is an optional parameter.
+         *
+         * @param imageSize The size of the image.
+         * @return builder
+         */
+        public Builder size(ImageSize imageSize) {
+            this.size = imageSize.toString();
             return this;
         }
 
@@ -220,6 +242,17 @@ public class AzureOpenAiImageModel implements ImageModel {
         }
 
         /**
+         * Sets the style of the image, using the ImageGenerationStyle enum. This is an optional parameter.
+         *
+         * @param imageGenerationStyle The style of the image.
+         * @return builder
+         */
+        public Builder style(ImageGenerationStyle imageGenerationStyle) {
+            this.style = imageGenerationStyle.toString();
+            return this;
+        }
+
+        /**
          * Sets the response format of the image. This is an optional parameter.
          *
          * @param responseFormat The response format of the image.
@@ -227,6 +260,17 @@ public class AzureOpenAiImageModel implements ImageModel {
          */
         public Builder responseFormat(String responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        /**
+         * Sets the response format of the image, using the ImageGenerationResponseFormat enum. This is an optional parameter.
+         *
+         * @param imageGenerationResponseFormat The response format of the image.
+         * @return builder
+         */
+        public Builder responseFormat(ImageGenerationResponseFormat imageGenerationResponseFormat) {
+            this.responseFormat = imageGenerationResponseFormat.toString();
             return this;
         }
 
