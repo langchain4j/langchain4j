@@ -3,8 +3,8 @@ package dev.langchain4j.store.embedding.cassandra;
 import com.dtsx.astra.sdk.utils.TestUtils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
-import dev.langchain4j.data.document.DocumentType;
-import dev.langchain4j.data.document.FileSystemDocumentLoader;
+import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
+import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
@@ -57,7 +57,7 @@ class SampleDocumentLoaderAndRagWithAstraTest {
 
         // Parsing input file
         Path path = new File(getClass().getResource("/story-about-happy-carrot.txt").getFile()).toPath();
-        Document document = FileSystemDocumentLoader.loadDocument(path, DocumentType.TXT);
+        Document document = FileSystemDocumentLoader.loadDocument(path, new TextDocumentParser());
         DocumentSplitter splitter = DocumentSplitters
                 .recursive(100, 10, new OpenAiTokenizer(GPT_3_5_TURBO));
 

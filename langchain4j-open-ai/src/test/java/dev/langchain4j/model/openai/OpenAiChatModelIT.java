@@ -33,6 +33,7 @@ class OpenAiChatModelIT {
 
     ChatLanguageModel model = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -65,6 +66,7 @@ class OpenAiChatModelIT {
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .maxTokens(3)
                 .build();
 
@@ -188,6 +190,7 @@ class OpenAiChatModelIT {
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106.toString()) // supports parallel function calling
                 .temperature(0.0)
                 .build();

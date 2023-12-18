@@ -34,6 +34,7 @@ class OpenAiStreamingChatModelIT {
 
     StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -288,6 +289,7 @@ class OpenAiStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106.toString())  // supports parallel function calling
                 .temperature(0.0)
                 .logRequests(true)
