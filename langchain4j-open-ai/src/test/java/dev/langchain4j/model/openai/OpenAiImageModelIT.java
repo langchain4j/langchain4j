@@ -15,67 +15,57 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class OpenAiImagesGenerationIT {
+class OpenAiImageModelIT {
 
-    Logger log = LoggerFactory.getLogger(OpenAiImagesGenerationIT.class);
+    Logger log = LoggerFactory.getLogger(OpenAiImageModelIT.class);
 
     OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
         .builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
         .model(DALL_E_2) // so that you pay not much :)
         .size(DALL_E_SIZE_256_x_256)
-        .logRequests()
-        .logResponses();
+        .logRequests(true)
+        .logResponses(true);
 
     @Test
     void simple_image_generation_works() {
         OpenAiImageModel model = modelBuilder.build();
 
-        Response<List<Image>> response = model.generate("Beautiful house on country side");
+        Response<Image> response = model.generate("Beautiful house on country side");
 
-        assertThat(response.content()).hasSize(1);
-
-        URI remoteImage = response.content().get(0).url();
+        URI remoteImage = response.content().url();
         log.info("Your remote image is here: {}", remoteImage);
         assertThat(remoteImage).isNotNull();
-
-        String revisedPrompt = response.content().get(0).revisedPrompt();
-        log.info("Your revised prompt: {}", revisedPrompt);
-        assertThat(revisedPrompt).hasSizeGreaterThan(5);
     }
 
     @Test
     void image_generation_with_persisting_works() {
-        OpenAiImageModel model = modelBuilder.withPersisting().build();
+        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
 
-        Response<List<Image>> response = model.generate("Bird flying in the sky");
+        Response<Image> response = model.generate("Bird flying in the sky");
 
-        assertThat(response.content()).hasSize(1);
-
-        URI localImage = response.content().get(0).url();
+        URI localImage = response.content().url();
         log.info("Your local image is here: {}", localImage);
         assertThat(new File(localImage)).exists();
     }
 
     @Test
     void multiple_images_generation_with_base64_works() {
-        OpenAiImageModel model = modelBuilder
-            .n(2)
-            .responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON)
-            .withPersisting()
-            .build();
+        OpenAiImageModel model = modelBuilder.responseFormat(DALL_E_RESPONSE_FORMAT_B64_JSON).withPersisting().build();
 
-        Response<List<Image>> response = model.generate("Cute red parrot sings");
+        Response<List<Image>> response = model.generate("Cute red parrot sings", 2);
 
         assertThat(response.content()).hasSize(2);
 
-        URI localImage1 = response.content().get(0).url();
-        log.info("Your first local image is here: {}", localImage1);
-        assertThat(new File(localImage1)).exists();
+        Image localImage1 = response.content().get(0);
+        log.info("Your first local image is here: {}", localImage1.url());
+        assertThat(new File(localImage1.url())).exists();
+        assertThat(localImage1.base64()).isNotNull().isBase64();
 
-        URI localImage2 = response.content().get(1).url();
-        log.info("Your second local image is here: {}", localImage2);
-        assertThat(new File(localImage2)).exists();
+        Image localImage2 = response.content().get(1);
+        log.info("Your second local image is here: {}", localImage2.url());
+        assertThat(new File(localImage2.url())).exists();
+        assertThat(localImage2.base64()).isNotNull().isBase64();
     }
 
     @Test
@@ -84,21 +74,19 @@ class OpenAiImagesGenerationIT {
             .builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .quality(DALL_E_QUALITY_HD)
-            .logRequests()
-            .logResponses()
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
-        Response<List<Image>> response = model.generate(
+        Response<Image> response = model.generate(
             "Beautiful house on country side, cowboy plays guitar, dog sitting at the door"
         );
 
-        assertThat(response.content()).hasSize(1);
-
-        URI remoteImage = response.content().get(0).url();
+        URI remoteImage = response.content().url();
         log.info("Your remote image is here: {}", remoteImage);
         assertThat(remoteImage).isNotNull();
 
-        String revisedPrompt = response.content().get(0).revisedPrompt();
+        String revisedPrompt = response.content().revisedPrompt();
         log.info("Your revised prompt: {}", revisedPrompt);
         assertThat(revisedPrompt).hasSizeGreaterThan(50);
     }

@@ -25,7 +25,6 @@ import lombok.NonNull;
 public class OpenAiImageModel implements ImageModel {
 
     private final String model;
-    private final Integer n;
     private final String size;
     private final String quality;
     private final String style;
@@ -53,7 +52,6 @@ public class OpenAiImageModel implements ImageModel {
     public OpenAiImageModel(
         @NonNull String apiKey,
         String model,
-        Integer n,
         String size,
         String quality,
         String style,
@@ -89,12 +87,31 @@ public class OpenAiImageModel implements ImageModel {
 
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.model = model;
-        this.n = n;
         this.size = size;
         this.quality = quality;
         this.style = style;
         this.user = user;
         this.responseFormat = responseFormat;
+    }
+
+    @Override
+    public Response<Image> generate(String prompt) {
+        GenerateImagesRequest request = requestBuilder(prompt).build();
+
+        GenerateImagesResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries).execute();
+
+        return Response.from(fromImageData(response.data().get(0)));
+    }
+
+    @Override
+    public Response<List<Image>> generate(String prompt, int n) {
+        GenerateImagesRequest request = requestBuilder(prompt).n(n).build();
+
+        GenerateImagesResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries).execute();
+
+        return Response.from(
+            response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
+        );
     }
 
     public static class OpenAiImageModelBuilder {
@@ -104,19 +121,17 @@ public class OpenAiImageModel implements ImageModel {
             return this;
         }
 
-        public OpenAiImageModelBuilder logRequests() {
-            logRequests = true;
-            return this;
-        }
-
-        public OpenAiImageModelBuilder logResponses() {
-            logResponses = true;
+        public OpenAiImageModelBuilder withApiKey(String apiKey) {
+            this.apiKey = apiKey;
             return this;
         }
     }
 
-    @Override
-    public Response<List<Image>> generate(String prompt) {
+    private static Image fromImageData(GenerateImagesResponse.ImageData data) {
+        return Image.builder().url(data.url()).base64(data.b64Json()).revisedPrompt(data.revisedPrompt()).build();
+    }
+
+    private GenerateImagesRequest.Builder requestBuilder(String prompt) {
         GenerateImagesRequest.Builder requestBuilder = GenerateImagesRequest
             .builder()
             .prompt(prompt)
@@ -130,20 +145,6 @@ public class OpenAiImageModel implements ImageModel {
             requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);
         }
 
-        if (n != null) {
-            requestBuilder.n(n);
-        }
-
-        GenerateImagesRequest request = requestBuilder.build();
-
-        GenerateImagesResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries).execute();
-
-        return Response.from(
-            response
-                .data()
-                .stream()
-                .map(d -> Image.builder().url(d.url()).revisedPrompt(d.revisedPrompt()).build())
-                .collect(Collectors.toList())
-        );
+        return requestBuilder;
     }
 }
