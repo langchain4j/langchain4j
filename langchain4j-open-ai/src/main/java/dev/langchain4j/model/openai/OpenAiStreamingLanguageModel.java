@@ -15,11 +15,11 @@ import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
-import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_DAVINCI_003;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static java.time.Duration.ofSeconds;
 
 /**
- * Represents an OpenAI language model with a completion interface, such as text-davinci-003.
+ * Represents an OpenAI language model with a completion interface, such as gpt-3.5-turbo-instruct.
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
@@ -55,9 +55,9 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .build();
-        this.modelName = getOrDefault(modelName, TEXT_DAVINCI_003);
+        this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override
@@ -81,7 +81,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     }
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, false);
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),
