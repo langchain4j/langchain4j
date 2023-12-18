@@ -9,7 +9,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class EmbeddingResponse {
-
-    private float[] embedding;
+class ChatResponse {
+    private String model;
+    private String createdAt;
+    private Message message;
+    private Boolean done;
+    private Integer promptEvalCount;
+    private Integer evalCount;
 }

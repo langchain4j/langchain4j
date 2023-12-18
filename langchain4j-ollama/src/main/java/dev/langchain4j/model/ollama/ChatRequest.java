@@ -5,11 +5,19 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class EmbeddingResponse {
+class ChatRequest {
 
-    private float[] embedding;
+    /**
+     * model name
+     */
+    private String model;
+    private List<Message> messages;
+    private Options options;
+    private Boolean stream;
 }

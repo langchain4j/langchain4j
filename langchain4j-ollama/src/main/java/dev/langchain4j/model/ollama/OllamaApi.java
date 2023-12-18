@@ -24,4 +24,8 @@ public interface OllamaApi {
     @POST("/api/embeddings")
     @Headers({"Content-Type: application/json"})
     Call<EmbeddingResponse> embedd(@Body EmbeddingRequest embeddingRequest);
+
+    @POST("/api/chat")
+    @Headers({"Content-Type: application/json"})
+    Call<ChatResponse> chat(@Body ChatRequest chatRequest);
 }
