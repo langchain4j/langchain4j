@@ -14,6 +14,27 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.imageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 
+/**
+ * Represents an OpenAI image model, hosted on Azure, such as dall-e-3.
+ * <p>
+ * You can find a tutorial on using Azure OpenAI to generate images at: https://learn.microsoft.com/en-us/azure/ai-services/openai/dall-e-quickstart?tabs=dalle3%2Ccommand-line&pivots=programming-language-java
+ * <p>
+ * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
+ * <p>
+ * There are two primary authentication methods to access Azure OpenAI:
+ * <p>
+ * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
+ * API Key in the "api-key" HTTP header as follows: `api-key: OPENAI_API_KEY`Y`
+ * <p>
+ * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
+ * authentication/access token in the "Authorization" HTTP header.
+ * <p>
+ * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
+ * <p>
+ * Please note, that currently, only API Key authentication is supported by this class,
+ * second authentication option will be supported later.
+ */
 public class AzureOpenAiImageModel implements ImageModel {
 
     private OpenAIClient client;
