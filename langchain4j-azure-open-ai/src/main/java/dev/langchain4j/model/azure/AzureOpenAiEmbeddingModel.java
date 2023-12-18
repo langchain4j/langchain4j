@@ -1,77 +1,81 @@
 package dev.langchain4j.model.azure;
 
-import dev.ai4j.openai4j.OpenAiClient;
-import dev.ai4j.openai4j.embedding.EmbeddingRequest;
-import dev.ai4j.openai4j.embedding.EmbeddingResponse;
+import com.azure.ai.openai.OpenAIClient;
+import com.azure.ai.openai.models.EmbeddingItem;
+import com.azure.ai.openai.models.Embeddings;
+import com.azure.ai.openai.models.EmbeddingsOptions;
+import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.time.Duration.ofSeconds;
+import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an OpenAI embedding model, hosted on Azure, such as text-embedding-ada-002.
  * <p>
- * Mandatory parameters for initialization are: baseUrl, apiVersion and apiKey.
+ * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are two primary authentication methods to access Azure OpenAI:
  * <p>
  * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
- * API Key in the "api-key" HTTP header.
+ * API Key in the "api-key" HTTP header as follows: `api-key: OPENAI_API_KEY`
  * <p>
  * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
  * authentication/access token in the "Authorization" HTTP header.
  * <p>
  * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
  * <p>
+ * Please note, that currently, only API Key authentication is supported by this class,
+ * second authentication option will be supported later.
  */
 public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
     private static final int BATCH_SIZE = 16;
 
-    private final OpenAiClient client;
-    private final Integer maxRetries;
+    private OpenAIClient client;
+    private final String deploymentName;
     private final Tokenizer tokenizer;
 
-    public AzureOpenAiEmbeddingModel(String baseUrl,
-                                     String apiVersion,
+    private AzureOpenAiEmbeddingModel(OpenAIClient client,
+                                      String deploymentName,
+                                      Tokenizer tokenizer) {
+        this(deploymentName, tokenizer);
+        this.client = client;
+    }
+
+    public AzureOpenAiEmbeddingModel(String endpoint,
+                                     String serviceVersion,
                                      String apiKey,
+                                     String deploymentName,
                                      Tokenizer tokenizer,
                                      Duration timeout,
                                      Integer maxRetries,
-                                     Proxy proxy,
-                                     Boolean logRequests,
-                                     Boolean logResponses) {
+                                     ProxyOptions proxyOptions,
+                                     boolean logRequestsAndResponses) {
 
-        timeout = getOrDefault(timeout, ofSeconds(60));
+        this(deploymentName, tokenizer);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    }
 
-        this.client = OpenAiClient.builder()
-                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .azureApiKey(apiKey)
-                .apiVersion(apiVersion)
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .proxy(proxy)
-                .logRequests(logRequests)
-                .logResponses(logResponses)
-                .build();
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = tokenizer;
+    private AzureOpenAiEmbeddingModel(String deploymentName,
+                                      Tokenizer tokenizer) {
+
+        this.deploymentName = getOrDefault(deploymentName, "text-embedding-ada-002");
+        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002));
     }
 
     /**
@@ -100,23 +104,29 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
             List<String> batch = texts.subList(i, Math.min(i + BATCH_SIZE, texts.size()));
 
-            EmbeddingRequest request = EmbeddingRequest.builder()
-                    .input(batch)
-                    .build();
+            EmbeddingsOptions options = new EmbeddingsOptions(batch);
+            Embeddings response =  client.getEmbeddings(deploymentName, options);
 
-            EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);
+            for (EmbeddingItem embeddingItem : response.getData()) {
+                Embedding embedding = from(embeddingItem.getEmbedding());
+                embeddings.add(embedding);
+            }
 
-            embeddings.addAll(response.data().stream()
-                    .map(openAiEmbedding -> Embedding.from(openAiEmbedding.embedding()))
-                    .collect(toList()));
-
-            inputTokenCount += response.usage().promptTokens();
+            inputTokenCount += response.getUsage().getPromptTokens();
         }
 
         return Response.from(
                 embeddings,
                 new TokenUsage(inputTokenCount)
         );
+    }
+
+    private static Embedding from(List<Double> vector) {
+        float[] langChainVector = new float[vector.size()];
+        for (int index = 0; index < vector.size(); index++) {
+            langChainVector[index] = vector.get(index).floatValue();
+        }
+        return Embedding.from(langChainVector);
     }
 
     @Override
@@ -130,35 +140,36 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
     public static class Builder {
 
-        private String baseUrl;
-        private String apiVersion;
+        private String endpoint;
+        private String serviceVersion;
         private String apiKey;
+        private String deploymentName;
         private Tokenizer tokenizer;
         private Duration timeout;
         private Integer maxRetries;
-        private Proxy proxy;
-        private Boolean logRequests;
-        private Boolean logResponses;
+        private ProxyOptions proxyOptions;
+        private boolean logRequestsAndResponses;
+        private OpenAIClient openAIClient;
 
         /**
-         * Sets the Azure OpenAI base URL. This is a mandatory parameter.
+         * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
          *
-         * @param baseUrl The Azure OpenAI base URL in the format: https://{resource}.openai.azure.com/openai/deployments/{deployment}
+         * @param endpoint The Azure OpenAI endpoint in the format: https://{resource}.openai.azure.com/
          * @return builder
          */
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
             return this;
         }
 
         /**
-         * Sets the Azure OpenAI API version. This is a mandatory parameter.
+         * Sets the Azure OpenAI API service version. This is a mandatory parameter.
          *
-         * @param apiVersion The Azure OpenAI api version in the format: 2023-05-15
+         * @param serviceVersion The Azure OpenAI API service version in the format: 2023-05-15
          * @return builder
          */
-        public Builder apiVersion(String apiVersion) {
-            this.apiVersion = apiVersion;
+        public Builder serviceVersion(String serviceVersion) {
+            this.serviceVersion = serviceVersion;
             return this;
         }
 
@@ -170,6 +181,17 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * Sets the deployment name in Azure OpenAI. This is a mandatory parameter.
+         *
+         * @param deploymentName The Deployment name.
+         * @return builder
+         */
+        public Builder deploymentName(String deploymentName) {
+            this.deploymentName = deploymentName;
             return this;
         }
 
@@ -188,33 +210,47 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             return this;
         }
 
-        public Builder proxy(Proxy proxy) {
-            this.proxy = proxy;
+        public Builder proxyOptions(ProxyOptions proxyOptions) {
+            this.proxyOptions = proxyOptions;
             return this;
         }
 
-        public Builder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
+        public Builder logRequestsAndResponses(boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
             return this;
         }
 
-        public Builder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
+        /**
+         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         *
+         * @param openAIClient The Azure OpenAI client.
+         * @return builder
+         */
+        public Builder openAIClient(OpenAIClient openAIClient) {
+            this.openAIClient = openAIClient;
             return this;
         }
 
         public AzureOpenAiEmbeddingModel build() {
-            return new AzureOpenAiEmbeddingModel(
-                    baseUrl,
-                    apiVersion,
-                    apiKey,
-                    tokenizer,
-                    timeout,
-                    maxRetries,
-                    proxy,
-                    logRequests,
-                    logResponses
-            );
+            if (openAIClient == null) {
+                return new AzureOpenAiEmbeddingModel(
+                        endpoint,
+                        serviceVersion,
+                        apiKey,
+                        deploymentName,
+                        tokenizer,
+                        timeout,
+                        maxRetries,
+                        proxyOptions,
+                        logRequestsAndResponses
+                );
+            } else {
+                return new AzureOpenAiEmbeddingModel(
+                        openAIClient,
+                        deploymentName,
+                        tokenizer
+                );
+            }
         }
     }
 }

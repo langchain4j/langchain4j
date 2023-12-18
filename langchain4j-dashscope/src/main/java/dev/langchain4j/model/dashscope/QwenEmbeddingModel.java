@@ -8,6 +8,7 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import lombok.Builder;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,9 +30,13 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     private final String modelName;
     private final TextEmbedding embedding;
 
+    @Builder
     public QwenEmbeddingModel(String apiKey, String modelName) {
+        if (Utils.isNullOrBlank(apiKey)) {
+            throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
+        }
+        this.modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.TEXT_EMBEDDING_V1 : modelName;
         this.apiKey = apiKey;
-        this.modelName = modelName;
         this.embedding = new TextEmbedding();
     }
 
@@ -113,38 +118,6 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 }
                 return Response.from(embeddings, new TokenUsage(tokens));
             }
-        }
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-
-        private String apiKey;
-        private String modelName;
-
-        public Builder apiKey(String apiKey) {
-            this.apiKey = apiKey;
-            return this;
-        }
-
-        public Builder modelName(String modelName) {
-            this.modelName = modelName;
-            return this;
-        }
-
-        protected void ensureOptions() {
-            if (Utils.isNullOrBlank(apiKey)) {
-                throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
-            }
-            modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.TEXT_EMBEDDING_V1 : modelName;
-        }
-
-        public QwenEmbeddingModel build() {
-            ensureOptions();
-            return new QwenEmbeddingModel(apiKey, modelName);
         }
     }
 }

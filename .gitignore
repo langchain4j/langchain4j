@@ -1,5 +1,4 @@
 target/
-**/.mvn/
 
 ### IntelliJ IDEA ###
 .idea/*
@@ -35,3 +34,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### .env files contain local environment variables ###
+.env

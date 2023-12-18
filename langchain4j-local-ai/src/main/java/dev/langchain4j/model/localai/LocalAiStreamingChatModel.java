@@ -23,6 +23,9 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
+/**
+ * See <a href="https://localai.io/features/text-generation/">LocalAI documentation</a> for more details.
+ */
 public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
     private final OpenAiClient client;
@@ -97,7 +100,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(0);
+        OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(null);
 
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
@@ -105,7 +108,7 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(null, false);
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

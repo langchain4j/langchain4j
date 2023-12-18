@@ -11,7 +11,7 @@ import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
 import static dev.langchain4j.model.dashscope.QwenHelper.finishReasonFrom;
 
 public class QwenStreamingResponseBuilder {
-    private String generatedContent = "";
+    private final StringBuilder generatedContent = new StringBuilder();
 
     private Integer inputTokenCount;
 
@@ -38,18 +38,14 @@ public class QwenStreamingResponseBuilder {
         }
 
         String partialContent = answerFrom(partialResponse);
-        String delta = null;
-        if (partialContent.length() > generatedContent.length() ) {
-            delta = partialContent.substring(generatedContent.length());
-            generatedContent = partialContent;
-        }
+        generatedContent.append(partialContent);
 
-        return delta;
+        return partialContent;
     }
 
     public Response<AiMessage> build() {
         return Response.from(
-                AiMessage.from(generatedContent),
+                AiMessage.from(generatedContent.toString()),
                 new TokenUsage(inputTokenCount, outputTokenCount),
                 finishReason
         );

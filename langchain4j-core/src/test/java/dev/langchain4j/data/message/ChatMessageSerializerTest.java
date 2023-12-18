@@ -69,7 +69,7 @@ class ChatMessageSerializerTest {
                         .name("calculator")
                         .arguments("{}")
                         .build()),
-                toolExecutionResultMessage("calculator", "4")
+                toolExecutionResultMessage("12345", "calculator", "4")
         );
 
         String json = ChatMessageSerializer.messagesToJson(messages);
@@ -78,8 +78,8 @@ class ChatMessageSerializerTest {
                 "{\"text\":\"Hello from user\",\"type\":\"USER\"}," +
                 "{\"name\":\"Klaus\",\"text\":\"Hello from Klaus\",\"type\":\"USER\"}," +
                 "{\"text\":\"Hello from AI\",\"type\":\"AI\"}," +
-                "{\"toolExecutionRequest\":{\"name\":\"calculator\",\"arguments\":\"{}\"},\"type\":\"AI\"}," +
-                "{\"toolName\":\"calculator\",\"text\":\"4\",\"type\":\"TOOL_EXECUTION_RESULT\"}" +
+                "{\"toolExecutionRequests\":[{\"name\":\"calculator\",\"arguments\":\"{}\"}],\"type\":\"AI\"}," +
+                "{\"id\":\"12345\",\"toolName\":\"calculator\",\"text\":\"4\",\"type\":\"TOOL_EXECUTION_RESULT\"}" +
                 "]");
 
         List<ChatMessage> deserializedMessages = messagesFromJson(json);

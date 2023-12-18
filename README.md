@@ -28,6 +28,8 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 - [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
+Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency which builds on this project) can be found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
+
 ## News
 
 12 November:

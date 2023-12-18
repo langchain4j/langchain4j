@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,6 +25,12 @@ class QwenHelper {
         return messages.stream()
                 .map(QwenHelper::toQwenMessage)
                 .collect(toList());
+    }
+
+    static List<Message> toQwenMessages(Iterable<ChatMessage> messages) {
+        LinkedList<Message> qwenMessages = new LinkedList<>();
+        messages.forEach(message -> qwenMessages.add(toQwenMessage(message)));
+        return qwenMessages;
     }
 
     static Message toQwenMessage(ChatMessage message) {

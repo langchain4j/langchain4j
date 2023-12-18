@@ -6,21 +6,21 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.SneakyThrows;
-import org.junit.jupiter.api.Disabled;
+import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@Disabled("needs Elasticsearch to be running locally")
+@Testcontainers
 class ElasticsearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    /**
-     * First start elasticsearch locally:
-     * docker pull docker.elastic.co/elasticsearch/elasticsearch:8.9.0
-     * docker run -d -p 9200:9200 -p 9300:9300 -e discovery.type=single-node -e xpack.security.enabled=false docker.elastic.co/elasticsearch/elasticsearch:8.9.0
-     */
+    @Container
+    private static final ElasticsearchContainer elasticsearch = new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.9.0")
+            .withEnv("xpack.security.enabled", "false");
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
-            .serverUrl("http://localhost:9200")
+            .serverUrl(elasticsearch.getHttpHostAddress())
             .indexName(randomUUID())
             .dimension(384)
             .build();
