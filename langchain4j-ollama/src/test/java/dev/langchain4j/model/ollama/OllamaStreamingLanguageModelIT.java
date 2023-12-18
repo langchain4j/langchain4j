@@ -3,7 +3,6 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
@@ -13,12 +12,11 @@ import java.util.concurrent.TimeoutException;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("needs Ollama running locally")
-class OllamaStreamingLanguageModelIT {
+class OllamaStreamingLanguageModelIT extends AbstractOllamaInfrastructure {
 
     StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-            .baseUrl("http://localhost:11434")
-            .modelName("orca-mini")
+            .baseUrl(getBaseUrl())
+            .modelName(ORCA_MINI_MODEL)
             .build();
 
     @Test

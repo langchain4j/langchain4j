@@ -70,7 +70,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param apiKey    OpenSearch API key (optional)
      * @param userName  OpenSearch username (optional)
      * @param password  OpenSearch password (optional)
-     * @param indexName OpenSearch index name (optional). Default value: "default"
+     * @param indexName OpenSearch index name.
      */
     public OpenSearchEmbeddingStore(String serverUrl,
                                     String apiKey,
@@ -121,7 +121,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param serviceName The AWS signing service name, one of `es` (Amazon OpenSearch) or `aoss` (Amazon OpenSearch Serverless).
      * @param region      The AWS region for which requests will be signed. This should typically match the region in `serverUrl`.
      * @param options     The options to establish connection with the service. It must include which credentials should be used.
-     * @param indexName   OpenSearch index name (optional). Default value: "default"
+     * @param indexName   OpenSearch index name.
      */
     public OpenSearchEmbeddingStore(String serverUrl,
                                     String serviceName,
@@ -135,6 +135,19 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         OpenSearchTransport transport = new AwsSdk2Transport(httpClient, serverUrl, serviceName, selectedRegion, options);
 
         this.client = new OpenSearchClient(transport);
+        this.indexName = ensureNotNull(indexName, "indexName");
+    }
+
+    /**
+     * Creates an instance of OpenSearchEmbeddingStore using provided OpenSearchClient
+     *
+     * @param openSearchClient OpenSearch client provided
+     * @param indexName        OpenSearch index name.
+     */
+    public OpenSearchEmbeddingStore(OpenSearchClient openSearchClient,
+                                    String indexName) {
+
+        this.client = ensureNotNull(openSearchClient, "openSearchClient");
         this.indexName = ensureNotNull(indexName, "indexName");
     }
 
@@ -152,6 +165,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String region;
         private AwsSdk2TransportOptions options;
         private String indexName = "default";
+        private OpenSearchClient openSearchClient;
 
         public Builder serverUrl(String serverUrl) {
             this.serverUrl = serverUrl;
@@ -193,7 +207,14 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder openSearchClient(OpenSearchClient openSearchClient) {
+            this.openSearchClient = openSearchClient;
+            return this;
+        }
         public OpenSearchEmbeddingStore build() {
+            if (openSearchClient != null) {
+                return new OpenSearchEmbeddingStore(openSearchClient, indexName);
+            }
             if (!isNullOrBlank(serviceName) && !isNullOrBlank(region) && options != null) {
                 return new OpenSearchEmbeddingStore(serverUrl, serviceName, region, options, indexName);
             }
@@ -287,7 +308,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
 
-        if (isCollectionEmpty(ids) || isCollectionEmpty(embeddings)) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to opensearch]");
             return;
         }

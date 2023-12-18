@@ -1,28 +1,36 @@
 package dev.langchain4j.model.localai;
 
 import dev.langchain4j.model.language.LanguageModel;
-import org.junit.jupiter.api.Disabled;
+import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class LocalAiLanguageModelIT {
+class LocalAiLanguageModelIT extends AbstractLocalAiInfrastructure {
+
+    LanguageModel model = LocalAiLanguageModel.builder()
+            .baseUrl(localAi.getBaseUrl())
+            .modelName("ggml-gpt4all-j")
+            .maxTokens(3)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
     @Test
-    @Disabled("until we host LocalAI instance somewhere")
-    void should_send_prompt_and_return_answer() {
+    void should_send_prompt_and_return_response() {
 
-        LanguageModel model = LocalAiLanguageModel.builder()
-                .baseUrl("http://localhost:8080")
-                .modelName("ggml-gpt4all-j")
-                .maxTokens(3)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
+        // given
+        String prompt = "hello";
 
-        String answer = model.generate("Say 'hello'").content();
+        // when
+        Response<String> response = model.generate(prompt);
+        System.out.println(response);
 
-        assertThat(answer).containsIgnoringCase("hello");
-        System.out.println(answer);
+        // then
+        assertThat(response.content()).isNotBlank();
+
+        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.finishReason()).isEqualTo(STOP); // should be LENGTH, this is a bug in LocalAI
     }
 }
