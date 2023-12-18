@@ -51,6 +51,7 @@ public class LangChain4jAutoConfiguration {
                 return OpenAiChatModel.builder()
                         .baseUrl(openAi.getBaseUrl())
                         .apiKey(openAi.getApiKey())
+                        .organizationId(openAi.getOrganizationId())
                         .modelName(openAi.getModelName())
                         .temperature(openAi.getTemperature())
                         .topP(openAi.getTopP())
@@ -142,6 +143,7 @@ public class LangChain4jAutoConfiguration {
                 }
                 return OpenAiLanguageModel.builder()
                         .apiKey(openAi.getApiKey())
+                        .organizationId(openAi.getOrganizationId())
                         .modelName(openAi.getModelName())
                         .temperature(openAi.getTemperature())
                         .timeout(openAi.getTimeout())
@@ -229,6 +231,7 @@ public class LangChain4jAutoConfiguration {
                 }
                 return OpenAiEmbeddingModel.builder()
                         .apiKey(openAi.getApiKey())
+                        .organizationId(openAi.getOrganizationId())
                         .modelName(openAi.getModelName())
                         .timeout(openAi.getTimeout())
                         .maxRetries(openAi.getMaxRetries())
@@ -306,6 +309,7 @@ public class LangChain4jAutoConfiguration {
 
         return OpenAiModerationModel.builder()
                 .apiKey(openAi.getApiKey())
+                .organizationId(openAi.getOrganizationId())
                 .modelName(openAi.getModelName())
                 .timeout(openAi.getTimeout())
                 .maxRetries(openAi.getMaxRetries())
