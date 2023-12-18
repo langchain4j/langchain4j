@@ -16,7 +16,7 @@ import java.util.List;
 @Slf4j
 public class AbstractOllamaInfrastructure {
 
-    private static final String OLLAMA_IMAGE = "ollama/ollama:0.1.15";
+    private static final String OLLAMA_IMAGE = "ollama/ollama:latest";
 
     private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-orca-mini", OLLAMA_IMAGE);
 
