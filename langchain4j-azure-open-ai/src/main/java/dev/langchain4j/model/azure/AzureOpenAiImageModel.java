@@ -18,11 +18,11 @@ public class AzureOpenAiImageModel implements ImageModel {
 
     private OpenAIClient client;
     private final String deploymentName;
-    private final ImageGenerationQuality quality;
-    private final ImageSize size;
-    private final String user;
-    private final ImageGenerationStyle style;
-    private final ImageGenerationResponseFormat responseFormat;
+    private ImageGenerationQuality quality = null;
+    private ImageSize size = null;
+    private String user = null;
+    private ImageGenerationStyle style = null;
+    private ImageGenerationResponseFormat responseFormat = null;
 
     public AzureOpenAiImageModel(OpenAIClient client,
                                  String deploymentName,
@@ -56,11 +56,21 @@ public class AzureOpenAiImageModel implements ImageModel {
 
     private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
         this.deploymentName = getOrDefault(deploymentName, "dall-e-3");
-        this.quality = getOrDefault(ImageGenerationQuality.fromString(quality), ImageGenerationQuality.STANDARD);
-        this.size = getOrDefault(ImageSize.fromString(size), ImageSize.SIZE1024X1024);
-        this.user = getOrDefault(user, "");
-        this.style = getOrDefault(ImageGenerationStyle.fromString(style), ImageGenerationStyle.NATURAL);
-        this.responseFormat = getOrDefault(ImageGenerationResponseFormat.fromString(responseFormat), ImageGenerationResponseFormat.URL);
+        if (quality != null) {
+            this.quality = ImageGenerationQuality.fromString(quality);
+        }
+        if (size != null) {
+            this.size = ImageSize.fromString(size);
+        }
+        if (user != null) {
+            this.user = user;
+        }
+        if (style != null) {
+            this.style = ImageGenerationStyle.fromString(style);
+        }
+        if (responseFormat != null) {
+            this.responseFormat = ImageGenerationResponseFormat.fromString(responseFormat);
+        }
     }
 
     @Override
