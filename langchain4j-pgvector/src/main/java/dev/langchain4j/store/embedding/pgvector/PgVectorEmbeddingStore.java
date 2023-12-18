@@ -242,7 +242,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private void addAllInternal(
             List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isCollectionEmpty(ids) || isCollectionEmpty(embeddings)) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return;
         }
