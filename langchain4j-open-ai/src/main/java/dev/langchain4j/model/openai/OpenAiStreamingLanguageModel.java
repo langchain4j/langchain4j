@@ -34,6 +34,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     @Builder
     public OpenAiStreamingLanguageModel(String baseUrl,
                                         String apiKey,
+                                        String organizationId,
                                         String modelName,
                                         Double temperature,
                                         Duration timeout,
@@ -47,6 +48,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         this.client = OpenAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

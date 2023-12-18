@@ -43,6 +43,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     @Builder
     public OpenAiChatModel(String baseUrl,
                            String apiKey,
+                           String organizationId,
                            String modelName,
                            Double temperature,
                            Double topP,
@@ -67,6 +68,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

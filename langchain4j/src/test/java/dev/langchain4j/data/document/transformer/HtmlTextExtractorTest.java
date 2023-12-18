@@ -1,14 +1,11 @@
 package dev.langchain4j.data.document.transformer;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static dev.langchain4j.data.document.Document.DOCUMENT_TYPE;
-import static dev.langchain4j.data.document.DocumentType.HTML;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class HtmlTextExtractorTest {
@@ -27,7 +24,7 @@ class HtmlTextExtractorTest {
     void should_extract_all_text_from_html() {
 
         HtmlTextExtractor transformer = new HtmlTextExtractor();
-        Document htmlDocument = Document.from(SAMPLE_HTML, Metadata.from(DOCUMENT_TYPE, HTML));
+        Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
@@ -50,12 +47,12 @@ class HtmlTextExtractorTest {
     void should_extract_text_from_html_by_css_selector() {
 
         HtmlTextExtractor transformer = new HtmlTextExtractor("#p1", null, false);
-        Document htmlDocument = Document.from(SAMPLE_HTML, Metadata.from(DOCUMENT_TYPE, HTML));
+        Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo("Paragraph 1\nSomething");
-        assertThat(transformedDocument.metadata(DOCUMENT_TYPE)).isEqualTo(HTML.toString());
+        assertThat(transformedDocument.metadata().asMap()).isEmpty();
     }
 
     @Test
@@ -65,14 +62,13 @@ class HtmlTextExtractorTest {
         metadataCssSelectors.put("title", "#title");
 
         HtmlTextExtractor transformer = new HtmlTextExtractor("#p1", metadataCssSelectors, false);
-        Document htmlDocument = Document.from(SAMPLE_HTML, Metadata.from(DOCUMENT_TYPE, HTML));
+        Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo("Paragraph 1\nSomething");
 
-        assertThat(transformedDocument.metadata().asMap()).hasSize(2);
-        assertThat(transformedDocument.metadata(DOCUMENT_TYPE)).isEqualTo(HTML.toString());
+        assertThat(transformedDocument.metadata().asMap()).hasSize(1);
         assertThat(transformedDocument.metadata("title")).isEqualTo("Title");
     }
 
@@ -80,7 +76,7 @@ class HtmlTextExtractorTest {
     void should_extract_text_with_links_from_html() {
 
         HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
-        Document htmlDocument = Document.from(SAMPLE_HTML, Metadata.from(DOCUMENT_TYPE, HTML));
+        Document htmlDocument = Document.from(SAMPLE_HTML);
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
@@ -97,6 +93,6 @@ class HtmlTextExtractorTest {
                         " * Item one\n" +
                         " * Item two"
         );
-        assertThat(transformedDocument.metadata(DOCUMENT_TYPE)).isEqualTo(HTML.toString());
+        assertThat(transformedDocument.metadata().asMap()).isEmpty();
     }
 }
