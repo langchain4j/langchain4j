@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -43,16 +42,7 @@ public class OllamaChatModel implements ChatLanguageModel {
         ArrayList<Message> messageList = new ArrayList<>();
 
         messages.forEach(message -> {
-            Role role;
-
-            if(message instanceof SystemMessage) {
-                role = Role.SYSTEM;
-            } else if (message instanceof AiMessage) {
-                role = Role.ASSISTANT;
-            } else {
-                role = Role.USER;
-            }
-
+            Role role = Role.fromChatMessageType(message.type());
             messageList.add(Message.builder()
                     .role(role)
                     .content(message.text())
@@ -68,8 +58,8 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .stream(false)
                 .build();
 
-        ChatResponse response = withRetry(() -> client.completion(request), maxRetries);
+        ChatResponse response = withRetry(() -> client.chat(request), maxRetries);
 
-        return Response.from(AiMessage.from(String.valueOf(response.getMessage())));
+        return Response.from(AiMessage.from(response.getMessage().getContent()));
     }
 }

@@ -27,5 +27,5 @@ public interface OllamaApi {
 
     @POST("/api/chat")
     @Headers({"Content-Type: application/json"})
-    Call<ChatResponse> chat(@Body ChatRequest completionRequest);
+    Call<ChatResponse> chat(@Body ChatRequest chatRequest);
 }

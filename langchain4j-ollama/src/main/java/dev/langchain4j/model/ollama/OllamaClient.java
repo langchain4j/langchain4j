@@ -63,7 +63,7 @@ class OllamaClient {
         }
     }
 
-    public ChatResponse completion(ChatRequest request) {
+    public ChatResponse chat(ChatRequest request) {
         try {
             Response<ChatResponse> retrofitResponse
                     = ollamaApi.chat(request).execute();
