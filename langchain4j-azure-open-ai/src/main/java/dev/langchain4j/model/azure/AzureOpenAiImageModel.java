@@ -17,7 +17,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIC
 /**
  * Represents an OpenAI image model, hosted on Azure, such as dall-e-3.
  * <p>
- * You can find a tutorial on using Azure OpenAI to generate images at: https://learn.microsoft.com/en-us/azure/ai-services/openai/dall-e-quickstart?tabs=dalle3%2Ccommand-line&pivots=programming-language-java
+ * You can find a tutorial on using Azure OpenAI to generate images at: https://learn.microsoft.com/en-us/azure/ai-services/openai/dall-e-quickstart?pivots=programming-language-java
  * <p>
  * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
