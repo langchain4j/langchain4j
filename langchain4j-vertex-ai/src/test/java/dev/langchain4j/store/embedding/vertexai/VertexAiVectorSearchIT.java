@@ -44,7 +44,7 @@ public class VertexAiVectorSearchIT extends EmbeddingStoreIT {
     }
 
     @Override
-    protected double getCosineSimilarity(Embedding embedding, Embedding referenceEmbedding) {
+    protected double relevanceScore(Embedding embedding, Embedding referenceEmbedding) {
         return CosineSimilarity.between(embedding, referenceEmbedding);
     }
 }

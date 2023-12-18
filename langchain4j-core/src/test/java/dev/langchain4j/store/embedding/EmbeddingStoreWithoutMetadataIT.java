@@ -119,7 +119,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isCloseTo(
-                getCosineSimilarity(firstEmbedding, secondEmbedding),
+                relevanceScore(firstEmbedding, secondEmbedding),
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
@@ -158,7 +158,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isCloseTo(
-                getCosineSimilarity(firstEmbedding, secondEmbedding),
+                relevanceScore(firstEmbedding, secondEmbedding),
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
@@ -186,7 +186,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isCloseTo(
-                getCosineSimilarity(firstEmbedding, secondEmbedding),
+                relevanceScore(firstEmbedding, secondEmbedding),
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
@@ -235,12 +235,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(
-                getCosineSimilarity(embedding, referenceEmbedding),
+                relevanceScore(embedding, referenceEmbedding),
                 withPercentage(1)
         );
     }
 
-    protected double getCosineSimilarity(Embedding embedding, Embedding referenceEmbedding) {
+    protected double relevanceScore(Embedding embedding, Embedding referenceEmbedding) {
         return RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding));
     }
 
