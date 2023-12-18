@@ -38,8 +38,7 @@ public class IndexEndpointService {
      */
     public void deleteIndices(List<String> embeddingIndices) {
         if (isNullOrBlank(indexId)) {
-            log.warn("Index is not specified, skipping delete.");
-            return;
+            throw new IllegalArgumentException("Index is not specified.");
         }
 
         IndexName name = IndexName.of(project, location, indexId);
@@ -64,8 +63,7 @@ public class IndexEndpointService {
      */
     public void upsertEmbedding(VertexAiEmbeddingIndex embeddingIndex) {
         if (isNullOrBlank(indexId)) {
-            log.warn("IndexID is not specified, skipping upsert.");
-            return;
+            throw new IllegalArgumentException("Index is not specified.");
         }
 
         IndexName name = IndexName.of(project, location, indexId);
