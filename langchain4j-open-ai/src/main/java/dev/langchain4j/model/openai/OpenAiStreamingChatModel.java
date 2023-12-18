@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static java.time.Duration.ofSeconds;
@@ -78,7 +79,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
     @Override
@@ -93,7 +94,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, singletonList(toolSpecification), toolSpecification, handler);
+        generate(messages, null, toolSpecification, handler);
     }
 
     private void generate(List<ChatMessage> messages,
@@ -114,13 +115,13 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            requestBuilder.functions(toFunctions(toolSpecifications));
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-        }
         if (toolThatMustBeExecuted != null) {
-            requestBuilder.functionCall(toolThatMustBeExecuted.name());
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
+            requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted)));
+            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
+            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+        } else if (!isNullOrEmpty(toolSpecifications)) {
+            requestBuilder.tools(toTools(toolSpecifications));
+            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         ChatCompletionRequest request = requestBuilder.build();
@@ -133,7 +134,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     handle(partialResponse, handler);
                 })
                 .onComplete(() -> {
-                    Response<AiMessage> response = responseBuilder.build();
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

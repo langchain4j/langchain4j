@@ -22,9 +22,9 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class AzureOpenAIChatModelIT {
+public class AzureOpenAiChatModelIT {
 
-    Logger logger = LoggerFactory.getLogger(AzureOpenAIChatModelIT.class);
+    Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModelIT.class);
 
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
@@ -102,14 +102,17 @@ public class AzureOpenAIChatModelIT {
 
         Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
 
-        assertThat(response.content().text()).isBlank();
-        assertThat(response.content().toolExecutionRequest().name()).isEqualTo(toolName);
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isBlank();
+
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
 
         // We should get a response telling how to call the "getCurrentWeather" function, with the correct parameters in JSON format.
         logger.info(response.toString());
 
         // We can now call the function with the correct parameters.
-        ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequest();
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
         int currentWeather = 0;
         currentWeather = getCurrentWeather(weatherLocation);
@@ -121,12 +124,13 @@ public class AzureOpenAIChatModelIT {
         assertThat(weather).isEqualTo("The weather in Paris, France is 35 degrees celsius.");
 
         // Now that we know the function's result, we can call the model again with the result as input.
-        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolName, weather);
+        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, weather);
         SystemMessage systemMessage = SystemMessage.systemMessage("If the weather is above 30 degrees celsius, recommend the user wears a t-shirt and shorts.");
 
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(systemMessage);
         chatMessages.add(userMessage);
+        chatMessages.add(aiMessage);
         chatMessages.add(toolExecutionResultMessage);
 
         Response<AiMessage> response2 = model.generate(chatMessages);

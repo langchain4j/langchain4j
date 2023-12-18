@@ -12,11 +12,11 @@ import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.util.BinaryData;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -24,7 +24,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.*;
 
-import static com.azure.ai.openai.models.ChatRole.*;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -73,21 +72,28 @@ class InternalAzureOpenAiHelper {
         return OpenAIServiceVersion.getLatest();
     }
 
-    public static List<com.azure.ai.openai.models.ChatMessage> toOpenAiMessages(List<ChatMessage> messages) {
+    public static List<com.azure.ai.openai.models.ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
                 .map(InternalAzureOpenAiHelper::toOpenAiMessage)
                 .collect(toList());
     }
 
-    public static com.azure.ai.openai.models.ChatMessage toOpenAiMessage(ChatMessage message) {
-        com.azure.ai.openai.models.ChatMessage chatMessage =
-                new com.azure.ai.openai.models.ChatMessage(roleFrom(message), message.text());
-
-        chatMessage.setName(nameFrom(message));
-        chatMessage.setFunctionCall(functionCallFrom(message));
-
-        return chatMessage;
+    public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
+        if (message instanceof AiMessage) {
+            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(message.text());
+            chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
+            return chatRequestAssistantMessage;
+        } else if (message instanceof ToolExecutionResultMessage) {
+            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+            return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
+        } else if (message instanceof SystemMessage) {
+            return new ChatRequestSystemMessage(message.text());
+        } else {
+            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(message.text());
+            chatRequestUserMessage.setName(nameFrom(message));
+            return chatRequestUserMessage;
+        }
     }
 
     private static String nameFrom(ChatMessage message) {
@@ -105,25 +111,14 @@ class InternalAzureOpenAiHelper {
     private static FunctionCall functionCallFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
-            if (aiMessage.toolExecutionRequest() != null) {
-                return new FunctionCall(aiMessage.toolExecutionRequest().name(),
-                        aiMessage.toolExecutionRequest().arguments());
+            if (aiMessage.hasToolExecutionRequests()) {
+                // TODO switch to tools once supported
+                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+                return new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments());
             }
         }
 
         return null;
-    }
-
-    public static ChatRole roleFrom(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            return ASSISTANT;
-        } else if (message instanceof ToolExecutionResultMessage) {
-            return FUNCTION;
-        } else if (message instanceof SystemMessage) {
-            return SYSTEM;
-        } else {
-            return USER;
-        }
     }
 
     public static List<FunctionDefinition> toFunctions(Collection<ToolSpecification> toolSpecifications) {
@@ -139,19 +134,19 @@ class InternalAzureOpenAiHelper {
         return functionDefinition;
     }
 
-    private static Object toOpenAiParameters(ToolParameters toolParameters) {
+    private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
-            return parameters;
+            return BinaryData.fromString("{}");
         }
         parameters.setProperties(toolParameters.properties());
         parameters.setRequired(toolParameters.required());
-        return parameters;
+        return BinaryData.fromObject(parameters);
     }
 
     private static class Parameters {
 
-        private String type = "object";
+        private final String type = "object";
 
         private Map<String, Map<String, Object>> properties = new HashMap<>();
         private List<String> required = new ArrayList<>();
@@ -177,11 +172,11 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static AiMessage aiMessageFrom(com.azure.ai.openai.models.ChatMessage chatMessage) {
-        if (chatMessage.getContent() != null) {
-            return aiMessage(chatMessage.getContent());
+    public static AiMessage aiMessageFrom(com.azure.ai.openai.models.ChatResponseMessage chatResponseMessage) {
+        if (chatResponseMessage.getContent() != null) {
+            return aiMessage(chatResponseMessage.getContent());
         } else {
-            FunctionCall functionCall = chatMessage.getFunctionCall();
+            FunctionCall functionCall = chatResponseMessage.getFunctionCall();
 
             ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
                     .name(functionCall.getName())
