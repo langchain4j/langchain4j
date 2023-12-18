@@ -35,6 +35,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     @Builder
     public OpenAiEmbeddingModel(String baseUrl,
                                 String apiKey,
+                                String organizationId,
                                 String modelName,
                                 Duration timeout,
                                 Integer maxRetries,
@@ -53,6 +54,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
