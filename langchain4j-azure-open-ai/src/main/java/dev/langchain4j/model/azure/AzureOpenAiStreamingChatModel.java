@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
@@ -117,7 +118,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        generate(messages, singletonList(toolSpecification), toolSpecification, handler);
+        generate(messages, null, toolSpecification, handler);
     }
 
     private void generate(List<ChatMessage> messages,
@@ -136,16 +137,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+        if (toolThatMustBeExecuted != null) {
+            options.setFunctions(toFunctions(singletonList(toolThatMustBeExecuted)));
+            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
+            if (tokenizer != null) {
+                inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+            }
+        } else if (!isNullOrEmpty(toolSpecifications)) {
             options.setFunctions(toFunctions(toolSpecifications));
             if (tokenizer != null) {
                 inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-            }
-        }
-        if (toolThatMustBeExecuted != null) {
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInToolSpecification(toolThatMustBeExecuted);
             }
         }
 
@@ -172,7 +173,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         if (choices == null || choices.isEmpty()) {
             return;
         }
-        com.azure.ai.openai.models.ChatMessage delta = choices.get(0).getDelta();
+        com.azure.ai.openai.models.ChatResponseMessage delta = choices.get(0).getDelta();
         String content = delta.getContent();
         if (content != null) {
             handler.onNext(content);
