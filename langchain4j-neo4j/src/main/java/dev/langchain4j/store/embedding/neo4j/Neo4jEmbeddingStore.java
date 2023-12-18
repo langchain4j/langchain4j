@@ -45,7 +45,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     /* Neo4j schema field settings */
     private final int dimension;
     private final long awaitIndexTimeout;
-    private final Neo4jDistanceType distanceType;
 
     private final String indexName;
     private final String metadataPrefix;
@@ -79,7 +78,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param label: the optional label name (default: "Document")
      * @param embeddingProperty: the optional embeddingProperty name (default: "embedding")
      * @param idProperty: the optional id property name (default: "id")
-     * @param distanceType: the optional distanceType (default: "cosine")
      * @param metadataPrefix: the optional metadata prefix (default: "")
      * @param textProperty: the optional textProperty property name (default: "text")
      * @param indexName: the optional index name (default: "vector")
@@ -96,7 +94,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
             String label,
             String embeddingProperty,
             String idProperty,
-            Neo4jDistanceType distanceType,
             String metadataPrefix,
             String textProperty,
             String indexName,
@@ -114,7 +111,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.label = getOrDefault(label, DEFAULT_LABEL);
         this.embeddingProperty = getOrDefault(embeddingProperty, DEFAULT_EMBEDDING_PROP);
         this.idProperty = getOrDefault(idProperty, DEFAULT_ID_PROP);
-        this.distanceType = getOrDefault(distanceType, Neo4jDistanceType.COSINE);
         this.indexName = getOrDefault(indexName, DEFAULT_IDX_NAME);
         this.metadataPrefix = getOrDefault(metadataPrefix, "");
         this.textProperty = getOrDefault(textProperty, DEFAULT_TEXT_PROP);
@@ -303,12 +299,11 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         Map<String, Object> params = Map.of("indexName", this.indexName,
                 "label", this.label,
                 "embeddingProperty", this.embeddingProperty,
-                "dimension", this.dimension,
-                "distanceType", this.distanceType.getValue());
+                "dimension", this.dimension);
 
         // create vector index
         try (var session = session()) {
-            session.run("CALL db.index.vector.createNodeIndex($indexName, $label, $embeddingProperty, $dimension, $distanceType)",
+            session.run("CALL db.index.vector.createNodeIndex($indexName, $label, $embeddingProperty, $dimension, 'cosine')",
                     params);
 
             session.run("CALL db.awaitIndexes($timeout)", 
