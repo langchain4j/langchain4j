@@ -11,6 +11,7 @@ class ModerationModelProperties {
 
     String baseUrl;
     String apiKey;
+    String organizationId;
     String modelName;
     Duration timeout;
     Integer maxRetries;

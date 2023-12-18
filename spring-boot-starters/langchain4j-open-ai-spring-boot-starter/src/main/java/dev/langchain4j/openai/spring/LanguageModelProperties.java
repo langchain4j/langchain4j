@@ -11,6 +11,7 @@ class LanguageModelProperties {
 
     String baseUrl;
     String apiKey;
+    String organizationId;
     String modelName;
     Double temperature;
     Duration timeout;

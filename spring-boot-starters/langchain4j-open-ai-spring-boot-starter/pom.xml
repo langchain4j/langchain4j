@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <name>Langchain4j Spring Boot starter for OpenAI</name>
+    <name>LangChain4j Spring Boot starter for OpenAI</name>
     <packaging>jar</packaging>
 
     <dependencies>

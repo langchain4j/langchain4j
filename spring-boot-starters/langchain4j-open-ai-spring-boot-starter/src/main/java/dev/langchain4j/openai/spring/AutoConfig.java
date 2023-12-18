@@ -28,29 +28,30 @@ public class AutoConfig {
     @ConditionalOnMissingBean
     OpenAiChatModel openAiChatModel(OpenAiProperties openAiProperties) {
 
-        ChatModelProperties properties = openAiProperties.getChatModel();
+        ChatModelProperties properties = openAiProperties.chatModel;
         if (properties == null) {
             throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiChatModel", PREFIX, "chat-model");
         }
 
-        if (isNullOrBlank(properties.getApiKey())) {
+        if (isNullOrBlank(properties.apiKey)) {
             throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "chat-model");
         }
 
         return OpenAiChatModel.builder()
-                .baseUrl(properties.getBaseUrl())
-                .apiKey(properties.getApiKey())
-                .modelName(properties.getModelName())
-                .temperature(properties.getTemperature())
-                .topP(properties.getTopP())
-                .stop(properties.getStop())
-                .maxTokens(properties.getMaxTokens())
-                .presencePenalty(properties.getPresencePenalty())
-                .frequencyPenalty(properties.getFrequencyPenalty())
-                .timeout(properties.getTimeout())
-                .maxRetries(properties.getMaxRetries())
-                .logRequests(properties.getLogRequests())
-                .logResponses(properties.getLogResponses())
+                .baseUrl(properties.baseUrl)
+                .apiKey(properties.apiKey)
+                .organizationId(properties.organizationId)
+                .modelName(properties.modelName)
+                .temperature(properties.temperature)
+                .topP(properties.topP)
+                .stop(properties.stop)
+                .maxTokens(properties.maxTokens)
+                .presencePenalty(properties.presencePenalty)
+                .frequencyPenalty(properties.frequencyPenalty)
+                .timeout(properties.timeout)
+                .maxRetries(properties.maxRetries)
+                .logRequests(properties.logRequests)
+                .logResponses(properties.logResponses)
                 .build();
     }
 
@@ -59,24 +60,25 @@ public class AutoConfig {
     @ConditionalOnMissingBean
     OpenAiLanguageModel openAiLanguageModel(OpenAiProperties openAiProperties) {
 
-        LanguageModelProperties properties = openAiProperties.getLanguageModel();
+        LanguageModelProperties properties = openAiProperties.languageModel;
         if (properties == null) {
             throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiLanguageModel", PREFIX, "language-model");
         }
 
-        if (isNullOrBlank(properties.getApiKey())) {
+        if (isNullOrBlank(properties.apiKey)) {
             throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "language-model");
         }
 
         return OpenAiLanguageModel.builder()
-                .baseUrl(properties.getBaseUrl())
-                .apiKey(properties.getApiKey())
-                .modelName(properties.getModelName())
-                .temperature(properties.getTemperature())
-                .timeout(properties.getTimeout())
-                .maxRetries(properties.getMaxRetries())
-                .logRequests(properties.getLogRequests())
-                .logResponses(properties.getLogResponses())
+                .baseUrl(properties.baseUrl)
+                .apiKey(properties.apiKey)
+                .organizationId(properties.organizationId)
+                .modelName(properties.modelName)
+                .temperature(properties.temperature)
+                .timeout(properties.timeout)
+                .maxRetries(properties.maxRetries)
+                .logRequests(properties.logRequests)
+                .logResponses(properties.logResponses)
                 .build();
     }
 
@@ -85,23 +87,24 @@ public class AutoConfig {
     @ConditionalOnMissingBean
     OpenAiEmbeddingModel openAiEmbeddingModel(OpenAiProperties openAiProperties) {
 
-        EmbeddingModelProperties properties = openAiProperties.getEmbeddingModel();
+        EmbeddingModelProperties properties = openAiProperties.embeddingModel;
         if (properties == null) {
             throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiEmbeddingModel", PREFIX, "embedding-model");
         }
 
-        if (isNullOrBlank(properties.getApiKey())) {
+        if (isNullOrBlank(properties.apiKey)) {
             throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "embedding-model");
         }
 
         return OpenAiEmbeddingModel.builder()
-                .baseUrl(properties.getBaseUrl())
-                .apiKey(properties.getApiKey())
-                .modelName(properties.getModelName())
-                .timeout(properties.getTimeout())
-                .maxRetries(properties.getMaxRetries())
-                .logRequests(properties.getLogRequests())
-                .logResponses(properties.getLogResponses())
+                .baseUrl(properties.baseUrl)
+                .apiKey(properties.apiKey)
+                .organizationId(properties.organizationId)
+                .modelName(properties.modelName)
+                .timeout(properties.timeout)
+                .maxRetries(properties.maxRetries)
+                .logRequests(properties.logRequests)
+                .logResponses(properties.logResponses)
                 .build();
     }
 
@@ -110,23 +113,24 @@ public class AutoConfig {
     @ConditionalOnMissingBean
     OpenAiModerationModel openAiModerationModel(OpenAiProperties openAiProperties) {
 
-        ModerationModelProperties properties = openAiProperties.getModerationModel();
+        ModerationModelProperties properties = openAiProperties.moderationModel;
         if (properties == null) {
             throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiModerationModel", PREFIX, "moderation-model");
         }
 
-        if (isNullOrBlank(properties.getApiKey())) {
+        if (isNullOrBlank(properties.apiKey)) {
             throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "moderation-model");
         }
 
         return OpenAiModerationModel.builder()
-                .baseUrl(properties.getBaseUrl())
-                .apiKey(properties.getApiKey())
-                .modelName(properties.getModelName())
-                .timeout(properties.getTimeout())
-                .maxRetries(properties.getMaxRetries())
-                .logRequests(properties.getLogRequests())
-                .logResponses(properties.getLogResponses())
+                .baseUrl(properties.baseUrl)
+                .apiKey(properties.apiKey)
+                .organizationId(properties.organizationId)
+                .modelName(properties.modelName)
+                .timeout(properties.timeout)
+                .maxRetries(properties.maxRetries)
+                .logRequests(properties.logRequests)
+                .logResponses(properties.logResponses)
                 .build();
     }
 }
