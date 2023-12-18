@@ -1,15 +1,28 @@
 package dev.langchain4j.data.image;
 
-public class Image {
+import java.net.URI;
+import java.util.Objects;
 
-    private String url;
+public final class Image {
 
-    public String url() {
+    private URI url;
+    private String revisedPrompt;
+
+    public URI url() {
         return url;
     }
 
-    public void url(String url) {
+    public void url(URI url) {
         this.url = url;
+    }
+
+    private Image(Builder builder) {
+        this.url = builder.url;
+        this.revisedPrompt = builder.revisedPrompt;
+    }
+
+    public String revisedPrompt() {
+        return revisedPrompt;
     }
 
     public static Builder builder() {
@@ -18,10 +31,16 @@ public class Image {
 
     public static class Builder {
 
-        private String url;
+        private URI url;
+        private String revisedPrompt;
 
-        public Builder url(String url) {
+        public Builder url(URI url) {
             this.url = url;
+            return this;
+        }
+
+        public Builder revisedPrompt(String revisedPrompt) {
+            this.revisedPrompt = revisedPrompt;
             return this;
         }
 
@@ -30,7 +49,21 @@ public class Image {
         }
     }
 
-    private Image(Builder builder) {
-        this.url = builder.url;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Image image = (Image) o;
+        return Objects.equals(url, image.url) && Objects.equals(revisedPrompt, image.revisedPrompt);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(url, revisedPrompt);
+    }
+
+    @Override
+    public String toString() {
+        return "Image{" + "url='" + url + '\'' + ", revisedPrompt='" + revisedPrompt + '\'' + '}';
     }
 }

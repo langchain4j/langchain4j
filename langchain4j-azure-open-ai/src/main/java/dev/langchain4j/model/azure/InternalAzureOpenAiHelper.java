@@ -22,6 +22,10 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.time.Duration;
 import java.util.*;
 
@@ -189,9 +193,20 @@ class InternalAzureOpenAiHelper {
     }
 
     public static Image imageFrom(com.azure.ai.openai.models.ImageGenerationData imageGenerationData) {
-        return Image.builder()
-                .url(imageGenerationData.getUrl())
-                .build();
+        Image.Builder imageBuilder = Image.builder()
+                .revisedPrompt(imageGenerationData.getRevisedPrompt());
+
+        String urlString = imageGenerationData.getUrl();
+        if (urlString != null) {
+            try {
+                URI uri = new URI(urlString);
+                imageBuilder.url(uri);
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return imageBuilder.build();
     }
 
     public static TokenUsage tokenUsageFrom(CompletionsUsage openAiUsage) {

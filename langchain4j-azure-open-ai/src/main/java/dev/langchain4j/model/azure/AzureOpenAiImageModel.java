@@ -8,15 +8,17 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
+import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
+import static java.util.stream.Collectors.toList;
 
 public class AzureOpenAiImageModel implements ImageModel {
 
     private OpenAIClient client;
     private final String deploymentName;
+    private final Integer n;
     private final ImageGenerationQuality quality;
     private final ImageSize size;
     private final String user;
@@ -25,13 +27,14 @@ public class AzureOpenAiImageModel implements ImageModel {
 
     public AzureOpenAiImageModel(OpenAIClient client,
                                  String deploymentName,
+                                 Integer n,
                                  String quality,
                                  String size,
                                  String user,
                                  String style,
                                  String responseFormat) {
 
-        this(deploymentName, quality, size, user, style, responseFormat);
+        this(deploymentName, n, quality, size, user, style, responseFormat);
         this.client = client;
     }
 
@@ -39,6 +42,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                 String serviceVersion,
                                 String apiKey,
                                 String deploymentName,
+                                Integer n,
                                 String quality,
                                 String size,
                                 String user,
@@ -49,12 +53,13 @@ public class AzureOpenAiImageModel implements ImageModel {
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses) {
 
-        this(deploymentName, quality, size, user, style, responseFormat);
+        this(deploymentName, n, quality, size, user, style, responseFormat);
         this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
-    private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
+    private AzureOpenAiImageModel(String deploymentName, Integer n, String quality, String size, String user, String style, String responseFormat) {
         this.deploymentName = getOrDefault(deploymentName, "dall-e-3");
+        this.n = getOrDefault(n, 1);
         this.quality = getOrDefault(ImageGenerationQuality.fromString(quality), ImageGenerationQuality.STANDARD);
         this.size = getOrDefault(ImageSize.fromString(size), ImageSize.SIZE1024X1024);
         this.user = getOrDefault(user, "");
@@ -63,11 +68,11 @@ public class AzureOpenAiImageModel implements ImageModel {
     }
 
     @Override
-    public Response<Image> generate(String prompt) {
+    public Response<List<Image>> generate(String prompt) {
 
         ImageGenerationOptions options = new ImageGenerationOptions(prompt)
                 .setModel(deploymentName)
-                .setN(1)
+                .setN(n)
                 .setQuality(quality)
                 .setSize(size)
                 .setUser(user)
@@ -76,7 +81,11 @@ public class AzureOpenAiImageModel implements ImageModel {
 
         ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
 
-        return Response.from(imageFrom(imageGenerations.getData().get(0)));
+        List<Image> images = imageGenerations.getData().stream()
+                .map(InternalAzureOpenAiHelper::imageFrom)
+                .collect(toList());
+
+        return Response.from(images);
     }
 
     public static Builder builder() {
@@ -89,6 +98,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         private String serviceVersion;
         private String apiKey;
         private String deploymentName;
+        private Integer n;
         private String quality;
         private String size;
         private String user;
@@ -141,6 +151,17 @@ public class AzureOpenAiImageModel implements ImageModel {
          */
         public Builder deploymentName(String deploymentName) {
             this.deploymentName = deploymentName;
+            return this;
+        }
+
+        /**
+         * Sets the number of images to generate. This is an optional parameter.
+         *
+         * @param n The number of images to generate.
+         * @return builder
+         */
+        public Builder setN(Integer n) {
+            this.n = n;
             return this;
         }
 
@@ -229,6 +250,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                 return new AzureOpenAiImageModel(
                         openAIClient,
                         deploymentName,
+                        n,
                         quality,
                         size,
                         user,
@@ -240,6 +262,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                     serviceVersion,
                     apiKey,
                     deploymentName,
+                    n,
                     quality,
                     size,
                     user,
