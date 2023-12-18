@@ -23,7 +23,7 @@ public class VertexAiVectorSearchIT extends EmbeddingStoreIT {
             .indexEndpointId("[INDEX_ENDPOINT_ID]")
             .location("us-central1")
             .project("[PROJECT]")
-            .returnFullDatapoint(true)
+            .retrieveEmbeddingsOnSearch(true)
             .build();
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

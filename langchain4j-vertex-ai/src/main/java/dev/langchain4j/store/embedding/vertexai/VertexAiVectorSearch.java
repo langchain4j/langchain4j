@@ -48,7 +48,7 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      */
     @Getter
     @Builder.Default
-    private final boolean returnFullDatapoint = false;
+    private final boolean retrieveEmbeddingsOnSearch = false;
     @Getter(lazy = true)
     private final VectorSearchService vectorSearchService = initMatchingService();
     @Getter(lazy = true)
@@ -122,7 +122,7 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
      * @return the ids of the embeddings
      */
     public List<String> addAll(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isCollectionEmpty(embeddings)) {
+        if (isNullOrEmpty(embeddings)) {
             log.info("Empty embeddings - no ops");
             return new ArrayList<>();
         }
@@ -254,7 +254,7 @@ public class VertexAiVectorSearch implements EmbeddingStore<TextSegment> {
                 .gcpBlobService(getGcpBlobService())
                 .deployedIndexId(ensureNotNull(deployedIndexId, "deployedIndexId"))
                 .credentialsProvider(credentialsProvider)
-                .returnFullDatapoint(returnFullDatapoint)
+                .returnFullDatapoint(retrieveEmbeddingsOnSearch)
                 .indexEndpointId(ensureNotNull(indexEndpointId, "indexEndpointId"))
                 .indexId(ensureNotNull(indexId, "indexId"))
                 .project(ensureNotNull(project, "project"))
