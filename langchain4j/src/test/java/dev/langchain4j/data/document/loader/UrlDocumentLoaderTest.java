@@ -1,6 +1,6 @@
-package dev.langchain4j.data.document;
+package dev.langchain4j.data.document.loader;
 
-import dev.langchain4j.data.document.loader.UrlDocumentLoader;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import org.junit.jupiter.api.Test;
 

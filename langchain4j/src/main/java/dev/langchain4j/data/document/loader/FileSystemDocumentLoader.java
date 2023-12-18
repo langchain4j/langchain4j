@@ -28,7 +28,7 @@ public class FileSystemDocumentLoader {
      * Returned document contains all the textual information from the file.
      *
      * @param filePath       The path to the file.
-     * @param documentParser The parser that should be used to parse text from the file.
+     * @param documentParser The parser to be used for parsing text from the file.
      * @return document
      * @throws IllegalArgumentException If specified path is not a file.
      */
@@ -45,7 +45,7 @@ public class FileSystemDocumentLoader {
      * Returned document contains all the textual information from the file.
      *
      * @param filePath       The path to the file.
-     * @param documentParser The parser that should be used to parse text from the file.
+     * @param documentParser The parser to be used for parsing text from the file.
      * @return document
      * @throws IllegalArgumentException If specified path is not a file.
      */
@@ -58,7 +58,7 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param documentParser The parser that should be used to parse text from each file.
+     * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
      */
@@ -69,14 +69,14 @@ public class FileSystemDocumentLoader {
 
         List<Document> documents = new ArrayList<>();
 
-        try (Stream<Path> paths = Files.list(directoryPath)) {
-            paths.filter(Files::isRegularFile)
-                    .forEach(filePath -> {
+        try (Stream<Path> files = Files.list(directoryPath)) {
+            files.filter(Files::isRegularFile)
+                    .forEach(file -> {
                         try {
-                            Document document = loadDocument(filePath, documentParser);
+                            Document document = loadDocument(file, documentParser);
                             documents.add(document);
                         } catch (Exception e) {
-                            log.warn("Failed to load document from " + filePath, e);
+                            log.warn("Failed to load document from " + file, e);
                         }
                     });
         } catch (IOException e) {
@@ -91,7 +91,7 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param documentParser The parser that should be used to parse text from each file.
+     * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
      */

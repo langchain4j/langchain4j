@@ -14,7 +14,7 @@ public class UrlDocumentLoader {
      * Loads a document from the specified URL.
      *
      * @param url            The URL of the file.
-     * @param documentParser The parser that should be used to parse text from the URL.
+     * @param documentParser The parser to be used for parsing text from the URL.
      * @return document
      */
     public static Document load(URL url, DocumentParser documentParser) {
@@ -25,7 +25,7 @@ public class UrlDocumentLoader {
      * Loads a document from the specified URL.
      *
      * @param url            The URL of the file.
-     * @param documentParser The parser that should be used to parse text from the URL.
+     * @param documentParser The parser to be used for parsing text from the URL.
      * @return document
      * @throws RuntimeException If specified URL is malformed.
      */

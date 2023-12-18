@@ -14,6 +14,3 @@ public class DocumentLoader {
         }
     }
 }
-
-// TODO document package check in all modules
-// TODO store.embedding

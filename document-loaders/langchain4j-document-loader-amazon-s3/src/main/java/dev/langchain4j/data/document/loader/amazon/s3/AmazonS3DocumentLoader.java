@@ -37,11 +37,11 @@ public class AmazonS3DocumentLoader {
     }
 
     /**
-     * Loads a document from an S3 bucket based on the specified key.
+     * Loads a single document from the specified S3 bucket based on the specified object key.
      *
      * @param bucket S3 bucket to load from.
      * @param key    The key of the S3 object which should be loaded.
-     * @param parser The parser that should be used to parse text from the object.
+     * @param parser The parser to be used for parsing text from the object.
      * @return A document containing the content of the S3 object.
      * @throws RuntimeException If {@link S3Exception} occurs.
      */
@@ -64,7 +64,7 @@ public class AmazonS3DocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param bucket S3 bucket to load from.
-     * @param parser The parser that should be used to parse text from the object.
+     * @param parser The parser to be used for parsing text from the object.
      * @return A list of documents.
      * @throws RuntimeException If {@link S3Exception} occurs.
      */
@@ -78,7 +78,7 @@ public class AmazonS3DocumentLoader {
      *
      * @param bucket S3 bucket to load from.
      * @param prefix Only keys with the specified prefix will be loaded.
-     * @param parser The parser that should be used to parse text from the object.
+     * @param parser The parser to be used for parsing text from the object.
      * @return A list of documents.
      * @throws RuntimeException If {@link S3Exception} occurs.
      */
@@ -102,7 +102,7 @@ public class AmazonS3DocumentLoader {
                 Document document = loadDocument(bucket, key, parser);
                 documents.add(document);
             } catch (Exception e) {
-                log.warn("Failed to load object '{}' from bucket '{}', skipping it.", key, bucket, e);
+                log.warn("Failed to load an object with key '{}' from bucket '{}', skipping it.", key, bucket, e);
             }
         }
 
