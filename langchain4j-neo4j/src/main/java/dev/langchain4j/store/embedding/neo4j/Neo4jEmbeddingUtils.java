@@ -8,19 +8,16 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.neo4j.cypherdsl.support.schema_name.SchemaNames.sanitize;
 
-public class Neo4jEmbeddingUtils {
+class Neo4jEmbeddingUtils {
     
     /* not-configurable strings, just used under-the-hood in `UNWIND $rows ...` statement */
     public static final String EMBEDDINGS_ROW_KEY = "embeddingRow";
@@ -33,14 +30,12 @@ public class Neo4jEmbeddingUtils {
     public static final String DEFAULT_IDX_NAME = "vector";
     public static final String DEFAULT_LABEL = "Document";
     public static final String DEFAULT_TEXT_PROP = "text";
+    public static final long DEFAULT_AWAIT_INDEX_TIMEOUT = 60L;
 
     public static EmbeddingMatch<TextSegment> toEmbeddingMatch(Neo4jEmbeddingStore store, Record neo4jRecord) {
         Map<String, String> metaData = new HashMap<>();
         neo4jRecord.get("metadata").asMap().forEach((key, value) -> {
-            Set<String> notMetaKeys = Arrays.asList(store.getIdProperty(), store.getEmbeddingProperty(), store.getText())
-                    .stream()
-                    .collect(Collectors.toSet());
-            if (!notMetaKeys.contains(key)) {
+            if (!store.getNotMetaKeys().contains(key)) {
                 String stringValue = value == null ? null : value.toString();
                 metaData.put(key.replace(store.getMetadataPrefix(), ""), stringValue);
             }
@@ -48,28 +43,20 @@ public class Neo4jEmbeddingUtils {
 
         Metadata metadata = new Metadata(metaData);
 
-        Value text = neo4jRecord.get(store.getText());
+        Value text = neo4jRecord.get(store.getTextProperty());
         TextSegment textSegment = text.isNull()
                 ? null
                 : TextSegment.from(text.asString(), metadata);
-        List<Number> embeddingList = neo4jRecord.get(store.getEmbeddingProperty())
-                .asList(Value::asNumber);
 
-        Embedding embedding = new Embedding(toFloatArray(embeddingList));
+        List<Float> embeddingList = neo4jRecord.get(store.getEmbeddingProperty())
+                .asList(Value::asFloat);
+
+        Embedding embedding = Embedding.from(embeddingList);
 
         return new EmbeddingMatch<>(neo4jRecord.get("score").asDouble(),
                 neo4jRecord.get(store.getIdProperty()).asString(),
                 embedding,
                 textSegment);
-    }
-    
-    public static float[] toFloatArray(List<Number> numberList) {
-        float[] embeddingFloat = new float[numberList.size()];
-        int i = 0;
-        for(Number num: numberList) {
-            embeddingFloat[i++] = num.floatValue();
-        }
-        return embeddingFloat;
     }
 
     public static Map<String, Object> toRecord(Neo4jEmbeddingStore store, int idx, List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
@@ -82,7 +69,7 @@ public class Neo4jEmbeddingUtils {
         Map<String, Object> properties = new HashMap<>();
         if (embedded != null) {
             TextSegment segment = embedded.get(idx);
-            properties.put(store.getText(), segment.text());
+            properties.put(store.getTextProperty(), segment.text());
             Map<String, String> metadata = segment.metadata().asMap();
             metadata.forEach((k, v) -> properties.put(store.getMetadataPrefix() + k, Values.value(v)));
         }
@@ -114,7 +101,7 @@ public class Neo4jEmbeddingUtils {
                     String invalidSanitizeValue = String.format("The value %s, to assign to configuration %s, cannot be safely quoted",
                             value,
                             config);
-                    throw new RuntimeException(invalidSanitizeValue);
+                    return new RuntimeException(invalidSanitizeValue);
                 });
     }
 }

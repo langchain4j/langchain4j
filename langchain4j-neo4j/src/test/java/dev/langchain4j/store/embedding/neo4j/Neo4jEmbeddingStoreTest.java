@@ -384,6 +384,7 @@ class Neo4jEmbeddingStoreTest {
                 .dimension(384)
                 .indexName(idxName)
                 .metadataPrefix(metadataPrefix)
+                .awaitIndexTimeout(20)
                 .build();
 
         String secondLabel = "Second label";

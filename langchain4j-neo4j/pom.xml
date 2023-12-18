@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.23.0</version>
+        <version>0.24.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
     
