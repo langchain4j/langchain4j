@@ -18,7 +18,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openai4j.version>0.11.1</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.5</azure-ai-openai.version>
+        <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>

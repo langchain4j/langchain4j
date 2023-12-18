@@ -173,7 +173,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         if (choices == null || choices.isEmpty()) {
             return;
         }
-        com.azure.ai.openai.models.ChatMessage delta = choices.get(0).getDelta();
+        com.azure.ai.openai.models.ChatResponseMessage delta = choices.get(0).getDelta();
         String content = delta.getContent();
         if (content != null) {
             handler.onNext(content);
