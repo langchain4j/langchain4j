@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ChatResponse {
+class ChatResponse {
     private String model;
     private String createdAt;
     private Message message;

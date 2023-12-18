@@ -2,7 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.ChatMessageType;
 
-public enum Role {
+enum Role {
     SYSTEM,
     USER,
     ASSISTANT;
