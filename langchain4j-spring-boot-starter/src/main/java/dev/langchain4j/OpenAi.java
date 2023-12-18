@@ -6,6 +6,7 @@ class OpenAi {
 
     private String baseUrl;
     private String apiKey;
+    private String organizationId;
     private String modelName;
     private Double temperature;
     private Double topP;
@@ -31,6 +32,14 @@ class OpenAi {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(String organizationId) {
+        this.organizationId = organizationId;
     }
 
     public String getModelName() {
