@@ -10,6 +10,7 @@ class OpenAiModerationModelIT {
 
     ModerationModel model = OpenAiModerationModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .build();
 
     @Test

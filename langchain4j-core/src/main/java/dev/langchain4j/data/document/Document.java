@@ -15,13 +15,16 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class Document {
 
-    public static final String DOCUMENT_TYPE = "document_type";
     public static final String FILE_NAME = "file_name";
     public static final String ABSOLUTE_DIRECTORY_PATH = "absolute_directory_path";
     public static final String URL = "url";
 
     private final String text;
     private final Metadata metadata;
+
+    public Document(String text) {
+        this(text, new Metadata());
+    }
 
     public Document(String text, Metadata metadata) {
         this.text = ensureNotBlank(text, "text");
@@ -67,7 +70,7 @@ public class Document {
     }
 
     public static Document from(String text) {
-        return new Document(text, new Metadata());
+        return new Document(text);
     }
 
     public static Document from(String text, Metadata metadata) {
