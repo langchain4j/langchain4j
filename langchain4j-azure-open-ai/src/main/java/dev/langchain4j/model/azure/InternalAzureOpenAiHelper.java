@@ -32,7 +32,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
-import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 class InternalAzureOpenAiHelper {
@@ -85,7 +84,7 @@ class InternalAzureOpenAiHelper {
 
     public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
-            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(message.text());
+            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(message.text(), ""));
             chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
@@ -187,7 +186,7 @@ class InternalAzureOpenAiHelper {
                     .arguments(functionCall.getArguments())
                     .build();
 
-            return AzureAiMessage.azureAiMessage(toolExecutionRequest);
+            return aiMessage(toolExecutionRequest);
         }
     }
 
@@ -235,28 +234,6 @@ class InternalAzureOpenAiHelper {
             return TOOL_EXECUTION;
         } else {
             return null;
-        }
-    }
-
-    /**
-     * Specific AiMessage implementation for Azure OpenAI, as it requires a non-Null "text" field.
-     */
-    public static class AzureAiMessage extends AiMessage {
-
-        public AzureAiMessage(List<ToolExecutionRequest> toolExecutionRequests) {
-            super(toolExecutionRequests);
-        }
-
-        public static AiMessage azureAiMessage(ToolExecutionRequest... toolExecutionRequests) {
-            return new AzureAiMessage(asList(toolExecutionRequests));
-        }
-
-        /**
-         * Returns an empty String as Azure OpenAI requires a non-Null object.
-         */
-        @Override
-        public String text() {
-            return "";
         }
     }
 }
