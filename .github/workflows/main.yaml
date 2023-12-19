@@ -15,18 +15,18 @@ jobs:
         java_version: [8, 11, 17, 21]
         include:
           - java_version: '8'
-            included_modules: '-pl !langchain4j-graal,!langchain4j-opensearch'
+            included_modules: '-pl !langchain4j-graal,!langchain4j-neo4j,!langchain4j-opensearch'
           - java_version: '11'
-            included_modules: '-pl !langchain4j-graal'
+            included_modules: '-pl !langchain4j-graal,!langchain4j-neo4j'
           - java_version: '17'
             included_modules: '-pl !langchain4j-graal'
           - java_version: '21'
             included_modules: ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up JDK ${{ matrix.java_version }}
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'

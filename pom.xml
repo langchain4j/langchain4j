@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.24.0</version>
+    <version>0.25.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -40,8 +40,16 @@
         <module>langchain4j-redis</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-neo4j</module>
 
-        <!-- other -->
+        <!-- document loaders -->
+        <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
+
+        <!-- document parsers -->
+        <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
+        <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+
+        <!-- code execution engines -->
         <module>langchain4j-graal</module>
 
     </modules>

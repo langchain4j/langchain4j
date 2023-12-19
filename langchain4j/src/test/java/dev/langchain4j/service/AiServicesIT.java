@@ -56,6 +56,7 @@ public class AiServicesIT {
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -67,6 +68,7 @@ public class AiServicesIT {
     @Spy
     ModerationModel moderationModel = OpenAiModerationModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .build();
 
     ToolSpecification calculatorSpecification = ToolSpecification.builder()
@@ -845,6 +847,7 @@ public class AiServicesIT {
 
         ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106)
                 .temperature(0.0)
                 .logRequests(true)
