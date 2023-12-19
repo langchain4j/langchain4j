@@ -35,6 +35,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     @Builder
     public OpenAiLanguageModel(String baseUrl,
                                String apiKey,
+                               String organizationId,
                                String modelName,
                                Double temperature,
                                Duration timeout,
@@ -49,6 +50,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         this.client = OpenAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

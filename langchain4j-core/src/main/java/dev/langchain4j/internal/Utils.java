@@ -44,6 +44,11 @@ public class Utils {
     return collection == null || collection.isEmpty();
   }
 
+  @Deprecated
+  public static boolean isCollectionEmpty(Collection<?> collection) {
+    return isNullOrEmpty(collection);
+  }
+
   public static String repeat(String string, int times) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < times; i++) {

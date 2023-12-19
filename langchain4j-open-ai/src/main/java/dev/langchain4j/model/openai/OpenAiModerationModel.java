@@ -36,6 +36,7 @@ public class OpenAiModerationModel implements ModerationModel {
     @Builder
     public OpenAiModerationModel(String baseUrl,
                                  String apiKey,
+                                 String organizationId,
                                  String modelName,
                                  Duration timeout,
                                  Integer maxRetries,
@@ -53,6 +54,7 @@ public class OpenAiModerationModel implements ModerationModel {
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
