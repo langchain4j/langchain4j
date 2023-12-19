@@ -27,6 +27,7 @@
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-ollama</module>
+        <module>langchain4j-chatglm</module>
 
         <!-- embedding stores -->
         <module>langchain4j-cassandra</module>
