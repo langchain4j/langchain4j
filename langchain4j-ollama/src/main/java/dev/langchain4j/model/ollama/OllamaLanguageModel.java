@@ -9,6 +9,7 @@ import java.time.Duration;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Represents an Ollama language model with a completion interface
@@ -24,7 +25,7 @@ public class OllamaLanguageModel implements LanguageModel {
     public OllamaLanguageModel(String baseUrl, Duration timeout, String modelName,
                                Double temperature, Integer maxRetries) {
         this.client = OllamaClient.builder().baseUrl(baseUrl).timeout(timeout).build();
-        this.modelName = modelName;
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
