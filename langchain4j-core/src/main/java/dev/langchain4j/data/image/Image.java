@@ -8,12 +8,12 @@ import java.util.Objects;
 public final class Image {
 
     private URI url;
-    private String base64;
+    private String base64Data;
     private String revisedPrompt;
 
     private Image(Builder builder) {
         this.url = builder.url;
-        this.base64 = builder.base64;
+        this.base64Data = builder.base64Data;
         this.revisedPrompt = builder.revisedPrompt;
     }
 
@@ -25,8 +25,8 @@ public final class Image {
         return url;
     }
 
-    public String base64() {
-        return base64;
+    public String base64Data() {
+        return base64Data;
     }
 
     public String revisedPrompt() {
@@ -40,7 +40,7 @@ public final class Image {
         Image image = (Image) o;
         return (
             Objects.equals(url, image.url) &&
-            Objects.equals(base64, image.base64) &&
+            Objects.equals(base64Data, image.base64Data) &&
             Objects.equals(revisedPrompt, image.revisedPrompt)
         );
     }
@@ -56,8 +56,8 @@ public final class Image {
             "Image{" +
             " url=" +
             quoted(url.toString()) +
-            ", base64=" +
-            quoted(base64) +
+            ", base64Data=" +
+            quoted(base64Data) +
             ", revisedPrompt=" +
             quoted(revisedPrompt) +
             '}'
@@ -67,7 +67,7 @@ public final class Image {
     public static class Builder {
 
         private URI url;
-        private String base64;
+        private String base64Data;
         private String revisedPrompt;
 
         public Builder url(URI url) {
@@ -75,8 +75,8 @@ public final class Image {
             return this;
         }
 
-        public Builder base64(String base64) {
-            this.base64 = base64;
+        public Builder base64Data(String base64Data) {
+            this.base64Data = base64Data;
             return this;
         }
 

@@ -60,12 +60,12 @@ class OpenAiImageModelIT {
         Image localImage1 = response.content().get(0);
         log.info("Your first local image is here: {}", localImage1.url());
         assertThat(new File(localImage1.url())).exists();
-        assertThat(localImage1.base64()).isNotNull().isBase64();
+        assertThat(localImage1.base64Data()).isNotNull().isBase64();
 
         Image localImage2 = response.content().get(1);
         log.info("Your second local image is here: {}", localImage2.url());
         assertThat(new File(localImage2.url())).exists();
-        assertThat(localImage2.base64()).isNotNull().isBase64();
+        assertThat(localImage2.base64Data()).isNotNull().isBase64();
     }
 
     @Test

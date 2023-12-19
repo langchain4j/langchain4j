@@ -97,7 +97,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double presencePenalty,
                                          Double frequencyPenalty) {
 
-        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-0613");
+        this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
         this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO));
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
