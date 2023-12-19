@@ -1,9 +1,11 @@
 package dev.langchain4j.openai.spring;
 
+import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Duration;
 
+@Getter
 @Setter
 class EmbeddingModelProperties {
 

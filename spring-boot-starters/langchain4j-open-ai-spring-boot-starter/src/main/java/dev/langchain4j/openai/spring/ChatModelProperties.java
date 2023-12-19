@@ -1,10 +1,12 @@
 package dev.langchain4j.openai.spring;
 
+import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Duration;
 import java.util.List;
 
+@Getter
 @Setter
 class ChatModelProperties {
 

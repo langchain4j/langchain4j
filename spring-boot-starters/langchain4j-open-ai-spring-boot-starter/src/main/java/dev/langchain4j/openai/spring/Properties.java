@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 @Getter
 @Setter
-@ConfigurationProperties(prefix = OpenAiProperties.PREFIX)
-public class OpenAiProperties {
+@ConfigurationProperties(prefix = Properties.PREFIX)
+public class Properties {
 
     static final String PREFIX = "langchain4j.open-ai";
 
