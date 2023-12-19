@@ -8,6 +8,8 @@ import java.util.Objects;
 import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
 /**
@@ -20,12 +22,13 @@ public class AiMessage extends ChatMessage {
     private final List<ToolExecutionRequest> toolExecutionRequests;
 
     public AiMessage(String text) {
-        this(text, null);
+        super(ensureNotBlank(text, "text"));
+        this.toolExecutionRequests = null;
     }
 
-    public AiMessage(String text, List<ToolExecutionRequest> toolExecutionRequests) {
-        super(text);
-        this.toolExecutionRequests = toolExecutionRequests;
+    public AiMessage(List<ToolExecutionRequest> toolExecutionRequests) {
+        super(null);
+        this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
     }
 
     public List<ToolExecutionRequest> toolExecutionRequests() {
@@ -72,7 +75,7 @@ public class AiMessage extends ChatMessage {
     }
 
     public static AiMessage from(List<ToolExecutionRequest> toolExecutionRequests) {
-        return new AiMessage(null, toolExecutionRequests);
+        return new AiMessage(toolExecutionRequests);
     }
 
     public static AiMessage aiMessage(String text) {
