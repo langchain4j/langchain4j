@@ -205,7 +205,7 @@ class InternalAzureOpenAiHelper {
                 throw new RuntimeException(e);
             }
         } else if (imageData != null) {
-            imageBuilder.base64(imageData);
+            imageBuilder.base64Data(imageData);
         }
 
         return imageBuilder.build();

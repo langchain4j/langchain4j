@@ -38,7 +38,7 @@ public class AzureOpenAiImageModelIT {
         assertNotNull(image.url());
         logger.info("The remote image is here: {}", image.url());
 
-        assertNull(image.base64());
+        assertNull(image.base64Data());
 
         assertNotNull(image.revisedPrompt());
         logger.info("The revised prompt is: {}", image.revisedPrompt());
@@ -59,11 +59,11 @@ public class AzureOpenAiImageModelIT {
         Image image = response.content();
         assertNotNull(image);
         assertNull(image.url());
-        assertNotNull(image.base64());
-        logger.info("The image data is: {} characters", image.base64().length());
+        assertNotNull(image.base64Data());
+        logger.info("The image data is: {} characters", image.base64Data().length());
 
         if (logger.isDebugEnabled()) {
-            byte[] decodedBytes = Base64.getDecoder().decode(response.content().base64());
+            byte[] decodedBytes = Base64.getDecoder().decode(response.content().base64Data());
             Path temp = Files.createTempFile("langchain4j", ".png");
             Files.write(temp, decodedBytes);
             logger.debug("The image is here: {}", temp.toAbsolutePath());
