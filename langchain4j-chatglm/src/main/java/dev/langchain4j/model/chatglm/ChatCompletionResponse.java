@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ChatCompletionResponse {
+class ChatCompletionResponse {
 
     private String response;
     private List<List<String>> history;

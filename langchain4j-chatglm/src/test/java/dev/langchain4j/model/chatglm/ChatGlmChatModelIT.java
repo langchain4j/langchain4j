@@ -15,9 +15,9 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Disabled("need local deployment of ChatGLM, see https://github.com/THUDM/ChatGLM-6B")
-class ChatGLMChatModelIT {
+class ChatGlmChatModelIT {
 
-    ChatLanguageModel model = ChatGLMChatModel.builder()
+    ChatLanguageModel model = ChatGlmChatModel.builder()
             .baseUrl("http://localhost:8000")
             .build();
 

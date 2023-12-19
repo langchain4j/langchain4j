@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ChatCompletionRequest {
+class ChatCompletionRequest {
 
     private String prompt;
     private Double temperature;

@@ -15,16 +15,16 @@ import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.time.Duration.ofSeconds;
 
-class ChatGLMClient {
+class ChatGlmClient {
 
-    private final ChatGLMApi chatGLMApi;
+    private final ChatGlmApi chatGLMApi;
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
             .create();
 
 
     @Builder
-    public ChatGLMClient(String baseUrl, Duration timeout) {
+    public ChatGlmClient(String baseUrl, Duration timeout) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
@@ -40,7 +40,7 @@ class ChatGLMClient {
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
 
-        chatGLMApi = retrofit.create(ChatGLMApi.class);
+        chatGLMApi = retrofit.create(ChatGlmApi.class);
     }
 
     public ChatCompletionResponse chatCompletion(ChatCompletionRequest request) {
@@ -49,7 +49,7 @@ class ChatGLMClient {
                     = chatGLMApi.chatCompletion(request).execute();
 
             if (retrofitResponse.isSuccessful() && retrofitResponse.body() != null
-                    && retrofitResponse.body().getStatus() == ChatGLMApi.OK) {
+                    && retrofitResponse.body().getStatus() == ChatGlmApi.OK) {
                 return retrofitResponse.body();
             } else {
                 throw toException(retrofitResponse);
