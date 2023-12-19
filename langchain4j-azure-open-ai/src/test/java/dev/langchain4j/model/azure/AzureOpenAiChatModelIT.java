@@ -128,6 +128,7 @@ public class AzureOpenAiChatModelIT {
 
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(systemMessage);
+        chatMessages.add(aiMessage);
         chatMessages.add(userMessage);
         chatMessages.add(toolExecutionResultMessage);
 
