@@ -186,7 +186,7 @@ class InternalAzureOpenAiHelper {
                     .arguments(functionCall.getArguments())
                     .build();
 
-            return new AiMessage("", Collections.singletonList(toolExecutionRequest));
+            return aiMessage(toolExecutionRequest);
         }
     }
 
