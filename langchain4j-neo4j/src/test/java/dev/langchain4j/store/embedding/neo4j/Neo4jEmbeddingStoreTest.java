@@ -144,7 +144,6 @@ class Neo4jEmbeddingStoreTest {
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
 
-
         checkEntitiesCreated(relevant.size(), 
                 iterator -> {
             List<String> otherProps = Collections.singletonList(DEFAULT_TEXT_PROP);
@@ -264,9 +263,9 @@ class Neo4jEmbeddingStoreTest {
     @Test
     void should_add_multiple_embeddings_with_segments() {
 
-        TextSegment firstSegment = TextSegment.from(randomUUID());
+        TextSegment firstSegment = TextSegment.from("firstText");
         Embedding firstEmbedding = embeddingModel.embed(firstSegment.text()).content();
-        TextSegment secondSegment = TextSegment.from(randomUUID());
+        TextSegment secondSegment = TextSegment.from("secondText");
         Embedding secondEmbedding = embeddingModel.embed(secondSegment.text()).content();
 
         List<String> ids = embeddingStore.addAll(
@@ -482,7 +481,10 @@ class Neo4jEmbeddingStoreTest {
     }
 
     private void checkEntitiesCreated(int expectedSize, String labelName, Consumer<Iterator<Node>> nodeConsumer) {
-        String query = String.format("MATCH (n:%s) RETURN n", SchemaNames.sanitize(labelName).get());
+        String query = "MATCH (n:%s) RETURN n ORDER BY n.%s".formatted(
+                SchemaNames.sanitize(labelName).get(),
+                DEFAULT_TEXT_PROP
+        );
         
         List<Node> n = session.run(query)
                 .list(i -> i.get("n").asNode());
