@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CompletionRequest {
+class CompletionRequest {
 
     /**
      * model name
@@ -20,5 +20,6 @@ public class CompletionRequest {
      */
     private String prompt;
     private Options options;
+    private String system;
     private Boolean stream;
 }

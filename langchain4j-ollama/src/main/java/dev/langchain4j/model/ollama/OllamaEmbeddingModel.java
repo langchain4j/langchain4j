@@ -12,6 +12,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Represents an Ollama embedding model.
@@ -26,7 +27,7 @@ public class OllamaEmbeddingModel implements EmbeddingModel {
     public OllamaEmbeddingModel(String baseUrl, Duration timeout,
                                 String modelName, Integer maxRetries) {
         this.client = OllamaClient.builder().baseUrl(baseUrl).timeout(timeout).build();
-        this.modelName = modelName;
+        this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
