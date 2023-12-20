@@ -389,4 +389,55 @@ class OpenAiStreamingChatModelIT {
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
+
+    @Test
+    void should_stream_valid_json() throws ExecutionException, InterruptedException, TimeoutException {
+
+        //given
+        StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(OpenAiModelName.GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .responseFormat("json_object")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
+                "Before returning, tell me a joke."; // nudging it to say something additionally to json
+
+        // when
+        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+
+            private final StringBuilder answerBuilder = new StringBuilder();
+
+            @Override
+            public void onNext(String token) {
+                System.out.println("onNext: '" + token + "'");
+                answerBuilder.append(token);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                System.out.println("onComplete: '" + response + "'");
+                futureAnswer.complete(answerBuilder.toString());
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureAnswer.completeExceptionally(error);
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        String json = futureAnswer.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+
+        assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\", \"surname\": \"Heisler\"}");
+        assertThat(response.content().text()).isEqualTo(json);
+    }
 }

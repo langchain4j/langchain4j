@@ -15,6 +15,7 @@ import lombok.Builder;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -37,6 +38,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
+    private final Map<String, Integer> logitBias;
+    private final String responseFormat;
+    private final Integer seed;
+    private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
@@ -51,6 +56,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Integer maxTokens,
                            Double presencePenalty,
                            Double frequencyPenalty,
+                           Map<String, Integer> logitBias,
+                           String responseFormat,
+                           Integer seed,
+                           String user,
                            Duration timeout,
                            Integer maxRetries,
                            Proxy proxy,
@@ -84,6 +93,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
+        this.logitBias = logitBias;
+        this.responseFormat = responseFormat;
+        this.seed = seed;
+        this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
@@ -115,7 +128,11 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .stop(stop)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty);
+                .frequencyPenalty(frequencyPenalty)
+                .logitBias(logitBias)
+                .responseFormat(responseFormat)
+                .seed(seed)
+                .user(user);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             requestBuilder.tools(toTools(toolSpecifications));
