@@ -4,7 +4,6 @@ import com.google.cloud.vertexai.api.Candidate;
 import com.google.cloud.vertexai.api.GenerateContentResponse;
 import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
