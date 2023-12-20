@@ -8,9 +8,11 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,16 +28,22 @@ public class AzureOpenAiChatModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModelIT.class);
 
-    @Test
-    void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_generate_answer_and_return_token_usage_and_finish_reason_stop(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
+
         UserMessage userMessage = userMessage("hello, how are you?");
 
         Response<AiMessage> response = model.generate(userMessage);
@@ -51,14 +59,19 @@ public class AzureOpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @Test
-    void should_generate_answer_and_return_token_usage_and_finish_reason_length() {
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
                 .maxTokens(3)
                 .logRequestsAndResponses(true)
                 .build();
@@ -78,14 +91,19 @@ public class AzureOpenAiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
-    @Test
-    void should_call_function_with_argument() {
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_call_function_with_argument(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
