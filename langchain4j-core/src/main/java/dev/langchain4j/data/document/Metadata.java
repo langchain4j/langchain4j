@@ -18,23 +18,44 @@ public class Metadata {
 
     private final Map<String, String> metadata;
 
+    /**
+     * Construct a Metadata object with an empty map of key-value pairs.
+     */
     public Metadata() {
         this(new HashMap<>());
     }
 
+    /**
+     * Constructs a Metadata object from a map of key-value pairs.
+     *
+     * @param metadata the map of key-value pairs; must not be null.
+     */
     public Metadata(Map<String, String> metadata) {
         this.metadata = new HashMap<>(ensureNotNull(metadata, "metadata"));
     }
 
+    /**
+     * Returns the value associated with the given key.
+     *
+     * @param key the key
+     * @return the value associated with the given key, or null if the key is not present.
+     */
     public String get(String key) {
         return metadata.get(key);
     }
 
+    /**
+     * Adds a key-value pair to the metadata.
+     *
+     * @param key   the key
+     * @param value the value
+     * @return this Metadata object, for chaining
+     */
     public Metadata add(String key, String value) {
         this.metadata.put(key, value);
         return this;
     }
-
+        
     /**
      * Use {@link #add(String, String)} instead
      */
@@ -43,15 +64,27 @@ public class Metadata {
         return add(key, value.toString());
     }
 
+    /**
+     * Removes the given key from the metadata.
+     *
+     * @param key the key
+     * @return this Metadata object, for chaining
+     */
     public Metadata remove(String key) {
         this.metadata.remove(key);
         return this;
     }
 
+    /**
+     * @return a copy of this Metadata object.
+     */
     public Metadata copy() {
         return new Metadata(metadata);
     }
 
+    /**
+     * @return the metadata as a map of key-value pairs.
+     */
     public Map<String, String> asMap() {
         return new HashMap<>(metadata);
     }
@@ -76,6 +109,13 @@ public class Metadata {
                 " }";
     }
 
+    /**
+     * Constructs a Metadata object from a single key-value pair.
+     *
+     * @param key   the key
+     * @param value the value
+     * @return a Metadata object
+     */
     public static Metadata from(String key, String value) {
         return new Metadata().add(key, value);
     }
@@ -88,10 +128,23 @@ public class Metadata {
         return new Metadata().add(key, value);
     }
 
+    /**
+     * Constructs a Metadata object from a map of key-value pairs.
+     *
+     * @param metadata the map of key-value pairs
+     * @return a Metadata object
+     */
     public static Metadata from(Map<String, String> metadata) {
         return new Metadata(metadata);
     }
 
+    /**
+     * Constructs a Metadata object from a single key-value pair.
+     *
+     * @param key   the key
+     * @param value the value
+     * @return a Metadata object
+     */
     public static Metadata metadata(String key, String value) {
         return from(key, value);
     }
