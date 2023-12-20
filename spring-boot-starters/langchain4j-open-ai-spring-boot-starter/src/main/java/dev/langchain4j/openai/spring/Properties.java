@@ -23,4 +23,7 @@ public class Properties {
 
     @NestedConfigurationProperty
     ModerationModelProperties moderationModel;
+
+    @NestedConfigurationProperty
+    ImageModelProperties imageModel;
 }

@@ -2,6 +2,7 @@ package dev.langchain4j.openai.spring;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.*;
@@ -9,83 +10,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
 class AutoConfigIT {
 
-    private static final String CHAT_MODEL = "langchain4j.open-ai.chat-model";
-    private static final String LANGUAGE_MODEL = "langchain4j.open-ai.language-model";
-    private static final String EMBEDDING_MODEL = "langchain4j.open-ai.embedding-model";
-    private static final String MODERATION_MODEL = "langchain4j.open-ai.moderation-model";
-    private static final String API_KEY = ".api-key";
-    private static final String API_KEY_VALUE = System.getenv("OPENAI_API_KEY");
+    private static final String API_KEY = System.getenv("OPENAI_API_KEY");
 
     ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(AutoConfig.class));
 
     @Test
-    void should_fail_when_no_configuration() {
-        contextRunner.run(context -> {
-
-            assertThatThrownBy(() -> context.getBean(ChatLanguageModel.class)).hasMessageContaining(CHAT_MODEL);
-            assertThatThrownBy(() -> context.getBean(OpenAiChatModel.class)).hasMessageContaining(CHAT_MODEL);
-
-            assertThatThrownBy(() -> context.getBean(LanguageModel.class)).hasMessageContaining(LANGUAGE_MODEL);
-            assertThatThrownBy(() -> context.getBean(OpenAiLanguageModel.class)).hasMessageContaining(LANGUAGE_MODEL);
-
-            assertThatThrownBy(() -> context.getBean(EmbeddingModel.class)).hasMessageContaining(EMBEDDING_MODEL);
-            assertThatThrownBy(() -> context.getBean(OpenAiEmbeddingModel.class)).hasMessageContaining(EMBEDDING_MODEL);
-
-            assertThatThrownBy(() -> context.getBean(ModerationModel.class)).hasMessageContaining(MODERATION_MODEL);
-            assertThatThrownBy(() -> context.getBean(OpenAiModerationModel.class)).hasMessageContaining(MODERATION_MODEL);
-        });
-    }
-
-    @Test
-    void should_fail_when_no_api_key() {
-        contextRunner
-                .withPropertyValues(
-                        CHAT_MODEL + ".model-name = a",
-                        LANGUAGE_MODEL + ".model-name = b",
-                        EMBEDDING_MODEL + ".model-name = c",
-                        MODERATION_MODEL + ".model-name = d"
-                )
-                .run(context -> {
-
-                    assertThatThrownBy(() -> context.getBean(ChatLanguageModel.class))
-                            .hasMessageContaining(CHAT_MODEL + API_KEY);
-                    assertThatThrownBy(() -> context.getBean(OpenAiChatModel.class))
-                            .hasMessageContaining(CHAT_MODEL + API_KEY);
-
-                    assertThatThrownBy(() -> context.getBean(LanguageModel.class))
-                            .hasMessageContaining(LANGUAGE_MODEL + API_KEY);
-                    assertThatThrownBy(() -> context.getBean(OpenAiLanguageModel.class))
-                            .hasMessageContaining(LANGUAGE_MODEL + API_KEY);
-
-                    assertThatThrownBy(() -> context.getBean(EmbeddingModel.class))
-                            .hasMessageContaining(EMBEDDING_MODEL + API_KEY);
-                    assertThatThrownBy(() -> context.getBean(OpenAiEmbeddingModel.class))
-                            .hasMessageContaining(EMBEDDING_MODEL + API_KEY);
-
-                    assertThatThrownBy(() -> context.getBean(ModerationModel.class))
-                            .hasMessageContaining(MODERATION_MODEL + API_KEY);
-                    assertThatThrownBy(() -> context.getBean(OpenAiModerationModel.class))
-                            .hasMessageContaining(MODERATION_MODEL + API_KEY);
-                });
-    }
-
-    @Test
     void should_provide_chat_model() {
         contextRunner
                 .withPropertyValues(
-                        CHAT_MODEL + API_KEY + "=" + API_KEY_VALUE,
-                        CHAT_MODEL + ".max-tokens = 20"
+                        "langchain4j.open-ai.chat-model.api-key=" + API_KEY,
+                        "langchain4j.open-ai.chat-model.max-tokens=20"
                 )
                 .run(context -> {
 
@@ -102,8 +43,8 @@ class AutoConfigIT {
     void should_provide_language_model() {
         contextRunner
                 .withPropertyValues(
-                        LANGUAGE_MODEL + API_KEY + "=" + API_KEY_VALUE,
-                        LANGUAGE_MODEL + ".max-tokens = 20"
+                        "langchain4j.open-ai.language-model.api-key=" + API_KEY,
+                        "langchain4j.open-ai.language-model.max-tokens=20"
                 )
                 .run(context -> {
 
@@ -119,7 +60,7 @@ class AutoConfigIT {
     @Test
     void should_provide_embedding_model() {
         contextRunner
-                .withPropertyValues(EMBEDDING_MODEL + API_KEY + "=" + API_KEY_VALUE)
+                .withPropertyValues("langchain4j.open-ai.embedding-model.api-key=" + API_KEY)
                 .run(context -> {
 
                     EmbeddingModel embeddingModel = context.getBean(EmbeddingModel.class);
@@ -134,7 +75,7 @@ class AutoConfigIT {
     @Test
     void should_provide_moderation_model() {
         contextRunner
-                .withPropertyValues(MODERATION_MODEL + API_KEY + "=" + API_KEY_VALUE)
+                .withPropertyValues("langchain4j.open-ai.moderation-model.api-key=" + API_KEY)
                 .run(context -> {
 
                     ModerationModel moderationModel = context.getBean(ModerationModel.class);
@@ -147,30 +88,21 @@ class AutoConfigIT {
     }
 
     @Test
-    void should_provide_model_from_user_configuration() {
+    void should_provide_image_model() {
         contextRunner
-                .withPropertyValues(CHAT_MODEL + API_KEY + "=" + API_KEY_VALUE)
-                .withUserConfiguration(UserConfiguration.class)
+                .withPropertyValues(
+                        "langchain4j.open-ai.image-model.api-key=" + API_KEY,
+                        "langchain4j.open-ai.image-model.model-name=dall-e-2",
+                        "langchain4j.open-ai.image-model.size=256x256"
+                )
                 .run(context -> {
 
-                    OpenAiChatModel openAiChatModel = context.getBean(OpenAiChatModel.class);
+                    ImageModel imageModel = context.getBean(ImageModel.class);
+                    assertThat(imageModel).isInstanceOf(OpenAiImageModel.class);
+                    assertThat(imageModel.generate("banana").content().url()).isNotNull();
 
-                    String response = openAiChatModel.generate("hi");
-
-                    OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
-                    assertThat(tokenizer.estimateTokenCountInText(response)).isEqualTo(1);
+                    OpenAiImageModel openAiImageModel = context.getBean(OpenAiImageModel.class);
+                    assertThat(openAiImageModel.generate("banana").content().url()).isNotNull();
                 });
-    }
-
-    @Configuration
-    static class UserConfiguration {
-
-        @Bean
-        OpenAiChatModel openAiChatModel() {
-            return OpenAiChatModel.builder()
-                    .apiKey(API_KEY_VALUE)
-                    .maxTokens(1)
-                    .build();
-        }
     }
 }

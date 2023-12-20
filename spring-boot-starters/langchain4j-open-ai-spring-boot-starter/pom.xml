@@ -28,6 +28,12 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- should be listed before spring-boot-configuration-processor -->
         <dependency>
             <groupId>org.projectlombok</groupId>

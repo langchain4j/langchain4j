@@ -1,42 +1,21 @@
 package dev.langchain4j.openai.spring;
 
-import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiLanguageModel;
-import dev.langchain4j.model.openai.OpenAiModerationModel;
+import dev.langchain4j.model.openai.*;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.openai.spring.Properties.PREFIX;
 
 @AutoConfiguration
 @EnableConfigurationProperties(Properties.class)
 public class AutoConfig {
 
-    private static final String MISSING_CONFIG_ERROR = "You are requesting an instance of an %s, " +
-            "but no '%s.%s' configuration properties are provided.";
-    private static final String MISSING_API_KEY_ERROR = "Please provide an OpenAI API key through " +
-            "the '%s.%s.api-key' property.";
-
     @Bean
-    @Lazy
-    @ConditionalOnMissingBean
+    @ConditionalOnProperty(PREFIX + ".chat-model.api-key")
     OpenAiChatModel openAiChatModel(Properties properties) {
-
         ChatModelProperties chatModelProperties = properties.getChatModel();
-
-        if (chatModelProperties == null) {
-            throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiChatModel", PREFIX, "chat-model");
-        }
-        if (isNullOrBlank(chatModelProperties.apiKey)) {
-            throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "chat-model");
-        }
-
         return OpenAiChatModel.builder()
                 .baseUrl(chatModelProperties.getBaseUrl())
                 .apiKey(chatModelProperties.getApiKey())
@@ -56,19 +35,9 @@ public class AutoConfig {
     }
 
     @Bean
-    @Lazy
-    @ConditionalOnMissingBean
+    @ConditionalOnProperty(PREFIX + ".language-model.api-key")
     OpenAiLanguageModel openAiLanguageModel(Properties properties) {
-
         LanguageModelProperties languageModelProperties = properties.getLanguageModel();
-
-        if (languageModelProperties == null) {
-            throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiLanguageModel", PREFIX, "language-model");
-        }
-        if (isNullOrBlank(languageModelProperties.apiKey)) {
-            throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "language-model");
-        }
-
         return OpenAiLanguageModel.builder()
                 .baseUrl(languageModelProperties.getBaseUrl())
                 .apiKey(languageModelProperties.getApiKey())
@@ -83,19 +52,9 @@ public class AutoConfig {
     }
 
     @Bean
-    @Lazy
-    @ConditionalOnMissingBean
+    @ConditionalOnProperty(PREFIX + ".embedding-model.api-key")
     OpenAiEmbeddingModel openAiEmbeddingModel(Properties properties) {
-
         EmbeddingModelProperties embeddingModelProperties = properties.getEmbeddingModel();
-
-        if (embeddingModelProperties == null) {
-            throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiEmbeddingModel", PREFIX, "embedding-model");
-        }
-        if (isNullOrBlank(embeddingModelProperties.apiKey)) {
-            throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "embedding-model");
-        }
-
         return OpenAiEmbeddingModel.builder()
                 .baseUrl(embeddingModelProperties.getBaseUrl())
                 .apiKey(embeddingModelProperties.getApiKey())
@@ -109,19 +68,9 @@ public class AutoConfig {
     }
 
     @Bean
-    @Lazy
-    @ConditionalOnMissingBean
+    @ConditionalOnProperty(PREFIX + ".moderation-model.api-key")
     OpenAiModerationModel openAiModerationModel(Properties properties) {
-
         ModerationModelProperties moderationModelProperties = properties.getModerationModel();
-
-        if (moderationModelProperties == null) {
-            throw illegalArgument(MISSING_CONFIG_ERROR, "OpenAiModerationModel", PREFIX, "moderation-model");
-        }
-        if (isNullOrBlank(moderationModelProperties.apiKey)) {
-            throw illegalArgument(MISSING_API_KEY_ERROR, PREFIX, "moderation-model");
-        }
-
         return OpenAiModerationModel.builder()
                 .baseUrl(moderationModelProperties.getBaseUrl())
                 .apiKey(moderationModelProperties.getApiKey())
@@ -131,6 +80,29 @@ public class AutoConfig {
                 .maxRetries(moderationModelProperties.getMaxRetries())
                 .logRequests(moderationModelProperties.getLogRequests())
                 .logResponses(moderationModelProperties.getLogResponses())
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(PREFIX + ".image-model.api-key")
+    OpenAiImageModel openAiImageModel(Properties properties) {
+        ImageModelProperties imageModelProperties = properties.getImageModel();
+        return OpenAiImageModel.builder()
+                .baseUrl(imageModelProperties.getBaseUrl())
+                .apiKey(imageModelProperties.getApiKey())
+                .organizationId(imageModelProperties.getOrganizationId())
+                .modelName(imageModelProperties.getModelName())
+                .size(imageModelProperties.getSize())
+                .quality(imageModelProperties.getQuality())
+                .style(imageModelProperties.getStyle())
+                .user(imageModelProperties.getUser())
+                .responseFormat(imageModelProperties.getResponseFormat())
+                .timeout(imageModelProperties.getTimeout())
+                .maxRetries(imageModelProperties.getMaxRetries())
+                .logRequests(imageModelProperties.getLogRequests())
+                .logResponses(imageModelProperties.getLogResponses())
+                .withPersisting(imageModelProperties.getWithPersisting())
+                .persistTo(imageModelProperties.getPersistTo())
                 .build();
     }
 }
