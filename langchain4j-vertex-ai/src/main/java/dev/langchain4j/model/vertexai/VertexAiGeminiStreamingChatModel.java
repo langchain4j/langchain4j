@@ -2,44 +2,39 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
-import com.google.cloud.vertexai.api.GenerateContentResponse;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.io.IOException;
 import java.util.List;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
- * Represents a Google Vertex AI Gemini language model with a chat completion interface, such as gemini-pro.
+ * Represents a Google Vertex AI Gemini language model with a stream chat completion interface, such as gemini-pro.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/gemini">here</a>.
  */
-public class VertexAiGeminiChatModel implements ChatLanguageModel {
+public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageModel {
 
-    private final Integer maxRetries;
     private final GenerationConfig generationConfig;
     private final GenerativeModel model;
 
     @Builder
-    public VertexAiGeminiChatModel(String project,
-                                   String location,
-                                   String modelName,
-                                   Float temperature,
-                                   Integer maxOutputTokens,
-                                   Integer topK,
-                                   Float topP,
-                                   Integer maxRetries) {
+    public VertexAiGeminiStreamingChatModel(String project,
+                                            String location,
+                                            String modelName,
+                                            Float temperature,
+                                            Integer maxOutputTokens,
+                                            Integer topK,
+                                            Float topP) {
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder()
                 .setTemperature(getOrDefault(temperature, 0f));
@@ -59,7 +54,6 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
 
         generationConfig = generationConfigBuilder.build();
 
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
         ensureNotBlank(project, "project");
         ensureNotBlank(location, "location");
         ensureNotBlank(modelName, "modelName");
@@ -72,23 +66,22 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
+    public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         final List<Content> contents = VertexAiGeminiContentMapper.map(messages);
+        final VertexAiGeminiStreamingChatResponseBuilder responseBuilder = new VertexAiGeminiStreamingChatResponseBuilder();
 
-        final GenerateContentResponse response = withRetry(() -> model.generateContent(contents, generationConfig), maxRetries);
-
-        final AiMessage aiMessage = AiMessage.from(ResponseHandler.getText(response));
-        final TokenUsage tokenUsage = getTokenUsage(response.getUsageMetadata());
-        final FinishReason finishReason = VertexAiGeminiFinishReasonMapper.map(ResponseHandler.getFinishReason(response));
-
-        return Response.from(aiMessage, tokenUsage, finishReason);
-    }
-
-    private TokenUsage getTokenUsage(final GenerateContentResponse.UsageMetadata usageMetadata) {
-        final int inputTokenCount = usageMetadata.getPromptTokenCount();
-        final int outputTokenCount = usageMetadata.getCandidatesTokenCount();
-        final int totalTokenCount = usageMetadata.getTotalTokenCount();
-        return new TokenUsage(inputTokenCount, outputTokenCount, totalTokenCount);
+        try {
+            model.generateContentStream(contents, generationConfig)
+                    .stream()
+                    .forEach(generateContentResponse -> {
+                        responseBuilder.append(generateContentResponse);
+                        handler.onNext(ResponseHandler.getText(generateContentResponse));
+                    });
+            Response<AiMessage> response = responseBuilder.build();
+            handler.onComplete(response);
+        } catch (Exception exception) {
+            handler.onError(exception);
+        }
     }
 
 }
