@@ -16,8 +16,6 @@ import lombok.NoArgsConstructor;
 @Builder
 class Options {
 
-    /**
-     * The temperature of the model. Increasing the temperature will make the model answer more creatively. (Default: 0.8)
-     */
     private Double temperature;
+    private Integer numPredict;
 }

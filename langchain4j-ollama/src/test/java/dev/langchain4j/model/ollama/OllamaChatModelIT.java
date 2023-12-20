@@ -2,36 +2,126 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.data.message.SystemMessage.systemMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OllamaChatModelIT extends AbstractOllamaInfrastructure {
 
-    OllamaChatModel model = OllamaChatModel.builder()
+    ChatLanguageModel model = OllamaChatModel.builder()
             .baseUrl(getBaseUrl())
-            .modelName(ORCA_MINI_MODEL)
+            .modelName(MODEL)
+            .temperature(0.0)
             .build();
 
     @Test
-    void should_send_messages_with_roles_and_receive_response() {
+    void should_generate_answer() {
 
-        List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(systemMessage("You are a good friend of mine, who likes to answer politely"));
-        chatMessages.add(userMessage("Hello!, How are you?"));
-        chatMessages.add(AiMessage.aiMessage("I'm fine, thanks!"));
-        chatMessages.add(userMessage("Not too bad, just enjoying a cup of coffee. What about you?"));
+        // given
+        String userMessage = "What is the capital of Germany?";
 
-        Response<AiMessage> response = model.generate(chatMessages);
+        // when
+        String answer = model.generate(userMessage);
+        System.out.println(answer);
+
+        // then
+        assertThat(answer).contains("Berlin");
+    }
+
+    @Test
+    void should_respect_numPredict() {
+
+        // given
+        int numPredict = 1; // max output tokens
+
+        OllamaChatModel model = OllamaChatModel.builder()
+                .baseUrl(getBaseUrl())
+                .modelName(MODEL)
+                .numPredict(numPredict)
+                .temperature(0.0)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        Response<AiMessage> response = model.generate(userMessage);
         System.out.println(response);
 
-        assertThat(response).isNotNull();
-        assertThat(response.content().text()).isNotEmpty();
+        // then
+        assertThat(response.content().text()).doesNotContain("Berlin");
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(numPredict + 2); // bug in Ollama
+    }
+
+    @Test
+    void should_respect_system_message() {
+
+        // given
+        SystemMessage systemMessage = SystemMessage.from("Translate messages from user into German");
+        UserMessage userMessage = UserMessage.from("I love you");
+
+        // when
+        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+        System.out.println(response);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("liebe");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(18);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_respond_to_few_shot() {
+
+        // given
+        List<ChatMessage> messages = asList(
+                UserMessage.from("1 + 1 ="),
+                AiMessage.from(">>> 2"),
+
+                UserMessage.from("2 + 2 ="),
+                AiMessage.from(">>> 4"),
+
+                UserMessage.from("4 + 4 =")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(messages);
+        System.out.println(response);
+
+        // then
+        assertThat(response.content().text()).isEqualTo(">>> 8");
+    }
+
+    @Test
+    void should_generate_valid_json() {
+
+        // given
+        ChatLanguageModel model = OllamaChatModel.builder()
+                .baseUrl(getBaseUrl())
+                .modelName(MODEL)
+                .format("json")
+                .temperature(0.0)
+                .build();
+
+        String userMessage = "Return JSON with two fields: name and age of John Doe, 42 years old.";
+
+        // when
+        String json = model.generate(userMessage);
+
+        // then
+        assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
     }
 }
