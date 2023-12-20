@@ -23,12 +23,6 @@ class TokenCountEstimatorTest implements WithAssertions {
     public void test() {
         TokenCountEstimator estimator = new WhitespaceSplitTokenCountEstimator();
 
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new UserMessage("Hello, world!"));
-        messages.add(new AiMessage("How are you?"));
-
-        assertThat(estimator.estimateTokenCount(messages)).isEqualTo(5);
-
         assertThat(estimator.estimateTokenCount("foo bar, baz")).isEqualTo(3);
 
         assertThat(estimator.estimateTokenCount(new UserMessage("foo bar, baz"))).isEqualTo(3);
@@ -36,5 +30,13 @@ class TokenCountEstimatorTest implements WithAssertions {
         assertThat(estimator.estimateTokenCount(new Prompt("foo bar, baz"))).isEqualTo(3);
 
         assertThat(estimator.estimateTokenCount(TextSegment.from("foo bar, baz"))).isEqualTo(3);
+
+        {
+            List<ChatMessage> messages = new ArrayList<>();
+            messages.add(new UserMessage("Hello, world!"));
+            messages.add(new AiMessage("How are you?"));
+
+            assertThat(estimator.estimateTokenCount(messages)).isEqualTo(5);
+        }
     }
 }
