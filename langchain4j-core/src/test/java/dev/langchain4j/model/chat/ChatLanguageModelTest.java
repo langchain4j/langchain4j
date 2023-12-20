@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Locale;
 
 class ChatLanguageModelTest implements WithAssertions {
-    public static final class UpperCaseEchoModel implements ChatLanguageModel {
+    public static class UpperCaseEchoModel implements ChatLanguageModel {
         @Override
         public Response<AiMessage> generate(List<ChatMessage> messages) {
             ChatMessage lastMessage = messages.get(messages.size() - 1);
@@ -27,24 +27,28 @@ class ChatLanguageModelTest implements WithAssertions {
 
         List<ChatMessage> messages = new ArrayList<>();
 
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> model.generate(messages, new ArrayList<>())).withMessageContaining("Tools are currently not supported by this model");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> model.generate(messages, new ArrayList<>()))
+                .withMessageContaining("Tools are currently not supported by this model");
 
-        assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> model.generate(messages, ToolSpecification.builder().name("foo").build())).withMessageContaining("Tools are currently not supported by this model");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> model.generate(messages, ToolSpecification.builder().name("foo").build()))
+                .withMessageContaining("Tools are currently not supported by this model");
     }
 
     @Test
     public void test_generate() {
         ChatLanguageModel model = new UpperCaseEchoModel();
 
-        List<ChatMessage> messages = new ArrayList<>();
-        messages.add(new UserMessage("Hello"));
-        messages.add(new AiMessage("Hi"));
-        messages.add(new UserMessage("How are you?"));
-
         assertThat(model.generate("how are you?"))
                 .isEqualTo("HOW ARE YOU?");
 
         {
+            List<ChatMessage> messages = new ArrayList<>();
+            messages.add(new UserMessage("Hello"));
+            messages.add(new AiMessage("Hi"));
+            messages.add(new UserMessage("How are you?"));
+
             Response<AiMessage> response = model.generate(messages);
 
             assertThat(response.content().text()).isEqualTo("HOW ARE YOU?");
