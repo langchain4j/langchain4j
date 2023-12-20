@@ -78,7 +78,7 @@ class OllamaClient {
         }
     }
 
-    public void streamingChat(CompletionRequest request, StreamingResponseHandler<String> handler) {
+    public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
         ollamaApi.streamingCompletion(request).enqueue(new Callback<ResponseBody>() {
 
             @Override

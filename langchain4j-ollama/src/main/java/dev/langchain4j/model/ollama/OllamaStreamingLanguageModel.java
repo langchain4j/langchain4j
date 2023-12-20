@@ -53,6 +53,6 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .stream(true)
                 .build();
 
-        client.streamingChat(request, handler);
+        client.streamingCompletion(request, handler);
     }
 }
