@@ -4,6 +4,8 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.EmbeddingItem;
 import com.azure.ai.openai.models.Embeddings;
 import com.azure.ai.openai.models.EmbeddingsOptions;
+import com.azure.core.credential.KeyCredential;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -26,21 +28,24 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents an OpenAI embedding model, hosted on Azure, such as text-embedding-ada-002.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
+ * Mandatory parameters for initialization are: endpoint, serviceVersion, apikey (or an alternate authentication method, see below for more information) and deploymentName.
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
- * There are two primary authentication methods to access Azure OpenAI:
+ * There are 3 authentication methods:
  * <p>
- * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
- * API Key in the "api-key" HTTP header as follows: `api-key: OPENAI_API_KEY`
+ * 1. Azure OpenAI API Key Authentication: this is the most common method, using an Azure OpenAI API key.
+ * You need to provide the OpenAI API Key as a parameter, using the apiKey() method in the Builder, or the apiKey parameter in the constructor.
  * <p>
- * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
- * authentication/access token in the "Authorization" HTTP header.
+ * 2. non-Azure OpenAI API Key Authentication: this method allows to use the OpenAI service, instead of Azure OpenAI.
+ * You need to provide a KeyCredential instance, using the keyCredential() method in the Builder, or the keyCredential parameter in the constructor.
+ * Typically, you would use `builder.keyCredential(new AzureKeyCredential("{key}"))`.
  * <p>
- * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
- * <p>
- * Please note, that currently, only API Key authentication is supported by this class,
- * second authentication option will be supported later.
+ * 3. Azure OpenAI client with Azure Active Directory credentials: this method allows to use Azure Active Directory credentials to authenticate.
+ * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
+ * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
+ * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
+ * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
+ * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
 
@@ -69,6 +74,34 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
         this(deploymentName, tokenizer);
         this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    }
+
+    public AzureOpenAiEmbeddingModel(String endpoint,
+                                     String serviceVersion,
+                                     KeyCredential keyCredential,
+                                     String deploymentName,
+                                     Tokenizer tokenizer,
+                                     Duration timeout,
+                                     Integer maxRetries,
+                                     ProxyOptions proxyOptions,
+                                     boolean logRequestsAndResponses) {
+
+        this(deploymentName, tokenizer);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    }
+
+    public AzureOpenAiEmbeddingModel(String endpoint,
+                                     String serviceVersion,
+                                     TokenCredential tokenCredential,
+                                     String deploymentName,
+                                     Tokenizer tokenizer,
+                                     Duration timeout,
+                                     Integer maxRetries,
+                                     ProxyOptions proxyOptions,
+                                     boolean logRequestsAndResponses) {
+
+        this(deploymentName, tokenizer);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
@@ -143,6 +176,8 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         private String endpoint;
         private String serviceVersion;
         private String apiKey;
+        private KeyCredential keyCredential;
+        private TokenCredential tokenCredential;
         private String deploymentName;
         private Tokenizer tokenizer;
         private Duration timeout;
@@ -174,13 +209,34 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         }
 
         /**
-         * Sets the Azure OpenAI API key. This is a mandatory parameter.
+         * Sets the Azure OpenAI API key.
          *
          * @param apiKey The Azure OpenAI API key.
          * @return builder
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * Used to authenticate with the OpenAI service, instead of Azure OpenAI.
+         *
+         * @param keyCredential the credentials to authenticate with the OpenAI service
+         * @return builder
+         */
+        public Builder keyCredential(KeyCredential keyCredential) {
+            this.keyCredential = keyCredential;
+            return this;
+        }
+
+        /**
+         * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         * @param tokenCredential the credentials to authenticate with Azure Active Directory
+         * @return builder
+         */
+        public Builder tokenCredential(TokenCredential tokenCredential) {
+            this.tokenCredential = tokenCredential;
             return this;
         }
 
@@ -233,6 +289,31 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
 
         public AzureOpenAiEmbeddingModel build() {
             if (openAIClient == null) {
+                if (tokenCredential != null) {
+                    return new AzureOpenAiEmbeddingModel(
+                            endpoint,
+                            serviceVersion,
+                            tokenCredential,
+                            deploymentName,
+                            tokenizer,
+                            timeout,
+                            maxRetries,
+                            proxyOptions,
+                            logRequestsAndResponses
+                    );
+                } else if (keyCredential != null) {
+                    return new AzureOpenAiEmbeddingModel(
+                            endpoint,
+                            serviceVersion,
+                            keyCredential,
+                            deploymentName,
+                            tokenizer,
+                            timeout,
+                            maxRetries,
+                            proxyOptions,
+                            logRequestsAndResponses
+                    );
+                }
                 return new AzureOpenAiEmbeddingModel(
                         endpoint,
                         serviceVersion,

@@ -19,6 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openai4j.version>0.12.1</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
+        <azure.identity.version>1.11.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
@@ -86,6 +87,12 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-ai-openai</artifactId>
                 <version>${azure-ai-openai.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${azure.identity.version}</version>
             </dependency>
 
             <dependency>
