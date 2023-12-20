@@ -54,6 +54,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private final Double temperature;
     private final Double topP;
     private final Integer maxTokens;
+    private final List<String> stop;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
 
@@ -63,10 +64,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double temperature,
                                          Double topP,
                                          Integer maxTokens,
+                                         List<String> stop,
                                          Double presencePenalty,
                                          Double frequencyPenalty) {
 
-        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, stop, presencePenalty, frequencyPenalty);
         this.client = client;
     }
 
@@ -78,6 +80,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double temperature,
                                          Double topP,
                                          Integer maxTokens,
+                                         List<String> stop,
                                          Double presencePenalty,
                                          Double frequencyPenalty,
                                          Duration timeout,
@@ -85,7 +88,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          ProxyOptions proxyOptions,
                                          boolean logRequestsAndResponses) {
 
-        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, stop, presencePenalty, frequencyPenalty);
         this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
@@ -94,6 +97,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Double temperature,
                                          Double topP,
                                          Integer maxTokens,
+                                          List<String> stop,
                                          Double presencePenalty,
                                          Double frequencyPenalty) {
 
@@ -102,6 +106,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
+        this.stop = stop;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
     }
@@ -132,6 +137,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .setTemperature(temperature)
                 .setTopP(topP)
                 .setMaxTokens(maxTokens)
+                .setStop(stop)
                 .setPresencePenalty(presencePenalty)
                 .setFrequencyPenalty(frequencyPenalty);
 
@@ -199,6 +205,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private Double temperature;
         private Double topP;
         private Integer maxTokens;
+        private List<String> stop;
         private Double presencePenalty;
         private Double frequencyPenalty;
         private Duration timeout;
@@ -271,6 +278,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        public Builder stop(List<String> stop) {
+            this.stop = stop;
+            return this;
+        }
+
         public Builder presencePenalty(Double presencePenalty) {
             this.presencePenalty = presencePenalty;
             return this;
@@ -323,6 +335,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         temperature,
                         topP,
                         maxTokens,
+                        stop,
                         presencePenalty,
                         frequencyPenalty,
                         timeout,
@@ -338,6 +351,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         temperature,
                         topP,
                         maxTokens,
+                        stop,
                         presencePenalty,
                         frequencyPenalty
                 );
