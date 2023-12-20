@@ -256,7 +256,7 @@ class OpenAiChatModelIT {
 
         assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
 
-        ChatLanguageModel modelReturningJson = OpenAiChatModel.builder()
+        ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(OpenAiModelName.GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
@@ -266,7 +266,7 @@ class OpenAiChatModelIT {
                 .build();
 
         // when
-        String json = modelReturningJson.generate(userMessage);
+        String json = modelGeneratingJson.generate(userMessage);
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);

@@ -394,6 +394,9 @@ class OpenAiStreamingChatModelIT {
     void should_stream_valid_json() throws ExecutionException, InterruptedException, TimeoutException {
 
         //given
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
+                "Before returning, tell me a joke."; // nudging it to say something additionally to json
+
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -402,9 +405,6 @@ class OpenAiStreamingChatModelIT {
                 .logRequests(true)
                 .logResponses(true)
                 .build();
-
-        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
-                "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
         // when
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
@@ -437,6 +437,7 @@ class OpenAiStreamingChatModelIT {
         String json = futureAnswer.get(30, SECONDS);
         Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
+        // then
         assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\", \"surname\": \"Heisler\"}");
         assertThat(response.content().text()).isEqualTo(json);
     }
