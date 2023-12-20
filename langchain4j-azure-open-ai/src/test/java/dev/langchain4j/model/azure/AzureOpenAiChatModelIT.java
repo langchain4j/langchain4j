@@ -120,7 +120,6 @@ public class AzureOpenAiChatModelIT {
         String weather = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
 
-
         assertThat(weather).isEqualTo("The weather in Paris, France is 35 degrees celsius.");
 
         // Now that we know the function's result, we can call the model again with the result as input.

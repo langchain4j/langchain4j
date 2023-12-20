@@ -137,7 +137,7 @@ public class OpenAiImageModel implements ImageModel {
     }
 
     private static Image fromImageData(GenerateImagesResponse.ImageData data) {
-        return Image.builder().url(data.url()).base64(data.b64Json()).revisedPrompt(data.revisedPrompt()).build();
+        return Image.builder().url(data.url()).base64Data(data.b64Json()).revisedPrompt(data.revisedPrompt()).build();
     }
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
