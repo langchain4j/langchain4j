@@ -16,7 +16,13 @@ public class Properties {
     ChatModelProperties chatModel;
 
     @NestedConfigurationProperty
+    ChatModelProperties streamingChatModel;
+
+    @NestedConfigurationProperty
     LanguageModelProperties languageModel;
+
+    @NestedConfigurationProperty
+    LanguageModelProperties streamingLanguageModel;
 
     @NestedConfigurationProperty
     EmbeddingModelProperties embeddingModel;

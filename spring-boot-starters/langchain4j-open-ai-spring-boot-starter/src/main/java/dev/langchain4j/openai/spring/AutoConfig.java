@@ -35,6 +35,27 @@ public class AutoConfig {
     }
 
     @Bean
+    @ConditionalOnProperty(PREFIX + ".streaming-chat-model.api-key")
+    OpenAiStreamingChatModel openAiStreamingChatModel(Properties properties) {
+        ChatModelProperties chatModelProperties = properties.getStreamingChatModel();
+        return OpenAiStreamingChatModel.builder()
+                .baseUrl(chatModelProperties.getBaseUrl())
+                .apiKey(chatModelProperties.getApiKey())
+                .organizationId(chatModelProperties.getOrganizationId())
+                .modelName(chatModelProperties.getModelName())
+                .temperature(chatModelProperties.getTemperature())
+                .topP(chatModelProperties.getTopP())
+                .stop(chatModelProperties.getStop())
+                .maxTokens(chatModelProperties.getMaxTokens())
+                .presencePenalty(chatModelProperties.getPresencePenalty())
+                .frequencyPenalty(chatModelProperties.getFrequencyPenalty())
+                .timeout(chatModelProperties.getTimeout())
+                .logRequests(chatModelProperties.getLogRequests())
+                .logResponses(chatModelProperties.getLogResponses())
+                .build();
+    }
+
+    @Bean
     @ConditionalOnProperty(PREFIX + ".language-model.api-key")
     OpenAiLanguageModel openAiLanguageModel(Properties properties) {
         LanguageModelProperties languageModelProperties = properties.getLanguageModel();
@@ -46,6 +67,22 @@ public class AutoConfig {
                 .temperature(languageModelProperties.getTemperature())
                 .timeout(languageModelProperties.getTimeout())
                 .maxRetries(languageModelProperties.getMaxRetries())
+                .logRequests(languageModelProperties.getLogRequests())
+                .logResponses(languageModelProperties.getLogResponses())
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(PREFIX + ".streaming-language-model.api-key")
+    OpenAiStreamingLanguageModel openAiStreamingLanguageModel(Properties properties) {
+        LanguageModelProperties languageModelProperties = properties.getStreamingLanguageModel();
+        return OpenAiStreamingLanguageModel.builder()
+                .baseUrl(languageModelProperties.getBaseUrl())
+                .apiKey(languageModelProperties.getApiKey())
+                .organizationId(languageModelProperties.getOrganizationId())
+                .modelName(languageModelProperties.getModelName())
+                .temperature(languageModelProperties.getTemperature())
+                .timeout(languageModelProperties.getTimeout())
                 .logRequests(languageModelProperties.getLogRequests())
                 .logResponses(languageModelProperties.getLogResponses())
                 .build();
