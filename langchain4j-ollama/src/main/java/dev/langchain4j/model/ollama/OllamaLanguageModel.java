@@ -22,13 +22,7 @@ public class OllamaLanguageModel implements LanguageModel {
 
     private final OllamaClient client;
     private final String modelName;
-    private final Double temperature;
-    private final Integer topK;
-    private final Double topP;
-    private final Double repeatPenalty;
-    private final Integer seed;
-    private final Integer numPredict;
-    private final List<String> stop;
+    private final Options options;
     private final String format;
     private final Integer maxRetries;
 
@@ -50,13 +44,15 @@ public class OllamaLanguageModel implements LanguageModel {
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = temperature;
-        this.topK = topK;
-        this.topP = topP;
-        this.repeatPenalty = repeatPenalty;
-        this.seed = seed;
-        this.numPredict = numPredict;
-        this.stop = stop;
+        this.options = Options.builder()
+                .temperature(temperature)
+                .topK(topK)
+                .topP(topP)
+                .repeatPenalty(repeatPenalty)
+                .seed(seed)
+                .numPredict(numPredict)
+                .stop(stop)
+                .build();
         this.format = format;
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
@@ -67,15 +63,7 @@ public class OllamaLanguageModel implements LanguageModel {
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
                 .prompt(prompt)
-                .options(Options.builder()
-                        .temperature(temperature)
-                        .topK(topK)
-                        .topP(topP)
-                        .repeatPenalty(repeatPenalty)
-                        .seed(seed)
-                        .numPredict(numPredict)
-                        .stop(stop)
-                        .build())
+                .options(options)
                 .format(format)
                 .stream(false)
                 .build();
