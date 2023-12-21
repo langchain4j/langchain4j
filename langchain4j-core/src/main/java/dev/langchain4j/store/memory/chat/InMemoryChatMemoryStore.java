@@ -13,20 +13,22 @@ import java.util.concurrent.ConcurrentHashMap;
  * This storage mechanism is transient and does not persist data across application restarts.
  */
 public class InMemoryChatMemoryStore implements ChatMemoryStore {
-
     private final Map<Object, List<ChatMessage>> messagesByMemoryId = new ConcurrentHashMap<>();
 
     @Override
+    synchronized
     public List<ChatMessage> getMessages(Object memoryId) {
         return messagesByMemoryId.computeIfAbsent(memoryId, ignored -> new ArrayList<>());
     }
 
     @Override
+    synchronized
     public void updateMessages(Object memoryId, List<ChatMessage> messages) {
         messagesByMemoryId.put(memoryId, messages);
     }
 
     @Override
+    synchronized
     public void deleteMessages(Object memoryId) {
         messagesByMemoryId.remove(memoryId);
     }
