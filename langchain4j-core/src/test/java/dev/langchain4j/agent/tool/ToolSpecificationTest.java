@@ -16,11 +16,34 @@ class ToolSpecificationTest implements WithAssertions {
                         .properties(Collections.singletonMap("foo", Collections.singletonMap("bar", "baz")))
                         .required(Collections.singletonList("foo"))
                         .build())
-                .build();
+                        .build();
 
         assertThat(ts.name()).isEqualTo("name");
         assertThat(ts.description()).isEqualTo("description");
         assertThat(ts.parameters().type()).isEqualTo("type");
+    }
+
+    @Test
+    public void test_parameter_builder() {
+        ToolSpecification ts = ToolSpecification.builder()
+                .name("name")
+                .description("description")
+                .addParameter("req", JsonSchemaProperty.BOOLEAN)
+                .addOptionalParameter("foo", JsonSchemaProperty.STRING, JsonSchemaProperty.description("description"))
+                .addOptionalParameter("bar", JsonSchemaProperty.INTEGER)
+                .build();
+
+        assertThat(ts.name()).isEqualTo("name");
+        assertThat(ts.description()).isEqualTo("description");
+        assertThat(ts.parameters().type()).isEqualTo("object");
+        assertThat(ts.parameters().properties().get("req"))
+                .containsEntry("type", "boolean");
+        assertThat(ts.parameters().properties().get("foo"))
+                .containsEntry("type", "string")
+                .containsEntry("description", "description");
+        assertThat(ts.parameters().properties().get("bar"))
+                .containsEntry("type", "integer");
+        assertThat(ts.parameters().required()).containsOnly("req");
     }
 
     @Test
