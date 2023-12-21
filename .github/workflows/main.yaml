@@ -15,11 +15,11 @@ jobs:
         java_version: [8, 11, 17, 21]
         include:
           - java_version: '8'
-            included_modules: '-pl !langchain4j-graal,!langchain4j-neo4j,!langchain4j-opensearch'
+            included_modules: '-pl !langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch'
           - java_version: '11'
-            included_modules: '-pl !langchain4j-graal,!langchain4j-neo4j'
+            included_modules: '-pl !langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j'
           - java_version: '17'
-            included_modules: '-pl !langchain4j-graal'
+            included_modules: '-pl !langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: ''
     runs-on: ubuntu-latest
@@ -50,7 +50,7 @@ jobs:
         run: mvn -P compliance org.honton.chas:license-maven-plugin:compliance
 
 # TODO's
-# - enable JDK 17 unit tests for langchain4j-graal
+# - enable JDK 17 unit tests for langchain4j-code-execution-engine-graalvm-polyglot
 # - setup integration tests
 # - these require an openAI (and hugging face, etc) token
 # - do so that they always run for commits on main

@@ -1,4 +1,4 @@
-package dev.langchain4j.agent.tool.graal;
+package dev.langchain4j.agent.tool.graalvm;
 
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-class GraalJavaScriptExecutionToolIT {
+class GraalVmPythonExecutionToolIT {
 
     interface Assistant {
 
@@ -18,7 +18,7 @@ class GraalJavaScriptExecutionToolIT {
     @Test
     public void should_execute_tool() {
 
-        GraalJavaScriptExecutionTool tool = spy(new GraalJavaScriptExecutionTool());
+        GraalVmPythonExecutionTool tool = spy(new GraalVmPythonExecutionTool());
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(OpenAiChatModel.withApiKey(System.getenv("OPENAI_API_KEY")))
@@ -30,6 +30,6 @@ class GraalJavaScriptExecutionToolIT {
 
         assertThat(answer).contains("6.97");
 
-        verify(tool).executeJavaScriptCode(contains("485906798473894056"));
+        verify(tool).executePythonCode(contains("485906798473894056"));
     }
 }
