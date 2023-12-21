@@ -9,9 +9,10 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("To run this test, you must have provide your own endpoint, project and location")
+@Disabled("To run this test, you must provide your own project and location")
 class VertexAiGeminiChatModelIT {
 
     @Test
@@ -68,6 +69,6 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 }

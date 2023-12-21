@@ -14,7 +14,7 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("To run this test, you must have provide your own endpoint, project and location")
+@Disabled("To run this test, you must provide your own project and location")
 class VertexAiGeminiStreamingChatModelIT {
 
     @Test

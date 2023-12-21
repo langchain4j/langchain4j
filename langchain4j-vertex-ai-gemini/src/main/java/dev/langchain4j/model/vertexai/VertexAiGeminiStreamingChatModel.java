@@ -61,6 +61,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+
         List<Content> contents = ContentsMapper.map(messages);
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
 
