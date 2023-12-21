@@ -1,30 +1,32 @@
 package dev.langchain4j.model.openai;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
-import static java.time.Duration.ofSeconds;
-
 import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.image.GenerateImagesRequest;
 import dev.ai4j.openai4j.image.GenerateImagesResponse;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
+import lombok.Builder;
+import lombok.NonNull;
+
 import java.net.Proxy;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.NonNull;
+
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
+import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
+import static java.time.Duration.ofSeconds;
 
 /**
  * Represents an OpenAI DALL·E models to generate artistic images. Versions 2 and 3 (default) are supported.
  */
 public class OpenAiImageModel implements ImageModel {
 
-    private final String model;
+    private final String modelName;
     private final String size;
     private final String quality;
     private final String style;
@@ -39,7 +41,7 @@ public class OpenAiImageModel implements ImageModel {
      * Instantiates OpenAI DALL·E image processing model.
      * Find the parameters description <a href="https://platform.openai.com/docs/api-reference/images/create">here</a>.
      *
-     * @param model          dall-e-3 is default one
+     * @param modelName      dall-e-3 is default one
      * @param persistTo      specifies the local path where the generated image will be downloaded to (in case provided).
      *                       The URL within <code>dev.ai4j.openai4j.image.GenerateImagesResponse</code> will contain
      *                       the URL to local images then.
@@ -50,34 +52,38 @@ public class OpenAiImageModel implements ImageModel {
     @Builder
     @SuppressWarnings("rawtypes")
     public OpenAiImageModel(
-        @NonNull String apiKey,
-        String model,
-        String size,
-        String quality,
-        String style,
-        String user,
-        String responseFormat,
-        Duration timeout,
-        Integer maxRetries,
-        Proxy proxy,
-        Boolean logRequests,
-        Boolean logResponses,
-        Boolean withPersisting,
-        Path persistTo
+            String baseUrl,
+            @NonNull String apiKey,
+            String organizationId,
+            String modelName,
+            String size,
+            String quality,
+            String style,
+            String user,
+            String responseFormat,
+            Duration timeout,
+            Integer maxRetries,
+            Proxy proxy,
+            Boolean logRequests,
+            Boolean logResponses,
+            Boolean withPersisting,
+            Path persistTo
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         OpenAiClient.Builder cBuilder = OpenAiClient
-            .builder()
-            .openAiApiKey(apiKey)
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .proxy(proxy)
-            .logRequests(getOrDefault(logRequests, false))
-            .logResponses(getOrDefault(logResponses, false))
-            .persistTo(persistTo);
+                .builder()
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
+                .openAiApiKey(apiKey)
+                .organizationId(organizationId)
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout)
+                .proxy(proxy)
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
+                .persistTo(persistTo);
 
         if (withPersisting != null && withPersisting) {
             cBuilder.withPersisting();
@@ -86,7 +92,7 @@ public class OpenAiImageModel implements ImageModel {
         this.client = cBuilder.build();
 
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.model = model;
+        this.modelName = modelName;
         this.size = size;
         this.quality = quality;
         this.style = style;
@@ -110,21 +116,24 @@ public class OpenAiImageModel implements ImageModel {
         GenerateImagesResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries).execute();
 
         return Response.from(
-            response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
+                response.data().stream().map(OpenAiImageModel::fromImageData).collect(Collectors.toList())
         );
     }
 
     public static class OpenAiImageModelBuilder {
 
         public OpenAiImageModelBuilder withPersisting() {
-            withPersisting = true;
-            return this;
+            return withPersisting(true);
         }
 
-        public OpenAiImageModelBuilder withApiKey(String apiKey) {
-            this.apiKey = apiKey;
+        public OpenAiImageModelBuilder withPersisting(Boolean withPersisting) {
+            this.withPersisting = withPersisting;
             return this;
         }
+    }
+
+    public static OpenAiImageModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
     }
 
     private static Image fromImageData(GenerateImagesResponse.ImageData data) {
@@ -133,15 +142,15 @@ public class OpenAiImageModel implements ImageModel {
 
     private GenerateImagesRequest.Builder requestBuilder(String prompt) {
         GenerateImagesRequest.Builder requestBuilder = GenerateImagesRequest
-            .builder()
-            .prompt(prompt)
-            .size(size)
-            .quality(quality)
-            .style(style)
-            .user(user)
-            .responseFormat(responseFormat);
+                .builder()
+                .prompt(prompt)
+                .size(size)
+                .quality(quality)
+                .style(style)
+                .user(user)
+                .responseFormat(responseFormat);
 
-        if (DALL_E_2.equals(model)) {
+        if (DALL_E_2.equals(modelName)) {
             requestBuilder.model(dev.ai4j.openai4j.image.ImageModel.DALL_E_2);
         }
 
