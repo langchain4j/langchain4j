@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 class Message {
+
     private Role role;
     private String content;
 }

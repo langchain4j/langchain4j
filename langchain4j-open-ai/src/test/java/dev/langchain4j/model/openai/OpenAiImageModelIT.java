@@ -22,7 +22,7 @@ class OpenAiImageModelIT {
     OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
         .builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .model(DALL_E_2) // so that you pay not much :)
+        .modelName(DALL_E_2) // so that you pay not much :)
         .size(DALL_E_SIZE_256_x_256)
         .logRequests(true)
         .logResponses(true);
