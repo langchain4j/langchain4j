@@ -9,9 +9,7 @@ import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.io.IOException;
@@ -27,9 +25,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
  */
 public class VertexAiGeminiChatModel implements ChatLanguageModel {
 
-    private final Integer maxRetries;
     private final GenerationConfig generationConfig;
     private final GenerativeModel model;
+    private final Integer maxRetries;
 
     @Builder
     public VertexAiGeminiChatModel(String project,
@@ -41,11 +39,9 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                                    Float topP,
                                    Integer maxRetries) {
 
-        GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder()
-                .setTemperature(getOrDefault(temperature, 0f));
-
-        if (maxOutputTokens != null) {
-            generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
+        GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
+        if (temperature != null) {
+            generationConfigBuilder.setTemperature(temperature);
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
@@ -56,39 +52,31 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
         }
+        this.generationConfig = generationConfigBuilder.build();
 
-        generationConfig = generationConfigBuilder.build();
-
-        this.maxRetries = maxRetries == null ? 3 : maxRetries;
-        ensureNotBlank(project, "project");
-        ensureNotBlank(location, "location");
-        ensureNotBlank(modelName, "modelName");
-
-        try (final VertexAI vertexAI = new VertexAI(project, location)) {
-            model = new GenerativeModel(modelName, vertexAI);
+        try (VertexAI vertexAI = new VertexAI(
+                ensureNotBlank(project, "project"),
+                ensureNotBlank(location, "location"))
+        ) {
+            this.model = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        final List<Content> contents = VertexAiGeminiContentMapper.map(messages);
 
-        final GenerateContentResponse response = withRetry(() -> model.generateContent(contents, generationConfig), maxRetries);
+        List<Content> contents = ContentsMapper.map(messages);
 
-        final AiMessage aiMessage = AiMessage.from(ResponseHandler.getText(response));
-        final TokenUsage tokenUsage = getTokenUsage(response.getUsageMetadata());
-        final FinishReason finishReason = VertexAiGeminiFinishReasonMapper.map(ResponseHandler.getFinishReason(response));
+        GenerateContentResponse response = withRetry(() -> model.generateContent(contents, generationConfig), maxRetries);
 
-        return Response.from(aiMessage, tokenUsage, finishReason);
+        return Response.from(
+                AiMessage.from(ResponseHandler.getText(response)),
+                TokenUsageMapper.map(response.getUsageMetadata()),
+                FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
+        );
     }
-
-    private TokenUsage getTokenUsage(final GenerateContentResponse.UsageMetadata usageMetadata) {
-        final int inputTokenCount = usageMetadata.getPromptTokenCount();
-        final int outputTokenCount = usageMetadata.getCandidatesTokenCount();
-        final int totalTokenCount = usageMetadata.getTotalTokenCount();
-        return new TokenUsage(inputTokenCount, outputTokenCount, totalTokenCount);
-    }
-
 }

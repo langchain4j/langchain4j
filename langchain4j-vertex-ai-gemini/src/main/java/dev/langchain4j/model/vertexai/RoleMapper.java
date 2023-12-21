@@ -2,9 +2,9 @@ package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.message.ChatMessageType;
 
-class VertexAiGeminiRoleMapper {
+class RoleMapper {
 
-    public static String map(ChatMessageType type) {
+    static String map(ChatMessageType type) {
         switch (type) {
             case SYSTEM:
             case USER:

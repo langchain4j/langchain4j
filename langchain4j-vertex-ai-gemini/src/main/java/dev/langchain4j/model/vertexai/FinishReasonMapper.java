@@ -3,9 +3,9 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.api.Candidate;
 import dev.langchain4j.model.output.FinishReason;
 
-class VertexAiGeminiFinishReasonMapper {
+class FinishReasonMapper {
 
-    public static FinishReason map(Candidate.FinishReason finishReason) {
+    static FinishReason map(Candidate.FinishReason finishReason) {
         switch (finishReason) {
             case STOP:
                 return FinishReason.STOP;

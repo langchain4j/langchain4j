@@ -8,14 +8,14 @@ import java.util.List;
 
 import static java.util.stream.Collectors.toList;
 
-class VertexAiGeminiContentMapper {
+class ContentsMapper {
 
-    public static List<Content> map(List<ChatMessage> messages) {
+    static List<Content> map(List<ChatMessage> messages) {
         return messages.stream()
-                .map(chatMessage -> Content.newBuilder()
-                        .setRole(VertexAiGeminiRoleMapper.map(chatMessage.type()))
+                .map(message -> Content.newBuilder()
+                        .setRole(RoleMapper.map(message.type()))
                         .addParts(Part.newBuilder()
-                                .setText(chatMessage.text())
+                                .setText(message.text())
                                 .build())
                         .build())
                 .collect(toList());

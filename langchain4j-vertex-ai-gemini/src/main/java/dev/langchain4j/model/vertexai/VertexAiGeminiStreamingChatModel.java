@@ -9,13 +9,11 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.io.IOException;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
@@ -36,11 +34,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Integer topK,
                                             Float topP) {
 
-        GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder()
-                .setTemperature(getOrDefault(temperature, 0f));
-
-        if (maxOutputTokens != null) {
-            generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
+        GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
+        if (temperature != null) {
+            generationConfigBuilder.setTemperature(temperature);
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
@@ -51,15 +47,13 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
         }
+        this.generationConfig = generationConfigBuilder.build();
 
-        generationConfig = generationConfigBuilder.build();
-
-        ensureNotBlank(project, "project");
-        ensureNotBlank(location, "location");
-        ensureNotBlank(modelName, "modelName");
-
-        try (final VertexAI vertexAI = new VertexAI(project, location)) {
-            model = new GenerativeModel(modelName, vertexAI);
+        try (VertexAI vertexAI = new VertexAI(
+                ensureNotBlank(project, "project"),
+                ensureNotBlank(location, "location"))
+        ) {
+            this.model = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -67,21 +61,19 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        final List<Content> contents = VertexAiGeminiContentMapper.map(messages);
-        final VertexAiGeminiStreamingChatResponseBuilder responseBuilder = new VertexAiGeminiStreamingChatResponseBuilder();
+        List<Content> contents = ContentsMapper.map(messages);
+        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
 
         try {
             model.generateContentStream(contents, generationConfig)
                     .stream()
-                    .forEach(generateContentResponse -> {
-                        responseBuilder.append(generateContentResponse);
-                        handler.onNext(ResponseHandler.getText(generateContentResponse));
+                    .forEach(partialResponse -> {
+                        responseBuilder.append(partialResponse);
+                        handler.onNext(ResponseHandler.getText(partialResponse));
                     });
-            Response<AiMessage> response = responseBuilder.build();
-            handler.onComplete(response);
+            handler.onComplete(responseBuilder.build());
         } catch (Exception exception) {
             handler.onError(exception);
         }
     }
-
 }
