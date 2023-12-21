@@ -33,8 +33,6 @@
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
-
-        <snakeyaml.version>2.0</snakeyaml.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.6.0</opensearch-java.version>
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
@@ -44,7 +42,6 @@
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
-        <netty.version>4.1.100.Final</netty.version>
     </properties>
 
     <dependencyManagement>
