@@ -13,8 +13,8 @@ import java.util.List;
 class StreamingChatResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
-    private volatile FinishReason finishReason;
     private volatile TokenUsage tokenUsage;
+    private volatile FinishReason finishReason;
 
     void append(GenerateContentResponse partialResponse) {
         if (partialResponse == null) {
@@ -26,18 +26,18 @@ class StreamingChatResponseBuilder {
             return;
         }
 
-        Candidate.FinishReason finishReason = ResponseHandler.getFinishReason(partialResponse);
-        if (finishReason != null) {
-            this.finishReason = FinishReasonMapper.map(finishReason);
-        }
-
-        String token = ResponseHandler.getText(partialResponse);
-        if (token != null) {
-            contentBuilder.append(token);
+        String content = ResponseHandler.getText(partialResponse);
+        if (content != null) {
+            contentBuilder.append(content);
         }
 
         if (partialResponse.hasUsageMetadata()) {
             tokenUsage = TokenUsageMapper.map(partialResponse.getUsageMetadata());
+        }
+
+        Candidate.FinishReason finishReason = ResponseHandler.getFinishReason(partialResponse);
+        if (finishReason != null) {
+            this.finishReason = FinishReasonMapper.map(finishReason);
         }
     }
 
