@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * request options in completion/embedding API
  *
@@ -17,5 +19,10 @@ import lombok.NoArgsConstructor;
 class Options {
 
     private Double temperature;
+    private Integer topK;
+    private Double topP;
+    private Double repeatPenalty;
+    private Integer seed;
     private Integer numPredict;
+    private List<String> stop;
 }
