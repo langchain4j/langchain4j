@@ -197,6 +197,7 @@ public class AiServicesIT {
     }
 
 
+    @ToString
     static class Person {
 
         private String firstName;
@@ -211,7 +212,42 @@ public class AiServicesIT {
     }
 
     @Test
-    void test_extract_custom_POJO() {
+    void should_extract_custom_POJO() {
+
+        PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatLanguageModel);
+
+        String text = "In 1968, amidst the fading echoes of Independence Day, "
+                + "a child named John arrived under the calm evening sky. "
+                + "This newborn, bearing the surname Doe, marked the start of a new journey.";
+
+        Person person = personExtractor.extractPersonFrom(text);
+        System.out.println(person);
+
+        assertThat(person.firstName).isEqualTo("John");
+        assertThat(person.lastName).isEqualTo("Doe");
+        assertThat(person.birthDate).isEqualTo(LocalDate.of(1968, JULY, 4));
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Extract information about a person from " + text + "\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "}")));
+    }
+
+    @Test
+    void should_extract_custom_POJO_with_explicit_json_response_format() {
+
+        ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .responseFormat("json_object")
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
 
         PersonExtractor personExtractor = AiServices.create(PersonExtractor.class, chatLanguageModel);
 
