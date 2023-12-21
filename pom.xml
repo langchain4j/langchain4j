@@ -16,7 +16,6 @@
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
-        <module>langchain4j-spring-boot-starter</module>
 
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
@@ -51,9 +50,6 @@
 
         <!-- code execution engines -->
         <module>langchain4j-graal</module>
-
-        <!-- spring boot starters -->
-        <module>spring-boot-starters/langchain4j-open-ai-spring-boot-starter</module>
 
     </modules>
 
