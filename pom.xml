@@ -50,7 +50,7 @@
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
 
         <!-- code execution engines -->
-        <module>langchain4j-graal</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
 
     </modules>
 
