@@ -27,7 +27,7 @@
         <dependency>
             <groupId>io.pinecone</groupId>
             <artifactId>pinecone-client</artifactId>
-            <version>0.2.3</version>
+            <version>0.6.0</version>
             <exclusions>
                 <!-- due to CVE-2022-41915 vulnerability -->
                 <exclusion>
