@@ -8,14 +8,14 @@
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
         <version>0.25.0-SNAPSHOT</version>
-        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+        <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-graal</artifactId>
+    <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
     <packaging>jar</packaging>
 
     <name>LangChain4j integration with GraalVM Polyglot/Truffle</name>
-    <description>Implementation of JavaScript and Python code execution tools using GraalVM Polyglot/Truffle</description>
+    <description>Implementation of JavaScript and Python code execution engines and tools using GraalVM Polyglot/Truffle</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
