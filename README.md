@@ -32,6 +32,21 @@ Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.c
 
 ## News
 
+22 December:
+- Azure OpenAI:
+  - using official Azure SDK by [@jdubois](https://github.com/jdubois)
+  - image generation with DALL·E by [@jdubois](https://github.com/jdubois)
+- OpenAI:
+  - image generation with DALL·E by [@Heezer](https://github.com/Heezer)
+  - parallel function calling, json output, precise token estimation by [@langchain4j](https://github.com/langchain4j)
+- Integration with Google Gemini by [@kuraleta](https://github.com/kuraleta)
+- Ollama:
+  - chat API by [@fintanmm](https://github.com/fintanmm)
+  - json output and more parameters by [@langchain4j](https://github.com/langchain4j)
+- Integration with Neo4j by [@vga91](https://github.com/vga91)
+- Integration with ChatGLM by [@Martin7-1](https://github.com/Martin7-1)
+- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.25.0)
+
 12 November:
 - Integration with [OpenSearch](https://opensearch.org/) by [@riferrei](https://github.com/riferrei)
 - Add support for loading documents from S3 by [@jmgang](https://github.com/jmgang)
