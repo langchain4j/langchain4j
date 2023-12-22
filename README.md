@@ -170,14 +170,12 @@ class Person {
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
-
-    public String toString() {...}
 }
 
 interface PersonExtractor {
 
-    @UserMessage("Extract information about a person from {{it}}")
-    Person extractPersonFrom(String text);
+    @UserMessage("Extract information about a person from {{text}}")
+    Person extractPersonFrom(@V("text") String text);
 }
 
 PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
@@ -188,22 +186,6 @@ String text = "In 1968, amidst the fading echoes of Independence Day, "
 
 Person person = extractor.extractPersonFrom(text);
 // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
-```
-
-You can define more sophisticated prompt templates using mustache syntax:
-
-```java
-interface Translator {
-
-    @SystemMessage("You are a professional translator into {{language}}")
-    @UserMessage("Translate the following text: {{text}}")
-    String translate(@V("text") String text, @V("language") String language);
-}
-
-Translator translator = AiServices.create(Translator.class, model);
-
-String translation = translator.translate("Hello, how are you?", "Italian");
-// Ciao, come stai?
 ```
 
 You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
