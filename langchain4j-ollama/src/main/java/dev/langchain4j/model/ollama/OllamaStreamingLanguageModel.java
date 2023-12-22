@@ -5,25 +5,51 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.time.Duration.ofSeconds;
 
 /**
- * Represents an Ollama streaming language model with a completion interface
+ * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
+ * <br>
+ * <a href="https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values">Ollama API parameters</a>.
  */
 public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
     private final OllamaClient client;
     private final String modelName;
-    private final Double temperature;
+    private final Options options;
+    private final String format;
 
     @Builder
-    public OllamaStreamingLanguageModel(String baseUrl, Duration timeout,
-                                        String modelName, Double temperature) {
-        this.client = OllamaClient.builder().baseUrl(baseUrl).timeout(timeout).build();
+    public OllamaStreamingLanguageModel(String baseUrl,
+                                        String modelName,
+                                        Double temperature,
+                                        Integer topK,
+                                        Double topP,
+                                        Double repeatPenalty,
+                                        Integer seed,
+                                        Integer numPredict,
+                                        List<String> stop,
+                                        String format,
+                                        Duration timeout) {
+        this.client = OllamaClient.builder()
+                .baseUrl(baseUrl)
+                .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
-        this.temperature = getOrDefault(temperature, 0.7);
+        this.options = Options.builder()
+                .temperature(temperature)
+                .topK(topK)
+                .topP(topP)
+                .repeatPenalty(repeatPenalty)
+                .seed(seed)
+                .numPredict(numPredict)
+                .stop(stop)
+                .build();
+        this.format = format;
     }
 
     @Override
@@ -31,9 +57,8 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
         CompletionRequest request = CompletionRequest.builder()
                 .model(modelName)
                 .prompt(prompt)
-                .options(Options.builder()
-                        .temperature(temperature)
-                        .build())
+                .options(options)
+                .format(format)
                 .stream(true)
                 .build();
 
