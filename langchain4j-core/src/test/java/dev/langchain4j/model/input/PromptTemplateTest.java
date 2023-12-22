@@ -3,11 +3,11 @@ package dev.langchain4j.model.input;
 import org.junit.jupiter.api.Test;
 
 import java.time.*;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
 import static java.util.Collections.emptyMap;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -47,7 +47,7 @@ class PromptTemplateTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("My name is {{name}}.");
 
-        Map<String, Object> variables = Collections.singletonMap("name", "Klaus");
+        Map<String, Object> variables = singletonMap("name", "Klaus");
 
         // when
         Prompt prompt = promptTemplate.apply(variables);
@@ -155,15 +155,13 @@ class PromptTemplateTest {
         // given
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = new PromptTemplate("Now is {{current_time}}", clock);
-
-        Map<String, Object> variables = emptyMap();
+        PromptTemplate promptTemplate = new PromptTemplate("My name is {{it}} and now is {{current_time}}", clock);
 
         // when
-        Prompt prompt = promptTemplate.apply(variables);
+        Prompt prompt = promptTemplate.apply("Klaus");
 
         // then
-        assertThat(prompt.text()).isEqualTo("Now is " + LocalTime.now(clock));
+        assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalTime.now(clock));
     }
 
     @Test
@@ -172,14 +170,15 @@ class PromptTemplateTest {
         // given
         Clock clock = Clock.fixed(Instant.now(), ZoneOffset.UTC);
 
-        PromptTemplate promptTemplate = new PromptTemplate("Now is {{current_date_time}}", clock);
+        PromptTemplate promptTemplate = new PromptTemplate("My name is {{name}} and now is {{current_date_time}}", clock);
 
-        Map<String, Object> variables = emptyMap();
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("name", "Klaus");
 
         // when
         Prompt prompt = promptTemplate.apply(variables);
 
         // then
-        assertThat(prompt.text()).isEqualTo("Now is " + LocalDateTime.now(clock));
+        assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalDateTime.now(clock));
     }
 }
