@@ -30,9 +30,17 @@ public class Metadata {
         return metadata.get(key);
     }
 
-    public Metadata add(String key, Object value) {
-        this.metadata.put(key, value.toString());
+    public Metadata add(String key, String value) {
+        this.metadata.put(key, value);
         return this;
+    }
+
+    /**
+     * Use {@link #add(String, String)} instead
+     */
+    @Deprecated
+    public Metadata add(String key, Object value) {
+        return add(key, value.toString());
     }
 
     public Metadata remove(String key) {
@@ -68,6 +76,14 @@ public class Metadata {
                 " }";
     }
 
+    public static Metadata from(String key, String value) {
+        return new Metadata().add(key, value);
+    }
+
+    /**
+     * Use {@link #from(String, String)} instead
+     */
+    @Deprecated
     public static Metadata from(String key, Object value) {
         return new Metadata().add(key, value);
     }
@@ -76,6 +92,14 @@ public class Metadata {
         return new Metadata(metadata);
     }
 
+    public static Metadata metadata(String key, String value) {
+        return from(key, value);
+    }
+
+    /**
+     * Use {@link #metadata(String, String)} instead
+     */
+    @Deprecated
     public static Metadata metadata(String key, Object value) {
         return from(key, value);
     }
