@@ -43,6 +43,7 @@
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <netty.version>4.1.100.Final</netty.version>
+        <github-api.version>1.318</github-api.version>
     </properties>
 
     <dependencyManagement>
@@ -281,6 +282,12 @@
                         <artifactId>netty-handler</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.kohsuke</groupId>
+                <artifactId>github-api</artifactId>
+                <version>${github-api.version}</version>
             </dependency>
 
         </dependencies>
