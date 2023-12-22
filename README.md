@@ -204,12 +204,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.24.0</version>
+          <version>0.25.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.24.0'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.25.0'
       ```
 
 2. Import your OpenAI API key:
