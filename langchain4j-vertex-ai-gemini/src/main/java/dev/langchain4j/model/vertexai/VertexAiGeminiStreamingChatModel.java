@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a stream chat completion interface, such as gemini-pro.
@@ -22,8 +23,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
  */
 public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageModel {
 
+    private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
-    private final GenerativeModel model;
 
     @Builder
     public VertexAiGeminiStreamingChatModel(String project,
@@ -33,6 +34,14 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Integer maxOutputTokens,
                                             Integer topK,
                                             Float topP) {
+        try (VertexAI vertexAI = new VertexAI(
+                ensureNotBlank(project, "project"),
+                ensureNotBlank(location, "location"))
+        ) {
+            this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
@@ -48,15 +57,12 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             generationConfigBuilder.setTopP(topP);
         }
         this.generationConfig = generationConfigBuilder.build();
+    }
 
-        try (VertexAI vertexAI = new VertexAI(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"))
-        ) {
-            this.model = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
+                                            GenerationConfig generationConfig) {
+        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
+        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
     }
 
     @Override
@@ -66,7 +72,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
 
         try {
-            model.generateContentStream(contents, generationConfig)
+            generativeModel.generateContentStream(contents, generationConfig)
                     .stream()
                     .forEach(partialResponse -> {
                         responseBuilder.append(partialResponse);

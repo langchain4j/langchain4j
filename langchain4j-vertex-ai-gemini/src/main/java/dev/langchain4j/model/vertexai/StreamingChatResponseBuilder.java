@@ -26,10 +26,7 @@ class StreamingChatResponseBuilder {
             return;
         }
 
-        String content = ResponseHandler.getText(partialResponse);
-        if (content != null) {
-            contentBuilder.append(content);
-        }
+        contentBuilder.append(ResponseHandler.getText(partialResponse));
 
         if (partialResponse.hasUsageMetadata()) {
             tokenUsage = TokenUsageMapper.map(partialResponse.getUsageMetadata());

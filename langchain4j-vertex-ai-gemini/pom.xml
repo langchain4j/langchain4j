@@ -26,7 +26,6 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-vertexai</artifactId>
-            <version>0.1.0</version>
         </dependency>
 
         <dependency>
@@ -54,6 +53,18 @@
         </dependency>
 
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <scope>import</scope>
+                <type>pom</type>
+                <version>26.29.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <licenses>
         <license>
