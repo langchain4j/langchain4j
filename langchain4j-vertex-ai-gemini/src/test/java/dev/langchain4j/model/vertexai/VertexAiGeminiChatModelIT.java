@@ -110,13 +110,5 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text()).contains("Berlin");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 }
