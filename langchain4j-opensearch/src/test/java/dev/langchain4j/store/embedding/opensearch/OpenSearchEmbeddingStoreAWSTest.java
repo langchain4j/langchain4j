@@ -50,7 +50,8 @@ public class OpenSearchEmbeddingStoreAWSTest extends EmbeddingStoreIT {
         localstack.execInContainer(createDomainCmd);
 
         String[] describeDomainCmd = {"awslocal", "opensearch", "describe-domain", "--domain-name", "testcontainers-domain", "--region", localstack.getRegion()};
-        await().atMost(Duration.ofMinutes(2))
+        await().pollInterval(Duration.ofSeconds(30))
+                .atMost(Duration.ofSeconds(300))
                 .untilAsserted(() -> {
             ExecResult execResult = localstack.execInContainer(describeDomainCmd);
             String response = execResult.getStdout();
