@@ -23,7 +23,7 @@ public class Metadata {
     }
 
     public Metadata(Map<String, String> metadata) {
-        this.metadata = ensureNotNull(metadata, "metadata");
+        this.metadata = new HashMap<>(ensureNotNull(metadata, "metadata"));
     }
 
     public String get(String key) {
@@ -49,7 +49,7 @@ public class Metadata {
     }
 
     public Metadata copy() {
-        return new Metadata(new HashMap<>(metadata));
+        return new Metadata(metadata);
     }
 
     public Map<String, String> asMap() {
