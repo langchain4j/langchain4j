@@ -161,11 +161,11 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- other -->
+            <!-- code execution engines -->
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-graal</artifactId>
+                <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
