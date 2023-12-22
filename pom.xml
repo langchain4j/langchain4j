@@ -20,13 +20,14 @@
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
+        <module>langchain4j-chatglm</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-local-ai</module>
+        <module>langchain4j-ollama</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
-        <module>langchain4j-ollama</module>
-        <module>langchain4j-chatglm</module>
+        <module>langchain4j-vertex-ai-gemini</module>
 
         <!-- embedding stores -->
         <module>langchain4j-cassandra</module>
