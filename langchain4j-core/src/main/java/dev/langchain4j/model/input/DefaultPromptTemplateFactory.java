@@ -10,7 +10,6 @@ import java.util.regex.Pattern;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.input.PromptTemplate.*;
 
 class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
@@ -63,20 +62,7 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
             if (value == null || value.toString() == null) {
                 throw illegalArgument("Value for the variable '%s' is null", variable);
             }
-            if (!template.contains(inDoubleCurlyBrackets(variable)) && !isDateTimeVariable(variable)) {
-                throw illegalArgument("Value for the undefined variable '%s' is present", variable);
-            }
             return template.replaceAll(inEscapedDoubleCurlyBrackets(variable), value.toString());
-        }
-
-        private static String inDoubleCurlyBrackets(String variable) {
-            return "{{" + variable + "}}";
-        }
-
-        private static boolean isDateTimeVariable(String variable) {
-            return CURRENT_DATE.equals(variable)
-                    || CURRENT_TIME.equals(variable)
-                    || CURRENT_DATE_TIME.equals(variable);
         }
 
         private static String inEscapedDoubleCurlyBrackets(String variable) {

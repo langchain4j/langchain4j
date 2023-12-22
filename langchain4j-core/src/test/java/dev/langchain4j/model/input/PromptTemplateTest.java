@@ -119,22 +119,6 @@ class PromptTemplateTest {
     }
 
     @Test
-    void should_fail_when_value_for_undefined_variable_is_present() {
-
-        // given
-        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{name}}.");
-
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("name", "Klaus");
-        variables.put("age", 42);
-
-        // when-then
-        assertThatThrownBy(() -> promptTemplate.apply(variables))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Value for the undefined variable 'age' is present");
-    }
-
-    @Test
     void should_provide_date_automatically() {
 
         // given
