@@ -38,13 +38,15 @@ import static java.util.Collections.singletonList;
  * There are 3 authentication methods:
  * <p>
  * 1. Azure OpenAI API Key Authentication: this is the most common method, using an Azure OpenAI API key.
- * You need to provide the OpenAI API Key as a parameter, using the apiKey() method in the Builder, or the apiKey parameter in the constructor.
+ * You need to provide the OpenAI API Key as a parameter, using the apiKey() method in the Builder, or the apiKey parameter in the constructor:
+ * For example, you would use `builder.apiKey("{key}")`.
  * <p>
  * 2. non-Azure OpenAI API Key Authentication: this method allows to use the OpenAI service, instead of Azure OpenAI.
- * You need to provide a KeyCredential instance, using the keyCredential() method in the Builder, or the keyCredential parameter in the constructor.
- * Typically, you would use `builder.keyCredential(new AzureKeyCredential("{key}"))`.
+ * You can use the nonAzureApiKey() method in the Builder, which will also automatically set the endpoint to "https://api.openai.com/v1".
+ * For example, you would use `builder.nonAzureApiKey("{key}")`.
+ * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
  * <p>
- * 3. Azure OpenAI client with Azure Active Directory credentials: this method allows to use Azure Active Directory credentials to authenticate.
+ * 3. Azure OpenAI client with Microsoft Entra ID (formerly Azure Active Directory) credentials.
  * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
  * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
  * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
@@ -296,12 +298,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         /**
          * Used to authenticate with the OpenAI service, instead of Azure OpenAI.
+         * This automatically sets the endpoint to https://api.openai.com/v1.
          *
-         * @param keyCredential the credentials to authenticate with the OpenAI service
+         * @param nonAzureApiKey The non-Azure OpenAI API key
          * @return builder
          */
-        public Builder keyCredential(KeyCredential keyCredential) {
-            this.keyCredential = keyCredential;
+        public Builder nonAzureApiKey(String nonAzureApiKey) {
+            this.keyCredential = new KeyCredential(nonAzureApiKey);
+            this.endpoint = "https://api.openai.com/v1";
             return this;
         }
 
