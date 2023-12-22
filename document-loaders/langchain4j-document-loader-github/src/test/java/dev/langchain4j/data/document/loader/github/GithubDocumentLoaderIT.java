@@ -7,6 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -20,8 +21,9 @@ class GithubDocumentLoaderIT {
     DocumentParser parser = new TextDocumentParser();
 
     @BeforeEach
-    public void beforeEach() {
+    public void beforeEach() throws IOException {
         loader = GithubDocumentLoader.builder()
+                .githubToken(System.getenv("GITHUB_TOKEN"))
                 .build();
     }
 
@@ -30,7 +32,14 @@ class GithubDocumentLoaderIT {
         Document document = loader.loadDocument(TEST_OWNER, TEST_REPO, "main", "pom.xml", parser);
 
         assertThat(document.text()).contains("<groupId>dev.langchain4j</groupId>");
-        assertThat(document.metadata().asMap().size()).isEqualTo(1);
+        assertThat(document.metadata().asMap().size()).isEqualTo(10);
         assertThat(document.metadata("git_url")).startsWith("https://api.github.com/repos/langchain4j/langchain4j");
+    }
+
+    @Test
+    public void should_load_repository() throws IOException {
+        List<Document> documents = loader.loadDocuments(TEST_OWNER, TEST_REPO, "main", parser);
+
+        assertThat(documents.size()).isGreaterThan(1);
     }
 }
