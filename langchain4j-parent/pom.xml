@@ -17,7 +17,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <openai4j.version>0.12.1</openai4j.version>
+        <openai4j.version>0.12.2</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
         <azure.identity.version>1.11.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
@@ -34,8 +34,6 @@
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
-        <spring-boot.version>2.7.14</spring-boot.version>
-        <snakeyaml.version>2.0</snakeyaml.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <opensearch-java.version>2.6.0</opensearch-java.version>
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
@@ -221,29 +219,6 @@
                 <groupId>org.tinylog</groupId>
                 <artifactId>slf4j-tinylog</artifactId>
                 <version>${tinylog.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-starter</artifactId>
-                <version>${spring-boot.version}</version>
-                <exclusions>
-                    <!-- due to vulnerabilities -->
-                    <exclusion>
-                        <groupId>org.yaml</groupId>
-                        <artifactId>snakeyaml</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>org.yaml</groupId>
-                <artifactId>snakeyaml</artifactId>
-                <version>${snakeyaml.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-configuration-processor</artifactId>
-                <version>${spring-boot.version}</version>
             </dependency>
 
             <dependency>

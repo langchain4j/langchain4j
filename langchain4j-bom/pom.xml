@@ -31,12 +31,6 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-spring-boot-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
             <!-- model providers -->
 
             <dependency>
@@ -66,6 +60,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vertex-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-vertex-ai-gemini</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
