@@ -111,4 +111,82 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(response.content().text()).contains("Berlin");
     }
+
+
+    @Test
+    void should_maintain_a_conversation() {
+
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project("langchain4j")
+            .location("us-central1")
+            .modelName("gemini-pro")
+            .maxOutputTokens(1024)
+            .build();
+
+        ConversationalChain chain = ConversationalChain.builder()
+            .chatLanguageModel(model)
+            .build();
+
+        // when/then
+        String resp = chain.execute("What color is the sky usually?");
+        assertThat(resp).containsIgnoringCase("blue");
+
+        resp = chain.execute("Why is it of that color?");
+        assertThat(resp).containsIgnoringCase("scattering");
+
+        resp = chain.execute("What's the name of the scattering effect?");
+        assertThat(resp).containsIgnoringCase("Rayleigh");
+    }
+
+    static class Person {
+        String name;
+        int age;
+    }
+
+    interface PersonExtractor {
+        @dev.langchain4j.service.UserMessage(value = {
+            "Extract the name and age of the person described below.",
+            "Return a JSON document with a \"name\" and an \"age\" property, following this structure: ",
+            "{\"name\": \"John Doe\", \"age\": 34}",
+            "Return only JSON, without any markdown markup surrounding it.",
+            "Here is the document describing the person:",
+            "---",
+            "{{it}}",
+            "---",
+            "JSON: "})
+        Person extractPerson(String text);
+    }
+
+    @Test
+    void should_extract_a_person() {
+
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project("langchain4j")
+            .location("us-central1")
+            .modelName("gemini-pro")
+            .maxOutputTokens(32)
+            .build();
+
+        PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
+
+        // when
+        Person person = extractor.extractPerson(
+            "Anna is a 23 year old artist based in Brooklyn, New York. " +
+            "She was born and raised in the suburbs of Chicago, where " +
+            "she developed a love for art at a young age. She attended " +
+            "the School of the Art Institute of Chicago, where she " +
+            "studied painting and drawing. After graduating, she moved " +
+            "to New York City to pursue her art career. Anna's work is " +
+            "inspired by her personal experiences and observations of " +
+            "the world around her. She often uses bright colors and " +
+            "bold lines to create vibrant and energetic paintings. " +
+            "Her work has been exhibited in galleries and museums in " +
+            "New York City and Chicago.");
+
+        // then
+        assertThat(person.name).isEqualTo("Anna");
+        assertThat(person.age).isEqualTo(23);
+    }
 }
