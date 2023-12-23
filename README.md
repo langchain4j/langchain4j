@@ -34,16 +34,16 @@ Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.c
 
 22 December:
 - Azure OpenAI:
-  - using official Azure SDK by [@jdubois](https://github.com/jdubois)
-  - image generation with DALL·E by [@jdubois](https://github.com/jdubois)
+  - Using official Azure SDK by [@jdubois](https://github.com/jdubois)
+  - Image generation with DALL·E by [@jdubois](https://github.com/jdubois)
 - OpenAI:
-  - image generation with DALL·E by [@Heezer](https://github.com/Heezer)
-  - parallel function calling, json output, precise token estimation by [@langchain4j](https://github.com/langchain4j)
-- Integration with Google Gemini by [@kuraleta](https://github.com/kuraleta)
+  - [Image generation with DALL·E](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiImageModelExamples.java) by [@Heezer](https://github.com/Heezer)
+  - Parallel function calling, json output, precise token estimation by [@langchain4j](https://github.com/langchain4j)
+- [Integration with Google Gemini](https://github.com/langchain4j/langchain4j-examples/blob/main/vertex-ai-gemini-examples/src/main/java/VertexAiGeminiChatModelExamples.java) by [@kuraleta](https://github.com/kuraleta)
 - Ollama:
-  - chat API by [@fintanmm](https://github.com/fintanmm)
-  - json output and more parameters by [@langchain4j](https://github.com/langchain4j)
-- Integration with Neo4j by [@vga91](https://github.com/vga91)
+  - [Chat API](https://github.com/langchain4j/langchain4j-examples/blob/main/ollama-examples/src/main/java/OllamaChatModelExamples.java) by [@fintanmm](https://github.com/fintanmm)
+  - Json output and more parameters by [@langchain4j](https://github.com/langchain4j)
+- [Integration with Neo4j](https://github.com/langchain4j/langchain4j-examples/blob/main/neo4j-example/src/main/java/Neo4jEmbeddingStoreExample.java) by [@vga91](https://github.com/vga91)
 - Integration with ChatGLM by [@Martin7-1](https://github.com/Martin7-1)
 - [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.25.0)
 
