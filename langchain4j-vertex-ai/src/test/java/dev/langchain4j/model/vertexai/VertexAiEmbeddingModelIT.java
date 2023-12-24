@@ -14,10 +14,10 @@ import java.util.List;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("To run this test, you must provide your own endpoint, project and location")
 class VertexAiEmbeddingModelIT {
 
     @Test
-    @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testEmbeddingModel() {
 
         EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()

@@ -138,7 +138,7 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
     }
 
     private static TextSegment createSegment(String text, Document document, int index) {
-        Metadata metadata = document.metadata().copy().add(INDEX, index);
+        Metadata metadata = document.metadata().copy().add(INDEX, String.valueOf(index));
         return TextSegment.from(text, metadata);
     }
 }
