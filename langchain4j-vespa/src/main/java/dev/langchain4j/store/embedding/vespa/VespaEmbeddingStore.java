@@ -207,10 +207,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
   }
 
-  @Override
-  public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
-    return findRelevant(referenceEmbedding, maxResults,minScore);
-  }
 
   private String add(String id, Embedding embedding, TextSegment textSegment) {
     AtomicReference<String> resId = new AtomicReference<>();

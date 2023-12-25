@@ -83,19 +83,19 @@ public interface EmbeddingStore<Embedded> {
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      * By default, minScore is set to 0, which means that the results may include embeddings with low relevance.
-     * @param originText the origin text of user input
+     * @param memoryId           The memoryId used Distinguishing query requests from different users.
      * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
      * @param maxResults         The maximum number of embeddings to be returned.
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    default List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,String originText,Embedding referenceEmbedding, int maxResults) {
-        return findRelevant(memoryId,originText,referenceEmbedding, maxResults, 0);
+    default List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,Embedding referenceEmbedding, int maxResults) {
+        return findRelevant(memoryId,referenceEmbedding, maxResults, 0);
     }
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
-     * @param originText         the origin text of user input
+     * @param memoryId           The memoryId used Distinguishing query requests from different users.
      * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
      * @param maxResults         The maximum number of embeddings to be returned.
      * @param minScore           The minimum relevance score, ranging from 0 to 1 (inclusive).
@@ -104,6 +104,8 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,String originText,Embedding referenceEmbedding, int maxResults, double minScore);
+     default List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,Embedding referenceEmbedding, int maxResults, double minScore){
+         return findRelevant(referenceEmbedding, maxResults,minScore);
+     }
 
 }

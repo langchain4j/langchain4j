@@ -7,8 +7,7 @@ public enum ChatMessageType {
     SYSTEM,
     USER,
     AI,
-    TOOL_EXECUTION_RESULT,
-    Relevant;
+    TOOL_EXECUTION_RESULT;
 
     public static Class<? extends ChatMessage> classOf(ChatMessageType type) {
         switch (type) {
@@ -20,8 +19,6 @@ public enum ChatMessageType {
                 return AiMessage.class;
             case TOOL_EXECUTION_RESULT:
                 return ToolExecutionResultMessage.class;
-            case Relevant:
-                return RelevantMessage.class;
             default:
                 throw illegalArgument("Unknown ChatMessageType: %s", type);
         }

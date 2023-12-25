@@ -8,6 +8,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.retriever.Retriever;
+import dev.langchain4j.service.AiServices;
 import lombok.Builder;
 
 import java.util.HashMap;
@@ -24,7 +25,7 @@ import static java.util.stream.Collectors.joining;
  * Includes a default {@link ChatMemory} (a message window with maximum 10 messages), which can be overridden.
  */
 public class ConversationalRetrievalChain implements Chain<String, String> {
-
+    protected static final String DEFAULT = "default";
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             "Answer the following question to the best of your ability: {{question}}\n" +
                     "\n" +
@@ -52,7 +53,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         question = ensureNotBlank(question, "question");
 
-        List<TextSegment> relevantSegments = retriever.findRelevant("default",question);
+        List<TextSegment> relevantSegments = retriever.findRelevant(DEFAULT,question);
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("question", question);

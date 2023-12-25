@@ -127,10 +127,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         return toEmbeddingMatch(documents, minScore);
     }
 
-    @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
-        return findRelevant(referenceEmbedding, maxResults,minScore);
-    }
+
 
 
     private void createIndex(String indexName) {

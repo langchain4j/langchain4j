@@ -118,10 +118,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         Collections.reverse(result);
         return result;
     }
-    @Override
-    public List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
-        return findRelevant(referenceEmbedding, maxResults, minScore);
-    }
+
     public String serializeToJson() {
         return loadCodec().toJson(this);
     }

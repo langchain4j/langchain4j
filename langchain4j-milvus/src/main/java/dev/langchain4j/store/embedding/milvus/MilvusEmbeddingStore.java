@@ -138,10 +138,6 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             .collect(toList());
   }
 
-  @Override
-  public List<EmbeddingMatch<TextSegment>> findRelevant(Object memoryId, String originText, Embedding referenceEmbedding, int maxResults, double minScore) {
-    return findRelevant(referenceEmbedding, maxResults, minScore);
-  }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
     addAllInternal(
