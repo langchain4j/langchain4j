@@ -207,7 +207,6 @@ public class VespaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
   }
 
-
   private String add(String id, Embedding embedding, TextSegment textSegment) {
     AtomicReference<String> resId = new AtomicReference<>();
 

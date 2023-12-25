@@ -3,12 +3,7 @@ package dev.langchain4j.store.embedding.cassandra;
 import com.datastax.astra.sdk.AstraClient;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.dtsx.astra.sdk.cassio.MetadataVectorCassandraTable;
-import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-
-import java.util.List;
 
 /**
  * Implementation of {@link EmbeddingStore} using Cassandra AstraDB.
@@ -38,9 +33,6 @@ public class AstraDbEmbeddingStore extends CassandraEmbeddingStoreSupport {
     public static Builder builder() {
         return new Builder();
     }
-
-
-
 
     /**
      * Syntax Sugar Builder.

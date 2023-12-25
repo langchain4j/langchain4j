@@ -233,8 +233,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         return result;
     }
 
-
-
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(
                 singletonList(id),

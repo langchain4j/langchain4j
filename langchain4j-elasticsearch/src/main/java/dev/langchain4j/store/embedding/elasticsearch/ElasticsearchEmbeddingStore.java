@@ -259,10 +259,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
-
-
-
-
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }

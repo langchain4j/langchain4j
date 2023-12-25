@@ -127,9 +127,6 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         return toEmbeddingMatch(documents, minScore);
     }
 
-
-
-
     private void createIndex(String indexName) {
         IndexDefinition indexDefinition = new IndexDefinition(JSON);
         indexDefinition.setPrefixes(schema.getPrefix());

@@ -17,7 +17,6 @@ import lombok.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -135,7 +134,6 @@ abstract class CassandraEmbeddingStoreSupport implements EmbeddingStore<TextSegm
                 .map(CassandraEmbeddingStoreSupport::mapSearchResult)
                 .collect(toList());
     }
-
 
     /**
      * Map Search result coming from Astra.

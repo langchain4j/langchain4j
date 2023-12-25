@@ -28,15 +28,15 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
     }
 
     @Override
-    public List<TextSegment> findRelevant(Object memoryId,String text) {
+    public List<TextSegment> findRelevant(String text) {
 
         Embedding embeddedText = embeddingModel.embed(text).content();
 
         List<EmbeddingMatch<TextSegment>> relevant;
         if (minScore == null) {
-            relevant = embeddingStore.findRelevant(memoryId,embeddedText, maxResults);
+            relevant = embeddingStore.findRelevant(embeddedText, maxResults);
         } else {
-            relevant = embeddingStore.findRelevant(memoryId,embeddedText, maxResults, minScore);
+            relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore);
         }
 
         return relevant.stream()
@@ -55,6 +55,4 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
     public static EmbeddingStoreRetriever from(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel, int maxResults, double minScore) {
         return new EmbeddingStoreRetriever(embeddingStore, embeddingModel, maxResults, minScore);
     }
-
-
 }

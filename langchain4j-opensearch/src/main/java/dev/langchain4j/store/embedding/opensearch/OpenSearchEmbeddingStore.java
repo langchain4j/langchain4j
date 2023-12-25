@@ -283,9 +283,6 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return matches;
     }
 
-
-
-
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
 
         return ScriptScoreQuery.of(q -> q.minScore(minScore)

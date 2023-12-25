@@ -171,9 +171,6 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(toList());
     }
 
-
-
-
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
 

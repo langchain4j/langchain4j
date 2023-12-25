@@ -192,9 +192,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         return matches;
     }
 
-
-
-
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
         Value textSegmentValue = vector.getMetadata()
                 .getFieldsMap()

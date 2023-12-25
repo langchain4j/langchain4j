@@ -25,8 +25,6 @@ import io.milvus.param.MetricType;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.response.SearchResultsWrapper;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -137,7 +135,6 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             .filter(match -> match.score() >= minScore)
             .collect(toList());
   }
-
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
     addAllInternal(
