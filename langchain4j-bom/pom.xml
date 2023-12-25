@@ -6,7 +6,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.24.0</version>
+        <version>0.26.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -28,12 +28,6 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-spring-boot-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -71,6 +65,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-vertex-ai-gemini</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-dashscope</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -84,6 +84,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-bedrock</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-chatglm</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -155,11 +161,11 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <!-- other -->
+            <!-- code execution engines -->
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-graal</artifactId>
+                <artifactId>langchain4j-code-execution-engine-graalvm-polyglot</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

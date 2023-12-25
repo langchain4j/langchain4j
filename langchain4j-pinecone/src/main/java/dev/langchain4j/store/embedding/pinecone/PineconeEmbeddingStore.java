@@ -148,23 +148,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
 
-        QueryVector queryVector = QueryVector
-                .newBuilder()
-                .addAllValues(referenceEmbedding.vectorAsList())
-                .setTopK(maxResults)
-                .setNamespace(nameSpace)
-                .build();
-
         QueryRequest queryRequest = QueryRequest
                 .newBuilder()
-                .addQueries(queryVector)
+                .addAllVector(referenceEmbedding.vectorAsList())
+                .setNamespace(nameSpace)
                 .setTopK(maxResults)
                 .build();
 
         List<String> matchedVectorIds = connection.getBlockingStub()
                 .query(queryRequest)
-                .getResultsList()
-                .get(0)
                 .getMatchesList()
                 .stream()
                 .map(ScoredVector::getId)

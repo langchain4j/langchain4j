@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 class ChatResponse {
+
     private String model;
     private String createdAt;
     private Message message;

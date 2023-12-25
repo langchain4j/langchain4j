@@ -13,11 +13,9 @@ import java.util.List;
 @Builder
 class ChatRequest {
 
-    /**
-     * model name
-     */
     private String model;
     private List<Message> messages;
     private Options options;
+    private String format;
     private Boolean stream;
 }
