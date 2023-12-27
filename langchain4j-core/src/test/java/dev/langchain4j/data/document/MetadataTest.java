@@ -8,6 +8,18 @@ import java.util.Map;
 
 class MetadataTest implements WithAssertions {
     @Test
+    public void test_add_get_put() {
+        Metadata m = new Metadata();
+
+        assertThat(m.get("foo")).isNull();
+        m.add("foo", "bar");
+        assertThat(m.get("foo")).isEqualTo("bar");
+
+        m.add("xyz", 2);
+        assertThat(m.get("xyz")).isEqualTo("2");
+    }
+
+    @Test
     public void test_map_constructor_copies() {
         Map<String, String> source = new HashMap<>();
         source.put("foo", "bar");
@@ -82,6 +94,11 @@ class MetadataTest implements WithAssertions {
 
         assertThat(Metadata.metadata("foo", "bar"))
                 .isEqualTo(new Metadata().add("foo", "bar"));
+
+        assertThat(Metadata.from("foo", 2))
+                .isEqualTo(new Metadata().add("foo", "2"));
+        assertThat(Metadata.metadata("foo", 2))
+                .isEqualTo(new Metadata().add("foo", "2"));
     }
 
     @Test
