@@ -55,7 +55,7 @@ public class Metadata {
         this.metadata.put(key, value);
         return this;
     }
-        
+
     /**
      * Use {@link #add(String, String)} instead
      */
