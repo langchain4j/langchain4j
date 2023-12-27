@@ -190,7 +190,7 @@ class ToolSpecificationsTest implements WithAssertions {
             assertThat(ToolSpecifications.toJsonSchemaProperties(ps[0]))
                     .containsExactly(JsonSchemaProperty.STRING,
                             JsonSchemaProperty.description("foo"));
-        } catch (Exception e) {
+        } catch (Error e) {
             // REMOVE: debugging
             String allAnnotations = Arrays.toString(ps[0].getAnnotations());
             throw new RuntimeException("allAnnotations: " + allAnnotations, e);
