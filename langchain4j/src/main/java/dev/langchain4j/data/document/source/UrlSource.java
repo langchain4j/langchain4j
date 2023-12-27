@@ -29,7 +29,7 @@ public class UrlSource implements DocumentSource {
 
     @Override
     public Metadata metadata() {
-        return Metadata.from(Document.URL, url);
+        return Metadata.from(Document.URL, url.toString());
     }
 
     public static UrlSource from(String url) {

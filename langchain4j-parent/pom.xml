@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.25.0-SNAPSHOT</version>
+    <version>0.26.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>langchain4j parent POM</name>
@@ -19,12 +19,12 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openai4j.version>0.12.2</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
+        <azure.identity.version>1.11.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
-        <mustache.version>0.9.10</mustache.version>
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
@@ -42,7 +42,7 @@
         <jackson.version>2.12.7.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
-        <netty.version>4.1.100.Final</netty.version>
+        <netty.version>4.1.104.Final</netty.version>
     </properties>
 
     <dependencyManagement>
@@ -87,9 +87,15 @@
             </dependency>
 
             <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-identity</artifactId>
+                <version>${azure.identity.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-                <version>0.24.0</version>
+                <version>0.25.0</version>
             </dependency>
 
             <dependency>
@@ -126,12 +132,6 @@
                 <groupId>org.jsoup</groupId>
                 <artifactId>jsoup</artifactId>
                 <version>${jsoup.veresion}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.github.spullara.mustache.java</groupId>
-                <artifactId>compiler</artifactId>
-                <version>${mustache.version}</version>
             </dependency>
 
             <dependency>
