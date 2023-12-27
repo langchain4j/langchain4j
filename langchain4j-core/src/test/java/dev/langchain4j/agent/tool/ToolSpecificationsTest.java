@@ -186,9 +186,15 @@ class ToolSpecificationsTest implements WithAssertions {
 
         Parameter[] ps = method.getParameters();
 
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[0]))
-                .containsExactly(JsonSchemaProperty.STRING,
-                        JsonSchemaProperty.description("foo"));
+        try {
+            assertThat(ToolSpecifications.toJsonSchemaProperties(ps[0]))
+                    .containsExactly(JsonSchemaProperty.STRING,
+                            JsonSchemaProperty.description("foo"));
+        } catch (Exception e) {
+            // REMOVE: debugging
+            String allAnnotations = Arrays.toString(ps[0].getAnnotations());
+            throw new RuntimeException("allAnnotations: " + allAnnotations, e);
+        }
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[1]))
                 .containsExactly(JsonSchemaProperty.BOOLEAN);
