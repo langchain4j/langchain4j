@@ -78,7 +78,7 @@ public class Document {
      * @return a TextSegment.
      */
     public TextSegment toTextSegment() {
-        return TextSegment.from(text, metadata.copy().add("index", 0));
+        return TextSegment.from(text, metadata.copy().add("index", "0"));
     }
 
     @Override
