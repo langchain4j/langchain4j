@@ -18,6 +18,7 @@ import static dev.ai4j.openai4j.chat.Role.*;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
@@ -139,13 +140,8 @@ public class InternalOpenAiHelper {
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         AssistantMessage assistantMessage = response.choices().get(0).message();
 
-        String content = assistantMessage.content();
-        if (content != null) {
-            return aiMessage(content);
-        }
-
         List<ToolCall> toolCalls = assistantMessage.toolCalls();
-        if (toolCalls != null) {
+        if (!isNullOrEmpty(toolCalls)) {
             List<ToolExecutionRequest> toolExecutionRequests = toolCalls.stream()
                     .filter(toolCall -> toolCall.type() == FUNCTION)
                     .map(InternalOpenAiHelper::toToolExecutionRequest)
@@ -162,7 +158,7 @@ public class InternalOpenAiHelper {
             return aiMessage(toolExecutionRequest);
         }
 
-        throw illegalArgument("Unexpected response: " + response);
+        return aiMessage(assistantMessage.content());
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
