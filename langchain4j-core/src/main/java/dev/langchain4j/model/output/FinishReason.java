@@ -5,5 +5,6 @@ public enum FinishReason {
     STOP,
     LENGTH,
     TOOL_EXECUTION,
-    CONTENT_FILTER
+    CONTENT_FILTER,
+    OTHER
 }

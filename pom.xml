@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.25.0-SNAPSHOT</version>
+    <version>0.26.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>
@@ -20,13 +20,14 @@
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
+        <module>langchain4j-chatglm</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-local-ai</module>
+        <module>langchain4j-ollama</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
-        <module>langchain4j-ollama</module>
-        <module>langchain4j-chatglm</module>
+        <module>langchain4j-vertex-ai-gemini</module>
 
         <!-- embedding stores -->
         <module>langchain4j-cassandra</module>
@@ -49,7 +50,7 @@
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
 
         <!-- code execution engines -->
-        <module>langchain4j-graal</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
 
     </modules>
 
