@@ -7,9 +7,9 @@ import java.util.Objects;
 
 public final class Image {
 
-    private URI url;
-    private String base64Data;
-    private String revisedPrompt;
+    private final URI url;
+    private final String base64Data;
+    private final String revisedPrompt;
 
     private Image(Builder builder) {
         this.url = builder.url;
@@ -47,7 +47,7 @@ public final class Image {
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, revisedPrompt);
+        return Objects.hash(url, base64Data, revisedPrompt);
     }
 
     @Override
