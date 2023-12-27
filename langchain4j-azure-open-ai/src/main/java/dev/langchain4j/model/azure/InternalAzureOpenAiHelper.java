@@ -5,6 +5,8 @@ import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.credential.KeyCredential;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
@@ -14,6 +16,7 @@ import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.HttpClientOptions;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -37,6 +40,30 @@ import static java.util.stream.Collectors.toList;
 class InternalAzureOpenAiHelper {
 
     public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, String apiKey, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+
+        return openAIClientBuilder
+                .credential(new AzureKeyCredential(apiKey))
+                .buildClient();
+    }
+
+    public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, KeyCredential keyCredential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+
+        return openAIClientBuilder
+                .credential(keyCredential)
+                .buildClient();
+    }
+
+    public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, TokenCredential tokenCredential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+
+        return openAIClientBuilder
+                .credential(tokenCredential)
+                .buildClient();
+    }
+
+    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -58,12 +85,15 @@ class InternalAzureOpenAiHelper {
 
         return new OpenAIClientBuilder()
                 .endpoint(ensureNotBlank(endpoint, "endpoint"))
-                .credential(new AzureKeyCredential(apiKey))
                 .serviceVersion(getOpenAIServiceVersion(serviceVersion))
                 .httpClient(httpClient)
                 .httpLogOptions(httpLogOptions)
-                .retryOptions(retryOptions)
-                .buildClient();
+                .retryOptions(retryOptions);
+    }
+
+    private static OpenAIClientBuilder authenticate(TokenCredential tokenCredential) {
+        return new OpenAIClientBuilder()
+                .credential(tokenCredential);
     }
 
     public static OpenAIServiceVersion getOpenAIServiceVersion(String serviceVersion) {
