@@ -91,7 +91,7 @@ public interface EmbeddingStore<Embedded> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
     default List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,Embedding referenceEmbedding, int maxResults) {
-        return findRelevant(memoryId,referenceEmbedding, maxResults, 0);
+        throw new RuntimeException("Not implemented");
     }
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
@@ -105,7 +105,7 @@ public interface EmbeddingStore<Embedded> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
      default List<EmbeddingMatch<Embedded>> findRelevant(Object memoryId,Embedding referenceEmbedding, int maxResults, double minScore){
-         return findRelevant(referenceEmbedding, maxResults,minScore);
+         throw new RuntimeException("Not implemented");
      }
 
 }
