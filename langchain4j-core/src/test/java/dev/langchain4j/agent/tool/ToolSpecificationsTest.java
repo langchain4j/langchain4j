@@ -61,6 +61,32 @@ class ToolSpecificationsTest implements WithAssertions {
         }
     }
 
+    private static Method getF() throws NoSuchMethodException {
+        return Wrapper.class.getMethod("f",
+                String.class,
+                boolean.class,
+                Boolean.class,
+                byte.class,
+                Byte.class,
+                short.class,
+                Short.class,
+                int.class,
+                Integer.class,
+                long.class,
+                Long.class,
+                BigInteger.class,
+                float.class,
+                Float.class,
+                double.class,
+                Double.class,
+                BigDecimal.class,
+                String[].class,
+                List.class,
+                Set.class,
+                E.class,
+                Object.class);
+    }
+
     public static <K, V> Map<K, V> mapOf(K k1, V v1) {
         Map<K, V> map = new HashMap<>();
         map.put(k1, v1);
@@ -95,29 +121,7 @@ class ToolSpecificationsTest implements WithAssertions {
 
     @Test
     public void test_toolSpecificationFrom() throws NoSuchMethodException{
-        Method method = Wrapper.class.getMethod("f",
-                String.class,
-                boolean.class,
-                Boolean.class,
-                byte.class,
-                Byte.class,
-                short.class,
-                Short.class,
-                int.class,
-                Integer.class,
-                long.class,
-                Long.class,
-                BigInteger.class,
-                float.class,
-                Float.class,
-                double.class,
-                Double.class,
-                BigDecimal.class,
-                String[].class,
-                List.class,
-                Set.class,
-                E.class,
-                Object.class);
+        Method method = getF();
 
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
 
@@ -179,22 +183,15 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg21");
     }
 
-
     @Test
-    public void test_toJsonSchemaProperties() {
-        Method method = Wrapper.class.getDeclaredMethods()[0];
+    public void test_toJsonSchemaProperties() throws NoSuchMethodException {
+        Method method = getF();
 
         Parameter[] ps = method.getParameters();
 
-        try {
-            assertThat(ToolSpecifications.toJsonSchemaProperties(ps[0]))
-                    .containsExactly(JsonSchemaProperty.STRING,
-                            JsonSchemaProperty.description("foo"));
-        } catch (Error e) {
-            // REMOVE: debugging
-            String allAnnotations = Arrays.toString(ps[0].getAnnotations());
-            throw new RuntimeException("allAnnotations: " + allAnnotations, e);
-        }
+        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[0]))
+                .containsExactly(JsonSchemaProperty.STRING,
+                        JsonSchemaProperty.description("foo"));
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[1]))
                 .containsExactly(JsonSchemaProperty.BOOLEAN);
