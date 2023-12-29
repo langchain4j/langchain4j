@@ -1,7 +1,12 @@
 package dev.langchain4j.internal;
 
+import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
@@ -84,5 +89,31 @@ public class Utils {
       return null;
     }
     return string.length() > numberOfChars ? string.substring(0, numberOfChars) : string;
+  }
+
+  public static byte[] read(String url) {
+    try {
+      HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+      connection.setRequestMethod("GET");
+
+      int responseCode = connection.getResponseCode();
+
+      if (responseCode == HTTP_OK) {
+        InputStream inputStream = connection.getInputStream();
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        byte[] buffer = new byte[1024];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+          outputStream.write(buffer, 0, bytesRead);
+        }
+
+        return outputStream.toByteArray();
+      } else {
+        throw new RuntimeException("Error while reading: " + responseCode);
+      }
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 }

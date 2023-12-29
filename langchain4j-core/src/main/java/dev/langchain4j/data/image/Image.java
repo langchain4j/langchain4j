@@ -1,19 +1,21 @@
 package dev.langchain4j.data.image;
 
-import static dev.langchain4j.internal.Utils.quoted;
-
 import java.net.URI;
 import java.util.Objects;
+
+import static dev.langchain4j.internal.Utils.quoted;
 
 public final class Image {
 
     private final URI url;
     private final String base64Data;
+    private final String mimeType;
     private final String revisedPrompt;
 
     private Image(Builder builder) {
         this.url = builder.url;
         this.base64Data = builder.base64Data;
+        this.mimeType = builder.mimeType;
         this.revisedPrompt = builder.revisedPrompt;
     }
 
@@ -29,6 +31,10 @@ public final class Image {
         return base64Data;
     }
 
+    public String mimeType() {
+        return mimeType;
+    }
+
     public String revisedPrompt() {
         return revisedPrompt;
     }
@@ -37,37 +43,33 @@ public final class Image {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Image image = (Image) o;
-        return (
-            Objects.equals(url, image.url) &&
-            Objects.equals(base64Data, image.base64Data) &&
-            Objects.equals(revisedPrompt, image.revisedPrompt)
-        );
+        Image that = (Image) o;
+        return Objects.equals(this.url, that.url) &&
+                Objects.equals(this.base64Data, that.base64Data) &&
+                Objects.equals(this.mimeType, that.mimeType) &&
+                Objects.equals(this.revisedPrompt, that.revisedPrompt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(url, base64Data, revisedPrompt);
+        return Objects.hash(url, base64Data, mimeType, revisedPrompt);
     }
 
     @Override
     public String toString() {
-        return (
-            "Image{" +
-            " url=" +
-            quoted(url.toString()) +
-            ", base64Data=" +
-            quoted(base64Data) +
-            ", revisedPrompt=" +
-            quoted(revisedPrompt) +
-            '}'
-        );
+        return "Image {" +
+                " url = " + quoted(url.toString()) +
+                ", base64Data = " + quoted(base64Data) +
+                ", mimeType = " + quoted(mimeType) +
+                ", revisedPrompt = " + quoted(revisedPrompt) +
+                " }";
     }
 
     public static class Builder {
 
         private URI url;
         private String base64Data;
+        private String mimeType;
         private String revisedPrompt;
 
         public Builder url(URI url) {
@@ -75,8 +77,17 @@ public final class Image {
             return this;
         }
 
+        public Builder url(String url) {
+            return url(URI.create(url));
+        }
+
         public Builder base64Data(String base64Data) {
             this.base64Data = base64Data;
+            return this;
+        }
+
+        public Builder mimeType(String mimeType) {
+            this.mimeType = mimeType;
             return this;
         }
 
