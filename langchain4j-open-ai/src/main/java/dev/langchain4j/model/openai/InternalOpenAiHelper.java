@@ -104,23 +104,30 @@ public class InternalOpenAiHelper {
 
     private static dev.ai4j.openai4j.chat.Content toOpenAiContent(Content content) {
         if (content instanceof TextContent) {
-            return dev.ai4j.openai4j.chat.Content.builder()
-                    .type(TEXT)
-                    .text(((TextContent) content).text())
-                    .build();
+            return toOpenAiContent((TextContent) content);
         } else if (content instanceof ImageContent) {
-            ImageContent imageContent = (ImageContent) content;
-            Image image = imageContent.image();
-            return dev.ai4j.openai4j.chat.Content.builder()
-                    .type(IMAGE_URL)
-                    .imageUrl(ImageUrl.builder()
-                            .url(toUrl(image))
-                            .detail(toDetail(imageContent.granularity()))
-                            .build())
-                    .build();
+            return toOpenAiContent((ImageContent) content);
         } else {
             throw new IllegalArgumentException("Unknown content: " + content);
         }
+    }
+
+
+    private static dev.ai4j.openai4j.chat.Content toOpenAiContent(TextContent content) {
+        return dev.ai4j.openai4j.chat.Content.builder()
+                .type(TEXT)
+                .text(content.text())
+                .build();
+    }
+
+    private static dev.ai4j.openai4j.chat.Content toOpenAiContent(ImageContent content) {
+        return dev.ai4j.openai4j.chat.Content.builder()
+                .type(IMAGE_URL)
+                .imageUrl(ImageUrl.builder()
+                        .url(toUrl(content.image()))
+                        .detail(toDetail(content.granularity()))
+                        .build())
+                .build();
     }
 
     private static String toUrl(Image image) {

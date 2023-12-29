@@ -29,21 +29,29 @@ class PartsMapper {
 
     private static Part map(Content content) {
         if (content instanceof TextContent) {
-            return Part.newBuilder()
-                    .setText(((TextContent) content).text())
-                    .build();
+            return map((TextContent) content);
         } else if (content instanceof ImageContent) {
-            Image image = ((ImageContent) content).image();
-            if (image.url() != null) {
-                if (image.url().getScheme().equals("gs")) {
-                    return fromMimeTypeAndData(image.mimeType(), image.url());
-                } else {
-                    return fromMimeTypeAndData(image.mimeType(), read(image.url().toString()));
-                }
-            }
-            return fromMimeTypeAndData(image.mimeType(), Base64.decode(image.base64Data()));
+            return map((ImageContent) content);
         } else {
             throw new IllegalArgumentException("Unknown content: " + content);
         }
+    }
+
+    private static Part map(TextContent content) {
+        return Part.newBuilder()
+                .setText(content.text())
+                .build();
+    }
+
+    private static Part map(ImageContent content) {
+        Image image = content.image();
+        if (image.url() != null) {
+            if (image.url().getScheme().equals("gs")) {
+                return fromMimeTypeAndData(image.mimeType(), image.url());
+            } else {
+                return fromMimeTypeAndData(image.mimeType(), read(image.url().toString()));
+            }
+        }
+        return fromMimeTypeAndData(image.mimeType(), Base64.decode(image.base64Data()));
     }
 }
