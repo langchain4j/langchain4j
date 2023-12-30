@@ -131,8 +131,8 @@ class VertexAiGeminiChatModelIT {
                 .mimeType("image/png")
                 .build();
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."),
-                ImageContent.from(image)
+                ImageContent.from(image),
+                TextContent.from("What do you see? Reply in one word.")
         );
 
         // when
@@ -153,8 +153,8 @@ class VertexAiGeminiChatModelIT {
                 .mimeType("image/png")
                 .build();
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."),
-                ImageContent.from(image)
+                ImageContent.from(image),
+                TextContent.from("What do you see? Reply in one word.")
         );
 
         // when
@@ -172,8 +172,8 @@ class VertexAiGeminiChatModelIT {
         // given
         String base64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply in one word."),
-                ImageContent.from(base64Data, "image/png")
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What do you see? Reply in one word.")
         );
 
         // when
@@ -198,9 +198,9 @@ class VertexAiGeminiChatModelIT {
                 .mimeType("image/png")
                 .build();
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(catImage),
-                ImageContent.from(diceImage)
+                ImageContent.from(diceImage),
+                TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
@@ -227,9 +227,9 @@ class VertexAiGeminiChatModelIT {
                 .mimeType("image/png")
                 .build();
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(catImage),
-                ImageContent.from(diceImage)
+                ImageContent.from(diceImage),
+                TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
@@ -250,9 +250,9 @@ class VertexAiGeminiChatModelIT {
         String catBase64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
         String diceBase64Data = Base64.getEncoder().encodeToString(read(DICE_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(catBase64Data, "image/png"),
-                ImageContent.from(diceBase64Data, "image/png")
+                ImageContent.from(diceBase64Data, "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
