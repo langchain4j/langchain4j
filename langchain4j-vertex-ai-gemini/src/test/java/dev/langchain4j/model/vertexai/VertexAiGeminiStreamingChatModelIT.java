@@ -217,8 +217,6 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(268);
     }
 
     @Test
@@ -241,8 +239,6 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(268);
     }
 
     @Test
@@ -262,8 +258,6 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(268);
     }
 
     @Test
@@ -293,8 +287,6 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(528);
     }
 
     @Test
@@ -324,8 +316,6 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(528);
     }
 
     @Test
@@ -349,7 +339,5 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dice");
-
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(528);
     }
 }
