@@ -1,10 +1,10 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.Part;
-import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 
+import java.util.Base64;
 import java.util.List;
 
 import static com.google.cloud.vertexai.generativeai.preview.PartMaker.fromMimeTypeAndData;
@@ -52,6 +52,6 @@ class PartsMapper {
                 return fromMimeTypeAndData(image.mimeType(), read(image.url().toString()));
             }
         }
-        return fromMimeTypeAndData(image.mimeType(), Base64.decode(image.base64Data()));
+        return fromMimeTypeAndData(image.mimeType(), Base64.getDecoder().decode(image.base64Data()));
     }
 }

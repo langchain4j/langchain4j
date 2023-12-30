@@ -1,6 +1,5 @@
 package dev.langchain4j.model.openai;
 
-import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
@@ -9,6 +8,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
+import java.util.Base64;
 import java.util.List;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
@@ -304,7 +304,7 @@ class OpenAiChatModelIT {
     void should_accept_base64_image() {
 
         // given
-        String base64Data = Base64.encode(read(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
         UserMessage userMessage = UserMessage.from(imageContent);
 

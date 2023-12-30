@@ -3,7 +3,6 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import com.sun.org.apache.xerces.internal.impl.dv.util.Base64;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -14,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.IOException;
+import java.util.Base64;
 
 import static dev.langchain4j.internal.Utils.read;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -170,7 +170,7 @@ class VertexAiGeminiChatModelIT {
     void should_accept_text_and_base64_image() {
 
         // given
-        String base64Data = Base64.encode(read(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see? Reply in one word."),
                 ImageContent.from(base64Data, "image/png")
@@ -247,8 +247,8 @@ class VertexAiGeminiChatModelIT {
     void should_accept_text_and_multiple_base64_images() {
 
         // given
-        String catBase64Data = Base64.encode(read(CAT_IMAGE_URL));
-        String diceBase64Data = Base64.encode(read(DICE_IMAGE_URL));
+        String catBase64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
+        String diceBase64Data = Base64.getEncoder().encodeToString(read(DICE_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
                 TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(catBase64Data, "image/png"),
