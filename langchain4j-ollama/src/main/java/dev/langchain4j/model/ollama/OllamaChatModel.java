@@ -2,7 +2,6 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -16,7 +15,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
 
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
@@ -30,6 +28,7 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final Options options;
     private final String format;
     private final Integer maxRetries;
+    private final OllamaMessagesUtils ollamaMessageUtils;
 
     @Builder
     public OllamaChatModel(String baseUrl,
@@ -60,6 +59,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .build();
         this.format = format;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.ollamaMessageUtils = new OllamaMessagesUtils();
     }
 
     @Override
@@ -68,7 +68,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
-                .messages(toOllamaMessages(messages))
+                .messages(ollamaMessageUtils.toOllamaMessages(messages))
                 .options(options)
                 .format(format)
                 .stream(false)
@@ -82,25 +82,4 @@ public class OllamaChatModel implements ChatLanguageModel {
         );
     }
 
-    static List<Message> toOllamaMessages(List<ChatMessage> messages) {
-        return messages.stream()
-                .map(message -> Message.builder()
-                        .role(toOllamaRole(message.type()))
-                        .content(message.text())
-                        .build())
-                .collect(toList());
-    }
-
-    private static Role toOllamaRole(ChatMessageType chatMessageType) {
-        switch (chatMessageType) {
-            case SYSTEM:
-                return Role.SYSTEM;
-            case USER:
-                return Role.USER;
-            case AI:
-                return Role.ASSISTANT;
-            default:
-                throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
-        }
-    }
 }
