@@ -3,7 +3,6 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.FinishReason;
@@ -126,12 +125,8 @@ class VertexAiGeminiChatModelIT {
     void should_accept_text_and_image_from_public_url() {
 
         // given
-        Image image = Image.builder()
-                .url(CAT_IMAGE_URL)
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(image),
+                ImageContent.from(CAT_IMAGE_URL),
                 TextContent.from("What do you see? Reply in one word.")
         );
 
@@ -146,12 +141,8 @@ class VertexAiGeminiChatModelIT {
     void should_accept_text_and_image_from_google_storage_url() {
 
         // given
-        Image image = Image.builder()
-                .url("gs://langchain4j-test/cat.png")
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(image),
+                ImageContent.from("gs://langchain4j-test/cat.png"),
                 TextContent.from("What do you see? Reply in one word.")
         );
 
@@ -183,17 +174,9 @@ class VertexAiGeminiChatModelIT {
     void should_accept_text_and_multiple_images_from_public_urls() {
 
         // given
-        Image catImage = Image.builder()
-                .url(CAT_IMAGE_URL)
-                .mimeType("image/png")
-                .build();
-        Image diceImage = Image.builder()
-                .url(DICE_IMAGE_URL)
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(catImage),
-                ImageContent.from(diceImage),
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(DICE_IMAGE_URL),
                 TextContent.from("What do you see? Reply with one word per image.")
         );
 
@@ -210,17 +193,9 @@ class VertexAiGeminiChatModelIT {
     void should_accept_text_and_multiple_images_from_google_storage_urls() {
 
         // given
-        Image catImage = Image.builder()
-                .url("gs://langchain4j-test/cat.png")
-                .mimeType("image/png")
-                .build();
-        Image diceImage = Image.builder()
-                .url("gs://langchain4j-test/dice.png")
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(catImage),
-                ImageContent.from(diceImage),
+                ImageContent.from("gs://langchain4j-test/cat.png"),
+                ImageContent.from("gs://langchain4j-test/dice.png"),
                 TextContent.from("What do you see? Reply with one word per image.")
         );
 

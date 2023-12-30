@@ -4,15 +4,36 @@ import com.google.cloud.vertexai.api.Part;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 
+import java.net.URI;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.cloud.vertexai.generativeai.preview.PartMaker.fromMimeTypeAndData;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.read;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 class PartsMapper {
+
+    private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
+
+    static {
+        EXTENSION_TO_MIME_TYPE.put("avif", "image/avif");
+        EXTENSION_TO_MIME_TYPE.put("bmp", "image/bmp");
+        EXTENSION_TO_MIME_TYPE.put("gif", "image/gif");
+        EXTENSION_TO_MIME_TYPE.put("jpe", "image/jpeg");
+        EXTENSION_TO_MIME_TYPE.put("jpeg", "image/jpeg");
+        EXTENSION_TO_MIME_TYPE.put("jpg", "image/jpeg");
+        EXTENSION_TO_MIME_TYPE.put("png", "image/png");
+        EXTENSION_TO_MIME_TYPE.put("svg", "image/svg+xml");
+        EXTENSION_TO_MIME_TYPE.put("tif", "image/tiff");
+        EXTENSION_TO_MIME_TYPE.put("tiff", "image/tiff");
+        EXTENSION_TO_MIME_TYPE.put("webp", "image/webp");
+    }
 
     static List<Part> map(ChatMessage message) {
         if (message instanceof UserMessage) {
@@ -43,15 +64,28 @@ class PartsMapper {
                 .build();
     }
 
-    private static Part map(ImageContent content) {
+    static Part map(ImageContent content) {
         Image image = content.image();
         if (image.url() != null) {
+            String mimeType = getOrDefault(image.mimeType(), () -> detectMimeType(image.url()));
             if (image.url().getScheme().equals("gs")) {
-                return fromMimeTypeAndData(image.mimeType(), image.url());
+                return fromMimeTypeAndData(mimeType, image.url());
             } else {
-                return fromMimeTypeAndData(image.mimeType(), read(image.url().toString()));
+                return fromMimeTypeAndData(mimeType, read(image.url().toString()));
             }
         }
         return fromMimeTypeAndData(image.mimeType(), Base64.getDecoder().decode(image.base64Data()));
+    }
+
+    static String detectMimeType(URI url) {
+        String[] parts = url.getPath().split("\\.");
+        if (parts.length > 1) {
+            String extension = parts[parts.length - 1].toLowerCase();
+            String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
+            if (mimeType != null) {
+                return mimeType;
+            }
+        }
+        throw illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
     }
 }
