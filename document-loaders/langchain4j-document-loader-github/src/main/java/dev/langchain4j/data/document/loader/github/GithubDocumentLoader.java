@@ -57,9 +57,7 @@ public class GithubDocumentLoader {
         github
                 .getRepository(owner + "/" + repo)
                 .getDirectoryContent(path, branch)
-                .forEach(ghDirectoryContent -> {
-                    GithubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser);
-                });
+                .forEach(ghDirectoryContent -> GithubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
         return documents;
     }
 
