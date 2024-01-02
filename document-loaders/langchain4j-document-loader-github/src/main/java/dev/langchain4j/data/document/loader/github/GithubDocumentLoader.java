@@ -1,7 +1,9 @@
 package dev.langchain4j.data.document.loader.github;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
+import dev.langchain4j.data.document.source.github.GithubSource;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
@@ -84,18 +86,8 @@ public class GithubDocumentLoader {
         logger.info("Loading document from GitHub: {}", content.getHtmlUrl());
         try {
             if (content.isFile()) {
-                Document document = parser.parse(content.read());
-                document.metadata().add("git_url", content.getGitUrl());
-                document.metadata().add("download_url", content.getDownloadUrl());
-                document.metadata().add("html_url", content.getHtmlUrl());
-                document.metadata().add("name", content.getName());
-                document.metadata().add("path", content.getPath());
-                document.metadata().add("sha", content.getSha());
-                document.metadata().add("size", Long.toString(content.getSize()));
-                document.metadata().add("type", content.getType());
-                document.metadata().add("url", content.getUrl());
-                document.metadata().add("encoding", content.getEncoding());
-                return document;
+                GithubSource source = new GithubSource(content);
+                return DocumentLoader.load(source, parser);
             } else {
                 logger.debug("Skipping directory: {}", content.getHtmlUrl());
                 return null;
