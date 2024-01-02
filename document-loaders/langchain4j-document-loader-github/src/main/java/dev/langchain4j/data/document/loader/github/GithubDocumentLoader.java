@@ -45,8 +45,7 @@ public class GithubDocumentLoader {
                 .getRepository(owner + "/" + repo)
                 .getFileContent(path, branch);
 
-        Document document = fromGitHub(parser, content);
-        return document;
+        return fromGitHub(parser, content);
     }
 
     public Document loadDocument(String owner, String repo, String branch, DocumentParser parser) throws IOException {
