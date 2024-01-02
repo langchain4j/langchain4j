@@ -68,9 +68,7 @@ public class GithubDocumentLoader {
     private static void scanDirectory(GHContent ghContent, List<Document> documents, DocumentParser parser) {
         if (ghContent.isDirectory()) {
             try {
-                ghContent.listDirectoryContent().forEach(ghDirectoryContent -> {
-                    GithubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser);
-                });
+                ghContent.listDirectoryContent().forEach(ghDirectoryContent -> GithubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
             } catch (IOException e) {
                 logger.error("Failed to load directory from GitHub: {}", ghContent.getHtmlUrl(), e);
             }
