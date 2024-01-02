@@ -59,12 +59,17 @@ public class ToolParameters {
                 + " }";
     }
 
+    /**
+     * ToolParameters builder static inner class.
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * {@code ToolParameters} builder static inner class.
+     */
     public static final class Builder {
-
         private String type = "object";
         private Map<String, Map<String, Object>> properties = new HashMap<>();
         private List<String> required = new ArrayList<>();
