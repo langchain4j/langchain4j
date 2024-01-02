@@ -17,6 +17,8 @@ import io.pinecone.proto.*;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Collections.emptyList;
@@ -136,7 +138,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 vectorBuilder.setMetadata(Struct.newBuilder()
                         .putFields(metadataTextKey, Value.newBuilder()
                                 .setStringValue(textSegments.get(i).text())
-                                .build()));
+                                .build())
+                        .putAllFields(textSegments.get(i).metadata().asMap().entrySet()
+                                .stream()
+                                .collect(Collectors.toMap(Map.Entry::getKey, e -> Value.newBuilder().setStringValue(e.getValue()).build()))));
             }
 
             upsertRequestBuilder.addVectors(vectorBuilder.build());
