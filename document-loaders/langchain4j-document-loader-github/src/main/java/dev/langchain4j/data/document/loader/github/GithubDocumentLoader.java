@@ -18,7 +18,7 @@ public class GithubDocumentLoader {
 
     private String apiUrl = "https://api.github.com";
 
-    private GitHub github;
+    private final GitHub github;
 
     public GithubDocumentLoader(String apiUrl, String githubToken, String gitHubTokenOrganization) throws IOException {
         GitHubBuilder gitHubBuilder = new GitHubBuilder();
