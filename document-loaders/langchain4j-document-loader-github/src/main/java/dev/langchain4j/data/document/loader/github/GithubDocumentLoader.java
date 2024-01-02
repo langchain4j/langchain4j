@@ -96,7 +96,7 @@ public class GithubDocumentLoader {
                 document.metadata().add("name", content.getName());
                 document.metadata().add("path", content.getPath());
                 document.metadata().add("sha", content.getSha());
-                document.metadata().add("size", content.getSize());
+                document.metadata().add("size", Long.toString(content.getSize()));
                 document.metadata().add("type", content.getType());
                 document.metadata().add("url", content.getUrl());
                 document.metadata().add("encoding", content.getEncoding());
