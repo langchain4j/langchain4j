@@ -114,13 +114,13 @@ public class AzureOpenAiChatModelIT {
         // This test will use the function called "getCurrentWeather" which is defined below.
         String toolName = "getCurrentWeather";
 
-        ToolSpecification toolSpecification = ToolSpecification.builder()
+        ToolSpecification weatherToolSpec = ToolSpecification.builder()
                 .name(toolName)
                 .description("Get the current weather")
                 .parameters(getToolParameters())
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), weatherToolSpec);
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isBlank();
@@ -159,6 +159,42 @@ public class AzureOpenAiChatModelIT {
         assertThat(response2.content().text()).isNotBlank();
         assertThat(response2.content().text()).contains("t-shirt");
         assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_call_function_with_no_argument(String deploymentName, String gptVersion) {
+        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .logRequestsAndResponses(true)
+                .build();
+
+        UserMessage userMessage = userMessage("What time is it?");
+
+        // This test will use the function called "getCurrentDateAndTime" which takes no arguments
+        String toolName = "getCurrentDateAndTime";
+
+        ToolSpecification noArgToolSpec = ToolSpecification.builder()
+                .name("getCurrentDateAndTime")
+                .description("Get the current date and time")
+                .build();
+
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isBlank();
+
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
     }
 
     private static ToolParameters getToolParameters() {
