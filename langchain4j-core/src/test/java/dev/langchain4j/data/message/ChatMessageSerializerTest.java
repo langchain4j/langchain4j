@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messageFromJson;
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messagesFromJson;
+import static dev.langchain4j.data.message.ChatMessageSerializer.messageToJson;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -22,7 +23,7 @@ class ChatMessageSerializerTest {
     @MethodSource
     void should_serialize_and_deserialize_chat_message(ChatMessage message, String expectedJson) {
 
-        String json = ChatMessageSerializer.messageToJson(message);
+        String json = messageToJson(message);
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
 
         ChatMessage deserializedMessage = messageFromJson(json);
@@ -45,11 +46,11 @@ class ChatMessageSerializerTest {
                 ),
                 Arguments.of(
                         UserMessage.from(ImageContent.from("http://image.url")),
-                        "{\"contents\":[{\"image\":{\"url\":\"http://image.url\"},\"granularity\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"image\":{\"url\":\"http://image.url\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         UserMessage.from(ImageContent.from("aGVsbG8=", "image/png")),
-                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8\\u003d\",\"mimeType\":\"image/png\"},\"granularity\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
+                        "{\"contents\":[{\"image\":{\"base64Data\":\"aGVsbG8\\u003d\",\"mimeType\":\"image/png\"},\"detailLevel\":\"LOW\",\"type\":\"IMAGE\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),

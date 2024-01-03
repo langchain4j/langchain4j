@@ -75,7 +75,9 @@ public class OpenAiTokenizer implements Tokenizer {
             if (content instanceof TextContent) {
                 tokenCount += estimateTokenCountInText(((TextContent) content).text());
             } else if (content instanceof ImageContent) {
-                tokenCount += 85; // TODO implement for HIGH/AUTO granularity
+                tokenCount += 85; // TODO implement for HIGH/AUTO detail level
+            } else {
+                throw illegalArgument("Unknown content type: " + content);
             }
         }
 

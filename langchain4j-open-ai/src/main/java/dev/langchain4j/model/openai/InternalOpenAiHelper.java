@@ -46,12 +46,20 @@ public class InternalOpenAiHelper {
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
-            return dev.ai4j.openai4j.chat.UserMessage.builder()
-                    .content(userMessage.contents().stream()
-                            .map(InternalOpenAiHelper::toOpenAiContent)
-                            .collect(toList()))
-                    .name(userMessage.name())
-                    .build();
+
+            if (userMessage.hasSingleText()) {
+                return dev.ai4j.openai4j.chat.UserMessage.builder()
+                        .content(userMessage.text())
+                        .name(userMessage.name())
+                        .build();
+            } else {
+                return dev.ai4j.openai4j.chat.UserMessage.builder()
+                        .content(userMessage.contents().stream()
+                                .map(InternalOpenAiHelper::toOpenAiContent)
+                                .collect(toList()))
+                        .name(userMessage.name())
+                        .build();
+            }
         }
 
         if (message instanceof AiMessage) {
@@ -108,10 +116,9 @@ public class InternalOpenAiHelper {
         } else if (content instanceof ImageContent) {
             return toOpenAiContent((ImageContent) content);
         } else {
-            throw new IllegalArgumentException("Unknown content: " + content);
+            throw illegalArgument("Unknown content type: " + content);
         }
     }
-
 
     private static dev.ai4j.openai4j.chat.Content toOpenAiContent(TextContent content) {
         return dev.ai4j.openai4j.chat.Content.builder()
@@ -125,7 +132,7 @@ public class InternalOpenAiHelper {
                 .type(IMAGE_URL)
                 .imageUrl(ImageUrl.builder()
                         .url(toUrl(content.image()))
-                        .detail(toDetail(content.granularity()))
+                        .detail(toDetail(content.detailLevel()))
                         .build())
                 .build();
     }
@@ -137,11 +144,11 @@ public class InternalOpenAiHelper {
         return format("data:%s;base64,%s", image.mimeType(), image.base64Data());
     }
 
-    private static ImageDetail toDetail(ImageContent.Granularity granularity) {
-        if (granularity == null) {
+    private static ImageDetail toDetail(ImageContent.DetailLevel detailLevel) {
+        if (detailLevel == null) {
             return null;
         }
-        return ImageDetail.valueOf(granularity.name());
+        return ImageDetail.valueOf(detailLevel.name());
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications) {

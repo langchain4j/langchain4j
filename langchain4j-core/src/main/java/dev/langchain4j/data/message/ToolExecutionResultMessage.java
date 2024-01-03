@@ -20,7 +20,7 @@ public class ToolExecutionResultMessage implements ChatMessage {
 
     public ToolExecutionResultMessage(String id, String toolName, String text) {
         this.id = id;
-        this.toolName = ensureNotBlank(toolName, "toolName");
+        this.toolName = toolName;
         this.text = ensureNotBlank(text, "text");
     }
 

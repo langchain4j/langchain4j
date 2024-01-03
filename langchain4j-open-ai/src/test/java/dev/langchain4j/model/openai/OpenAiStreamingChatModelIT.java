@@ -14,13 +14,11 @@ import org.junit.jupiter.api.Test;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.read;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
@@ -62,7 +60,7 @@ class OpenAiStreamingChatModelIT {
     Percentage tokenizerPrecision = withPercentage(5);
 
     @Test
-    void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_stream_answer() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
@@ -476,7 +474,7 @@ class OpenAiStreamingChatModelIT {
     void should_accept_base64_image() {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
         UserMessage userMessage = UserMessage.from(imageContent);
 
@@ -519,6 +517,29 @@ class OpenAiStreamingChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL)
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_different_sources() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when

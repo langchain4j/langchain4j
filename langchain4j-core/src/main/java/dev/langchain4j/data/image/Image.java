@@ -44,10 +44,10 @@ public final class Image {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Image that = (Image) o;
-        return Objects.equals(this.url, that.url) &&
-                Objects.equals(this.base64Data, that.base64Data) &&
-                Objects.equals(this.mimeType, that.mimeType) &&
-                Objects.equals(this.revisedPrompt, that.revisedPrompt);
+        return Objects.equals(this.url, that.url)
+                && Objects.equals(this.base64Data, that.base64Data)
+                && Objects.equals(this.mimeType, that.mimeType)
+                && Objects.equals(this.revisedPrompt, that.revisedPrompt);
     }
 
     @Override
@@ -58,7 +58,7 @@ public final class Image {
     @Override
     public String toString() {
         return "Image {" +
-                " url = " + quoted(url.toString()) +
+                " url = " + quoted(url) +
                 ", base64Data = " + quoted(base64Data) +
                 ", mimeType = " + quoted(mimeType) +
                 ", revisedPrompt = " + quoted(revisedPrompt) +

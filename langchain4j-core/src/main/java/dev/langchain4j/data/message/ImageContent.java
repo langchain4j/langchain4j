@@ -6,59 +6,59 @@ import java.net.URI;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ContentType.IMAGE;
-import static dev.langchain4j.data.message.ImageContent.Granularity.LOW;
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.LOW;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class ImageContent implements Content {
 
     private final Image image;
-    private final Granularity granularity;
+    private final DetailLevel detailLevel;
 
     public ImageContent(URI url) {
         this(url, LOW);
     }
 
-    public ImageContent(URI url, Granularity granularity) {
+    public ImageContent(URI url, DetailLevel detailLevel) {
         this(Image.builder()
                 .url(ensureNotNull(url, "url"))
-                .build(), granularity);
+                .build(), detailLevel);
     }
 
     public ImageContent(String url) {
         this(URI.create(url));
     }
 
-    public ImageContent(String url, Granularity granularity) {
-        this(URI.create(url), granularity);
+    public ImageContent(String url, DetailLevel detailLevel) {
+        this(URI.create(url), detailLevel);
     }
 
     public ImageContent(String base64Data, String mimeType) {
         this(base64Data, mimeType, LOW);
     }
 
-    public ImageContent(String base64Data, String mimeType, Granularity granularity) {
+    public ImageContent(String base64Data, String mimeType, DetailLevel detailLevel) {
         this(Image.builder()
                 .base64Data(ensureNotBlank(base64Data, "base64Data"))
                 .mimeType(ensureNotBlank(mimeType, "mimeType"))
-                .build(), granularity);
+                .build(), detailLevel);
     }
 
     public ImageContent(Image image) {
         this(image, LOW);
     }
 
-    public ImageContent(Image image, Granularity granularity) {
+    public ImageContent(Image image, DetailLevel detailLevel) {
         this.image = ensureNotNull(image, "image");
-        this.granularity = ensureNotNull(granularity, "granularity");
+        this.detailLevel = ensureNotNull(detailLevel, "detailLevel");
     }
 
     public Image image() {
         return image;
     }
 
-    public Granularity granularity() {
-        return granularity;
+    public DetailLevel detailLevel() {
+        return detailLevel;
     }
 
     @Override
@@ -72,19 +72,19 @@ public class ImageContent implements Content {
         if (o == null || getClass() != o.getClass()) return false;
         ImageContent that = (ImageContent) o;
         return Objects.equals(this.image, that.image)
-                && Objects.equals(this.granularity, that.granularity);
+                && Objects.equals(this.detailLevel, that.detailLevel);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(image, granularity);
+        return Objects.hash(image, detailLevel);
     }
 
     @Override
     public String toString() {
         return "ImageContent {" +
                 " image = " + image +
-                " granularity = " + granularity +
+                " detailLevel = " + detailLevel +
                 " }";
     }
 
@@ -92,35 +92,35 @@ public class ImageContent implements Content {
         return new ImageContent(url);
     }
 
-    public static ImageContent from(URI url, Granularity granularity) {
-        return new ImageContent(url, granularity);
+    public static ImageContent from(URI url, DetailLevel detailLevel) {
+        return new ImageContent(url, detailLevel);
     }
 
     public static ImageContent from(String url) {
         return new ImageContent(url);
     }
 
-    public static ImageContent from(String url, Granularity granularity) {
-        return new ImageContent(url, granularity);
+    public static ImageContent from(String url, DetailLevel detailLevel) {
+        return new ImageContent(url, detailLevel);
     }
 
     public static ImageContent from(String base64Data, String mimeType) {
         return new ImageContent(base64Data, mimeType);
     }
 
-    public static ImageContent from(String base64Data, String mimeType, Granularity granularity) {
-        return new ImageContent(base64Data, mimeType, granularity);
+    public static ImageContent from(String base64Data, String mimeType, DetailLevel detailLevel) {
+        return new ImageContent(base64Data, mimeType, detailLevel);
     }
 
     public static ImageContent from(Image image) {
         return new ImageContent(image);
     }
 
-    public static ImageContent from(Image image, Granularity granularity) {
-        return new ImageContent(image, granularity);
+    public static ImageContent from(Image image, DetailLevel detailLevel) {
+        return new ImageContent(image, detailLevel);
     }
 
-    public enum Granularity {
+    public enum DetailLevel {
 
         LOW,
         HIGH,

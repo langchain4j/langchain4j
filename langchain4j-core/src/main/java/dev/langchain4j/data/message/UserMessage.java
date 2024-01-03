@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.USER;
-import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -55,10 +55,15 @@ public class UserMessage implements ChatMessage {
 
     @Deprecated
     public String text() {
-        if (contents.size() == 1 && contents.get(0).type() == TEXT) {
+        if (hasSingleText()) {
             return ((TextContent) contents.get(0)).text();
+        } else {
+            throw runtime("Expecting single text content, but got: " + contents);
         }
-        throw new RuntimeException("Expecting single text content, but got: " + contents);
+    }
+
+    public boolean hasSingleText() {
+        return contents.size() == 1 && contents.get(0) instanceof TextContent;
     }
 
     @Override

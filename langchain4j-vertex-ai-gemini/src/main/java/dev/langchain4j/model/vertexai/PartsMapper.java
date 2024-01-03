@@ -13,7 +13,7 @@ import java.util.Map;
 import static com.google.cloud.vertexai.generativeai.preview.PartMaker.fromMimeTypeAndData;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.read;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -44,8 +44,9 @@ class PartsMapper {
             return singletonList(Part.newBuilder()
                     .setText(((AiMessage) message).text())
                     .build());
+        } else {
+            throw illegalArgument(message.type() + " message is not supported by Gemini");
         }
-        throw new IllegalArgumentException(message.type() + " is not allowed.");
     }
 
     private static Part map(Content content) {
@@ -54,7 +55,7 @@ class PartsMapper {
         } else if (content instanceof ImageContent) {
             return map((ImageContent) content);
         } else {
-            throw new IllegalArgumentException("Unknown content: " + content);
+            throw illegalArgument("Unknown content type: " + content);
         }
     }
 
@@ -71,16 +72,16 @@ class PartsMapper {
             if (image.url().getScheme().equals("gs")) {
                 return fromMimeTypeAndData(mimeType, image.url());
             } else {
-                return fromMimeTypeAndData(mimeType, read(image.url().toString()));
+                return fromMimeTypeAndData(mimeType, readBytes(image.url().toString()));
             }
         }
         return fromMimeTypeAndData(image.mimeType(), Base64.getDecoder().decode(image.base64Data()));
     }
 
     static String detectMimeType(URI url) {
-        String[] parts = url.getPath().split("\\.");
-        if (parts.length > 1) {
-            String extension = parts[parts.length - 1].toLowerCase();
+        String[] pathParts = url.getPath().split("\\.");
+        if (pathParts.length > 1) {
+            String extension = pathParts[pathParts.length - 1].toLowerCase();
             String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
             if (mimeType != null) {
                 return mimeType;

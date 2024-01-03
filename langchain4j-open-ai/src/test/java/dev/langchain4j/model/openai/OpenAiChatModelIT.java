@@ -14,7 +14,7 @@ import java.util.List;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.internal.Utils.read;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.model.output.FinishReason.*;
@@ -304,7 +304,7 @@ class OpenAiChatModelIT {
     void should_accept_base64_image() {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
         UserMessage userMessage = UserMessage.from(imageContent);
 
@@ -343,6 +343,27 @@ class OpenAiChatModelIT {
                 TextContent.from("What do you see? Reply with one word per image."),
                 ImageContent.from(CAT_IMAGE_URL),
                 ImageContent.from(DICE_IMAGE_URL)
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_different_sources() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when

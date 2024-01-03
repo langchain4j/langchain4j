@@ -3,7 +3,6 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -15,7 +14,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 
-import static dev.langchain4j.internal.Utils.read;
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
@@ -201,12 +200,8 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_text_and_image_from_public_url() {
 
         // given
-        Image image = Image.builder()
-                .url(CAT_IMAGE_URL)
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(image),
+                ImageContent.from(CAT_IMAGE_URL),
                 TextContent.from("What do you see? Reply in one word.")
         );
 
@@ -223,12 +218,8 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_text_and_image_from_google_storage_url() {
 
         // given
-        Image image = Image.builder()
-                .url("gs://langchain4j-test/cat.png")
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(image),
+                ImageContent.from("gs://langchain4j-test/cat.png"),
                 TextContent.from("What do you see? Reply in one word.")
         );
 
@@ -245,7 +236,7 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_text_and_base64_image() {
 
         // given
-        String base64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(base64Data, "image/png"),
                 TextContent.from("What do you see? Reply in one word.")
@@ -264,17 +255,9 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_text_and_multiple_images_from_public_urls() {
 
         // given
-        Image catImage = Image.builder()
-                .url(CAT_IMAGE_URL)
-                .mimeType("image/png")
-                .build();
-        Image diceImage = Image.builder()
-                .url(DICE_IMAGE_URL)
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(catImage),
-                ImageContent.from(diceImage),
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(DICE_IMAGE_URL),
                 TextContent.from("What do you see? Reply with one word per image.")
         );
 
@@ -293,17 +276,9 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_text_and_multiple_images_from_google_storage_urls() {
 
         // given
-        Image catImage = Image.builder()
-                .url("gs://langchain4j-test/cat.png")
-                .mimeType("image/png")
-                .build();
-        Image diceImage = Image.builder()
-                .url("gs://langchain4j-test/dice.png")
-                .mimeType("image/png")
-                .build();
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(catImage),
-                ImageContent.from(diceImage),
+                ImageContent.from("gs://langchain4j-test/cat.png"),
+                ImageContent.from("gs://langchain4j-test/dice.png"),
                 TextContent.from("What do you see? Reply with one word per image.")
         );
 
@@ -322,8 +297,8 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_accept_text_and_multiple_base64_images() {
 
         // given
-        String catBase64Data = Base64.getEncoder().encodeToString(read(CAT_IMAGE_URL));
-        String diceBase64Data = Base64.getEncoder().encodeToString(read(DICE_IMAGE_URL));
+        String catBase64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        String diceBase64Data = Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
                 ImageContent.from(catBase64Data, "image/png"),
                 ImageContent.from(diceBase64Data, "image/png"),
@@ -338,6 +313,29 @@ class VertexAiGeminiStreamingChatModelIT {
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_different_sources() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from("gs://langchain4j-test/dog.jpg"),
+                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dog")
                 .containsIgnoringCase("dice");
     }
 }
