@@ -61,10 +61,6 @@ public class GitHubDocumentLoader {
         return fromGitHub(parser, content);
     }
 
-    public Document loadDocument(String owner, String repo, String branch, DocumentParser parser) throws IOException {
-        return loadDocument(owner, repo, branch,"", parser);
-    }
-
     public List<Document> loadDocuments(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
         List<Document> documents = new ArrayList<>();
         try {
