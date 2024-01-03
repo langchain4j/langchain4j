@@ -33,7 +33,7 @@ class GitHubDocumentLoaderIT {
 
         assertThat(document.text()).contains("<groupId>dev.langchain4j</groupId>");
         assertThat(document.metadata().asMap().size()).isEqualTo(10);
-        assertThat(document.metadata("git_url")).startsWith("https://api.github.com/repos/langchain4j/langchain4j");
+        assertThat(document.metadata("github_git_url")).startsWith("https://api.github.com/repos/langchain4j/langchain4j");
     }
 
     @Test
