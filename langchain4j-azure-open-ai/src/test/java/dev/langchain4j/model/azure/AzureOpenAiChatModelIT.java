@@ -123,7 +123,7 @@ public class AzureOpenAiChatModelIT {
         Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
 
         AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isBlank();
+        assertThat(aiMessage.text()).isNull();
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -189,7 +189,7 @@ public class AzureOpenAiChatModelIT {
         Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), noArgToolSpec);
 
         AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isBlank();
+        assertThat(aiMessage.text()).isNull();
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
