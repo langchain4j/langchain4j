@@ -44,6 +44,10 @@ public class GitHubDocumentLoader {
         }
     }
 
+    public GitHubDocumentLoader() throws IOException {
+        gitHub = new GitHubBuilder().build();
+    }
+
     public GitHubDocumentLoader(GitHub gitHub) {
         this.gitHub = gitHub;
     }
