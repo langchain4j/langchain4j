@@ -3,7 +3,7 @@ package dev.langchain4j.data.document.loader.github;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
-import dev.langchain4j.data.document.source.github.GithubSource;
+import dev.langchain4j.data.document.source.github.GitHubSource;
 import org.kohsuke.github.GHContent;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
@@ -14,36 +14,36 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class GithubDocumentLoader {
+public class GitHubDocumentLoader {
 
-    private static final Logger logger = LoggerFactory.getLogger(GithubDocumentLoader.class);
+    private static final Logger logger = LoggerFactory.getLogger(GitHubDocumentLoader.class);
 
     private String apiUrl = "https://api.github.com";
 
-    private final GitHub github;
+    private final GitHub gitHub;
 
-    public GithubDocumentLoader(String apiUrl, String githubToken, String gitHubTokenOrganization) throws IOException {
+    public GitHubDocumentLoader(String apiUrl, String gitHubToken, String gitHubTokenOrganization) throws IOException {
         GitHubBuilder gitHubBuilder = new GitHubBuilder();
         if (apiUrl != null) {
             this.apiUrl = apiUrl;
         }
         gitHubBuilder.withEndpoint(this.apiUrl);
-        if (githubToken != null) {
+        if (gitHubToken != null) {
             if (gitHubTokenOrganization == null) {
-                gitHubBuilder.withOAuthToken(githubToken);
+                gitHubBuilder.withOAuthToken(gitHubToken);
             } else {
-                gitHubBuilder.withOAuthToken(githubToken, gitHubTokenOrganization);
+                gitHubBuilder.withOAuthToken(gitHubToken, gitHubTokenOrganization);
             }
         }
-        github = gitHubBuilder.build();
+        gitHub = gitHubBuilder.build();
     }
 
-    public GithubDocumentLoader(GitHub github) {
-        this.github = github;
+    public GitHubDocumentLoader(GitHub gitHub) {
+        this.gitHub = gitHub;
     }
 
     public Document loadDocument(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
-        GHContent content = github
+        GHContent content = gitHub
                 .getRepository(owner + "/" + repo)
                 .getFileContent(path, branch);
 
@@ -56,10 +56,10 @@ public class GithubDocumentLoader {
 
     public List<Document> loadDocuments(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
         List<Document> documents = new ArrayList<>();
-        github
+        gitHub
                 .getRepository(owner + "/" + repo)
                 .getDirectoryContent(path, branch)
-                .forEach(ghDirectoryContent -> GithubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
+                .forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
         return documents;
     }
 
@@ -70,7 +70,7 @@ public class GithubDocumentLoader {
     private static void scanDirectory(GHContent ghContent, List<Document> documents, DocumentParser parser) {
         if (ghContent.isDirectory()) {
             try {
-                ghContent.listDirectoryContent().forEach(ghDirectoryContent -> GithubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
+                ghContent.listDirectoryContent().forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
             } catch (IOException e) {
                 logger.error("Failed to load directory from GitHub: {}", ghContent.getHtmlUrl(), e);
             }
@@ -86,7 +86,7 @@ public class GithubDocumentLoader {
         logger.info("Loading document from GitHub: {}", content.getHtmlUrl());
         try {
             if (content.isFile()) {
-                GithubSource source = new GithubSource(content);
+                GitHubSource source = new GitHubSource(content);
                 return DocumentLoader.load(source, parser);
             } else {
                 logger.debug("Skipping directory: {}", content.getHtmlUrl());
@@ -106,14 +106,14 @@ public class GithubDocumentLoader {
 
         private String apiUrl = "https://api.github.com";
 
-        private String githubToken;
+        private String gitHubToken;
 
         private String gitHubTokenOrganization;
 
-        private GitHub github;
+        private GitHub gitHub;
 
-        public Builder github(GitHub github) {
-            this.github = github;
+        public Builder gitHub(GitHub gitHub) {
+            this.gitHub = gitHub;
             return this;
         }
 
@@ -122,8 +122,8 @@ public class GithubDocumentLoader {
             return this;
         }
 
-        public Builder githubToken(String githubToken) {
-            this.githubToken = githubToken;
+        public Builder gitHubToken(String gitHubToken) {
+            this.gitHubToken = gitHubToken;
             return this;
         }
 
@@ -132,11 +132,11 @@ public class GithubDocumentLoader {
             return this;
         }
 
-        public GithubDocumentLoader build() throws IOException {
-            if (github != null) {
-                return new GithubDocumentLoader(github);
+        public GitHubDocumentLoader build() throws IOException {
+            if (gitHub != null) {
+                return new GitHubDocumentLoader(gitHub);
             } else {
-                return new GithubDocumentLoader(apiUrl, githubToken, gitHubTokenOrganization);
+                return new GitHubDocumentLoader(apiUrl, gitHubToken, gitHubTokenOrganization);
             }
         }
     }

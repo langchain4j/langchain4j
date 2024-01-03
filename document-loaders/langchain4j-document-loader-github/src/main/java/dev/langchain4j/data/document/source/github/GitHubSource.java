@@ -9,13 +9,13 @@ import java.io.InputStream;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-public class GithubSource implements DocumentSource {
+public class GitHubSource implements DocumentSource {
 
     private final InputStream inputStream;
 
     private final GHContent content;
 
-    public GithubSource(GHContent content) throws IOException {
+    public GitHubSource(GHContent content) throws IOException {
         this.content = ensureNotNull(content, "content");
         this.inputStream = ensureNotNull(content.read(), "inputStream");
     }

@@ -11,19 +11,19 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class GithubDocumentLoaderIT {
+class GitHubDocumentLoaderIT {
 
     private static final String TEST_OWNER = "langchain4j";
     private static final String TEST_REPO = "langchain4j";
 
-    GithubDocumentLoader loader;
+    GitHubDocumentLoader loader;
 
     DocumentParser parser = new TextDocumentParser();
 
     @BeforeEach
     public void beforeEach() throws IOException {
-        loader = GithubDocumentLoader.builder()
-                .githubToken(System.getenv("GITHUB_TOKEN"))
+        loader = GitHubDocumentLoader.builder()
+                .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .build();
     }
 
