@@ -114,13 +114,13 @@ public class AzureOpenAiChatModelIT {
         // This test will use the function called "getCurrentWeather" which is defined below.
         String toolName = "getCurrentWeather";
 
-        ToolSpecification weatherToolSpec = ToolSpecification.builder()
+        ToolSpecification toolSpecification = ToolSpecification.builder()
                 .name(toolName)
                 .description("Get the current weather")
                 .parameters(getToolParameters())
                 .build();
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), weatherToolSpec);
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecification);
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isBlank();
