@@ -41,7 +41,7 @@ Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.c
   - Parallel function calling, json output, precise token estimation by [@langchain4j](https://github.com/langchain4j)
 - [Integration with Google Gemini](https://github.com/langchain4j/langchain4j-examples/blob/main/vertex-ai-gemini-examples/src/main/java/VertexAiGeminiChatModelExamples.java) by [@kuraleta](https://github.com/kuraleta)
 - Ollama:
-  - [Chat API](https://github.com/langchain4j/langchain4j-examples/blob/main/ollama-examples/src/main/java/OllamaChatModelExamples.java) by [@fintanmm](https://github.com/fintanmm)
+  - [Chat API](https://github.com/langchain4j/langchain4j-examples/tree/main/ollama-examples) by [@fintanmm](https://github.com/fintanmm)
   - Json output and more parameters by [@langchain4j](https://github.com/langchain4j)
 - [Integration with Neo4j](https://github.com/langchain4j/langchain4j-examples/blob/main/neo4j-example/src/main/java/Neo4jEmbeddingStoreExample.java) by [@vga91](https://github.com/vga91)
 - Integration with ChatGLM by [@Martin7-1](https://github.com/Martin7-1)
