@@ -11,15 +11,10 @@ import lombok.NoArgsConstructor;
 @Builder
 class CompletionRequest {
 
-    /**
-     * model name
-     */
     private String model;
-    /**
-     * the prompt to generate a response for
-     */
+    private String system;
     private String prompt;
     private Options options;
-    private String system;
+    private String format;
     private Boolean stream;
 }

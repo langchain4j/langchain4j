@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class CosineSimilarity {
+    public static final float EPSILON = 1e-8f;
 
     /**
      * Calculates cosine similarity between two vectors.
@@ -20,6 +21,9 @@ public class CosineSimilarity {
      * 1 indicates vectors are pointing in the same direction (but not necessarily of the same magnitude).
      * <p>
      * Not to be confused with cosine distance ([0..2]), which quantifies how different two vectors are.
+     * <p>
+     * Embeddings of all-zeros vectors are considered orthogonal to all other vectors;
+     * including other all-zeros vectors.
      *
      * @param embeddingA first embedding vector
      * @param embeddingB second embedding vector
@@ -47,7 +51,8 @@ public class CosineSimilarity {
             normB += vectorB[i] * vectorB[i];
         }
 
-        return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+        // Avoid division by zero.
+        return dotProduct / Math.max(Math.sqrt(normA) * Math.sqrt(normB), EPSILON);
     }
 
     /**

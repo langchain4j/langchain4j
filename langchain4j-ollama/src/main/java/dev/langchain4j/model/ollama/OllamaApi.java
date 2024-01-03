@@ -7,10 +7,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 import retrofit2.http.Streaming;
 
-/**
- * Ollama API definitions using retrofit2
- */
-public interface OllamaApi {
+interface OllamaApi {
 
     @POST("/api/generate")
     @Headers({"Content-Type: application/json"})
@@ -28,4 +25,9 @@ public interface OllamaApi {
     @POST("/api/chat")
     @Headers({"Content-Type: application/json"})
     Call<ChatResponse> chat(@Body ChatRequest chatRequest);
+
+    @POST("/api/chat")
+    @Headers({"Content-Type: application/json"})
+    @Streaming
+    Call<ResponseBody> streamingChat(@Body ChatRequest chatRequest);
 }
