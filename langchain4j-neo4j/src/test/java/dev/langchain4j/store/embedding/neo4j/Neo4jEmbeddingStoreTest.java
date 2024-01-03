@@ -255,8 +255,13 @@ class Neo4jEmbeddingStoreTest {
 
         checkEntitiesCreated(relevant.size(), 
                 iterator -> {
-            checkDefaultProps(firstEmbedding, firstMatch, iterator.next());
-            checkDefaultProps(secondEmbedding, secondMatch, iterator.next());
+                    iterator.forEachRemaining(node -> {
+                        if (node.get(DEFAULT_ID_PROP).asString().equals(firstMatch.embeddingId())) {
+                            checkDefaultProps(firstEmbedding, firstMatch, node);
+                        } else {
+                            checkDefaultProps(secondEmbedding, secondMatch, node);
+                        }
+                    });
         });
     }
 
@@ -289,12 +294,17 @@ class Neo4jEmbeddingStoreTest {
         assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
 
-        checkEntitiesCreated(relevant.size(), 
+        checkEntitiesCreated(relevant.size(),
                 iterator -> {
-            List<String> otherProps = Collections.singletonList(DEFAULT_TEXT_PROP);
-            checkDefaultProps(firstEmbedding, firstMatch, iterator.next(), otherProps);
-            checkDefaultProps(secondEmbedding, secondMatch, iterator.next(), otherProps);
-        });
+                    List<String> otherProps = Collections.singletonList(DEFAULT_TEXT_PROP);
+                    iterator.forEachRemaining(node -> {
+                        if (node.get(DEFAULT_ID_PROP).asString().equals(firstMatch.embeddingId())) {
+                            checkDefaultProps(firstEmbedding, firstMatch, node, otherProps);
+                        } else {
+                            checkDefaultProps(secondEmbedding, secondMatch, node, otherProps);
+                        }
+                    });
+                });
     }
 
     @Test
@@ -345,8 +355,13 @@ class Neo4jEmbeddingStoreTest {
 
         checkEntitiesCreated(relevant.size(),
                 iterator -> {
-            checkDefaultProps(firstEmbedding, firstMatch, iterator.next());
-            checkDefaultProps(secondEmbedding, secondMatch, iterator.next());
+                    iterator.forEachRemaining(node -> {
+                        if (node.get(DEFAULT_ID_PROP).asString().equals(firstMatch.embeddingId())) {
+                            checkDefaultProps(firstEmbedding, firstMatch, node);
+                        } else {
+                            checkDefaultProps(secondEmbedding, secondMatch, node);
+                        }
+                    });
         });
     }
 
