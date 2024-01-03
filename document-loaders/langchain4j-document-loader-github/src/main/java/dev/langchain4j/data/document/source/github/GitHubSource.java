@@ -39,7 +39,6 @@ public class GitHubSource implements DocumentSource {
         metadata.add("github_path", content.getPath());
         metadata.add("github_sha", content.getSha());
         metadata.add("github_size", Long.toString(content.getSize()));
-        metadata.add("github_type", content.getType());
         metadata.add("github_url", content.getUrl());
         metadata.add("github_encoding", content.getEncoding());
         return metadata;
