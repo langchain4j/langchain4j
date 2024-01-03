@@ -35,7 +35,12 @@ public class GitHubDocumentLoader {
                 gitHubBuilder.withOAuthToken(gitHubToken, gitHubTokenOrganization);
             }
         }
-        gitHub = gitHubBuilder.build();
+        try {
+            gitHub = gitHubBuilder.build();
+        } catch (IOException ioException) {
+            logger.error("Failed to create GitHub client: {}", ioException.getMessage(), ioException);
+            throw ioException;
+        }
     }
 
     public GitHubDocumentLoader(GitHub gitHub) {
@@ -43,9 +48,15 @@ public class GitHubDocumentLoader {
     }
 
     public Document loadDocument(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
-        GHContent content = gitHub
-                .getRepository(owner + "/" + repo)
-                .getFileContent(path, branch);
+        GHContent content = null;
+        try {
+            content = gitHub
+                    .getRepository(owner + "/" + repo)
+                    .getFileContent(path, branch);
+        } catch (IOException ioException) {
+            logger.error("Failed to read GitHub repository: {}", ioException.getMessage(), ioException);
+            throw ioException;
+        }
 
         return fromGitHub(parser, content);
     }
@@ -56,10 +67,15 @@ public class GitHubDocumentLoader {
 
     public List<Document> loadDocuments(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
         List<Document> documents = new ArrayList<>();
-        gitHub
-                .getRepository(owner + "/" + repo)
-                .getDirectoryContent(path, branch)
-                .forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
+        try {
+            gitHub
+                    .getRepository(owner + "/" + repo)
+                    .getDirectoryContent(path, branch)
+                    .forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
+        } catch (IOException ioException) {
+            logger.error("Failed to read GitHub repository: {}", ioException.getMessage(), ioException);
+            throw ioException;
+        }
         return documents;
     }
 
@@ -71,18 +87,23 @@ public class GitHubDocumentLoader {
         if (ghContent.isDirectory()) {
             try {
                 ghContent.listDirectoryContent().forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
-            } catch (IOException e) {
-                logger.error("Failed to load directory from GitHub: {}", ghContent.getHtmlUrl(), e);
+            } catch (IOException ioException) {
+                logger.error("Failed to read directory from GitHub: {}", ghContent.getHtmlUrl(), ioException);
             }
         } else {
-            Document document = fromGitHub(parser, ghContent);
+            Document document = null;
+            try {
+                document = fromGitHub(parser, ghContent);
+            } catch (IOException ioException) {
+                logger.error("Failed to read document from GitHub: {}", ghContent.getHtmlUrl(), ioException);
+            }
             if (document != null) {
                 documents.add(document);
             }
         }
     }
 
-    private static Document fromGitHub(DocumentParser parser, GHContent content) {
+    private static Document fromGitHub(DocumentParser parser, GHContent content) throws IOException {
         logger.info("Loading document from GitHub: {}", content.getHtmlUrl());
         try {
             if (content.isFile()) {
@@ -92,8 +113,8 @@ public class GitHubDocumentLoader {
                 logger.debug("Skipping directory: {}", content.getHtmlUrl());
                 return null;
             }
-        } catch (IOException e) {
-            logger.error("Failed to load document from GitHub: {}", content.getHtmlUrl(), e);
+        } catch (IOException ioException) {
+            logger.error("Failed to load document from GitHub: {}", content.getHtmlUrl(), ioException);
             return null;
         }
     }
