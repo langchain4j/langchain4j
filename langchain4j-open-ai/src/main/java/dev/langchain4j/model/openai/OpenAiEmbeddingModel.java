@@ -29,13 +29,16 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
 
     private final OpenAiClient client;
     private final String modelName;
+    private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiEmbeddingModel(String baseUrl,
                                 String apiKey,
+                                String organizationId,
                                 String modelName,
+                                String user,
                                 Duration timeout,
                                 Integer maxRetries,
                                 Proxy proxy,
@@ -53,6 +56,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         this.client = OpenAiClient.builder()
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
@@ -62,6 +66,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .logResponses(logResponses)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
+        this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
@@ -81,6 +86,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(texts)
                 .model(modelName)
+                .user(user)
                 .build();
 
         EmbeddingResponse response = withRetry(() -> client.embedding(request).execute(), maxRetries);

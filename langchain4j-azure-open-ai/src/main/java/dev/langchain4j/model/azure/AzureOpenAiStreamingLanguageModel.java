@@ -4,6 +4,8 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.Choice;
 import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
+import com.azure.core.credential.KeyCredential;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -28,21 +30,23 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIC
  * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apiKey and deploymentName.
- * You can also provide your own OpenAIClient instance, if you need more flexibility.
+ * There are 3 authentication methods:
  * <p>
- * There are two primary authentication methods to access Azure OpenAI:
+ * 1. Azure OpenAI API Key Authentication: this is the most common method, using an Azure OpenAI API key.
+ * You need to provide the OpenAI API Key as a parameter, using the apiKey() method in the Builder, or the apiKey parameter in the constructor:
+ * For example, you would use `builder.apiKey("{key}")`.
  * <p>
- * 1. API Key Authentication: For this type of authentication, HTTP requests must include the
- * API Key in the "api-key" HTTP header as follows: `api-key: OPENAI_API_KEY`
+ * 2. non-Azure OpenAI API Key Authentication: this method allows to use the OpenAI service, instead of Azure OpenAI.
+ * You can use the nonAzureApiKey() method in the Builder, which will also automatically set the endpoint to "https://api.openai.com/v1".
+ * For example, you would use `builder.nonAzureApiKey("{key}")`.
+ * The constructor requires a KeyCredential instance, which can be created using `new AzureKeyCredential("{key}")`, and doesn't set up the endpoint.
  * <p>
- * 2. Azure Active Directory Authentication: For this type of authentication, HTTP requests must include the
- * authentication/access token in the "Authorization" HTTP header.
- * <p>
- * <a href="https://learn.microsoft.com/en-us/azure/ai-services/openai/reference">More information</a>
- * <p>
- * Please note, that currently, only API Key authentication is supported by this class,
- * second authentication option will be supported later.
+ * 3. Azure OpenAI client with Microsoft Entra ID (formerly Azure Active Directory) credentials.
+ * - This requires to add the `com.azure:azure-identity` dependency to your project, which is an optional dependency to this library.
+ * - You need to provide a TokenCredential instance, using the tokenCredential() method in the Builder, or the tokenCredential parameter in the constructor.
+ * As an example, DefaultAzureCredential can be used to authenticate the client: Set the values of the client ID, tenant ID, and
+ * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
+ * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel, TokenCountEstimator {
 
@@ -85,6 +89,44 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
         this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    }
+
+    public AzureOpenAiStreamingLanguageModel(String endpoint,
+                                             String serviceVersion,
+                                             KeyCredential keyCredential,
+                                             String deploymentName,
+                                             Tokenizer tokenizer,
+                                             Double temperature,
+                                             Double topP,
+                                             Integer maxTokens,
+                                             Double presencePenalty,
+                                             Double frequencyPenalty,
+                                             Duration timeout,
+                                             Integer maxRetries,
+                                             ProxyOptions proxyOptions,
+                                             boolean logRequestsAndResponses) {
+
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    }
+
+    public AzureOpenAiStreamingLanguageModel(String endpoint,
+                                             String serviceVersion,
+                                             TokenCredential tokenCredential,
+                                             String deploymentName,
+                                             Tokenizer tokenizer,
+                                             Double temperature,
+                                             Double topP,
+                                             Integer maxTokens,
+                                             Double presencePenalty,
+                                             Double frequencyPenalty,
+                                             Duration timeout,
+                                             Integer maxRetries,
+                                             ProxyOptions proxyOptions,
+                                             boolean logRequestsAndResponses) {
+
+        this(deploymentName, tokenizer, temperature, topP, maxTokens, presencePenalty, frequencyPenalty);
+        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiStreamingLanguageModel(String deploymentName,
@@ -164,6 +206,8 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private String endpoint;
         private String serviceVersion;
         private String apiKey;
+        private KeyCredential keyCredential;
+        private TokenCredential tokenCredential;
         private String deploymentName;
         private Tokenizer tokenizer;
         private Double temperature;
@@ -200,13 +244,36 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         }
 
         /**
-         * Sets the Azure OpenAI API key. This is a mandatory parameter.
+         * Sets the Azure OpenAI API key.
          *
          * @param apiKey The Azure OpenAI API key.
          * @return builder
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * Used to authenticate with the OpenAI service, instead of Azure OpenAI.
+         * This automatically sets the endpoint to https://api.openai.com/v1.
+         *
+         * @param nonAzureApiKey The non-Azure OpenAI API key
+         * @return builder
+         */
+        public Builder nonAzureApiKey(String nonAzureApiKey) {
+            this.keyCredential = new KeyCredential(nonAzureApiKey);
+            this.endpoint = "https://api.openai.com/v1";
+            return this;
+        }
+
+        /**
+         * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         * @param tokenCredential the credentials to authenticate with Azure Active Directory
+         * @return builder
+         */
+        public Builder tokenCredential(TokenCredential tokenCredential) {
+            this.tokenCredential = tokenCredential;
             return this;
         }
 
@@ -284,6 +351,41 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
 
         public AzureOpenAiStreamingLanguageModel build() {
             if (openAIClient == null) {
+                if (tokenCredential != null) {
+                    return new AzureOpenAiStreamingLanguageModel(
+                            endpoint,
+                            serviceVersion,
+                            tokenCredential,
+                            deploymentName,
+                            tokenizer,
+                            temperature,
+                            topP,
+                            maxTokens,
+                            presencePenalty,
+                            frequencyPenalty,
+                            timeout,
+                            maxRetries,
+                            proxyOptions,
+                            logRequestsAndResponses
+                    );
+                } else if (keyCredential != null) {
+                    return new AzureOpenAiStreamingLanguageModel(
+                            endpoint,
+                            serviceVersion,
+                            keyCredential,
+                            deploymentName,
+                            tokenizer,
+                            temperature,
+                            topP,
+                            maxTokens,
+                            presencePenalty,
+                            frequencyPenalty,
+                            timeout,
+                            maxRetries,
+                            proxyOptions,
+                            logRequestsAndResponses
+                    );
+                }
                 return new AzureOpenAiStreamingLanguageModel(
                         endpoint,
                         serviceVersion,

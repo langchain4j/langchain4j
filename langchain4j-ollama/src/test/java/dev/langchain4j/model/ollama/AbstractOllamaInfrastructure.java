@@ -16,11 +16,11 @@ import java.util.List;
 @Slf4j
 public class AbstractOllamaInfrastructure {
 
-    private static final String OLLAMA_IMAGE = "ollama/ollama:0.1.11";
+    private static final String OLLAMA_IMAGE = "ollama/ollama:latest";
 
-    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-orca-mini", OLLAMA_IMAGE);
+    static final String MODEL = "phi";
 
-    static final String ORCA_MINI_MODEL = "orca-mini";
+    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OLLAMA_IMAGE, MODEL);
 
     static OllamaContainer ollama;
 
@@ -58,18 +58,18 @@ public class AbstractOllamaInfrastructure {
             super(image.get());
             this.dockerImageName = image.get();
             withExposedPorts(11434);
-            withImagePullPolicy(dockerImageName -> !dockerImageName.getVersionPart().endsWith(ORCA_MINI_MODEL));
+            withImagePullPolicy(dockerImageName -> !dockerImageName.getVersionPart().endsWith(MODEL));
         }
 
         @Override
         protected void containerIsStarted(InspectContainerResponse containerInfo) {
             if (!this.dockerImageName.equals(DockerImageName.parse(LOCAL_OLLAMA_IMAGE))) {
                 try {
-                    log.info("Start pulling the 'orca-mini' model (3GB) ... would take several minutes ...");
-                    execInContainer("ollama", "pull", ORCA_MINI_MODEL);
-                    log.info("orca-mini pulling competed!");
+                    log.info("Start pulling the '{}' model ... would take several minutes ...", MODEL);
+                    execInContainer("ollama", "pull", MODEL);
+                    log.info("Model pulling competed!");
                 } catch (IOException | InterruptedException e) {
-                    throw new RuntimeException("Error pulling orca-mini model", e);
+                    throw new RuntimeException("Error pulling model", e);
                 }
             }
         }

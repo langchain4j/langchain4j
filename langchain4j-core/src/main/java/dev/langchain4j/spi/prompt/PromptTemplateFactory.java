@@ -14,6 +14,7 @@ public interface PromptTemplateFactory {
     }
 
     interface Template {
-        String render(Map<String, Object> vars);
+
+        String render(Map<String, Object> variables);
     }
 }

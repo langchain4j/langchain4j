@@ -7,10 +7,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("To run this test, you must provide your own endpoint, project and location")
 class VertexAiLanguageModelIT {
 
     @Test
-    @Disabled("To run this test, you must have provide your own endpoint, project and location")
     void testLanguageModel() {
         VertexAiLanguageModel vertexAiLanguageModel = VertexAiLanguageModel.builder()
                 .endpoint("us-central1-aiplatform.googleapis.com:443")

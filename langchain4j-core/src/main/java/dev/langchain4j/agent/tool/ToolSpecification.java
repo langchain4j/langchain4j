@@ -8,7 +8,6 @@ import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Arrays.asList;
 
 public class ToolSpecification {
-
     private final String name;
     private final String description;
     private final ToolParameters parameters;
@@ -62,10 +61,16 @@ public class ToolSpecification {
                 + " }";
     }
 
+    /**
+     * Creates builder to build {@link ToolSpecification}.
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * {@code ToolSpecification} builder static inner class.
+     */
     public static final class Builder {
 
         private String name;

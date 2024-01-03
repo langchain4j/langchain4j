@@ -5,7 +5,6 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.quoted;
 
 public class ToolExecutionRequest {
-
     private final String id;
     private final String name;
     private final String arguments;
@@ -59,12 +58,18 @@ public class ToolExecutionRequest {
                 + " }";
     }
 
+    /**
+     * Creates builder to build {@link ToolExecutionRequest}.
+     * @return created builder
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * {@code ToolExecutionRequest} builder static inner class.
+     */
     public static final class Builder {
-
         private String id;
         private String name;
         private String arguments;
@@ -72,21 +77,40 @@ public class ToolExecutionRequest {
         private Builder() {
         }
 
+        /**
+         * Sets the {@code id}.
+         * @param id the {@code id}
+         * @return the {@code Builder}
+         */
         public Builder id(String id) {
             this.id = id;
             return this;
         }
 
+        /**
+         * Sets the {@code name}.
+         * @param name the {@code name}
+         * @return the {@code Builder}
+         */
         public Builder name(String name) {
             this.name = name;
             return this;
         }
 
+        /**
+         * Sets the {@code arguments}.
+         * @param arguments the {@code arguments}
+         * @return the {@code Builder}
+         */
         public Builder arguments(String arguments) {
             this.arguments = arguments;
             return this;
         }
 
+        /**
+         * Returns a {@code ToolExecutionRequest} built from the parameters previously set.
+         * @return a {@code ToolExecutionRequest}
+         */
         public ToolExecutionRequest build() {
             return new ToolExecutionRequest(this);
         }

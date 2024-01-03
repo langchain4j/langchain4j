@@ -33,6 +33,7 @@ class OpenAiChatModelIT {
 
     ChatLanguageModel model = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -65,6 +66,7 @@ class OpenAiChatModelIT {
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .maxTokens(3)
                 .build();
 
@@ -188,6 +190,7 @@ class OpenAiChatModelIT {
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106.toString()) // supports parallel function calling
                 .temperature(0.0)
                 .build();
@@ -240,5 +243,32 @@ class OpenAiChatModelIT {
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
 
         assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_generate_valid_json() {
+
+        //given
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
+                "Before returning, tell me a joke."; // nudging it to say something additionally to json
+
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
+
+        assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
+
+        ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(OpenAiModelName.GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .responseFormat("json_object")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        String json = modelGeneratingJson.generate(userMessage);
+
+        // then
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 }

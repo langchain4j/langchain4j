@@ -11,15 +11,23 @@ class OllamaEmbeddingModelIT extends AbstractOllamaInfrastructure {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()
             .baseUrl(getBaseUrl())
-            .modelName(ORCA_MINI_MODEL)
+            .modelName(MODEL)
             .build();
 
     @Test
     void should_embed() {
 
-        Response<Embedding> response = model.embed("hello world");
+        // given
+        String text = "hello world";
+
+        // when
+        Response<Embedding> response = model.embed(text);
         System.out.println(response);
 
-       assertThat(response.content().vector()).isNotEmpty();
+        // then
+        assertThat(response.content().vector()).isNotEmpty();
+
+        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.finishReason()).isNull();
     }
 }

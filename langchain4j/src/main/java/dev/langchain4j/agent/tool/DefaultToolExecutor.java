@@ -57,10 +57,14 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     private String execute(Object[] arguments) throws IllegalAccessException, InvocationTargetException {
         Object result = method.invoke(object, arguments);
-        if (method.getReturnType() == void.class) {
+        Class<?> returnType = method.getReturnType();
+        if (returnType == void.class) {
             return "Success";
+        } else if (returnType == String.class) {
+            return (String) result;
+        } else {
+            return Json.toJson(result);
         }
-        return Json.toJson(result);
     }
 
     private static Object[] prepareArguments(Method method, Map<String, Object> argumentsMap, Object memoryId) {
@@ -118,6 +122,10 @@ public class DefaultToolExecutor implements ToolExecutor {
                             argument = BigDecimal.valueOf(doubleValue).toBigInteger();
                         }
                     }
+                }
+
+                if (parameterType.isEnum()) {
+                    argument = Enum.valueOf((Class<Enum>) parameterType, argument.toString());
                 }
 
                 arguments[i] = argument;

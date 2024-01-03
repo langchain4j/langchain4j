@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EmbeddingRequest {
+class EmbeddingRequest {
 
     private String model;
     private String prompt;

@@ -32,6 +32,21 @@ Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.c
 
 ## News
 
+22 December:
+- Azure OpenAI:
+  - Using official Azure SDK by [@jdubois](https://github.com/jdubois)
+  - Image generation with DALL·E by [@jdubois](https://github.com/jdubois)
+- OpenAI:
+  - [Image generation with DALL·E](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiImageModelExamples.java) by [@Heezer](https://github.com/Heezer)
+  - Parallel function calling, json output, precise token estimation by [@langchain4j](https://github.com/langchain4j)
+- [Integration with Google Gemini](https://github.com/langchain4j/langchain4j-examples/blob/main/vertex-ai-gemini-examples/src/main/java/VertexAiGeminiChatModelExamples.java) by [@kuraleta](https://github.com/kuraleta)
+- Ollama:
+  - [Chat API](https://github.com/langchain4j/langchain4j-examples/tree/main/ollama-examples) by [@fintanmm](https://github.com/fintanmm)
+  - Json output and more parameters by [@langchain4j](https://github.com/langchain4j)
+- [Integration with Neo4j](https://github.com/langchain4j/langchain4j-examples/blob/main/neo4j-example/src/main/java/Neo4jEmbeddingStoreExample.java) by [@vga91](https://github.com/vga91)
+- Integration with ChatGLM by [@Martin7-1](https://github.com/Martin7-1)
+- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.25.0)
+
 12 November:
 - Integration with [OpenSearch](https://opensearch.org/) by [@riferrei](https://github.com/riferrei)
 - Add support for loading documents from S3 by [@jmgang](https://github.com/jmgang)
@@ -170,14 +185,12 @@ class Person {
     private String firstName;
     private String lastName;
     private LocalDate birthDate;
-
-    public String toString() {...}
 }
 
 interface PersonExtractor {
 
-    @UserMessage("Extract information about a person from {{it}}")
-    Person extractPersonFrom(String text);
+    @UserMessage("Extract information about a person from {{text}}")
+    Person extractPersonFrom(@V("text") String text);
 }
 
 PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
@@ -188,22 +201,6 @@ String text = "In 1968, amidst the fading echoes of Independence Day, "
 
 Person person = extractor.extractPersonFrom(text);
 // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
-```
-
-You can define more sophisticated prompt templates using mustache syntax:
-
-```java
-interface Translator {
-
-    @SystemMessage("You are a professional translator into {{language}}")
-    @UserMessage("Translate the following text: {{text}}")
-    String translate(@V("text") String text, @V("language") String language);
-}
-
-Translator translator = AiServices.create(Translator.class, model);
-
-String translation = translator.translate("Hello, how are you?", "Italian");
-// Ciao, come stai?
 ```
 
 You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
@@ -222,12 +219,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.24.0</version>
+          <version>0.25.0</version>
       </dependency>
       ```
     - Gradle:
       ```
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.24.0'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.25.0'
       ```
 
 2. Import your OpenAI API key:

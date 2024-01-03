@@ -9,16 +9,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CompletionRequest {
+class CompletionRequest {
 
-    /**
-     * model name
-     */
     private String model;
-    /**
-     * the prompt to generate a response for
-     */
+    private String system;
     private String prompt;
     private Options options;
+    private String format;
     private Boolean stream;
 }

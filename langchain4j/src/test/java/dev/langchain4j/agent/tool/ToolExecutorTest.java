@@ -1,10 +1,12 @@
 package dev.langchain4j.agent.tool;
 
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.DayOfWeek;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,6 +16,11 @@ class ToolExecutorTest {
     TestTool testTool = new TestTool();
 
     private static class TestTool {
+
+        @Tool
+        String strings(String arg0, String arg1) {
+            return arg0 + "_" + arg1;
+        }
 
         @Tool
         double doubles(double arg0, Double arg1) {
@@ -54,6 +61,26 @@ class ToolExecutorTest {
         BigInteger bigIntegers(BigInteger arg0, BigInteger arg1) {
             return arg0.add(arg1);
         }
+
+        @Tool
+        String enums(DayOfWeek arg0, CustomEnum arg1) {
+            return arg0 + "_" + arg1;
+        }
+
+        enum CustomEnum {
+            ONE,
+            TWO
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = ';', value = {
+            "{\"arg0\": \"hello\", \"arg1\": \"world\"}; hello_world",
+            "{\"arg0\": \"hello\"}; hello_null",
+            "{}; null_null",
+    })
+    void should_execute_tool_with_parameters_of_type_string(String arguments, String expectedResult) throws NoSuchMethodException {
+        executeAndAssert(arguments, "strings", String.class, String.class, expectedResult);
     }
 
     @ParameterizedTest
@@ -210,6 +237,16 @@ class ToolExecutorTest {
     })
     void should_execute_tool_with_parameters_of_type_BigInteger(String arguments) throws NoSuchMethodException {
         executeAndAssert(arguments, "bigIntegers", BigInteger.class, BigInteger.class, "4");
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = ';', value = {
+            "{\"arg0\": \"MONDAY\", \"arg1\": \"ONE\"}; MONDAY_ONE",
+            "{\"arg0\": \"MONDAY\"}; MONDAY_null",
+            "{}; null_null",
+    })
+    void should_execute_tool_with_parameters_of_type_enum(String arguments, String expectedResult) throws NoSuchMethodException {
+        executeAndAssert(arguments, "enums", DayOfWeek.class, TestTool.CustomEnum.class, expectedResult);
     }
 
     private void executeAndAssert(String arguments, String methodName, Class<?> arg0Type, Class<?> arg1Type, String expectedResult) throws NoSuchMethodException {

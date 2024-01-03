@@ -15,7 +15,7 @@ class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
             .apiKey(System.getenv("WEAVIATE_API_KEY"))
             .scheme("https")
-            .host("test-am8ocede.weaviate.network")
+            .host("test-duv00svh.weaviate.network")
             .objectClass("Test" + randomUUID().replace("-", ""))
             .build();
 

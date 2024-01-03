@@ -10,11 +10,25 @@ public class ToolExecutionRequestUtil {
     public static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
 
+    /**
+     * Get an argument value from ToolExecutionRequest.
+     * @param toolExecutionRequest request
+     * @param name argument name
+     * @return argument value
+     * @param <T> the argument type
+     */
     public static <T> T argument(ToolExecutionRequest toolExecutionRequest, String name) {
         Map<String, Object> arguments = argumentsAsMap(toolExecutionRequest.arguments()); // TODO cache
-        return (T) arguments.get(name);
+        @SuppressWarnings("unchecked")
+        T res = (T) arguments.get(name);
+        return res;
     }
 
+    /**
+     * Convert arguments to map.
+     * @param arguments json string
+     * @return map
+     */
     public static Map<String, Object> argumentsAsMap(String arguments) {
         return GSON.fromJson(arguments, MAP_TYPE);
     }

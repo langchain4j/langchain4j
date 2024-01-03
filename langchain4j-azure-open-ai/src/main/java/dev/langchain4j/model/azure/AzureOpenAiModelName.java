@@ -6,6 +6,7 @@ public class AzureOpenAiModelName {
     public static final String GPT_3_5_TURBO = "gpt-3.5-turbo"; // alias for the latest model
     public static final String GPT_3_5_TURBO_0301 = "gpt-3.5-turbo-0301"; // 4k context
     public static final String GPT_3_5_TURBO_0613 = "gpt-3.5-turbo-0613"; // 4k context, functions
+    public static final String GPT_3_5_TURBO_1106 = "gpt-3.5-turbo-1106"; // 16k context, functions
 
     public static final String GPT_3_5_TURBO_16K = "gpt-3.5-turbo-16k"; // alias for the latest model
     public static final String GPT_3_5_TURBO_16K_0613 = "gpt-3.5-turbo-16k-0613"; // 16k context, functions
@@ -27,5 +28,8 @@ public class AzureOpenAiModelName {
 
     // Use with AzureOpenAiEmbeddingModel
     public static final String TEXT_EMBEDDING_ADA_002 = "text-embedding-ada-002";
+
+    // Use with AzureOpenAiImageModel
+    public static final String DALL_E_3 = "DALL_E_3";
 
 }

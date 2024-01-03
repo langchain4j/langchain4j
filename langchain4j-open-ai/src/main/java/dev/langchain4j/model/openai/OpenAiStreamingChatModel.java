@@ -18,6 +18,7 @@ import lombok.Builder;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -41,11 +42,16 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Integer maxTokens;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
+    private final Map<String, Integer> logitBias;
+    private final String responseFormat;
+    private final Integer seed;
+    private final String user;
     private final Tokenizer tokenizer;
 
     @Builder
     public OpenAiStreamingChatModel(String baseUrl,
                                     String apiKey,
+                                    String organizationId,
                                     String modelName,
                                     Double temperature,
                                     Double topP,
@@ -53,6 +59,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Integer maxTokens,
                                     Double presencePenalty,
                                     Double frequencyPenalty,
+                                    Map<String, Integer> logitBias,
+                                    String responseFormat,
+                                    Integer seed,
+                                    String user,
                                     Duration timeout,
                                     Proxy proxy,
                                     Boolean logRequests,
@@ -64,6 +74,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.client = OpenAiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
+                .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
@@ -79,6 +90,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.maxTokens = maxTokens;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
+        this.logitBias = logitBias;
+        this.responseFormat = responseFormat;
+        this.seed = seed;
+        this.user = user;
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
@@ -111,7 +126,11 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .stop(stop)
                 .maxTokens(maxTokens)
                 .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty);
+                .frequencyPenalty(frequencyPenalty)
+                .logitBias(logitBias)
+                .responseFormat(responseFormat)
+                .seed(seed)
+                .user(user);
 
         int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 

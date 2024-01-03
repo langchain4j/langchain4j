@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class EmbeddingResponse {
+class EmbeddingResponse {
 
     private float[] embedding;
 }
