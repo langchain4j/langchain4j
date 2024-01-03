@@ -23,17 +23,27 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
             .build();
 
     @Test
-    void should_generate_answer() {
+    void should_generate_response() {
 
         // given
-        String userMessage = "What is the capital of Germany?";
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
 
         // when
-        String answer = model.generate(userMessage);
-        System.out.println(answer);
+        Response<AiMessage> response = model.generate(userMessage);
+        System.out.println(response);
 
         // then
-        assertThat(answer).contains("Berlin");
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).contains("Berlin");
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(38);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isNull();
     }
 
     @Test
@@ -73,14 +83,6 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("liebe");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(18);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isNull();
     }
 
     @Test

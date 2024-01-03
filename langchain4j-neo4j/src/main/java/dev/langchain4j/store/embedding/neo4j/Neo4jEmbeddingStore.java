@@ -15,12 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isCollectionEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 
@@ -84,7 +81,6 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param databaseName: the optional database name (default: "neo4j")
      * @param retrievalQuery: the optional retrieval query 
      *                        (default: "RETURN properties(node) AS metadata, node.`idProperty` AS `idProperty`, node.`textProperty` AS `textProperty`, node.`embeddingProperty` AS `embeddingProperty`, score")
-     * @param databaseName: the optional database name (default: "neo4j")  
      */
     @Builder
     public Neo4jEmbeddingStore(
@@ -135,9 +131,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
         );
         this.retrievalQuery = getOrDefault(retrievalQuery, defaultRetrievalQuery);
         
-        this.notMetaKeys = Arrays.asList(this.idProperty, this.embeddingProperty, this.textProperty)
-                .stream()
-                .collect(Collectors.toSet());
+        this.notMetaKeys = new HashSet<>(Arrays.asList(this.idProperty, this.embeddingProperty, this.textProperty));
         
         /* auto-schema creation */
         createSchema();
@@ -209,7 +203,7 @@ public class Neo4jEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isCollectionEmpty(ids) || isCollectionEmpty(embeddings)) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
             log.info("[do not add empty embeddings to neo4j]");
             return;
         }
