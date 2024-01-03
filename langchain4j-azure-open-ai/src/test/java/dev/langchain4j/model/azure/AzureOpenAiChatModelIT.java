@@ -182,7 +182,7 @@ public class AzureOpenAiChatModelIT {
         String toolName = "getCurrentDateAndTime";
 
         ToolSpecification noArgToolSpec = ToolSpecification.builder()
-                .name("getCurrentDateAndTime")
+                .name(toolName)
                 .description("Get the current date and time")
                 .build();
 
