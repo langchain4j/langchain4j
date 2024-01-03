@@ -128,13 +128,6 @@ public class GitHubDocumentLoader {
 
         private String gitHubTokenOrganization;
 
-        private GitHub gitHub;
-
-        public Builder gitHub(GitHub gitHub) {
-            this.gitHub = gitHub;
-            return this;
-        }
-
         public Builder apiUrl(String apiUrl) {
             this.apiUrl = apiUrl;
             return this;
@@ -151,8 +144,8 @@ public class GitHubDocumentLoader {
         }
 
         public GitHubDocumentLoader build() throws IOException {
-            if (gitHub != null) {
-                return new GitHubDocumentLoader(gitHub);
+            if (apiUrl == null) {
+                return new GitHubDocumentLoader(gitHubToken, gitHubTokenOrganization);
             } else {
                 return new GitHubDocumentLoader(apiUrl, gitHubToken, gitHubTokenOrganization);
             }
