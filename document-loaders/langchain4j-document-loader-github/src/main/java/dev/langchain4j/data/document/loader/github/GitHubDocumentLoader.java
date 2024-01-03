@@ -18,16 +18,17 @@ public class GitHubDocumentLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubDocumentLoader.class);
 
-    private String apiUrl = "https://api.github.com";
-
     private final GitHub gitHub;
+
+    public GitHubDocumentLoader(String gitHubToken, String gitHubTokenOrganization) throws IOException {
+        this(null, gitHubToken, gitHubTokenOrganization);
+    }
 
     public GitHubDocumentLoader(String apiUrl, String gitHubToken, String gitHubTokenOrganization) throws IOException {
         GitHubBuilder gitHubBuilder = new GitHubBuilder();
         if (apiUrl != null) {
-            this.apiUrl = apiUrl;
+            gitHubBuilder.withEndpoint(apiUrl);
         }
-        gitHubBuilder.withEndpoint(this.apiUrl);
         if (gitHubToken != null) {
             if (gitHubTokenOrganization == null) {
                 gitHubBuilder.withOAuthToken(gitHubToken);
@@ -121,7 +122,7 @@ public class GitHubDocumentLoader {
 
     public static class Builder {
 
-        private String apiUrl = "https://api.github.com";
+        private String apiUrl;
 
         private String gitHubToken;
 
