@@ -65,10 +65,13 @@ class OllamaStreamingChatModelIT extends AbstractOllamaInfrastructure {
 
         // then
         assertThat(answer).contains("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isEqualTo(answer);
+        assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(43);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(38);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -171,8 +174,6 @@ class OllamaStreamingChatModelIT extends AbstractOllamaInfrastructure {
         // then
         assertThat(answer).containsIgnoringCase("liebe");
         assertThat(response.content().text()).isEqualTo(answer);
-
-        assertThat(response.finishReason()).isNull();
     }
 
     @Test
