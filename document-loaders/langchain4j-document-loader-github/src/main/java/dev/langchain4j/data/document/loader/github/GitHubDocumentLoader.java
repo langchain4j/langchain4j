@@ -14,6 +14,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+
 public class GitHubDocumentLoader {
 
     private static final Logger logger = LoggerFactory.getLogger(GitHubDocumentLoader.class);
@@ -94,9 +96,9 @@ public class GitHubDocumentLoader {
         } else {
             Document document = null;
             try {
-                document = fromGitHub(parser, ghContent);
-            } catch (IOException ioException) {
-                logger.error("Failed to read document from GitHub: {}", ghContent.getHtmlUrl(), ioException);
+                document = withRetry(() -> fromGitHub(parser, ghContent), 3);
+            } catch (RuntimeException runtimeException) {
+                logger.error("Failed to read document from GitHub: {}", ghContent.getHtmlUrl(), runtimeException);
             }
             if (document != null) {
                 documents.add(document);
@@ -104,7 +106,7 @@ public class GitHubDocumentLoader {
         }
     }
 
-    private static Document fromGitHub(DocumentParser parser, GHContent content) throws IOException {
+    private static Document fromGitHub(DocumentParser parser, GHContent content) {
         logger.info("Loading document from GitHub: {}", content.getHtmlUrl());
         try {
             if (content.isFile()) {
