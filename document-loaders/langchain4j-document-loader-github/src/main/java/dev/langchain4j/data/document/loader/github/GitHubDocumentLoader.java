@@ -106,8 +106,8 @@ public class GitHubDocumentLoader {
                 GitHubSource source = new GitHubSource(content);
                 return DocumentLoader.load(source, parser);
             } else {
-                logger.debug("Skipping directory: {}", content.getHtmlUrl());
-                return null;
+                logger.error("Content must be a file, and not a directory: {}", content.getHtmlUrl());
+                throw new IllegalArgumentException("Content must be a file, and not a directory: " + content.getHtmlUrl());
             }
         } catch (IOException ioException) {
             logger.error("Failed to load document from GitHub: {}", content.getHtmlUrl(), ioException);
