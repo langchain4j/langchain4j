@@ -116,8 +116,7 @@ public class GitHubDocumentLoader {
                 throw new IllegalArgumentException("Content must be a file, and not a directory: " + content.getHtmlUrl());
             }
         } catch (IOException ioException) {
-            logger.error("Failed to load document from GitHub: {}", content.getHtmlUrl(), ioException);
-            return null;
+            throw new RuntimeException("Failed to load document from GitHub: {}", ioException);
         }
     }
 
