@@ -6,11 +6,13 @@ import dev.langchain4j.data.document.parser.TextDocumentParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.kohsuke.github.GHFileNotFoundException;
 
 import java.io.IOException;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "GITHUB_TOKEN", matches = ".+")
 class GitHubDocumentLoaderIT {
@@ -23,14 +25,14 @@ class GitHubDocumentLoaderIT {
     DocumentParser parser = new TextDocumentParser();
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    public void beforeEach() {
         loader = GitHubDocumentLoader.builder()
                 .gitHubToken(System.getenv("GITHUB_TOKEN"))
                 .build();
     }
 
     @Test
-    public void should_load_file() throws IOException {
+    public void should_load_file() {
         Document document = loader.loadDocument(TEST_OWNER, TEST_REPO, "main", "pom.xml", parser);
 
         assertThat(document.text()).contains("<groupId>dev.langchain4j</groupId>");
@@ -39,8 +41,30 @@ class GitHubDocumentLoaderIT {
     }
 
     @Test
-    public void should_load_repository() throws IOException {
-        List<Document> documents = loader.loadDocuments(TEST_OWNER, TEST_REPO, "main", parser);
+    public void manage_exception_on_wrong_repository() {
+        try {
+            loader.loadDocument(TEST_OWNER, "repository_that_do_not_exist", "main", "pom.xml", parser);
+            fail("Should throw an exception");
+        } catch (Exception e) {
+            assertThat(e).isInstanceOf(RuntimeException.class);
+            assertThat(e.getCause()).isInstanceOf(GHFileNotFoundException.class);
+        }
+    }
+
+    @Test
+    public void manage_exception_on_wrong_file() {
+        try {
+            loader.loadDocument(TEST_OWNER, TEST_REPO, "main", "file_that_do_not_exist.txt", parser);
+            fail("Should throw an exception");
+        } catch (Exception e) {
+            assertThat(e).isInstanceOf(RuntimeException.class);
+            assertThat(e.getCause()).isInstanceOf(GHFileNotFoundException.class);
+        }
+    }
+
+    @Test
+    public void should_load_repository() {
+        List<Document> documents = loader.loadDocuments(TEST_OWNER, "awesome-langchain", "main", parser);
 
         assertThat(documents.size()).isGreaterThan(1);
     }
