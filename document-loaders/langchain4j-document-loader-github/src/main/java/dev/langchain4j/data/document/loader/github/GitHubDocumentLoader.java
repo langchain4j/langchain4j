@@ -41,13 +41,16 @@ public class GitHubDocumentLoader {
         try {
             gitHub = gitHubBuilder.build();
         } catch (IOException ioException) {
-            logger.error("Failed to create GitHub client: {}", ioException.getMessage(), ioException);
             throw new RuntimeException(ioException);
         }
     }
 
     public GitHubDocumentLoader() {
-        gitHub = new GitHubBuilder().build();
+        try {
+            gitHub = new GitHubBuilder().build();
+        } catch (IOException ioException) {
+            throw new RuntimeException(ioException);
+        }
     }
 
     public GitHubDocumentLoader(GitHub gitHub) {
@@ -61,7 +64,6 @@ public class GitHubDocumentLoader {
                     .getRepository(owner + "/" + repo)
                     .getFileContent(path, branch);
         } catch (IOException ioException) {
-            logger.error("Failed to read GitHub repository: {}", ioException.getMessage(), ioException);
             throw new RuntimeException(ioException);
         }
         return fromGitHub(parser, content);
@@ -75,7 +77,6 @@ public class GitHubDocumentLoader {
                     .getDirectoryContent(path, branch)
                     .forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
         } catch (IOException ioException) {
-            logger.error("Failed to read GitHub repository: {}", ioException.getMessage(), ioException);
             throw new RuntimeException(ioException);
         }
         return documents;
