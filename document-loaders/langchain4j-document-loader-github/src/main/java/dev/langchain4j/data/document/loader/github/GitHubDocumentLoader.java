@@ -22,11 +22,11 @@ public class GitHubDocumentLoader {
 
     private final GitHub gitHub;
 
-    public GitHubDocumentLoader(String gitHubToken, String gitHubTokenOrganization) throws IOException {
+    public GitHubDocumentLoader(String gitHubToken, String gitHubTokenOrganization) {
         this(null, gitHubToken, gitHubTokenOrganization);
     }
 
-    public GitHubDocumentLoader(String apiUrl, String gitHubToken, String gitHubTokenOrganization) throws IOException {
+    public GitHubDocumentLoader(String apiUrl, String gitHubToken, String gitHubTokenOrganization) {
         GitHubBuilder gitHubBuilder = new GitHubBuilder();
         if (apiUrl != null) {
             gitHubBuilder.withEndpoint(apiUrl);
@@ -42,11 +42,11 @@ public class GitHubDocumentLoader {
             gitHub = gitHubBuilder.build();
         } catch (IOException ioException) {
             logger.error("Failed to create GitHub client: {}", ioException.getMessage(), ioException);
-            throw ioException;
+            throw new RuntimeException(ioException);
         }
     }
 
-    public GitHubDocumentLoader() throws IOException {
+    public GitHubDocumentLoader() {
         gitHub = new GitHubBuilder().build();
     }
 
@@ -54,7 +54,7 @@ public class GitHubDocumentLoader {
         this.gitHub = gitHub;
     }
 
-    public Document loadDocument(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
+    public Document loadDocument(String owner, String repo, String branch, String path, DocumentParser parser) {
         GHContent content = null;
         try {
             content = gitHub
@@ -62,13 +62,12 @@ public class GitHubDocumentLoader {
                     .getFileContent(path, branch);
         } catch (IOException ioException) {
             logger.error("Failed to read GitHub repository: {}", ioException.getMessage(), ioException);
-            throw ioException;
+            throw new RuntimeException(ioException);
         }
-
         return fromGitHub(parser, content);
     }
 
-    public List<Document> loadDocuments(String owner, String repo, String branch, String path, DocumentParser parser) throws IOException {
+    public List<Document> loadDocuments(String owner, String repo, String branch, String path, DocumentParser parser) {
         List<Document> documents = new ArrayList<>();
         try {
             gitHub
@@ -77,12 +76,12 @@ public class GitHubDocumentLoader {
                     .forEach(ghDirectoryContent -> GitHubDocumentLoader.scanDirectory(ghDirectoryContent, documents, parser));
         } catch (IOException ioException) {
             logger.error("Failed to read GitHub repository: {}", ioException.getMessage(), ioException);
-            throw ioException;
+            throw new RuntimeException(ioException);
         }
         return documents;
     }
 
-    public List<Document> loadDocuments(String owner, String repo, String branch, DocumentParser parser) throws IOException {
+    public List<Document> loadDocuments(String owner, String repo, String branch, DocumentParser parser) {
         return loadDocuments(owner, repo, branch, "", parser);
     }
 
@@ -149,7 +148,7 @@ public class GitHubDocumentLoader {
             return this;
         }
 
-        public GitHubDocumentLoader build() throws IOException {
+        public GitHubDocumentLoader build() {
             if (apiUrl == null) {
                 return new GitHubDocumentLoader(gitHubToken, gitHubTokenOrganization);
             } else {
