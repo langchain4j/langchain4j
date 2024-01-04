@@ -148,11 +148,7 @@ public class GitHubDocumentLoader {
         }
 
         public GitHubDocumentLoader build() {
-            if (apiUrl == null) {
-                return new GitHubDocumentLoader(gitHubToken, gitHubTokenOrganization);
-            } else {
-                return new GitHubDocumentLoader(apiUrl, gitHubToken, gitHubTokenOrganization);
-            }
+            return new GitHubDocumentLoader(apiUrl, gitHubToken, gitHubTokenOrganization);
         }
     }
 }
