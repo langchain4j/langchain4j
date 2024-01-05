@@ -1,12 +1,12 @@
-package dev.langchain4j.model.embedding;
+package dev.langchain4j.model.language;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.input.Prompt;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
-
 
 class TokenCountEstimatorTest implements WithAssertions {
     public static class WhitespaceSplitTokenCountEstimator implements TokenCountEstimator {
@@ -24,12 +24,14 @@ class TokenCountEstimatorTest implements WithAssertions {
 
         assertThat(estimator.estimateTokenCount(TextSegment.textSegment("foo bar, baz"))).isEqualTo(3);
 
+        assertThat(estimator.estimateTokenCount(new Prompt("foo bar, baz"))).isEqualTo(3);
+
         {
             List<TextSegment> segments = new ArrayList<>();
             segments.add(TextSegment.textSegment("Hello, world!"));
             segments.add(TextSegment.textSegment("How are you?"));
 
-            assertThat(estimator.estimateTokenCount(segments)).isEqualTo(5);
+            assertThat(estimator.estimateTextSegmentsTokenCount(segments)).isEqualTo(5);
         }
     }
 }

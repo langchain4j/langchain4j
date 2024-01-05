@@ -11,17 +11,17 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-class TokenCountEstimatorTest implements WithAssertions {
-    public static class WhitespaceSplitTokenCountEstimator implements TokenCountEstimator {
+class ChatTokenCountEstimatorTest implements WithAssertions {
+    public static class WhitespaceSplitTokenCountEstimator implements ChatTokenCountEstimator {
         @Override
-        public int estimateTokenCount(List<ChatMessage> messages) {
+        public int estimateChatMessagesTokenCount(List<ChatMessage> messages) {
             return messages.stream().mapToInt(message -> message.text().split("\\s+").length).sum();
         }
     }
 
     @Test
     public void test() {
-        TokenCountEstimator estimator = new WhitespaceSplitTokenCountEstimator();
+        ChatTokenCountEstimator estimator = new WhitespaceSplitTokenCountEstimator();
 
         assertThat(estimator.estimateTokenCount("foo bar, baz")).isEqualTo(3);
 
@@ -32,11 +32,19 @@ class TokenCountEstimatorTest implements WithAssertions {
         assertThat(estimator.estimateTokenCount(TextSegment.from("foo bar, baz"))).isEqualTo(3);
 
         {
+            List<TextSegment> segments = new ArrayList<>();
+            segments.add(TextSegment.from("Hello, world!"));
+            segments.add(TextSegment.from("How are you?"));
+
+            assertThat(estimator.estimateTextSegmentsTokenCount(segments)).isEqualTo(5);
+        }
+
+        {
             List<ChatMessage> messages = new ArrayList<>();
             messages.add(new UserMessage("Hello, world!"));
             messages.add(new AiMessage("How are you?"));
 
-            assertThat(estimator.estimateTokenCount(messages)).isEqualTo(5);
+            assertThat(estimator.estimateChatMessagesTokenCount(messages)).isEqualTo(5);
         }
     }
 }

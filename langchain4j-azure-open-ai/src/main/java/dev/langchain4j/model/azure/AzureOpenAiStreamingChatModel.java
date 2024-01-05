@@ -14,7 +14,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatTokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
@@ -53,7 +53,7 @@ import static java.util.Collections.singletonList;
  * client secret of the AAD application as environment variables: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_CLIENT_SECRET.
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
-public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel, ChatTokenCountEstimator {
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -234,7 +234,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
+    public int estimateChatMessagesTokenCount(List<ChatMessage> messages) {
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 

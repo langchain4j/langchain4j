@@ -8,7 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatTokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -28,7 +28,7 @@ import static java.util.Collections.singletonList;
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class OpenAiChatModel implements ChatLanguageModel, ChatTokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -153,7 +153,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
+    public int estimateChatMessagesTokenCount(List<ChatMessage> messages) {
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
