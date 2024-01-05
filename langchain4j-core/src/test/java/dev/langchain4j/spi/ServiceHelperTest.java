@@ -7,7 +7,8 @@ import java.util.Collection;
 
 class ServiceHelperTest implements WithAssertions {
     public void assertServices(Collection<ExampleService> services) {
-        assertThat(services).extracting(ExampleService::getGreeting).containsExactlyInAnyOrder("Hello", "Goodbye");
+        assertThat(services).extracting(ExampleService::getGreeting)
+                .containsExactlyInAnyOrder("Hello", "Goodbye");
     }
 
     @SuppressWarnings("unused")
