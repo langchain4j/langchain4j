@@ -13,18 +13,34 @@ import static java.util.Collections.singletonList;
  */
 public interface EmbeddingModel {
 
+    /**
+     * Embed a text.
+     *
+     * @param text the text to embed.
+     * @return the embedding.
+     */
     default Response<Embedding> embed(String text) {
         return embed(TextSegment.from(text));
     }
 
+    /**
+     * Embed a text segment.
+     *
+     * @param textSegment the text segment to embed.
+     * @return the embedding.
+     */
     default Response<Embedding> embed(TextSegment textSegment) {
         Response<List<Embedding>> response = embedAll(singletonList(textSegment));
-        return Response.from(
-                response.content().get(0),
-                response.tokenUsage(),
-                response.finishReason()
-        );
+        assert response.content().size() == 1 :
+                String.format("Expected a single embedding, but got %d", response.content().size());
+        return Response.from(response.content().get(0), response.tokenUsage(), response.finishReason());
     }
 
+    /**
+     * Embeds a list of text segments.
+     *
+     * @param textSegments the text segments to embed.
+     * @return the embeddings.
+     */
     Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
 }
