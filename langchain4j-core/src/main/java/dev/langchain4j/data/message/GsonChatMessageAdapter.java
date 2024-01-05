@@ -21,6 +21,6 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
     public ChatMessage deserialize(JsonElement messageJsonElement, Type ignored, JsonDeserializationContext context) throws JsonParseException {
         String chatMessageTypeString = messageJsonElement.getAsJsonObject().get(CHAT_MESSAGE_TYPE).getAsString();
         ChatMessageType chatMessageType = ChatMessageType.valueOf(chatMessageTypeString);
-        return GSON.fromJson(messageJsonElement, ChatMessageType.classOf(chatMessageType));
+        return GSON.fromJson(messageJsonElement, chatMessageType.messageClass());
     }
 }
