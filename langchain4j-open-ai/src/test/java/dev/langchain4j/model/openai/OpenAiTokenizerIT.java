@@ -752,7 +752,7 @@ class OpenAiTokenizerIT {
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
-                .maxTokens(1) // we don't need outputs, let's not waste tokens
+                .maxTokens(2) // we don't need outputs, let's not waste tokens
                 .logRequests(true)
                 .logResponses(true)
                 .build();
