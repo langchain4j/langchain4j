@@ -2,19 +2,15 @@ package dev.langchain4j.data.message;
 
 import java.util.Objects;
 
-import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
+import static dev.langchain4j.data.message.ContentType.TEXT;
 import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-/**
- * Represents a system message, typically defined by a developer.
- * This type of message usually provides instructions regarding the AI's actions, such as its behavior or response style.
- */
-public class SystemMessage implements ChatMessage {
+public class TextContent implements Content {
 
     private final String text;
 
-    public SystemMessage(String text) {
+    public TextContent(String text) {
         this.text = ensureNotBlank(text, "text");
     }
 
@@ -23,15 +19,15 @@ public class SystemMessage implements ChatMessage {
     }
 
     @Override
-    public ChatMessageType type() {
-        return SYSTEM;
+    public ContentType type() {
+        return TEXT;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        SystemMessage that = (SystemMessage) o;
+        TextContent that = (TextContent) o;
         return Objects.equals(this.text, that.text);
     }
 
@@ -42,16 +38,12 @@ public class SystemMessage implements ChatMessage {
 
     @Override
     public String toString() {
-        return "SystemMessage {" +
+        return "TextContent {" +
                 " text = " + quoted(text) +
                 " }";
     }
 
-    public static SystemMessage from(String text) {
-        return new SystemMessage(text);
-    }
-
-    public static SystemMessage systemMessage(String text) {
-        return from(text);
+    public static TextContent from(String text) {
+        return new TextContent(text);
     }
 }
