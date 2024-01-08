@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
  * <p>JaCoCo coverage is ignored for methods annotated with any annotation
  * that has a name including "Generated".
  */
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target({ElementType.METHOD, ElementType.TYPE, ElementType.FIELD, ElementType.CONSTRUCTOR})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface JacocoIgnoreCoverageGenerated {
 }
