@@ -1,7 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.Content;
-import com.google.cloud.vertexai.api.Part;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 
@@ -20,9 +19,7 @@ class ContentsMapper {
                 })
                 .map(message -> Content.newBuilder()
                         .setRole(RoleMapper.map(message.type()))
-                        .addParts(Part.newBuilder()
-                                .setText(message.text())
-                                .build())
+                        .addAllParts(PartsMapper.map(message))
                         .build())
                 .collect(toList());
     }
