@@ -20,11 +20,11 @@ public class AzureBlobStorageSource implements DocumentSource {
     private final String blobName;
     private final BlobProperties properties;
 
-    public AzureBlobStorageSource(InputStream inputStream, String containerName, String accountName, String blobNAme, BlobProperties properties) {
+    public AzureBlobStorageSource(InputStream inputStream, String containerName, String accountName, String blobName, BlobProperties properties) {
         this.inputStream = ensureNotNull(inputStream, "inputStream");
         this.accountName = ensureNotBlank(accountName, "accountName");
         this.containerName = ensureNotBlank(containerName, "containerName");
-        this.blobName = ensureNotBlank(blobNAme, "blobName");
+        this.blobName = ensureNotBlank(blobName, "blobName");
         this.properties = ensureNotNull(properties, "properties");
     }
 
