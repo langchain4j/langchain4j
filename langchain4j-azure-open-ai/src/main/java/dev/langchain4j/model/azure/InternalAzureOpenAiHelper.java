@@ -16,7 +16,6 @@ import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
 import com.azure.core.util.HttpClientOptions;
-import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -167,10 +166,15 @@ class InternalAzureOpenAiHelper {
         return functionDefinition;
     }
 
+    private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
+    static {
+        NO_PARAMETER_DATA.put("type", "object");
+        NO_PARAMETER_DATA.put("properties", new HashMap<>());
+    }
     private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
-            return BinaryData.fromString("{}");
+            return BinaryData.fromObject(NO_PARAMETER_DATA);
         }
         parameters.setProperties(toolParameters.properties());
         parameters.setRequired(toolParameters.required());
