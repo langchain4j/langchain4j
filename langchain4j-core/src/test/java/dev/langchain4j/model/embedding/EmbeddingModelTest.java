@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,17 @@ class EmbeddingModelTest implements WithAssertions {
         }
     }
 
+    public static class BrokenEmbeddingModelImpl implements EmbeddingModel {
+        @Override
+        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+
+            List<TextSegment> doubledList = new ArrayList<>(textSegments);
+            doubledList.addAll(textSegments);
+
+            return new EmbeddingModelImpl().embedAll(doubledList);
+        }
+    }
+
     @Test
     public void test() {
         EmbeddingModel model = new EmbeddingModelImpl();
@@ -35,5 +47,14 @@ class EmbeddingModelTest implements WithAssertions {
         assertThat(response.content().vector()).containsExactly(abcDef.length(), abcDef.hashCode());
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(abcDef.length()));
+    }
+
+    @Test
+    public void test_broken() {
+        EmbeddingModel model = new BrokenEmbeddingModelImpl();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> model.embed("abc def"))
+                .withMessageContaining("Expected a single embedding, but got 2");
     }
 }
