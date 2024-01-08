@@ -472,6 +472,11 @@
                                     <name>Eclipse Public License v2.0</name>
                                     <url>https?://www.eclipse.org/legal/epl-v20\.html</url>
                                 </license>
+                                <!-- for tencent-cos document loader -->
+                                <license>
+                                    <name>cos-java-sdk</name>
+                                    <url>https://github.com/tencentyun/cos-java-sdk-v5</url>
+                                </license>
                             </acceptableLicenses>
                         </configuration>
                     </plugin>
