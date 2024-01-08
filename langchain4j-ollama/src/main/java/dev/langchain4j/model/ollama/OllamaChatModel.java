@@ -14,6 +14,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -28,7 +29,6 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final Options options;
     private final String format;
     private final Integer maxRetries;
-    private final OllamaMessagesUtils ollamaMessageUtils;
 
     @Builder
     public OllamaChatModel(String baseUrl,
@@ -59,7 +59,6 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .build();
         this.format = format;
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.ollamaMessageUtils = new OllamaMessagesUtils();
     }
 
     @Override
@@ -68,7 +67,7 @@ public class OllamaChatModel implements ChatLanguageModel {
 
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
-                .messages(ollamaMessageUtils.toOllamaMessages(messages))
+                .messages(toOllamaMessages(messages))
                 .options(options)
                 .format(format)
                 .stream(false)

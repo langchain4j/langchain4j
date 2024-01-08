@@ -11,7 +11,7 @@ class OllamaMessagesUtils {
     private final static Predicate<ChatMessage> isUserMessage = chatMessage -> chatMessage instanceof UserMessage;
     private final static Predicate<UserMessage> hasImages = userMessage -> userMessage.contents().stream().anyMatch(content -> ContentType.IMAGE.equals(content.type()));
 
-    List<Message> toOllamaMessages(List<ChatMessage> messages) {
+    static List<Message> toOllamaMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message) ?
                         messagesWithImageSupport((UserMessage) message)
@@ -19,7 +19,7 @@ class OllamaMessagesUtils {
                 ).collect(Collectors.toList());
     }
 
-    private Message messagesWithImageSupport(UserMessage userMessage) {
+    private static Message messagesWithImageSupport(UserMessage userMessage) {
         Map<ContentType, List<Content>> groupedContents = userMessage.contents().stream()
                 .collect(Collectors.groupingBy(Content::type));
 
@@ -40,14 +40,14 @@ class OllamaMessagesUtils {
                 .build();
     }
 
-    private Message otherMessages(ChatMessage chatMessage) {
+    private static Message otherMessages(ChatMessage chatMessage) {
         return Message.builder()
                 .role(toOllamaRole(chatMessage.type()))
                 .content(chatMessage.text())
                 .build();
     }
 
-    private Role toOllamaRole(ChatMessageType chatMessageType) {
+    private static Role toOllamaRole(ChatMessageType chatMessageType) {
         switch (chatMessageType) {
             case SYSTEM:
                 return Role.SYSTEM;

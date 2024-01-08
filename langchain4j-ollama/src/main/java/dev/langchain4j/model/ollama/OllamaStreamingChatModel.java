@@ -12,6 +12,7 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -25,7 +26,6 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final String modelName;
     private final Options options;
     private final String format;
-    private final OllamaMessagesUtils ollamaMessageUtils;
 
     @Builder
     public OllamaStreamingChatModel(String baseUrl,
@@ -54,7 +54,6 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
-        this.ollamaMessageUtils = new OllamaMessagesUtils();
     }
 
     @Override
@@ -63,7 +62,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
         ChatRequest request = ChatRequest.builder()
                 .model(modelName)
-                .messages(ollamaMessageUtils.toOllamaMessages(messages))
+                .messages(toOllamaMessages(messages))
                 .options(options)
                 .format(format)
                 .stream(true)
