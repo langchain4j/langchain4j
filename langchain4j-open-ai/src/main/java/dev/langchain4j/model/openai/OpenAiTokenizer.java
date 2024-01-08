@@ -5,9 +5,7 @@ import com.knuddels.jtokkit.api.Encoding;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.Tokenizer;
 
 import java.util.List;
@@ -50,47 +48,86 @@ public class OpenAiTokenizer implements Tokenizer {
     public int estimateTokenCountInMessage(ChatMessage message) {
         int tokenCount = 1; // 1 token for role
         tokenCount += extraTokensPerMessage();
-        tokenCount += estimateTokenCountInText(message.text());
 
-        if (message instanceof UserMessage) {
-            UserMessage userMessage = (UserMessage) message;
-            if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW)) {
-                tokenCount += extraTokensPerName();
-                tokenCount += estimateTokenCountInText(userMessage.name());
+        if (message instanceof SystemMessage) {
+            tokenCount += estimateTokenCountIn((SystemMessage) message);
+        } else if (message instanceof UserMessage) {
+            tokenCount += estimateTokenCountIn((UserMessage) message);
+        } else if (message instanceof AiMessage) {
+            tokenCount += estimateTokenCountIn((AiMessage) message);
+        } else if (message instanceof ToolExecutionResultMessage) {
+            tokenCount += estimateTokenCountIn((ToolExecutionResultMessage) message);
+        } else {
+            throw new IllegalArgumentException("Unknown message type: " + message);
+        }
+
+        return tokenCount;
+    }
+
+    private int estimateTokenCountIn(SystemMessage systemMessage) {
+        return estimateTokenCountInText(systemMessage.text());
+    }
+
+    private int estimateTokenCountIn(UserMessage userMessage) {
+        int tokenCount = 0;
+
+        for (Content content : userMessage.contents()) {
+            if (content instanceof TextContent) {
+                tokenCount += estimateTokenCountInText(((TextContent) content).text());
+            } else if (content instanceof ImageContent) {
+                tokenCount += 85; // TODO implement for HIGH/AUTO detail level
+            } else {
+                throw illegalArgument("Unknown content type: " + content);
             }
         }
 
-        if (message instanceof AiMessage) {
-            AiMessage aiMessage = (AiMessage) message;
-            if (aiMessage.toolExecutionRequests() != null) {
-                if (modelName.contains("1106")) {
-                    tokenCount += 6;
-                } else {
-                    tokenCount += 3;
-                }
-                if (aiMessage.toolExecutionRequests().size() == 1) {
-                    tokenCount -= 1;
-                    ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-                    tokenCount += estimateTokenCountInText(toolExecutionRequest.name()) * 2;
-                    tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
-                } else {
-                    tokenCount += 15;
-                    for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
-                        tokenCount += 7;
-                        tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
+        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW)) {
+            tokenCount += extraTokensPerName();
+            tokenCount += estimateTokenCountInText(userMessage.name());
+        }
 
-                        Map<?, ?> arguments = fromJson(toolExecutionRequest.arguments(), Map.class);
-                        for (Map.Entry<?, ?> argument : arguments.entrySet()) {
-                            tokenCount += 2;
-                            tokenCount += estimateTokenCountInText(argument.getKey().toString());
-                            tokenCount += estimateTokenCountInText(argument.getValue().toString());
-                        }
+        return tokenCount;
+    }
+
+    private int estimateTokenCountIn(AiMessage aiMessage) {
+        int tokenCount = 0;
+
+        if (aiMessage.text() != null) {
+            tokenCount += estimateTokenCountInText(aiMessage.text());
+        }
+
+        if (aiMessage.toolExecutionRequests() != null) {
+            if (modelName.contains("1106")) {
+                tokenCount += 6;
+            } else {
+                tokenCount += 3;
+            }
+            if (aiMessage.toolExecutionRequests().size() == 1) {
+                tokenCount -= 1;
+                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+                tokenCount += estimateTokenCountInText(toolExecutionRequest.name()) * 2;
+                tokenCount += estimateTokenCountInText(toolExecutionRequest.arguments());
+            } else {
+                tokenCount += 15;
+                for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+                    tokenCount += 7;
+                    tokenCount += estimateTokenCountInText(toolExecutionRequest.name());
+
+                    Map<?, ?> arguments = fromJson(toolExecutionRequest.arguments(), Map.class);
+                    for (Map.Entry<?, ?> argument : arguments.entrySet()) {
+                        tokenCount += 2;
+                        tokenCount += estimateTokenCountInText(argument.getKey().toString());
+                        tokenCount += estimateTokenCountInText(argument.getValue().toString());
                     }
                 }
             }
         }
 
         return tokenCount;
+    }
+
+    private int estimateTokenCountIn(ToolExecutionResultMessage toolExecutionResultMessage) {
+        return estimateTokenCountInText(toolExecutionResultMessage.text());
     }
 
     private int extraTokensPerMessage() {
