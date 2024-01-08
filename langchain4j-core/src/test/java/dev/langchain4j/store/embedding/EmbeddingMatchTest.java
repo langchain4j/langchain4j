@@ -14,6 +14,8 @@ class EmbeddingMatchTest implements WithAssertions {
         assertThat(em.embeddingId()).isEqualTo("embeddingId");
         assertThat(em.embedding().vector()).contains(3.5f, -2f);
         assertThat(em.embedded()).isEqualTo("abc");
+
+        assertThat(em).hasToString("EmbeddingMatch { score = 0.5, embedded = abc, embeddingId = embeddingId, embedding = Embedding { vector = [3.5, -2.0] } }");
     }
 
     @Test
