@@ -45,6 +45,8 @@
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
+        <module>document-loaders/langchain4j-document-loader-github</module>  
+        <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
 
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
