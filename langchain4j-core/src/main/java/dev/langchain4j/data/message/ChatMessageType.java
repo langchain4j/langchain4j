@@ -9,7 +9,7 @@ public enum ChatMessageType {
     AI,
     TOOL_EXECUTION_RESULT;
 
-    public static Class<? extends ChatMessage> classOf(ChatMessageType type) {
+    static Class<? extends ChatMessage> classOf(ChatMessageType type) {
         switch (type) {
             case SYSTEM:
                 return SystemMessage.class;
