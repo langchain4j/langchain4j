@@ -40,6 +40,14 @@ public class TokenUsage {
         return totalTokenCount;
     }
 
+    /**
+     * Adds the token usage of two responses together.
+     *
+     * <p>Fields which are null in both responses will be null in the result.
+     *
+     * @param that The token usage to add to this one.
+     * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
+     */
     public TokenUsage add(TokenUsage that) {
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),

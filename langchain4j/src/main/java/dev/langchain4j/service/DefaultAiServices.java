@@ -235,12 +235,21 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
 
             Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            return userMessage(userName, prompt.text());
+            if (userName != null) {
+                return userMessage(userName, prompt.text());
+            } else {
+                return prompt.toUserMessage();
+            }
         }
 
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(UserMessage.class)) {
-                return userMessage(userName, toString(args[i]) + outputFormatInstructions);
+                String text = toString(args[i]) + outputFormatInstructions;
+                if (userName != null) {
+                    return userMessage(userName, text);
+                } else {
+                    return userMessage(text);
+                }
             }
         }
 
@@ -249,7 +258,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         if (args.length == 1) {
-            return userMessage(userName, toString(args[0]) + outputFormatInstructions);
+            String text = toString(args[0]) + outputFormatInstructions;
+            if (userName != null) {
+                return userMessage(userName, text);
+            } else {
+                return userMessage(text);
+            }
         }
 
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
