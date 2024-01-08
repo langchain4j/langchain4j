@@ -28,7 +28,7 @@ public class AzureBlobStorageDocumentLoaderIT {
 
     private static BlobServiceClient blobServiceClient;
 
-    private DocumentParser parser = new TextDocumentParser();
+    private final DocumentParser parser = new TextDocumentParser();
 
     @BeforeAll
     public static void beforeAll() {
