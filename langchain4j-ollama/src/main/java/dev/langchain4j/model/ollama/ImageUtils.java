@@ -37,7 +37,6 @@ class ImageUtils {
     }
 
     private static String httpScheme(Image image) {
-        // should i use internal tools ?
         byte[] imageBytes = Utils.readBytes(image.url().toString());
         return Base64.getEncoder().encodeToString(imageBytes);
     }
