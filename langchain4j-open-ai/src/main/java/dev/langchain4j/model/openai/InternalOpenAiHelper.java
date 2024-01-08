@@ -5,6 +5,8 @@ import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
@@ -14,12 +16,14 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.Collection;
 import java.util.List;
 
-import static dev.ai4j.openai4j.chat.Role.*;
+import static dev.ai4j.openai4j.chat.ContentType.IMAGE_URL;
+import static dev.ai4j.openai4j.chat.ContentType.TEXT;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
+import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
@@ -37,22 +41,32 @@ public class InternalOpenAiHelper {
 
     public static Message toOpenAiMessage(ChatMessage message) {
         if (message instanceof SystemMessage) {
-            return dev.ai4j.openai4j.chat.SystemMessage.from(message.text());
+            return dev.ai4j.openai4j.chat.SystemMessage.from(((SystemMessage) message).text());
         }
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
-            return dev.ai4j.openai4j.chat.UserMessage.builder()
-                    .content(userMessage.text())
-                    .name(userMessage.name())
-                    .build();
+
+            if (userMessage.hasSingleText()) {
+                return dev.ai4j.openai4j.chat.UserMessage.builder()
+                        .content(userMessage.text())
+                        .name(userMessage.name())
+                        .build();
+            } else {
+                return dev.ai4j.openai4j.chat.UserMessage.builder()
+                        .content(userMessage.contents().stream()
+                                .map(InternalOpenAiHelper::toOpenAiContent)
+                                .collect(toList()))
+                        .name(userMessage.name())
+                        .build();
+            }
         }
 
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
 
             if (!aiMessage.hasToolExecutionRequests()) {
-                return AssistantMessage.from(message.text());
+                return AssistantMessage.from(aiMessage.text());
             }
 
             ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -94,6 +108,47 @@ public class InternalOpenAiHelper {
         }
 
         throw illegalArgument("Unknown message type: " + message.type());
+    }
+
+    private static dev.ai4j.openai4j.chat.Content toOpenAiContent(Content content) {
+        if (content instanceof TextContent) {
+            return toOpenAiContent((TextContent) content);
+        } else if (content instanceof ImageContent) {
+            return toOpenAiContent((ImageContent) content);
+        } else {
+            throw illegalArgument("Unknown content type: " + content);
+        }
+    }
+
+    private static dev.ai4j.openai4j.chat.Content toOpenAiContent(TextContent content) {
+        return dev.ai4j.openai4j.chat.Content.builder()
+                .type(TEXT)
+                .text(content.text())
+                .build();
+    }
+
+    private static dev.ai4j.openai4j.chat.Content toOpenAiContent(ImageContent content) {
+        return dev.ai4j.openai4j.chat.Content.builder()
+                .type(IMAGE_URL)
+                .imageUrl(ImageUrl.builder()
+                        .url(toUrl(content.image()))
+                        .detail(toDetail(content.detailLevel()))
+                        .build())
+                .build();
+    }
+
+    private static String toUrl(Image image) {
+        if (image.url() != null) {
+            return image.url().toString();
+        }
+        return format("data:%s;base64,%s", image.mimeType(), image.base64Data());
+    }
+
+    private static ImageDetail toDetail(ImageContent.DetailLevel detailLevel) {
+        if (detailLevel == null) {
+            return null;
+        }
+        return ImageDetail.valueOf(detailLevel.name());
     }
 
     public static List<Tool> toTools(Collection<ToolSpecification> toolSpecifications) {
@@ -197,18 +252,6 @@ public class InternalOpenAiHelper {
                 return CONTENT_FILTER;
             default:
                 return null;
-        }
-    }
-
-    public static Role roleFrom(ChatMessage message) { // TODO remove
-        if (message instanceof AiMessage) {
-            return ASSISTANT;
-        } else if (message instanceof ToolExecutionResultMessage) {
-            return Role.FUNCTION;
-        } else if (message instanceof SystemMessage) {
-            return SYSTEM;
-        } else {
-            return USER;
         }
     }
 }
