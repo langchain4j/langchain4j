@@ -2,26 +2,27 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.openai.OpenAiChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.openai.OpenAiChatModelIT.DICE_IMAGE_URL;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
@@ -40,6 +41,15 @@ class OpenAiStreamingChatModelIT {
             .logResponses(true)
             .build();
 
+    StreamingChatLanguageModel visionModel = OpenAiStreamingChatModel.builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_VISION_PREVIEW)
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
@@ -50,7 +60,7 @@ class OpenAiStreamingChatModelIT {
     Percentage tokenizerPrecision = withPercentage(5);
 
     @Test
-    void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_stream_answer() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
@@ -290,7 +300,7 @@ class OpenAiStreamingChatModelIT {
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106.toString())  // supports parallel function calling
+                .modelName(GPT_3_5_TURBO_1106)  // supports parallel function calling
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
@@ -391,7 +401,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_stream_valid_json() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_stream_valid_json() throws Exception {
 
         //given
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
@@ -400,7 +410,7 @@ class OpenAiStreamingChatModelIT {
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(OpenAiModelName.GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
                 .responseFormat("json_object")
                 .logRequests(true)
                 .logResponses(true)
@@ -440,5 +450,108 @@ class OpenAiStreamingChatModelIT {
         // then
         assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\", \"surname\": \"Heisler\"}");
         assertThat(response.content().text()).isEqualTo(json);
+    }
+
+    @Test
+    void should_accept_image_url() {
+
+        // given
+        ImageContent imageContent = ImageContent.from(CAT_IMAGE_URL);
+        UserMessage userMessage = UserMessage.from(imageContent);
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(92);
+    }
+
+    @Test
+    void should_accept_base64_image() {
+
+        // given
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
+        UserMessage userMessage = UserMessage.from(imageContent);
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(92);
+    }
+
+    @Test
+    void should_accept_text_and_image() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see? Reply in one word."),
+                ImageContent.from(CAT_IMAGE_URL)
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(102);
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see? Reply with one word per image."),
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(DICE_IMAGE_URL)
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_different_sources() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        visionModel.generate(singletonList(userMessage), handler);
+        Response<AiMessage> response = handler.get();
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
     }
 }
