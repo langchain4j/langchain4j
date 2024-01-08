@@ -23,6 +23,21 @@ import static java.util.Collections.singletonList;
 /**
  * Represents a Google Vertex AI language model with a text interface, such as text-bison.
  * See details <a href="https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview">here</a>.
+ * <br>
+ * Please follow these steps before using this model:
+ * <br>
+ * 1. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#authentication">Authentication</a>
+ * <br>
+ * When developing locally, you can use one of:
+ * <br>
+ * a) <a href="https://github.com/googleapis/google-cloud-java?tab=readme-ov-file#using-a-service-account-recommended">Service account (recommended)</a>
+ * Ensure that GOOGLE_APPLICATION_CREDENTIALS environment variable points to your JSON service account key.
+ * <br>
+ * b) <a href="https://github.com/googleapis/google-cloud-java?tab=readme-ov-file#local-developmenttesting">Google Cloud SDK</a>
+ * <br>
+ * 2. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#authorization">Authorization</a>
+ * <br>
+ * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
  */
 public class VertexAiLanguageModel implements LanguageModel {
 
