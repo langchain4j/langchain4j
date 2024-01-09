@@ -13,6 +13,7 @@ class RetryUtilsTest {
 
     @Test
     void testSuccessfulCall() throws Exception {
+        @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenReturn("Success");
 
@@ -25,6 +26,7 @@ class RetryUtilsTest {
 
     @Test
     void testRetryThenSuccess() throws Exception {
+        @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call())
                 .thenThrow(new RuntimeException())
@@ -46,6 +48,7 @@ class RetryUtilsTest {
 
     @Test
     void testMaxAttemptsReached() throws Exception {
+        @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenThrow(new RuntimeException());
 
