@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import java.util.Collection;
+import java.util.Objects;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 
@@ -9,6 +10,19 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
  */
 public class ValidationUtils {
     private ValidationUtils() {}
+
+    /**
+     * Ensure that the two values are equal.
+     * @param lhs the left hand side value.
+     * @param rhs the right hand side value.
+     * @param format the format string for the exception message.
+     * @param args the format arguments for the exception message.
+     */
+    public static void ensureEq(Object lhs, Object rhs, String format, Object... args) {
+        if (!Objects.equals(lhs, rhs)) {
+            throw illegalArgument(format, args);
+        }
+    }
 
     /**
      * Ensures that the given object is not null.
