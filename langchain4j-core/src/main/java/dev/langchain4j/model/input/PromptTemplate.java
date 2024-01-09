@@ -1,5 +1,6 @@
 package dev.langchain4j.model.input;
 
+import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 
 import java.time.Clock;
@@ -10,7 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonMap;
 
 /**
@@ -22,19 +22,12 @@ import static java.util.Collections.singletonMap;
  */
 public class PromptTemplate {
 
-    private static final PromptTemplateFactory FACTORY = factory();
+    private static final PromptTemplateFactory FACTORY = ServiceHelper.loadService(
+            PromptTemplateFactory.class, DefaultPromptTemplateFactory::new);
 
     static final String CURRENT_DATE = "current_date";
     static final String CURRENT_TIME = "current_time";
     static final String CURRENT_DATE_TIME = "current_date_time";
-
-    private static PromptTemplateFactory factory() {
-        for (PromptTemplateFactory factory : loadFactories(PromptTemplateFactory.class)) {
-            return factory;
-        }
-        // fallback to the default
-        return new DefaultPromptTemplateFactory();
-    }
 
     private final PromptTemplateFactory.Template template;
     private final Clock clock;
