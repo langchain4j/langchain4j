@@ -28,6 +28,13 @@ class ImageTest implements WithAssertions {
             assertThat(image.mimeType()).isNull();
             assertThat(image.revisedPrompt()).isNull();
         }
+        {
+            Image image = Image.builder()
+                    .url("https://example.com/image.png")
+                    .build();
+            assertThat(image.url()).isEqualTo(
+                    new URI("https://example.com/image.png"));
+        }
     }
 
     @Test
