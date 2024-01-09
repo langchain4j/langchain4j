@@ -10,7 +10,7 @@ public interface PromptTemplateFactory {
 
         String getTemplate();
 
-        String getName();
+        default String getName() { return "template"; }
     }
 
     interface Template {
