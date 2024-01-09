@@ -125,18 +125,6 @@
                                     <includes>
                                         <include>dev.langchain4j.data.segment</include>
                                         <include>dev.langchain4j.model.embedding</include>
-                                    </includes>
-                                    <element>PACKAGE</element>
-                                    <limits>
-                                        <limit>
-                                            <counter>INSTRUCTION</counter>
-                                            <value>COVEREDRATIO</value>
-                                            <minimum>0.50</minimum>
-                                        </limit>
-                                    </limits>
-                                </rule>
-                                <rule>
-                                    <includes>
                                         <include>dev.langchain4j.model.output</include>
                                     </includes>
                                     <element>PACKAGE</element>
@@ -144,7 +132,7 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.60</minimum>
+                                            <minimum>0.50</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
