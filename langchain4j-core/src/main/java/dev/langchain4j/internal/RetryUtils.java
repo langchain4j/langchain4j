@@ -46,8 +46,10 @@ public final class RetryUtils {
              *
              * <p>The delay is calculated as follows:
              * <ol>
-             *     <li>Calculate the raw delay in milliseconds as {@code delayMillis * Math.pow(backoffExp, attempt - 1)}.</li>
-             *     <li>Calculate the jitter delay in milliseconds as {@code rawDelayMs + rand.nextInt((int) (rawDelayMs * jitterScale))}.</li>
+             *     <li>Calculate the raw delay in milliseconds as
+             *         {@code delayMillis * Math.pow(backoffExp, attempt - 1)}.</li>
+             *     <li>Calculate the jitter delay in milliseconds as
+             *         {@code rawDelayMs + rand.nextInt((int) (rawDelayMs * jitterScale))}.</li>
              *     <li>Sleep for the jitter delay in milliseconds.</li>
              * </ol>
              *
@@ -62,7 +64,8 @@ public final class RetryUtils {
             /**
              * Sets the jitter scale.
              *
-             * <p>The jitter delay in milliseconds is calculated as {@code rawDelayMs + rand.nextInt((int) (rawDelayMs * jitterScale))}.
+             * <p>The jitter delay in milliseconds is calculated as
+             * {@code rawDelayMs + rand.nextInt((int) (rawDelayMs * jitterScale))}.
              *
              * @param jitterScale The jitter scale.
              * @return {@code this}
