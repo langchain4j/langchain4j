@@ -13,7 +13,7 @@ const config = {
     favicon: 'img/favicon.ico',
 
     // Set the production url of your site here
-    url: 'https://your-docusaurus-site.example.com',
+    url: 'https://github.com',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
     baseUrl: '/langchain4j/',
@@ -78,8 +78,7 @@ const config = {
                         position: 'left',
                         label: 'Get Started',
                     },
-                    {to: '/docs/category/documentation', label: 'Documentation', position: 'left'},
-                    {to: '/docs/category/code-examples', label: 'Code Examples', position: 'left'},
+                    {to: '/docs/category/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
                     {to: 'https://github.com/langchain4j/langchain4j/javadoc/', label: 'Javadoc', position: 'left'},
                     {to: '/blog', label: 'Blog', position: 'left'},
@@ -106,12 +105,16 @@ const config = {
                         title: 'Community',
                         items: [
                             {
-                                label: 'Stack Overflow',
-                                href: 'https://stackoverflow.com/questions/tagged/langchain4j',
-                            },
-                            {
                                 label: 'Twitter',
                                 href: 'https://twitter.com/langchain4j',
+                            },
+                            {
+                                label: 'Discord',
+                                href: 'https://discord.com/invite/JzTFvyjG6R',
+                            },
+                            {
+                                 label: 'Stack Overflow',
+                                 href: 'https://stackoverflow.com/questions/tagged/langchain4j',
                             },
                         ],
                     },
