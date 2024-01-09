@@ -4,6 +4,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <properties>
+        <!-- Tell the compiler to stop warning us about Java8 -->
+        <Xlint>-options</Xlint>
+    </properties>
+
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
@@ -63,6 +68,7 @@
 
     <build>
         <plugins>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
@@ -75,6 +81,131 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.11</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.model</include>
+                                        <include>dev.langchain4j.model.moderation</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.data.message</include>
+                                        <include>dev.langchain4j.model.internal</include>
+                                        <include>dev.langchain4j.model.input</include>
+                                        <include>dev.langchain4j.model.input.structured</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.model.output</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.60</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.data.segment</include>
+                                        <include>dev.langchain4j.model.embedding</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.50</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.store.embedding</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.90</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <excludes>
+                                        <exclude>dev.langchain4j.data.message</exclude>
+                                        <exclude>dev.langchain4j.data.segment</exclude>
+                                        <exclude>dev.langchain4j.internal</exclude>
+                                        <exclude>dev.langchain4j.model</exclude>
+                                        <exclude>dev.langchain4j.model.embedding</exclude>
+                                        <exclude>dev.langchain4j.model.input</exclude>
+                                        <exclude>dev.langchain4j.model.input.structured</exclude>
+                                        <exclude>dev.langchain4j.model.moderation</exclude>
+                                        <exclude>dev.langchain4j.model.language</exclude>
+                                        <exclude>dev.langchain4j.model.output</exclude>
+                                        <exclude>dev.langchain4j.store.embedding</exclude>
+                                    </excludes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.95</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
 
