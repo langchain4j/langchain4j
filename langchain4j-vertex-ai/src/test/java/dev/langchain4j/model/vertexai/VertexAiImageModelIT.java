@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -17,12 +18,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-//@Disabled("To run this test, you must provide your own endpoint, project and location")
+@Disabled("To run this test, you must provide your own endpoint, project and location")
 public class VertexAiImageModelIT {
 
     private static final String ENDPOINT = "us-central1-aiplatform.googleapis.com:443";
     private static final String LOCATION = "us-central1";
-    private static final String PROJECT = "glaforge-genai-playground";
+    private static final String PROJECT = "langchain4j";
     private static final String PUBLISHER = "google";
 
     @Test
