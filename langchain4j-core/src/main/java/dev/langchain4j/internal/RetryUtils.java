@@ -13,10 +13,17 @@ public final class RetryUtils {
 
     private static final Logger log = LoggerFactory.getLogger(RetryUtils.class);
 
+    /**
+     * This method returns a RetryPolicy.Builder.
+     * @return A RetryPolicy.Builder.
+     */
     public static RetryPolicy.Builder retryPolicyBuilder() {
         return new RetryPolicy.Builder();
     }
 
+    /**
+     * This class encapsulates a retry policy.
+     */
     public static final class RetryPolicy {
         public static final class Builder {
             private int maxAttempts = 3;
@@ -24,26 +31,61 @@ public final class RetryUtils {
             private double jitterScale = 0.2;
             private double backoffExp = 1.5;
 
+            /**
+             * Sets the default maximum number of attempts.
+             * @param maxAttempts The maximum number of attempts.
+             * @return {@code this}
+             */
             public Builder maxAttempts(int maxAttempts) {
                 this.maxAttempts = maxAttempts;
                 return this;
             }
 
+            /**
+             * Sets the base delay in milliseconds.
+             *
+             * <p>The delay is calculated as follows:
+             * <ol>
+             *     <li>Calculate the raw delay in milliseconds as {@code delayMillis * Math.pow(backoffExp, attempt - 1)}.</li>
+             *     <li>Calculate the jitter delay in milliseconds as {@code rawDelayMs + rand.nextInt((int) (rawDelayMs * jitterScale))}.</li>
+             *     <li>Sleep for the jitter delay in milliseconds.</li>
+             * </ol>
+             *
+             * @param delayMillis The delay in milliseconds.
+             * @return {@code this}
+             */
             public Builder delayMillis(int delayMillis) {
                 this.delayMillis = delayMillis;
                 return this;
             }
 
+            /**
+             * Sets the jitter scale.
+             *
+             * <p>The jitter delay in milliseconds is calculated as {@code rawDelayMs + rand.nextInt((int) (rawDelayMs * jitterScale))}.
+             *
+             * @param jitterScale The jitter scale.
+             * @return {@code this}
+             */
             public Builder jitterScale(double jitterScale) {
                 this.jitterScale = jitterScale;
                 return this;
             }
 
+            /**
+             * Sets the backoff exponent.
+             * @param backoffExp The backoff exponent.
+             * @return {@code this}
+             */
             public Builder backoffExp(double backoffExp) {
                 this.backoffExp = backoffExp;
                 return this;
             }
 
+            /**
+             * Builds a RetryPolicy.
+             * @return A RetryPolicy.
+             */
             public RetryPolicy build() {
                 return new RetryPolicy(maxAttempts, delayMillis, jitterScale, backoffExp);
             }
@@ -65,10 +107,20 @@ public final class RetryUtils {
             this.backoffExp = backoffExp;
         }
 
+        /**
+         * This method returns the raw delay in milliseconds for a given attempt.
+         * @param attempt The attempt number.
+         * @return The raw delay in milliseconds.
+         */
         public double rawDelayMs(int attempt) {
             return ((double) delayMillis) * Math.pow(backoffExp, attempt - 1);
         }
 
+        /**
+         * This method returns the jitter delay in milliseconds for a given attempt.
+         * @param attempt The attempt number.
+         * @return The jitter delay in milliseconds.
+         */
         public int jitterDelayMillis(int attempt) {
             Random rand = new Random();
             double delay = rawDelayMs(attempt);
@@ -76,6 +128,10 @@ public final class RetryUtils {
             return (int) (delay + rand.nextInt((int) jitter));
         }
 
+        /**
+         * This method sleeps for a given attempt.
+         * @param attempt The attempt number.
+         */
         @JacocoIgnoreCoverageGenerated
         public void sleep(int attempt) {
             try {
@@ -85,10 +141,27 @@ public final class RetryUtils {
             }
         }
 
+        /**
+         * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
+         * If the action fails on all attempts, it throws a RuntimeException.
+         *
+         * @param action      The action to be executed.
+         * @return The result of the action if it is successful.
+         * @throws RuntimeException if the action fails on all attempts.
+         */
         public <T> T withRetry(Callable<T> action) {
             return withRetry(action, maxAttempts);
         }
 
+        /**
+         * This method attempts to execute a given action up to a specified number of times with a 1-second delay.
+         * If the action fails on all attempts, it throws a RuntimeException.
+         *
+         * @param action      The action to be executed.
+         * @param maxAttempts The maximum number of attempts to execute the action.
+         * @return The result of the action if it is successful.
+         * @throws RuntimeException if the action fails on all attempts.
+         */
         public <T> T withRetry(Callable<T> action, int maxAttempts) {
             int attempt = 1;
             while (true) {
