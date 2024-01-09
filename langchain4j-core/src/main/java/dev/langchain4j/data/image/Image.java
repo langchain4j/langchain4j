@@ -1,6 +1,10 @@
 package dev.langchain4j.data.image;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
@@ -63,6 +67,19 @@ public final class Image {
                 ", mimeType = " + quoted(mimeType) +
                 ", revisedPrompt = " + quoted(revisedPrompt) +
                 " }";
+    }
+
+    public static Image fromPath(Path path) {
+        try {
+            byte[] allBytes = Files.readAllBytes(path);
+            String base64 = Base64.getEncoder().encodeToString(allBytes);
+            return Image.builder()
+                .url(path.toUri())
+                .base64Data(base64)
+                .build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static class Builder {

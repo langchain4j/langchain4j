@@ -2,7 +2,6 @@ package dev.langchain4j.model.vertexai;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -18,17 +17,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@Disabled("To run this test, you must provide your own endpoint, project and location")
-public class VertexAiImagenImageModelIT {
+//@Disabled("To run this test, you must provide your own endpoint, project and location")
+public class VertexAiImageModelIT {
 
     private static final String ENDPOINT = "us-central1-aiplatform.googleapis.com:443";
     private static final String LOCATION = "us-central1";
-    private static final String PROJECT = "langchain4j";
+    private static final String PROJECT = "glaforge-genai-playground";
     private static final String PUBLISHER = "google";
 
     @Test
     public void should_generate_one_image_with_persistence() {
-        VertexAiImagenImageModel imagenModel = VertexAiImagenImageModel.builder()
+        VertexAiImageModel imagenModel = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)
@@ -52,7 +51,7 @@ public class VertexAiImagenImageModelIT {
 
     @Test
     public void should_generate_three_images_with_persistence() {
-        VertexAiImagenImageModel imagenModel = VertexAiImagenImageModel.builder()
+        VertexAiImageModel imagenModel = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)
@@ -73,38 +72,30 @@ public class VertexAiImagenImageModelIT {
 
     @Test
     public void should_use_image_style_seed_image_source_and_mask_for_editing() throws URISyntaxException {
-        VertexAiImagenImageModel imagenModelForForest = VertexAiImagenImageModel.builder()
+        VertexAiImageModel model = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)
             .publisher(PUBLISHER)
             .modelName("imagegeneration@002")
             .seed(19707L)
-            .sampleImageStyle(VertexAiImagenImageModel.ImageStyle.photograph)
+            .sampleImageStyle(VertexAiImageModel.ImageStyle.photograph)
+            .guidanceScale(100)
             .maxRetries(4)
             .withPersisting()
             .build();
 
-        Response<Image> forestResp = imagenModelForForest.generate("lush forest");
+        Response<Image> forestResp = model.generate("lush forest");
         System.out.println(forestResp.content().url());
 
         assertThat(forestResp.content().base64Data()).isNotNull();
 
         URI maskFileUri = Objects.requireNonNull(getClass().getClassLoader().getResource("mask.png")).toURI();
 
-        VertexAiImagenImageModel imagenModelForComposite = VertexAiImagenImageModel.builder()
-            .endpoint(ENDPOINT)
-            .location(LOCATION)
-            .project(PROJECT)
-            .publisher(PUBLISHER)
-            .modelName("imagegeneration@002")
-            .image(Paths.get(forestResp.content().url()))
-            .mask(Paths.get(maskFileUri))
-            .guidanceScale(100)
-            .withPersisting()
-            .build();
-
-        Response<Image> compositeResp = imagenModelForComposite.generate("red trees");
+        Response<Image> compositeResp = model.edit(
+            "red trees", forestResp.content(),
+            Image.fromPath(Paths.get(maskFileUri))
+        );
         System.out.println(compositeResp.content().url());
 
         assertThat(compositeResp.content().base64Data()).isNotNull();
@@ -114,7 +105,7 @@ public class VertexAiImagenImageModelIT {
     public void should_use_persistTo_and_image_upscaling() {
         Path defaultTempDirPath = Paths.get(System.getProperty("java.io.tmpdir"));
 
-        VertexAiImagenImageModel imagenModel = VertexAiImagenImageModel.builder()
+        VertexAiImageModel imagenModel = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)
@@ -134,13 +125,12 @@ public class VertexAiImagenImageModelIT {
         assertThat(new File(imageResponse.content().url())).exists();
         assertThat(imageResponse.content().base64Data()).isNotNull();
 
-        VertexAiImagenImageModel imagenModelForUpscaling = VertexAiImagenImageModel.builder()
+        VertexAiImageModel imagenModelForUpscaling = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)
             .publisher(PUBLISHER)
             .modelName("imagegeneration@002")
-            .image(imageResponse.content())
             .sampleImageSize(4096)
             .withPersisting()
             .persistTo(defaultTempDirPath)
@@ -148,7 +138,7 @@ public class VertexAiImagenImageModelIT {
             .build();
 
         Response<Image> upscaledImageResponse =
-            imagenModelForUpscaling.generate("");
+            imagenModelForUpscaling.edit("", imageResponse.content());
         System.out.println(upscaledImageResponse.content().url());
 
         assertThat(upscaledImageResponse.content().url()).isNotNull();
@@ -158,7 +148,7 @@ public class VertexAiImagenImageModelIT {
 
     @Test
     public void should_use_negative_prompt_and_different_prompt_language() {
-        VertexAiImagenImageModel imagenModel = VertexAiImagenImageModel.builder()
+        VertexAiImageModel imagenModel = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)
@@ -179,7 +169,7 @@ public class VertexAiImagenImageModelIT {
 
     @Test
     public void should_raise_error_on_problematic_prompt_or_content_generation() {
-        VertexAiImagenImageModel imagenModel = VertexAiImagenImageModel.builder()
+        VertexAiImageModel imagenModel = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)
             .location(LOCATION)
             .project(PROJECT)

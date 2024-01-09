@@ -29,4 +29,30 @@ public interface ImageModel {
     default Response<List<Image>> generate(String prompt, int n) {
         throw new IllegalArgumentException("Operation is not supported");
     }
+
+    /**
+     * Given an existing image, edit this image following the given prompt.
+     *
+     * @param prompt The prompt to edit the image.
+     * @param image The image to be edited.
+     * @return The generated image Response.
+     */
+    default Response<Image> edit(String prompt, Image image) {
+        throw new IllegalArgumentException("Operation is not supported");
+    }
+
+    /**
+     * Given an existing image, edit this image following the given prompt,
+     * and apply the changes only to the part of the image delimited by the white area
+     * in the given black and white mask image.
+     *
+     * @param prompt The prompt to edit the image.
+     * @param image The image to be edited.
+     * @param mask The black & white image mask to apply the edition of the image
+     *             only to the part delimited by the white area.
+     * @return The generated image Response.
+     */
+    default Response<Image> edit(String prompt, Image image, Image mask) {
+        throw new IllegalArgumentException("Operation is not supported");
+    }
 }

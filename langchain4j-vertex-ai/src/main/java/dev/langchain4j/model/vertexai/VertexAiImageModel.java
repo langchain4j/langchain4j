@@ -4,6 +4,7 @@ import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
 import com.google.cloud.aiplatform.v1.PredictionServiceSettings;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 import static com.google.protobuf.Value.newBuilder;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Collections.singletonList;
 
@@ -31,14 +33,12 @@ import static java.util.Collections.singletonList;
  * Supports both versions of Imagen v1 and v2, respectively identified by the model names
  * <code>imagegeneration@002</code> and <code>imagegeneration@005</code>.
  */
-public class VertexAiImagenImageModel implements ImageModel {
+public class VertexAiImageModel implements ImageModel {
 
     private final Long seed;
     private final String endpoint;
     private final EndpointName endpointName;
     private final String language;
-    private final Image image;
-    private final Image mask;
     private final Integer guidanceScale;
     private final String negativePrompt;
     private final ImageStyle sampleImageStyle;
@@ -71,8 +71,6 @@ public class VertexAiImagenImageModel implements ImageModel {
      * @param modelName        the name of the image model (<code>imagegeneration@002</code> or <code>imagegeneration@005</code>)
      * @param seed             a fixed random seed number between 0 and 2^32-1
      * @param language         the spoken language used for the prompt
-     * @param image            an image to edit
-     * @param mask             a mask image to specify which parts of the image to edit
      * @param guidanceScale    an integer that represents the strength of the edit to make (0-9: low, 10-20: medium, 21+: high)
      * @param negativePrompt   a negative prompt to specify what you don't want to see in the generated image
      * @param sampleImageStyle the style of the image for Imagen v1, see the <code>ImageStyle</code> enum for reference
@@ -81,22 +79,20 @@ public class VertexAiImagenImageModel implements ImageModel {
      * @param withPersisting   true if the generated images should be persisted on the local file system
      * @param persistTo        the <code>Path</code> of the directory that should contain the generated images
      */
-    public VertexAiImagenImageModel(String endpoint,
-                                    String project,
-                                    String location,
-                                    String publisher,
-                                    String modelName,
-                                    Long seed,
-                                    String language,
-                                    Image image,
-                                    Image mask,
-                                    Integer guidanceScale,
-                                    String negativePrompt,
-                                    ImageStyle sampleImageStyle,
-                                    Integer sampleImageSize,
-                                    Integer maxRetries,
-                                    Boolean withPersisting,
-                                    Path persistTo
+    public VertexAiImageModel(String endpoint,
+                              String project,
+                              String location,
+                              String publisher,
+                              String modelName,
+                              Long seed,
+                              String language,
+                              Integer guidanceScale,
+                              String negativePrompt,
+                              ImageStyle sampleImageStyle,
+                              Integer sampleImageSize,
+                              Integer maxRetries,
+                              Boolean withPersisting,
+                              Path persistTo
     ) {
         this.endpoint = ensureNotBlank(endpoint, "endpoint");
 
@@ -106,10 +102,9 @@ public class VertexAiImagenImageModel implements ImageModel {
             ensureNotBlank(publisher, "publisher"),
             ensureNotBlank(modelName, "modelName"));
 
-        this.seed = seed;
+        this.seed = seed == null ? null : ensureBetween(seed, 0, 4_294_967_295L, "seed");
+
         this.language = language;
-        this.image = image;
-        this.mask = mask;
         this.guidanceScale = guidanceScale;
         this.negativePrompt = negativePrompt;
         this.sampleImageStyle = sampleImageStyle;
@@ -150,6 +145,10 @@ public class VertexAiImagenImageModel implements ImageModel {
 
     @Override
     public Response<List<Image>> generate(String prompt, int n) {
+        return generate(prompt, null, null, n);
+    }
+
+    private Response<List<Image>> generate(String prompt, Image image, Image mask, int n) {
         try {
             PredictionServiceSettings serviceSettings = PredictionServiceSettings.newBuilder()
                 .setEndpoint(this.endpoint)
@@ -158,64 +157,10 @@ public class VertexAiImagenImageModel implements ImageModel {
             try (PredictionServiceClient client = PredictionServiceClient.create(serviceSettings)) {
 
                 // Instance description
-
-                Map<String, Object> promptMap = new HashMap<>();
-                promptMap.put("prompt", prompt);
-
-                if (this.image != null && this.image.base64Data() != null) {
-                    Map<String, String> imageMap = new HashMap<>();
-                    imageMap.put("bytesBase64Encoded", this.image.base64Data());
-                    promptMap.put("image", imageMap);
-                }
-
-                if (this.mask != null && this.mask.base64Data() != null) {
-                    Map<String, String> imageMap = new HashMap<>();
-                    imageMap.put("bytesBase64Encoded", this.mask.base64Data());
-
-                    Map<String, Map<String, String>> maskMap = new HashMap<>();
-                    maskMap.put("image", imageMap);
-
-                    promptMap.put("mask", maskMap);
-                }
-
-                Value.Builder instanceBuilder = newBuilder();
-                JsonFormat.parser().merge(toJson(promptMap), instanceBuilder);
-                List<Value> instances = singletonList(instanceBuilder.build());
+                List<Value> instances = prepareInstance(prompt, image, mask);
 
                 // Parameters description
-
-                Map<String, Object> paramsMap = new HashMap<>();
-
-                paramsMap.put("sampleCount", n);
-
-                if (this.seed != null) {
-                    paramsMap.put("seed", this.seed);
-                }
-
-                if (this.sampleImageStyle != null) {
-                    paramsMap.put("sampleImageStyle", this.sampleImageStyle.name());
-                }
-
-                if (this.sampleImageSize != null) {
-                    paramsMap.put("mode", "upscale");
-                    paramsMap.put("sampleImageSize", this.sampleImageSize.toString());
-                }
-
-                if (this.guidanceScale != null) {
-                    paramsMap.put("guidanceScale", this.guidanceScale);
-                }
-
-                if (this.negativePrompt != null) {
-                    paramsMap.put("negativePrompt", this.negativePrompt);
-                }
-
-                if (this.language != null) {
-                    paramsMap.put("language", this.language);
-                }
-
-                Value.Builder parametersBuilder = Value.newBuilder();
-                JsonFormat.parser().merge(toJson(paramsMap), parametersBuilder);
-                Value parameters = parametersBuilder.build();
+                Value parameters = prepareParameters(n);
 
                 PredictResponse predictResponse =
                     withRetry(() -> client.predict(this.endpointName, instances, parameters), this.maxRetries);
@@ -238,6 +183,86 @@ public class VertexAiImagenImageModel implements ImageModel {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Value prepareParameters(int n) throws InvalidProtocolBufferException {
+        Map<String, Object> paramsMap = new HashMap<>();
+
+        paramsMap.put("sampleCount", n);
+
+        if (this.seed != null) {
+            paramsMap.put("seed", this.seed);
+        }
+
+        if (this.sampleImageStyle != null) {
+            paramsMap.put("sampleImageStyle", this.sampleImageStyle.name());
+        }
+
+        if (this.sampleImageSize != null) {
+            paramsMap.put("mode", "upscale");
+            paramsMap.put("sampleImageSize", this.sampleImageSize.toString());
+        }
+
+        if (this.guidanceScale != null) {
+            paramsMap.put("guidanceScale", this.guidanceScale);
+        }
+
+        if (this.negativePrompt != null) {
+            paramsMap.put("negativePrompt", this.negativePrompt);
+        }
+
+        if (this.language != null) {
+            paramsMap.put("language", this.language);
+        }
+
+        Value.Builder parametersBuilder = Value.newBuilder();
+        JsonFormat.parser().merge(toJson(paramsMap), parametersBuilder);
+        return parametersBuilder.build();
+    }
+
+    private List<Value> prepareInstance(String prompt, Image image, Image mask) throws InvalidProtocolBufferException {
+        Map<String, Object> promptMap = new HashMap<>();
+        promptMap.put("prompt", prompt);
+
+        if (image != null && image.base64Data() != null) {
+            Map<String, String> imageMap = new HashMap<>();
+            imageMap.put("bytesBase64Encoded", image.base64Data());
+            promptMap.put("image", imageMap);
+        }
+
+        if (mask != null && mask.base64Data() != null) {
+            Map<String, String> imageMap = new HashMap<>();
+            imageMap.put("bytesBase64Encoded", mask.base64Data());
+
+            Map<String, Map<String, String>> maskMap = new HashMap<>();
+            maskMap.put("image", imageMap);
+
+            promptMap.put("mask", maskMap);
+        }
+
+        Value.Builder instanceBuilder = newBuilder();
+        JsonFormat.parser().merge(toJson(promptMap), instanceBuilder);
+        return singletonList(instanceBuilder.build());
+    }
+
+    @Override
+    public Response<Image> edit(String prompt, Image image) {
+        Response<Image> generatedImageResponse = edit(prompt, image, null);
+        return Response.from(
+            generatedImageResponse.content(),
+            generatedImageResponse.tokenUsage(),
+            generatedImageResponse.finishReason()
+        );
+    }
+
+    @Override
+    public Response<Image> edit(String prompt, Image image, Image mask) {
+        Response<List<Image>> generatedImageResponse = generate(prompt, image, mask, 1);
+        return Response.from(
+            generatedImageResponse.content().get(0),
+            generatedImageResponse.tokenUsage(),
+            generatedImageResponse.finishReason()
+        );
     }
 
     private URI persistAndGetURI(String bytesBase64Encoded) {
@@ -266,8 +291,6 @@ public class VertexAiImagenImageModel implements ImageModel {
         private String modelName;
         private Long seed;
         private String language;
-        private Image image;
-        private Image mask;
         private String negativePrompt;
         private ImageStyle sampleImageStyle;
         private Integer sampleImageSize;
@@ -302,46 +325,13 @@ public class VertexAiImagenImageModel implements ImageModel {
         }
 
         public Builder seed(Long seed) {
-            this.seed = seed & 0xffffffffL;
+            this.seed = seed;
             return this;
         }
 
         public Builder language(String language) {
             this.language = language;
             return this;
-        }
-
-        public Builder image(Image image) {
-            this.image = image;
-            return this;
-        }
-
-        public Builder image(Path path) {
-            this.image = buildImageFromPath(path);
-            return this;
-        }
-
-        public Builder mask(Image image) {
-            this.mask = image;
-            return this;
-        }
-
-        public Builder mask(Path path) {
-            this.mask = buildImageFromPath(path);
-            return this;
-        }
-
-        private Image buildImageFromPath(Path path) {
-            try {
-                byte[] allBytes = Files.readAllBytes(path);
-                String base64 = Base64.getEncoder().encodeToString(allBytes);
-                return Image.builder()
-                    .url(path.toUri())
-                    .base64Data(base64)
-                    .build();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
         }
 
         public Builder guidanceScale(Integer guidanceScale) {
@@ -379,8 +369,8 @@ public class VertexAiImagenImageModel implements ImageModel {
             return withPersisting();
         }
 
-        public VertexAiImagenImageModel build() {
-            return new VertexAiImagenImageModel(
+        public VertexAiImageModel build() {
+            return new VertexAiImageModel(
                 this.endpoint,
                 this.project,
                 this.location,
@@ -388,8 +378,6 @@ public class VertexAiImagenImageModel implements ImageModel {
                 this.modelName,
                 this.seed,
                 this.language,
-                this.image,
-                this.mask,
                 this.guidanceScale,
                 this.negativePrompt,
                 this.sampleImageStyle,
