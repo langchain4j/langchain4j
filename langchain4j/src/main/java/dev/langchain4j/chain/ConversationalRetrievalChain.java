@@ -36,19 +36,19 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
     private final PromptTemplate promptTemplate;
     private final Retriever<TextSegment> retriever;
 
-    private final List<String> metadata;
+    private final List<String> metadataKeysToInclude;
 
     @Builder
     public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
                                         ChatMemory chatMemory,
                                         PromptTemplate promptTemplate,
                                         Retriever<TextSegment> retriever,
-                                        List<String> metadata) {
+                                        List<String> metadataKeysToInclude) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withMaxMessages(10) : chatMemory;
         this.promptTemplate = promptTemplate == null ? DEFAULT_PROMPT_TEMPLATE : promptTemplate;
         this.retriever = ensureNotNull(retriever, "retriever");
-        this.metadata = metadata;
+        this.metadataKeysToInclude = metadataKeysToInclude;
     }
 
     @Override
@@ -60,7 +60,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("question", question);
-        variables.put("information", format(relevantSegments, metadata));
+        variables.put("information", format(relevantSegments, metadataKeysToInclude));
 
         UserMessage userMessage = promptTemplate.apply(variables).toUserMessage();
 
