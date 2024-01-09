@@ -9,11 +9,27 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.*;
 
 @SuppressWarnings("ConstantConditions")
 class ValidationUtilsTest implements WithAssertions {
+    @Test
+    public void test_ensureEq() {
+        ensureEq(1, 1, "test");
+        ensureEq("abc", "abc", "test");
+        ensureEq(null, null, "test");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureEq(1, 2, "test %d", 7))
+                .withMessageContaining("test 7");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureEq(1, null, "test"))
+                .withMessageContaining("test");
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ensureEq(null, 1, "test"))
+                .withMessageContaining("test");
+    }
 
     @Test
     public void test_ensureNotNull() {
