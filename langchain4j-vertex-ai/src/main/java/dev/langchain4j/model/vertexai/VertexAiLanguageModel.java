@@ -30,10 +30,10 @@ import static java.util.Collections.singletonList;
  * <br>
  * When developing locally, you can use one of:
  * <br>
- * a) <a href="https://github.com/googleapis/google-cloud-java?tab=readme-ov-file#using-a-service-account-recommended">Service account (recommended)</a>
- * Ensure that GOOGLE_APPLICATION_CREDENTIALS environment variable points to your JSON service account key.
+ * a) <a href="https://github.com/googleapis/google-cloud-java?tab=readme-ov-file#local-developmenttesting">Google Cloud SDK</a>
  * <br>
- * b) <a href="https://github.com/googleapis/google-cloud-java?tab=readme-ov-file#local-developmenttesting">Google Cloud SDK</a>
+ * b) <a href="https://github.com/googleapis/google-cloud-java?tab=readme-ov-file#using-a-service-account-recommended">Service account</a>
+ * When using service account, ensure that <code>GOOGLE_APPLICATION_CREDENTIALS</code> environment variable points to your JSON service account key.
  * <br>
  * 2. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#authorization">Authorization</a>
  * <br>
