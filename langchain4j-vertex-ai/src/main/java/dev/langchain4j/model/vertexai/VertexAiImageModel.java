@@ -246,8 +246,8 @@ public class VertexAiImageModel implements ImageModel {
     }
 
     @Override
-    public Response<Image> edit(String prompt, Image image) {
-        Response<Image> generatedImageResponse = edit(prompt, image, null);
+    public Response<Image> edit(Image image, String prompt) {
+        Response<Image> generatedImageResponse = edit(image, null, prompt);
         return Response.from(
             generatedImageResponse.content(),
             generatedImageResponse.tokenUsage(),
@@ -256,7 +256,7 @@ public class VertexAiImageModel implements ImageModel {
     }
 
     @Override
-    public Response<Image> edit(String prompt, Image image, Image mask) {
+    public Response<Image> edit(Image image, Image mask, String prompt) {
         Response<List<Image>> generatedImageResponse = generate(prompt, image, mask, 1);
         return Response.from(
             generatedImageResponse.content().get(0),

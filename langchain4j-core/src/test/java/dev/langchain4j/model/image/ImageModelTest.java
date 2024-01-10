@@ -20,6 +20,16 @@ class ImageModelTest implements WithAssertions {
         public Response<Image> generate(String prompt) {
             return Response.from(image);
         }
+
+        @Override
+        public Response<Image> edit(Image image, String prompt) {
+            return Response.from(image);
+        }
+
+        @Override
+        public Response<Image> edit(Image image, Image mask, String prompt) {
+            return Response.from(image);
+        }
     }
 
     public static final Image PLACEHOLDER_IMAGE;
@@ -37,6 +47,14 @@ class ImageModelTest implements WithAssertions {
         ImageModel model = new FixedImageModel(PLACEHOLDER_IMAGE);
 
         assertThatThrownBy(() -> model.generate("prompt", 1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Operation is not supported");
+
+        assertThatThrownBy(() -> model.edit(PLACEHOLDER_IMAGE,"prompt"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Operation is not supported");
+
+        assertThatThrownBy(() -> model.edit(PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE,"prompt"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Operation is not supported");
     }

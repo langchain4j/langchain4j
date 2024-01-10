@@ -6,8 +6,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
@@ -25,6 +27,19 @@ public class VertexAiImageModelIT {
     private static final String LOCATION = "us-central1";
     private static final String PROJECT = "langchain4j";
     private static final String PUBLISHER = "google";
+
+    private static Image fromPath(Path path) {
+        try {
+            byte[] allBytes = Files.readAllBytes(path);
+            String base64 = Base64.getEncoder().encodeToString(allBytes);
+            return Image.builder()
+                .url(path.toUri())
+                .base64Data(base64)
+                .build();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Test
     public void should_generate_one_image_with_persistence() {
@@ -94,8 +109,7 @@ public class VertexAiImageModelIT {
         URI maskFileUri = Objects.requireNonNull(getClass().getClassLoader().getResource("mask.png")).toURI();
 
         Response<Image> compositeResp = model.edit(
-            "red trees", forestResp.content(),
-            Image.fromPath(Paths.get(maskFileUri))
+            forestResp.content(), fromPath(Paths.get(maskFileUri)), "red trees"
         );
         System.out.println(compositeResp.content().url());
 
@@ -139,7 +153,7 @@ public class VertexAiImageModelIT {
             .build();
 
         Response<Image> upscaledImageResponse =
-            imagenModelForUpscaling.edit("", imageResponse.content());
+            imagenModelForUpscaling.edit(imageResponse.content(), "");
         System.out.println(upscaledImageResponse.content().url());
 
         assertThat(upscaledImageResponse.content().url()).isNotNull();
