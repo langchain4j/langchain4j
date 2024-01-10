@@ -219,9 +219,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         return new EmbeddingMatch<>(
                 (Double) additional.get("certainty"),
                 (String) additional.get("id"),
-                Embedding.from(
-                        ((List<Double>) additional.get("vector")).stream().map(Double::floatValue).collect(toList())
-                ),
+                Embedding.from((List<Double>) additional.get("vector")),
                 isNullOrBlank(text) ? null : TextSegment.from(text)
         );
     }

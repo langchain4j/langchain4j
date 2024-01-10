@@ -27,9 +27,9 @@ public class EmbeddingMatch<Embedded> {
     }
 
     /**
-     * Returns the relevance score (derivative of cosine distance) of this embedding compared to
+     * Returns the relevance score (derivative of cosine similarity) of this embedding compared to
      * a reference embedding during a search.
-     * The current implementation assumes that the embedding store uses cosine distance when comparing embeddings.
+     * The current implementation assumes that the embedding store uses cosine similarity when comparing embeddings.
      *
      * @return Relevance score, ranging from 0 (not relevant) to 1 (highly relevant).
      */

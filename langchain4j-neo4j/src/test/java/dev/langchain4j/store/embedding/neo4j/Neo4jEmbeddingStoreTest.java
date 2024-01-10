@@ -5,10 +5,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +47,7 @@ class Neo4jEmbeddingStoreTest {
     public static final String USERNAME = "neo4j";
     public static final String ADMIN_PASSWORD = "adminPass";
     public static final String LABEL_TO_SANITIZE = "Label ` to \\ sanitize";
-    
+
     @Container
     static Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.14.0"))
             .withAdminPassword(ADMIN_PASSWORD);
@@ -59,7 +57,7 @@ class Neo4jEmbeddingStoreTest {
     private EmbeddingStore<TextSegment> embeddingStore;
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-    private static Session session; 
+    private static Session session;
 
 
     @BeforeAll
@@ -101,7 +99,7 @@ class Neo4jEmbeddingStoreTest {
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
 
-        checkEntitiesCreated(relevant.size(), 
+        checkEntitiesCreated(relevant.size(),
                 iterator -> checkDefaultProps(embedding, match, iterator.next()));
     }
 
@@ -122,7 +120,7 @@ class Neo4jEmbeddingStoreTest {
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
 
-        checkEntitiesCreated(relevant.size(), 
+        checkEntitiesCreated(relevant.size(),
                 iterator -> checkDefaultProps(embedding, match, iterator.next()));
     }
 
@@ -144,7 +142,7 @@ class Neo4jEmbeddingStoreTest {
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
 
-        checkEntitiesCreated(relevant.size(), 
+        checkEntitiesCreated(relevant.size(),
                 iterator -> {
             List<String> otherProps = Collections.singletonList(DEFAULT_TEXT_PROP);
             checkDefaultProps(embedding, match, iterator.next(), otherProps);
@@ -167,7 +165,7 @@ class Neo4jEmbeddingStoreTest {
                 .label(labelName)
                 .indexName("customIdxName")
                 .build();
-        
+
         String metadataCompleteKey = metadataPrefix + METADATA_KEY;
 
         checkSegmentWithMetadata(metadataCompleteKey, labelName);
@@ -253,7 +251,7 @@ class Neo4jEmbeddingStoreTest {
         assertThat(secondMatch.embedding()).isEqualTo(secondEmbedding);
         assertThat(secondMatch.embedded()).isNull();
 
-        checkEntitiesCreated(relevant.size(), 
+        checkEntitiesCreated(relevant.size(),
                 iterator -> {
                     iterator.forEachRemaining(node -> {
                         if (node.get(DEFAULT_ID_PROP).asString().equals(firstMatch.embeddingId())) {
@@ -379,11 +377,8 @@ class Neo4jEmbeddingStoreTest {
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
-                withPercentage(1)
-        );
-        
+        assertThat(match.score()).isCloseTo(embedding.relevanceScore(referenceEmbedding), withPercentage(1));
+
         checkEntitiesCreated(relevant.size(),
                 iterator -> checkDefaultProps(embedding, match, iterator.next()));
     }
@@ -392,7 +387,7 @@ class Neo4jEmbeddingStoreTest {
     void should_throw_error_if_another_index_name_with_different_label_exists() {
         String metadataPrefix = "metadata.";
         String idxName = "WillFail";
-        
+
         embeddingStore = Neo4jEmbeddingStore.builder()
                 .withBasicAuth(neo4jContainer.getBoltUrl(), USERNAME, ADMIN_PASSWORD)
                 .dimension(384)
@@ -500,7 +495,7 @@ class Neo4jEmbeddingStoreTest {
                 SchemaNames.sanitize(labelName).get(),
                 DEFAULT_TEXT_PROP
         );
-        
+
         List<Node> n = session.run(query)
                 .list(i -> i.get("n").asNode());
 
