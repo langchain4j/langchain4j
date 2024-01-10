@@ -1,26 +1,19 @@
 package dev.langchain4j.data.message;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-
 public enum ChatMessageType {
 
-    SYSTEM,
-    USER,
-    AI,
-    TOOL_EXECUTION_RESULT;
+    SYSTEM(SystemMessage.class),
+    USER(UserMessage.class),
+    AI(AiMessage.class),
+    TOOL_EXECUTION_RESULT(ToolExecutionResultMessage.class);
 
-    static Class<? extends ChatMessage> classOf(ChatMessageType type) {
-        switch (type) {
-            case SYSTEM:
-                return SystemMessage.class;
-            case USER:
-                return UserMessage.class;
-            case AI:
-                return AiMessage.class;
-            case TOOL_EXECUTION_RESULT:
-                return ToolExecutionResultMessage.class;
-            default:
-                throw illegalArgument("Unknown ChatMessageType: %s", type);
-        }
+    private final Class<? extends ChatMessage> messageClass;
+
+    ChatMessageType(Class<? extends ChatMessage> messageClass) {
+        this.messageClass = messageClass;
+    }
+
+    public Class<? extends ChatMessage> messageClass() {
+        return messageClass;
     }
 }

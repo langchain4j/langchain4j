@@ -173,6 +173,12 @@ public class Utils {
     return string.length() > numberOfChars ? string.substring(0, numberOfChars) : string;
   }
 
+  /**
+   * Reads the content as bytes from the given URL as a GET request.
+   * @param url The URL to read from.
+   * @return The content as bytes.
+   * @throws RuntimeException if the request fails.
+   */
   public static byte[] readBytes(String url) {
     try {
       HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();

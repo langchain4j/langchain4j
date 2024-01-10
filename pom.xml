@@ -44,6 +44,7 @@
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
+        <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
         <module>document-loaders/langchain4j-document-loader-github</module>  
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
 

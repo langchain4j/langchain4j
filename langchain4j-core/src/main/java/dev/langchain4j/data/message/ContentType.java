@@ -1,20 +1,16 @@
 package dev.langchain4j.data.message;
 
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
-
 public enum ContentType {
+    TEXT(TextContent.class),
+    IMAGE(ImageContent.class);
 
-    TEXT,
-    IMAGE;
+    private final Class<? extends Content> contentClass;
 
-    static Class<? extends Content> classOf(ContentType type) {
-        switch (type) {
-            case TEXT:
-                return TextContent.class;
-            case IMAGE:
-                return ImageContent.class;
-            default:
-                throw illegalArgument("Unknown ContentType: %s", type);
-        }
+    ContentType(Class<? extends Content> contentClass) {
+        this.contentClass = contentClass;
+    }
+
+    public Class<? extends Content> getContentClass() {
+        return contentClass;
     }
 }
