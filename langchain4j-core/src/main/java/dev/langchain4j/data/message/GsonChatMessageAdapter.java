@@ -25,7 +25,7 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
     public ChatMessage deserialize(JsonElement messageJsonElement, Type ignored, JsonDeserializationContext context) throws JsonParseException {
         String chatMessageTypeString = messageJsonElement.getAsJsonObject().get(CHAT_MESSAGE_TYPE).getAsString();
         ChatMessageType chatMessageType = ChatMessageType.valueOf(chatMessageTypeString);
-        ChatMessage chatMessage = GSON.fromJson(messageJsonElement, ChatMessageType.classOf(chatMessageType));
+        ChatMessage chatMessage = GSON.fromJson(messageJsonElement, chatMessageType.messageClass());
         if (chatMessage instanceof UserMessage && ((UserMessage) chatMessage).contents() == null) {
             // keeping backward compatibility with old schema TODO remove after a few releases
             chatMessage = UserMessage.from(messageJsonElement.getAsJsonObject().get("text").getAsString());
