@@ -49,14 +49,6 @@ class ImageModelTest implements WithAssertions {
         assertThatThrownBy(() -> model.generate("prompt", 1))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Operation is not supported");
-
-        assertThatThrownBy(() -> model.edit(PLACEHOLDER_IMAGE,"prompt"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Operation is not supported");
-
-        assertThatThrownBy(() -> model.edit(PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE,"prompt"))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Operation is not supported");
     }
 
     @Test
@@ -66,5 +58,17 @@ class ImageModelTest implements WithAssertions {
 
         assertThat(response).isNotNull();
         assertThat(response.content()).isEqualTo(PLACEHOLDER_IMAGE);
+    }
+
+    @Test void test_edit_returns_original_image() {
+        ImageModel model = new FixedImageModel(PLACEHOLDER_IMAGE);
+        Response<Image> responseNoMask = model.edit(PLACEHOLDER_IMAGE, "prompt");
+        Response<Image> responseWithMask = model.edit(PLACEHOLDER_IMAGE, PLACEHOLDER_IMAGE, "prompt");
+
+        assertThat(responseNoMask).isNotNull();
+        assertThat(responseNoMask.content()).isEqualTo(PLACEHOLDER_IMAGE);
+
+        assertThat(responseWithMask).isNotNull();
+        assertThat(responseWithMask.content()).isEqualTo(PLACEHOLDER_IMAGE);
     }
 }
