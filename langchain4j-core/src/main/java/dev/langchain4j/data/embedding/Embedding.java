@@ -77,8 +77,6 @@ public class Embedding {
         return (float) RelevanceScore.fromCosineSimilarity(cosineSimilarity(embedding));
     }
 
-    // TODO return float or double?
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
