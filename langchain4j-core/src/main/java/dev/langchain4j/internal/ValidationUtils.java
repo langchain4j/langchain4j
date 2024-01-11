@@ -128,4 +128,19 @@ public class ValidationUtils {
         }
         return i;
     }
+    /**
+     * Ensures that the given Long value is in {@code [min, max]}.
+     * @param i The value to check.
+     * @param min The minimum value.
+     * @param max The maximum value.
+     * @param name The value name to be used in the exception.
+     * @return The value if it is in {@code [min, max]}.
+     * @throws IllegalArgumentException if the value is not in {@code [min, max]}.
+     */
+    public static long ensureBetween(Long i, long min, long max, String name) {
+        if (i == null || i < min || i > max) {
+            throw illegalArgument("%s must be between %s and %s, but is: %s", name, min, max, i);
+        }
+        return i;
+    }
 }
