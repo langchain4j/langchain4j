@@ -1,8 +1,9 @@
 ---
 sidebar_position: 1
+title: Introduction
 ---
 
-# Intro
+# Introduction
 
 Welcome to the **LangChain4j** documentation website!
 
@@ -14,7 +15,7 @@ It is based on the popular Python library LangChain.
 
 ### Supercharge your Java application with the power of LLMs
 
-[![](/img/langchain4j-components.png)](/docs/categories/intro)
+[![](/img/langchain4j-components.png)](/docs/intro)
 
 LangChain4j allows for easy interaction with AI/LLMs thanks to:
 
