@@ -5,7 +5,7 @@ import styles from './styles.module.css';
 const FeatureList = [
     {
         title: 'Easy interaction with LLMs and AI',
-        Svg: require('@site/static/img/undraw_docusaurus_mountain.svg').default,
+        Png: require('@site/static/img/llm-logos.png').default,
         description: (
             <>
                 All major commercial and open source models are easily accessible via a streamlined <code>API</code>, allowing you to build Chatbots, Assistants, Data Classifiers, Autonomous Agents, ...
@@ -14,7 +14,7 @@ const FeatureList = [
     },
     {
         title: 'Tailored for Java',
-        Svg: require('@site/static/img/undraw_docusaurus_tree.svg').default,
+        Png: require('@site/static/img/framework-logos.png').default,
         description: (
             <>
                 Smooth integration in your java applications thanks to Quarkus and Spring Boot integrations, converse with LLMs in POJOs and have the LLM call Java methods
@@ -23,7 +23,7 @@ const FeatureList = [
     },
     {
         title: 'Tools, AI Services, Chains, RAG',
-        Svg: require('@site/static/img/undraw_docusaurus_react.svg').default,
+        Png: require('@site/static/img/functionality-logos.png').default,
         description: (
             <>
                 Provides an extensive toolbox of common AI LLM operations, made easy thanks to various layers of abstraction
