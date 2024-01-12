@@ -2,8 +2,7 @@ package dev.langchain4j.model.chat;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.input.Prompt;
+import dev.langchain4j.model.language.TokenCountEstimator;
 
 import java.util.List;
 
@@ -14,7 +13,7 @@ import static java.util.Collections.singletonList;
  * Represents an interface for estimating the count of tokens in various text types such as a text, message, prompt, text segment, etc.
  * This can be useful when it's necessary to know in advance the cost of processing a specified text by the LLM.
  */
-public interface TokenCountEstimator {
+public interface ChatTokenCountEstimator extends TokenCountEstimator {
 
     /**
      * Estimates the count of tokens in the specified text.
@@ -31,25 +30,7 @@ public interface TokenCountEstimator {
      * @return the estimated count of tokens
      */
     default int estimateTokenCount(UserMessage userMessage) {
-        return estimateTokenCount(singletonList(userMessage));
-    }
-
-    /**
-     * Estimates the count of tokens in the specified prompt.
-     * @param prompt the prompt
-     * @return the estimated count of tokens
-     */
-    default int estimateTokenCount(Prompt prompt) {
-        return estimateTokenCount(prompt.text());
-    }
-
-    /**
-     * Estimates the count of tokens in the specified text segment.
-     * @param textSegment the text segment
-     * @return the estimated count of tokens
-     */
-    default int estimateTokenCount(TextSegment textSegment) {
-        return estimateTokenCount(textSegment.text());
+        return estimateChatMessagesTokenCount(singletonList(userMessage));
     }
 
     /**
@@ -57,5 +38,5 @@ public interface TokenCountEstimator {
      * @param messages the list of messages
      * @return the estimated count of tokens
      */
-    int estimateTokenCount(List<ChatMessage> messages);
+    int estimateChatMessagesTokenCount(List<ChatMessage> messages);
 }

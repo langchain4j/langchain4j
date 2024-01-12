@@ -11,7 +11,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.ChatTokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -32,7 +32,7 @@ import static java.util.Collections.singletonList;
  * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
+public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, ChatTokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -174,7 +174,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
+    public int estimateChatMessagesTokenCount(List<ChatMessage> messages) {
         return tokenizer.estimateTokenCountInMessages(messages);
     }
 
