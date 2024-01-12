@@ -12,8 +12,12 @@ const config = {
     tagline: 'Supercharge your Java application with the power of LLMs',
     favicon: 'img/favicon.ico',
 
+    onBrokenLinks: 'warn', // ideally this should have a stricter value set - 'throw'
+    onBrokenMarkdownLinks: 'warn', // ideally this should have a stricter value set - 'throw'
+    onDuplicateRoutes: 'warn', // ideally this should have a stricter value set - 'throw'
+
     // Set the production url of your site here
-    url: 'https://github.com',
+    url: 'https://langchain4j.github.io/',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
     baseUrl: '/langchain4j/',
@@ -22,9 +26,6 @@ const config = {
     // If you aren't using GitHub pages, you don't need these.
     organizationName: 'LangChain4j', // Usually your GitHub org/user name.
     projectName: 'LangChain4j', // Usually your repo name.
-
-    onBrokenLinks: 'throw',
-    onBrokenMarkdownLinks: 'warn',
 
     // Even if you don't use internationalization, you can use this field to set
     // useful metadata like html lang. For example, if your site is Chinese, you
@@ -65,6 +66,11 @@ const config = {
         ({
             // Replace with your project's social card
             image: 'img/docusaurus-social-card.jpg',
+            docs: {
+                sidebar: {
+                    hideable: true
+                }
+            },
             navbar: {
                 title: 'LangChain4j',
                 logo: {
@@ -78,9 +84,9 @@ const config = {
                         position: 'left',
                         label: 'Get Started',
                     },
-                    {to: '/docs/category/tutorials', label: 'Tutorials', position: 'left'},
+                    {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
-                    {to: 'https://github.com/langchain4j/langchain4j/javadoc/', label: 'Javadoc', position: 'left'},
+                    {to: 'https://langchain4j.dev/javadoc/', label: 'Javadoc', position: 'left'},
                     {to: '/blog', label: 'Blog', position: 'left'},
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
@@ -97,7 +103,7 @@ const config = {
                         items: [
                             {
                                 label: 'Tutorial',
-                                to: '/docs/welcome',
+                                to: '/docs/tutorials',
                             },
                         ],
                     },
@@ -129,6 +135,10 @@ const config = {
                                 label: 'GitHub',
                                 href: 'https://github.com/langchain4j/langchain4j',
                             },
+                            {
+                                label: "Examples",
+                                href: 'https://github.com/langchain4j/langchain4j-examples'
+                            }
                         ],
                     },
                 ],
