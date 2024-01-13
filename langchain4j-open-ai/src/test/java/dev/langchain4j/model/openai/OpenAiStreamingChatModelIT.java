@@ -34,6 +34,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 class OpenAiStreamingChatModelIT {
 
     StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
@@ -42,6 +43,7 @@ class OpenAiStreamingChatModelIT {
             .build();
 
     StreamingChatLanguageModel visionModel = OpenAiStreamingChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_VISION_PREVIEW)
@@ -298,6 +300,7 @@ class OpenAiStreamingChatModelIT {
 
         // given
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106)  // supports parallel function calling
@@ -408,6 +411,7 @@ class OpenAiStreamingChatModelIT {
                 "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'

@@ -21,7 +21,9 @@ class OpenAiImageModelIT {
 
     OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
         .builder()
+        .baseUrl(System.getenv("OPENAI_BASE_URL"))
         .apiKey(System.getenv("OPENAI_API_KEY"))
+        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
         .modelName(DALL_E_2) // so that you pay not much :)
         .size(DALL_E_SIZE_256_x_256)
         .logRequests(true)
@@ -72,7 +74,9 @@ class OpenAiImageModelIT {
     void image_generation_with_dalle3_works() {
         OpenAiImageModel model = OpenAiImageModel
             .builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .quality(DALL_E_QUALITY_HD)
             .logRequests(true)
             .logResponses(true)
