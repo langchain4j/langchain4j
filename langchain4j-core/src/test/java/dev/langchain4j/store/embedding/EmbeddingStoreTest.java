@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 class EmbeddingStoreTest implements WithAssertions {
+
     public static class MinimalEmbeddingStore implements EmbeddingStore<String> {
         @Override
         public String add(Embedding embedding) {
