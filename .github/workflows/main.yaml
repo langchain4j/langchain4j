@@ -22,7 +22,7 @@ jobs:
             included_modules: '-pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: ''
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 
