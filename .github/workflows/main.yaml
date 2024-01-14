@@ -39,7 +39,7 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn --batch-mode install ${{ matrix.included_modules }}
+        run: mvn --batch-mode --fail-at-end install ${{ matrix.included_modules }}
         env:
           OPENAI_BASE_URL: 'http://langchain4j.dev:8082/v1'
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
