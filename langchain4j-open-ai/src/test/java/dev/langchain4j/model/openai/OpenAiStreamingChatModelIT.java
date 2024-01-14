@@ -50,6 +50,7 @@ class OpenAiStreamingChatModelIT {
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_VISION_PREVIEW)
+            .temperature(0.0)
             .timeout(ofMinutes(2))
             .logRequests(true)
             .logResponses(true)
