@@ -8,17 +8,31 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaChatModelIT extends AbstractOllamaInfrastructure {
+@Testcontainers
+class OllamaChatModelIT {
+
+    static final String MODEL_NAME = "phi";
+
+    @Container
+    static final GenericContainer<?> ollama = new GenericContainer<>("langchain4j/ollama-" + MODEL_NAME + ":latest")
+            .withExposedPorts(11434);
+
+    static String baseUrl() {
+        return String.format("http://%s:%d", ollama.getHost(), ollama.getFirstMappedPort());
+    }
 
     ChatLanguageModel model = OllamaChatModel.builder()
-            .baseUrl(getBaseUrl())
-            .modelName(MODEL)
+            .baseUrl(baseUrl())
+            .modelName(MODEL_NAME)
             .temperature(0.0)
             .build();
 
@@ -53,8 +67,8 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
         int numPredict = 1; // max output tokens
 
         OllamaChatModel model = OllamaChatModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(baseUrl())
+                .modelName(MODEL_NAME)
                 .numPredict(numPredict)
                 .temperature(0.0)
                 .build();
@@ -112,8 +126,8 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(baseUrl())
+                .modelName(MODEL_NAME)
                 .format("json")
                 .temperature(0.0)
                 .build();
