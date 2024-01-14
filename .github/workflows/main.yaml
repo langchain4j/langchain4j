@@ -22,7 +22,7 @@ jobs:
             included_modules: '-pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
           - java_version: '21'
             included_modules: ''
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK ${{ matrix.java_version }}
