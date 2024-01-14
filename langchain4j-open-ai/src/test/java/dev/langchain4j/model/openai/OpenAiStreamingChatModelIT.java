@@ -53,7 +53,6 @@ class OpenAiStreamingChatModelIT {
             .temperature(0.0)
             .timeout(ofMinutes(2))
             .logRequests(true)
-            .logResponses(true)
             .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
