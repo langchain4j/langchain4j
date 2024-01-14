@@ -8,11 +8,11 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
-
+import static java.time.Duration.ofMinutes;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaChatModeVisionModellIT extends AbstractOllamaInfrastructureVisionModel {
+class OllamaChatModelVisionIT extends AbstractOllamaInfrastructureVisionModel {
+
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
@@ -22,7 +22,7 @@ class OllamaChatModeVisionModellIT extends AbstractOllamaInfrastructureVisionMod
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
                 .baseUrl(getBaseUrl())
-                .timeout(Duration.ofMinutes(3))
+                .timeout(ofMinutes(3))
                 .modelName(MODEL)
                 .temperature(0.0)
                 .build();
@@ -44,7 +44,7 @@ class OllamaChatModeVisionModellIT extends AbstractOllamaInfrastructureVisionMod
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
                 .baseUrl(getBaseUrl())
-                .timeout(Duration.ofMinutes(3))
+                .timeout(ofMinutes(3))
                 .modelName(MODEL)
                 .temperature(0.0)
                 .build();
@@ -59,5 +59,4 @@ class OllamaChatModeVisionModellIT extends AbstractOllamaInfrastructureVisionMod
         assertThat(response.content().text())
                 .containsIgnoringCase("dice");
     }
-
 }

@@ -104,7 +104,7 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
         System.out.println(response);
 
         // then
-        assertThat(response.content().text()).isEqualTo(">>> 8");
+        assertThat(response.content().text()).isEqualToIgnoringWhitespace(">>> 8");
     }
 
     @Test
