@@ -11,6 +11,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -25,8 +26,10 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.time.Duration.ofMinutes;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
@@ -47,7 +50,7 @@ class OpenAiStreamingChatModelIT {
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_VISION_PREVIEW)
-            .temperature(0.0)
+            .timeout(ofMinutes(2))
             .logRequests(true)
             .logResponses(true)
             .build();
