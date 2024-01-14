@@ -36,6 +36,7 @@ jobs:
         env:
           OPENAI_BASE_URL: 'http://langchain4j.dev:8082/v1'
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
