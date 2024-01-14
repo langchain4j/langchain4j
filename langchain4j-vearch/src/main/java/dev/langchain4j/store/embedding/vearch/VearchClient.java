@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import lombok.Builder;
+import dev.langchain4j.store.embedding.vearch.api.*;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -19,8 +19,8 @@ public class VearchClient {
 
     private final VearchApi vearchApi;
 
-    @Builder
     public VearchClient(String baseUrl, Duration timeout) {
+        // TODO: builder
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -36,6 +36,51 @@ public class VearchClient {
                 .build();
 
         vearchApi = retrofit.create(VearchApi.class);
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String baseUrl;
+        private Duration timeout;
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public VearchClient build() {
+            VearchClient vearchClient = new VearchClient(baseUrl, timeout);
+            return vearchClient;
+        }
+    }
+
+    public ListDatabaseResponse listDatabase() {
+        // TODO
+        return null;
+    }
+
+    public CreateDatabaseResponse createDatabase() {
+        // TODO
+        return null;
+    }
+
+    public ListSpaceResponse listSpace() {
+        // TODO
+        return null;
+    }
+
+    public CreateSpaceRequest createSpaceRequest() {
+        // TODO
+        return null;
     }
 
     public InsertionResponse batchInsertion(String dbName, String spaceName, InsertionRequest request) {
