@@ -33,11 +33,6 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
-      - name: Setup Testcontainers Cloud Client
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
-        with:
-          token: ${{ secrets.TC_CLOUD_TOKEN }}
-
       - name: Build with JDK ${{ matrix.java_version }}
         run: mvn --batch-mode --fail-at-end install ${{ matrix.included_modules }}
         env:
