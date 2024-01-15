@@ -120,7 +120,15 @@ public class ServiceOutputParser {
 
     private static String jsonStructure(Class<?> structured) {
         StringBuilder jsonSchema = new StringBuilder();
+
+        jsonStructure(jsonSchema, structured);
+
+        return jsonSchema.toString();
+    }
+
+    private static void jsonStructure(StringBuilder jsonSchema, Class<?> structured) {
         jsonSchema.append("{\n");
+
         for (Field field : structured.getDeclaredFields()) {
 
             Type genericType = field.getGenericType();
@@ -132,7 +140,7 @@ public class ServiceOutputParser {
                 } else if (!field.getName().contains("this")){
                     // This is a custom Java type.
                     jsonSchema.append(format("\"%s\": (%s) ", field.getName(), descriptionFor(field)));
-                    jsonStructureCustomType(jsonSchema, field.getType());
+                    jsonStructure(jsonSchema, field.getType());
                 }
                 continue;
             }
@@ -157,25 +165,7 @@ public class ServiceOutputParser {
                 }
             }
         }
-        jsonSchema.append("}");
-        return jsonSchema.toString();
-    }
-
-    private static void jsonStructureCustomType(StringBuilder jsonSchema, Class type) {
-        jsonSchema.append("{\n");
-
-        Field[] fields = type.getDeclaredFields();
-        for (Field field : fields) {
-            if (field.getType().getPackage() == null || field.getType().getPackage().getName().startsWith("java.")) {
-                // This is a standard Java type.
-                jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field)));
-            } else if (!field.getName().contains("this")) {
-                // This is a custom Java type.
-                jsonSchema.append(format("\"%s\": (%s) ", field.getName(), descriptionFor(field)));
-                jsonStructureCustomType(jsonSchema, field.getType());
-            }
-        }
-        jsonSchema.append("}");
+        jsonSchema.append("},\n");
     }
 
     private static void jsonStructureCustomTypeArray(StringBuilder jsonSchema, Type customType) {
@@ -183,15 +173,14 @@ public class ServiceOutputParser {
 
         if (!customType.getTypeName().contains("this")) {
             // This is a custom Java type.
-            Class<?> genericClass = null;
             try {
-                genericClass = Class.forName(customType.getTypeName());
-                jsonStructureCustomType(jsonSchema, genericClass);
+                Class<?> genericClass = Class.forName(customType.getTypeName());
+                jsonStructure(jsonSchema, genericClass);
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }
         }
-        jsonSchema.append("]");
+        jsonSchema.append("],\n");
     }
 
     private static String descriptionFor(Field field) {
