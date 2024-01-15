@@ -11,11 +11,18 @@ public interface ModerationModel {
 
     Response<Moderation> moderate(String text);
 
-    Response<Moderation> moderate(Prompt prompt);
+    default Response<Moderation> moderate(Prompt prompt) {
+        return moderate(prompt.text());
+    }
 
-    Response<Moderation> moderate(ChatMessage message);
+    @SuppressWarnings("deprecation")
+    default Response<Moderation> moderate(ChatMessage message) {
+        return moderate(message.text());
+    }
 
     Response<Moderation> moderate(List<ChatMessage> messages);
 
-    Response<Moderation> moderate(TextSegment textSegment);
+    default Response<Moderation> moderate(TextSegment textSegment) {
+        return moderate(textSegment.text());
+    }
 }
