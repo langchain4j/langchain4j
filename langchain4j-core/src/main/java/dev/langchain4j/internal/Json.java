@@ -5,20 +5,11 @@ import dev.langchain4j.spi.json.JsonCodecFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
 
 public class Json {
 
-    private static final JsonCodec CODEC = loadCodec();
-
-    private static JsonCodec loadCodec() {
-        Collection<JsonCodecFactory> factories = ServiceHelper.loadFactories(JsonCodecFactory.class);
-        for (JsonCodecFactory factory : factories) {
-            return factory.create();
-        }
-        // fallback to default
-        return new GsonJsonCodec();
-    }
+    private static final JsonCodec CODEC = ServiceHelper.loadFactoryService(
+            JsonCodecFactory.class, JsonCodecFactory::create, GsonJsonCodec::new);
 
     public static String toJson(Object o) {
         return CODEC.toJson(o);

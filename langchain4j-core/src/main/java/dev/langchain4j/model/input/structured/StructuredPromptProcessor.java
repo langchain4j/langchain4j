@@ -6,15 +6,8 @@ import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
 
 public class StructuredPromptProcessor {
 
-    private static final StructuredPromptFactory FACTORY = factory();
-
-    private static StructuredPromptFactory factory() {
-        for (StructuredPromptFactory factory : ServiceHelper.loadFactories(StructuredPromptFactory.class)) {
-            return factory;
-        }
-        // fallback to the default
-        return new DefaultStructuredPromptFactory();
-    }
+    private static final StructuredPromptFactory FACTORY = ServiceHelper.loadService(
+            StructuredPromptFactory.class, DefaultStructuredPromptFactory::new);
 
     public static Prompt toPrompt(Object structuredPrompt) {
         return FACTORY.toPrompt(structuredPrompt);
