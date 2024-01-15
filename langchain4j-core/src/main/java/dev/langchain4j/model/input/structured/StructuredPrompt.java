@@ -1,5 +1,7 @@
 package dev.langchain4j.model.input.structured;
 
+import dev.langchain4j.internal.ValidationUtils;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -17,4 +19,24 @@ public @interface StructuredPrompt {
     String[] value();
 
     String delimiter() default "\n";
+
+    class Util {
+        private Util() {}
+
+        /**
+         * Validates that the given object is annotated with {@link StructuredPrompt}.
+         * @param structuredPrompt the object to validate.
+         * @return the annotation.
+         */
+        public static StructuredPrompt validateStructuredPrompt(Object structuredPrompt) {
+            ValidationUtils.ensureNotNull(structuredPrompt, "structuredPrompt");
+
+            Class<?> cls = structuredPrompt.getClass();
+
+            return ValidationUtils.ensureNotNull(
+                    cls.getAnnotation(StructuredPrompt.class),
+                    "%s should be annotated with @StructuredPrompt to be used as a structured prompt",
+                    cls.getName());
+        }
+    }
 }
