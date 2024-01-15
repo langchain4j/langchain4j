@@ -76,6 +76,7 @@
                     <source>8</source>
                     <target>8</target>
                     <encoding>UTF-8</encoding>
+                    <fork>true</fork>
                     <compilerArgs>
                         <arg>-XDcompilePolicy=simple</arg>
                         <arg>-Xplugin:ErrorProne</arg>
