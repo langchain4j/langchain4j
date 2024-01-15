@@ -15,6 +15,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class InMemoryChatMemoryStore implements ChatMemoryStore {
     private final Map<Object, List<ChatMessage>> messagesByMemoryId = new ConcurrentHashMap<>();
 
+    /**
+     * Constructs a new {@link InMemoryChatMemoryStore}.
+     */
+    public InMemoryChatMemoryStore() {}
+
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {
         return messagesByMemoryId.computeIfAbsent(memoryId, ignored -> new ArrayList<>());

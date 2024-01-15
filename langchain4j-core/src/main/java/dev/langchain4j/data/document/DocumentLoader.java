@@ -2,7 +2,11 @@ package dev.langchain4j.data.document;
 
 import java.io.InputStream;
 
+/**
+ * Utility class for loading documents.
+ */
 public class DocumentLoader {
+    private DocumentLoader() {}
 
     /**
      * Loads a document from the given source using the given parser.
