@@ -109,7 +109,7 @@
                             <rules>
                                 <rule>
                                     <includes>
-                                        <include>dev.langchain4j.model</include>
+                                        <include>dev.langchain4j.model.language</include>
                                         <include>dev.langchain4j.model.moderation</include>
                                     </includes>
                                     <element>PACKAGE</element>
@@ -123,8 +123,7 @@
                                 </rule>
                                 <rule>
                                     <includes>
-                                        <include>dev.langchain4j.data.segment</include>
-                                        <include>dev.langchain4j.model.embedding</include>
+                                        <include>dev.langchain4j.model</include>
                                         <include>dev.langchain4j.model.output</include>
                                     </includes>
                                     <element>PACKAGE</element>
@@ -139,7 +138,6 @@
                                 <rule>
                                     <includes>
                                         <include>dev.langchain4j.data.message</include>
-                                        <include>dev.langchain4j.model.internal</include>
                                         <include>dev.langchain4j.model.input</include>
                                         <include>dev.langchain4j.model.input.structured</include>
                                     </includes>
@@ -154,7 +152,7 @@
                                 </rule>
                                 <rule>
                                     <includes>
-                                        <include>dev.langchain4j.store.embedding</include>
+                                        <include>dev.langchain4j.internal</include>
                                     </includes>
                                     <element>PACKAGE</element>
                                     <limits>
@@ -168,16 +166,13 @@
                                 <rule>
                                     <excludes>
                                         <exclude>dev.langchain4j.data.message</exclude>
-                                        <exclude>dev.langchain4j.data.segment</exclude>
                                         <exclude>dev.langchain4j.internal</exclude>
                                         <exclude>dev.langchain4j.model</exclude>
-                                        <exclude>dev.langchain4j.model.embedding</exclude>
                                         <exclude>dev.langchain4j.model.input</exclude>
                                         <exclude>dev.langchain4j.model.input.structured</exclude>
                                         <exclude>dev.langchain4j.model.moderation</exclude>
                                         <exclude>dev.langchain4j.model.language</exclude>
                                         <exclude>dev.langchain4j.model.output</exclude>
-                                        <exclude>dev.langchain4j.store.embedding</exclude>
                                     </excludes>
                                     <element>PACKAGE</element>
                                     <limits>

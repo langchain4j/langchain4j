@@ -12,8 +12,37 @@ class ServiceHelperTest implements WithAssertions {
     }
 
     @SuppressWarnings("unused")
-    interface NotAService {
-        int unused();
+    interface ServiceWithNoProviders {
+        String build();
+    }
+
+    public static class ExampleServiceWithNoProviders implements ServiceWithNoProviders {
+        public String build() {
+            return "Hello";
+        }
+    }
+
+    @Test
+    public void test_loadService() {
+        {
+            // Existing Service.
+            ExampleService service = ServiceHelper.loadService(ExampleService.class, () -> () -> "Holla");
+            assertThat(service).isInstanceOfAny(ExampleServiceHello.class, ExampleServiceGoodbye.class);
+
+            assertThat(ServiceHelper.loadFactoryService(ExampleService.class, ExampleService::getGreeting, () -> "Holla"))
+                    .isIn("Hello", "Goodbye");
+        }
+
+        {
+            // Fall back to default.
+            ServiceWithNoProviders service = ServiceHelper.loadService(ServiceWithNoProviders.class,
+                    ExampleServiceWithNoProviders::new);
+            assertThat(service).isInstanceOf(ExampleServiceWithNoProviders.class);
+
+            assertThat(ServiceHelper.loadFactoryService(ServiceWithNoProviders.class, ServiceWithNoProviders::build, () -> "Holla"))
+                    .isEqualTo("Holla");
+        }
+
     }
 
     @Test
@@ -21,6 +50,6 @@ class ServiceHelperTest implements WithAssertions {
         assertServices(ServiceHelper.loadFactories(ExampleService.class));
         assertServices(ServiceHelper.loadFactories(ExampleService.class, ServiceHelperTest.class.getClassLoader()));
 
-        assertThat(ServiceHelper.loadFactories(NotAService.class)).isEmpty();
+        assertThat(ServiceHelper.loadFactories(ServiceWithNoProviders.class)).isEmpty();
     }
 }
