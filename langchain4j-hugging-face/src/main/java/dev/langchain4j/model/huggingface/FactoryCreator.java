@@ -3,20 +3,11 @@ package dev.langchain4j.model.huggingface;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.spi.ServiceHelper;
-import java.util.Collection;
 
 class FactoryCreator {
 
-    static final HuggingFaceClientFactory FACTORY = factory();
-
-    private static HuggingFaceClientFactory factory() {
-        Collection<HuggingFaceClientFactory> factories =
-                ServiceHelper.loadFactories(HuggingFaceClientFactory.class);
-        for (HuggingFaceClientFactory factory : factories) {
-            return factory;
-        }
-        return new DefaultHuggingFaceClientFactory();
-    }
+    static final HuggingFaceClientFactory FACTORY = ServiceHelper.loadService(
+            HuggingFaceClientFactory.class, DefaultHuggingFaceClientFactory::new);
 
     static class DefaultHuggingFaceClientFactory implements HuggingFaceClientFactory {
 
