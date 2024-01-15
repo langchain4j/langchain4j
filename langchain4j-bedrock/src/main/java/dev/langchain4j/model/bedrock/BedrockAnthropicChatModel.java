@@ -52,7 +52,8 @@ public class BedrockAnthropicChatModel extends AbstractBedrockChatModel<BedrockA
     public enum Types {
         AnthropicClaudeInstantV1("anthropic.claude-instant-v1"),
         AnthropicClaudeV1("anthropic.claude-v1"),
-        AnthropicClaudeV2("anthropic.claude-v2");
+        AnthropicClaudeV2("anthropic.claude-v2"),
+        AnthropicClaudeV2_1("anthropic.claude-v2:1");
 
         private final String value;
 

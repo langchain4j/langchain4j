@@ -158,24 +158,28 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
-        Pipeline pipeline = client.pipelined();
+        List<Object> responses;
+        try (Pipeline pipeline = client.pipelined()) {
 
-        int size = ids.size();
-        for (int i = 0; i < size; i++) {
-            String id = ids.get(i);
-            Embedding embedding = embeddings.get(i);
-            TextSegment textSegment = embedded == null ? null : embedded.get(i);
-            Map<String, Object> fields = new HashMap<>();
-            fields.put(schema.getVectorFieldName(), embedding.vector());
-            if (textSegment != null) {
-                // do not check metadata key is included in RedisSchema#metadataFieldsName
-                fields.put(schema.getScalarFieldName(), textSegment.text());
-                fields.putAll(textSegment.metadata().asMap());
+            int size = ids.size();
+            for (int i = 0; i < size; i++) {
+                String id = ids.get(i);
+                Embedding embedding = embeddings.get(i);
+                TextSegment textSegment = embedded == null ? null : embedded.get(i);
+                Map<String, Object> fields = new HashMap<>();
+                fields.put(schema.getVectorFieldName(), embedding.vector());
+                if (textSegment != null) {
+                    // do not check metadata key is included in RedisSchema#metadataFieldsName
+                    fields.put(schema.getScalarFieldName(), textSegment.text());
+                    fields.putAll(textSegment.metadata().asMap());
+                }
+                String key = schema.getPrefix() + id;
+                pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
             }
-            String key = schema.getPrefix() + id;
-            pipeline.jsonSetWithEscape(key, Path2.of("$"), fields);
+
+            responses = pipeline.syncAndReturnAll();
         }
-        List<Object> responses = pipeline.syncAndReturnAll();
+
         Optional<Object> errResponse = responses.stream().filter(response -> !"OK".equals(response)).findAny();
         if (errResponse.isPresent()) {
             if (log.isErrorEnabled()) {

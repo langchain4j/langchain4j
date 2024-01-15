@@ -7,12 +7,14 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static dev.langchain4j.internal.Utils.firstChars;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 
 public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
 
@@ -114,19 +116,20 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             return "";
         }
 
-        SegmentBuilder overlapBuilder = new SegmentBuilder(maxOverlapSize, this::sizeOf, joinDelimiter());
+        HierarchicalDocumentSplitter overlapSplitter = new DocumentBySentenceSplitter(1, 0, null, null);
+        // always split by sentence, as it is the smallest meaningful unit of text
+        List<String> sentences = asList(overlapSplitter.split(segmentText));
+        Collections.reverse(sentences);
 
-        String[] sentences = new DocumentBySentenceSplitter(1, 0, null, null).split(segmentText);
-        for (int i = sentences.length - 1; i >= 0; i--) {
-            String part = sentences[i];
-            if (overlapBuilder.hasSpaceFor(part)) {
-                overlapBuilder.prepend(part);
+        SegmentBuilder overlapBuilder = new SegmentBuilder(maxOverlapSize, this::sizeOf, joinDelimiter());
+        for (String sentence : sentences) {
+            if (overlapBuilder.hasSpaceFor(sentence)) {
+                overlapBuilder.prepend(sentence);
             } else {
-                return overlapBuilder.build();
+                break;
             }
         }
-
-        return "";
+        return overlapBuilder.build();
     }
 
     private int sizeOf(String text) {

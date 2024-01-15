@@ -30,26 +30,26 @@ import java.io.InputStream;
  */
 public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
-    private final SentenceDetectorME sentenceDetector;
+    private final SentenceModel sentenceModel;
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
                                       int maxOverlapSizeInChars) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, null);
-        this.sentenceDetector = createSentenceDetector();
+        this.sentenceModel = createSentenceModel();
     }
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInChars,
                                       int maxOverlapSizeInChars,
                                       DocumentSplitter subSplitter) {
         super(maxSegmentSizeInChars, maxOverlapSizeInChars, null, subSplitter);
-        this.sentenceDetector = createSentenceDetector();
+        this.sentenceModel = createSentenceModel();
     }
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
                                       int maxOverlapSizeInTokens,
                                       Tokenizer tokenizer) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, null);
-        this.sentenceDetector = createSentenceDetector();
+        this.sentenceModel = createSentenceModel();
     }
 
     public DocumentBySentenceSplitter(int maxSegmentSizeInTokens,
@@ -57,13 +57,13 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
                                       Tokenizer tokenizer,
                                       DocumentSplitter subSplitter) {
         super(maxSegmentSizeInTokens, maxOverlapSizeInTokens, tokenizer, subSplitter);
-        this.sentenceDetector = createSentenceDetector();
+        this.sentenceModel = createSentenceModel();
     }
 
-    private SentenceDetectorME createSentenceDetector() {
+    private SentenceModel createSentenceModel() {
         String sentenceModelFilePath = "/opennlp/opennlp-en-ud-ewt-sentence-1.0-1.9.3.bin";
         try (InputStream is = getClass().getResourceAsStream(sentenceModelFilePath)) {
-            return new SentenceDetectorME(new SentenceModel(is));
+            return new SentenceModel(is);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -71,6 +71,7 @@ public class DocumentBySentenceSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     public String[] split(String text) {
+        SentenceDetectorME sentenceDetector = new SentenceDetectorME(sentenceModel);
         return sentenceDetector.sentDetect(text);
     }
 

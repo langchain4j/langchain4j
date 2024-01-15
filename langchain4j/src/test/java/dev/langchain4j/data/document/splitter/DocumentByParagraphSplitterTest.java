@@ -2,6 +2,7 @@ package dev.langchain4j.data.document.splitter;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
@@ -250,6 +251,8 @@ class DocumentByParagraphSplitterTest {
 
         List<TextSegment> segments = splitter.split(document);
 
+        segments.forEach(segment ->
+                assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
                 textSegment(format("%s %s %s %s", s1, s2, s3, s4), metadata("index", "0").add("document", "0")),
                 textSegment(format("%s %s %s %s", s5, s6, s7, s8), metadata("index", "1").add("document", "0")),
@@ -324,59 +327,131 @@ class DocumentByParagraphSplitterTest {
     }
 
     @Test
-    void should_split_sample_text_without_paragraphs_with_overlap() {
+    void should_split_sample_text_without_paragraphs_with_small_overlap() {
 
+        // given
         int maxSegmentSize = 100;
         int maxOverlapSize = 25;
         Tokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
-
-        String s1 = "In a small town nestled between two vast mountains, there was a shop unlike any other.";
-        String s2 = "A unique haven.";
-        String s3 = "Visitors would often comment on its peculiar charm, always slightly different from what they remembered on their previous visits.";
-        String s4 = "The store stood as a testament to the passage of time and the ever-changing landscape of tales.";
-        String s5 = "Upon entering, the first thing to strike you was the enormity of it all.";
-        String s6 = "Every inch of space was occupied with books.";
-        String s7 = "Some stood tall and regal on the highest shelves, looking as if they had witnessed epochs come and go.";
-        String s8 = "They were leather-bound, with pages yellowed by age.";
-        String s9 = "Others, smaller and brightly adorned, were reminiscent of summer days and childhood laughter.";
-        String s10 = "But these physical objects were mere vessels.";
-        String s11 = "It was the stories inside that held power.";
-        String s12 = "Mrs. Jenkins ran the shop.";
-        String s13 = "A mystery in her own right.";
-        String s14 = "Her silver hair cascaded like a waterfall, and her eyes seemed to see more than most.";
-        String s15 = "With just a glance, she'd find the perfect story for you.";
-        String s16 = "One wet afternoon, Eli entered.";
-        String s17 = "He was just a boy, lost in the vastness of the store.";
-        String s18 = "Between the aisles, his small fingers danced on the spines of books, feeling the heartbeat of countless tales.";
-        String s19 = "Then, a simple brown-covered book whispered to him.";
-        String s20 = "Without grandeur or pretense, it beckoned.";
-        String s21 = "And he listened.";
-        String s22 = "He read.";
-        String s23 = "And read.";
-        String s24 = "The world around him melted.";
-        String s25 = "When Mrs. Jenkins approached, night had fallen.";
-        String s26 = "She gently remarked, \"Books have a way of finding their reader.\"";
-        String s27 = "Eli simply nodded, understanding the profound truth in her words.";
-        String s28 = "Some places and stories remain etched in our souls, offering lessons and moments of sheer wonder.";
-        String s29 = "They defy definition.";
-
-        Document document = Document.from(
-                format("%s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s",
-                        s1, s2, s3, s4, s5, s6, s7, s8, s9, s10, s11, s12, s13, s14, s15, s16, s17, s18, s19, s20,
-                        s21, s22, s23, s24, s25, s26, s27, s28, s29),
-                metadata("document", "0")
-        );
-
         DocumentSplitter splitter = new DocumentByParagraphSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
 
+        Document document = Document.from(sentences(0, 28), Metadata.from("document", "0"));
+
+        // when
         List<TextSegment> segments = splitter.split(document);
 
+        // then
+        segments.forEach(segment ->
+                assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
+
         assertThat(segments).containsExactly(
-                textSegment(format("%s %s %s %s %s %s", s1, s2, s3, s4, s5, s6), metadata("index", "0").add("document", "0")),
-                textSegment(format("%s %s %s %s %s %s %s %s", s6, s7, s8, s9, s10, s11, s12, s13), metadata("index", "1").add("document", "0")),
-                textSegment(format("%s %s %s %s %s %s %s", s11, s12, s13, s14, s15, s16, s17), metadata("index", "2").add("document", "0")),
-                textSegment(format("%s %s %s %s %s %s %s %s %s %s", s16, s17, s18, s19, s20, s21, s22, s23, s24, s25), metadata("index", "3").add("document", "0")),
-                textSegment(format("%s %s %s %s %s %s %s %s", s22, s23, s24, s25, s26, s27, s28, s29), metadata("index", "4").add("document", "0"))
+                TextSegment.from(sentences(0, 5), Metadata.from("index", "0").add("document", "0")),
+                TextSegment.from(sentences(5, 12), Metadata.from("index", "1").add("document", "0")),
+                TextSegment.from(sentences(10, 16), Metadata.from("index", "2").add("document", "0")),
+                TextSegment.from(sentences(15, 24), Metadata.from("index", "3").add("document", "0")),
+                TextSegment.from(sentences(21, 28), Metadata.from("index", "4").add("document", "0"))
         );
+
+        assertThat(tokenizer.estimateTokenCountInText(sentences(5, 5))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(10, 12))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(15, 16))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(21, 24))).isLessThanOrEqualTo(maxOverlapSize);
+    }
+
+    @Test
+    void should_split_sample_text_without_paragraphs_with_big_overlap() {
+
+        // given
+        int maxSegmentSize = 100;
+        int maxOverlapSize = 80;
+        Tokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
+        DocumentSplitter splitter = new DocumentByParagraphSplitter(maxSegmentSize, maxOverlapSize, tokenizer);
+
+        Document document = Document.from(sentences(0, 28), Metadata.from("document", "0"));
+
+        // when
+        List<TextSegment> segments = splitter.split(document);
+
+        // then
+        segments.forEach(segment ->
+                assertThat(tokenizer.estimateTokenCountInText(segment.text())).isLessThanOrEqualTo(maxSegmentSize));
+
+        assertThat(segments).containsExactly(
+                TextSegment.from(sentences(0, 5), Metadata.from("index", "0").add("document", "0")),
+                TextSegment.from(sentences(1, 6), Metadata.from("index", "1").add("document", "0")),
+                TextSegment.from(sentences(3, 8), Metadata.from("index", "2").add("document", "0")),
+                // TODO fix chopped "Mrs."
+                TextSegment.from(sentences(4, 10) + " Mrs.", Metadata.from("index", "3").add("document", "0")),
+                TextSegment.from(sentences(5, 12), Metadata.from("index", "4").add("document", "0")),
+                TextSegment.from(sentences(7, 15), Metadata.from("index", "5").add("document", "0")),
+                TextSegment.from(sentences(9, 16), Metadata.from("index", "6").add("document", "0")),
+                // TODO fix chopped s18
+                // TODO splitter should prioritize progressing forward instead of maximizing overlap
+                TextSegment.from(sentences(10, 16) + " " + sentences[17].replace(" countless tales.", ""), Metadata.from("index", "7").add("document", "0")),
+                // TODO this segment should not be present, there is s14-s19 below
+                TextSegment.from(sentences(13, 17), Metadata.from("index", "8").add("document", "0")),
+                TextSegment.from(sentences(13, 18), Metadata.from("index", "9").add("document", "0")),
+                TextSegment.from(sentences(14, 23), Metadata.from("index", "10").add("document", "0")),
+                TextSegment.from(sentences(16, 24), Metadata.from("index", "11").add("document", "0")),
+                TextSegment.from(sentences(17, 26), Metadata.from("index", "12").add("document", "0")),
+                TextSegment.from(sentences(18, 28), Metadata.from("index", "13").add("document", "0"))
+        );
+
+        assertThat(tokenizer.estimateTokenCountInText(sentences(1, 5))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(3, 6))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(4, 8))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(5, 10))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(7, 12))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(9, 15))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(10, 16))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(13, 16))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(13, 17))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(14, 18))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(16, 23))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(17, 24))).isLessThanOrEqualTo(maxOverlapSize);
+        assertThat(tokenizer.estimateTokenCountInText(sentences(18, 26))).isLessThanOrEqualTo(maxOverlapSize);
+    }
+
+    static String[] sentences = {
+            "In a small town nestled between two vast mountains, there was a shop unlike any other.",
+            "A unique haven.",
+            "Visitors would often comment on its peculiar charm, always slightly different from what they remembered on their previous visits.",
+            "The store stood as a testament to the passage of time and the ever-changing landscape of tales.",
+            "Upon entering, the first thing to strike you was the enormity of it all.",
+            "Every inch of space was occupied with books.",
+            "Some stood tall and regal on the highest shelves, looking as if they had witnessed epochs come and go.",
+            "They were leather-bound, with pages yellowed by age.",
+            "Others, smaller and brightly adorned, were reminiscent of summer days and childhood laughter.",
+            "But these physical objects were mere vessels.",
+            "It was the stories inside that held power.",
+            "Mrs. Jenkins ran the shop.",
+            "A mystery in her own right.",
+            "Her silver hair cascaded like a waterfall, and her eyes seemed to see more than most.",
+            "With just a glance, she'd find the perfect story for you.",
+            "One wet afternoon, Eli entered.",
+            "He was just a boy, lost in the vastness of the store.",
+            "Between the aisles, his small fingers danced on the spines of books, feeling the heartbeat of countless tales.",
+            "Then, a simple brown-covered book whispered to him.",
+            "Without grandeur or pretense, it beckoned.",
+            "And he listened.",
+            "He read.",
+            "And read.",
+            "The world around him melted.",
+            "When Mrs. Jenkins approached, night had fallen.",
+            "She gently remarked, \"Books have a way of finding their reader.\"",
+            "Eli simply nodded, understanding the profound truth in her words.",
+            "Some places and stories remain etched in our souls, offering lessons and moments of sheer wonder.",
+            "They defy definition."
+    };
+
+    private static String sentences(int fromInclusive, int toInclusive) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = fromInclusive; i <= toInclusive; i++) {
+            if (sb.length() > 0) {
+                sb.append(" ");
+            }
+            sb.append(sentences[i]);
+        }
+        return sb.toString();
     }
 }

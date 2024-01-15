@@ -3,29 +3,38 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.IOException;
+import java.util.Base64;
 
+import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@Disabled("To run this test, you must provide your own project and location")
+@EnabledIfEnvironmentVariable(named = "GCP_PROJECT", matches = ".+")
 class VertexAiGeminiChatModelIT {
 
+    static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
+
     ChatLanguageModel model = VertexAiGeminiChatModel.builder()
-            .project("langchain4j")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-pro")
+            .build();
+
+    ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-pro-vision")
             .build();
 
     @Test
@@ -110,5 +119,134 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text()).contains("Berlin");
+    }
+
+    @Test
+    void should_accept_text_and_image_from_public_url() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                TextContent.from("What do you see? Reply in one word.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+    }
+
+    @Test
+    void should_accept_text_and_image_from_google_storage_url() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from("gs://langchain4j-test/cat.png"),
+                TextContent.from("What do you see? Reply in one word.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+    }
+
+    @Test
+    void should_accept_text_and_base64_image() {
+
+        // given
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(base64Data, "image/png"),
+                TextContent.from("What do you see? Reply in one word.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_public_urls() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(DICE_IMAGE_URL),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_google_storage_urls() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from("gs://langchain4j-test/cat.png"),
+                ImageContent.from("gs://langchain4j-test/dice.png"),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+    }
+
+    @Test
+    void should_accept_text_and_multiple_base64_images() {
+
+        // given
+        String catBase64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        String diceBase64Data = Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL));
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(catBase64Data, "image/png"),
+                ImageContent.from(diceBase64Data, "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_different_sources() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from("gs://langchain4j-test/dog.jpg"),
+                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dog")
+                .containsIgnoringCase("dice");
     }
 }

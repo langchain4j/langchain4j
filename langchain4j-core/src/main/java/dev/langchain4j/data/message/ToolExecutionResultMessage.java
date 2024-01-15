@@ -6,20 +6,22 @@ import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.TOOL_EXECUTION_RESULT;
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Represents the result of a tool execution in response to a {@link ToolExecutionRequest}.
  * {@link ToolExecutionRequest}s come from a previous {@link AiMessage#toolExecutionRequests()}.
  */
-public class ToolExecutionResultMessage extends ChatMessage {
+public class ToolExecutionResultMessage implements ChatMessage {
 
     private final String id;
     private final String toolName;
+    private final String text;
 
-    public ToolExecutionResultMessage(String id, String toolName, String toolExecutionResult) {
-        super(toolExecutionResult);
+    public ToolExecutionResultMessage(String id, String toolName, String text) {
         this.id = id;
         this.toolName = toolName;
+        this.text = ensureNotBlank(text, "text");
     }
 
     public String id() {
@@ -28,6 +30,10 @@ public class ToolExecutionResultMessage extends ChatMessage {
 
     public String toolName() {
         return toolName;
+    }
+
+    public String text() {
+        return text;
     }
 
     @Override

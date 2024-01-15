@@ -17,18 +17,23 @@ import static java.util.Arrays.asList;
  * The message can contain either a textual response or a request to execute one/multiple tool(s).
  * In the case of tool execution, the response to this message should be one/multiple {@link ToolExecutionResultMessage}.
  */
-public class AiMessage extends ChatMessage {
+public class AiMessage implements ChatMessage {
 
+    private final String text;
     private final List<ToolExecutionRequest> toolExecutionRequests;
 
     public AiMessage(String text) {
-        super(ensureNotBlank(text, "text"));
+        this.text = ensureNotBlank(text, "text");
         this.toolExecutionRequests = null;
     }
 
     public AiMessage(List<ToolExecutionRequest> toolExecutionRequests) {
-        super(null);
+        this.text = null;
         this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
+    }
+
+    public String text() {
+        return text;
     }
 
     public List<ToolExecutionRequest> toolExecutionRequests() {

@@ -7,8 +7,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -24,7 +22,7 @@ class OpenAiStreamingLanguageModelIT {
             .build();
 
     @Test
-    void should_stream_answer() throws ExecutionException, InterruptedException, TimeoutException {
+    void should_stream_answer() throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<String>> futureResponse = new CompletableFuture<>();

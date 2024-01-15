@@ -1,10 +1,14 @@
 package dev.langchain4j.internal;
 
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -148,5 +152,36 @@ class UtilsTest {
         assertThat(Utils.firstChars("", 3)).isEmpty();
         assertThat(Utils.firstChars("foo", 3)).isEqualTo("foo");
         assertThat(Utils.firstChars("foobar", 3)).isEqualTo("foo");
+    }
+
+    @Test
+    public void test_readBytes() throws IOException {
+        HttpServer httpServer = HttpServer.create(new InetSocketAddress(0), 0); // or use InetSocketAddress(0) for ephemeral port
+        try {
+            int port = httpServer.getAddress().getPort();
+            httpServer.createContext("/ok_endpoint", exchange -> {
+                byte[] response = "hello".getBytes();
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_OK, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+            });
+            httpServer.createContext("/error_endpoint", exchange -> {
+                byte[] response = "nope".getBytes();
+                exchange.sendResponseHeaders(HttpURLConnection.HTTP_INTERNAL_ERROR, response.length);
+                exchange.getResponseBody().write(response);
+                exchange.close();
+            });
+            httpServer.start();
+
+            assertThat(Utils.readBytes("http://localhost:" + port + "/ok_endpoint"))
+                    .isEqualTo("hello".getBytes());
+
+            assertThatExceptionOfType(RuntimeException.class)
+                    .isThrownBy(() -> Utils.readBytes("http://localhost:" + port + "/error_endpoint"))
+                    .withMessageContaining("Error while reading: 500");
+
+        } finally {
+            httpServer.stop(0);
+        }
     }
 }

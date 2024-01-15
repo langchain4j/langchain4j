@@ -9,8 +9,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 import static dev.langchain4j.model.dashscope.QwenTestHelper.chatMessages;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -20,7 +18,7 @@ public class QwenStreamingChatModelIT {
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#chatModelNameProvider")
-    public void should_send_messages_and_receive_response(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
+    public void should_send_messages_and_receive_response(String modelName) throws Exception {
         String apiKey = QwenTestHelper.apiKey();
         if (Utils.isNullOrBlank(apiKey)) {
             return;

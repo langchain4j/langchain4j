@@ -4,15 +4,22 @@ import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Utils.quoted;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 /**
  * Represents a system message, typically defined by a developer.
  * This type of message usually provides instructions regarding the AI's actions, such as its behavior or response style.
  */
-public class SystemMessage extends ChatMessage {
+public class SystemMessage implements ChatMessage {
+
+    private final String text;
 
     public SystemMessage(String text) {
-        super(text);
+        this.text = ensureNotBlank(text, "text");
+    }
+
+    public String text() {
+        return text;
     }
 
     @Override

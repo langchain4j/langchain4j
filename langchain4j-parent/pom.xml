@@ -17,8 +17,10 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <openai4j.version>0.12.2</openai4j.version>
+        <openai4j.version>0.12.3</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
+        <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
+        <azure.storage-common.version>12.24.1</azure.storage-common.version>
         <azure.identity.version>1.11.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.10.0</okhttp.version>
@@ -39,9 +41,11 @@
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.0</opensearch-containers.version>
         <elastic.version>8.9.0</elastic.version>
-        <jackson.version>2.12.7.1</jackson.version>
+        <jackson.version>2.16.1</jackson.version>
+        <jackson-dataformat-xml.version>2.16.1</jackson-dataformat-xml.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
+        <github-api.version>1.318</github-api.version>
         <netty.version>4.1.104.Final</netty.version>
     </properties>
 
@@ -84,6 +88,18 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-ai-openai</artifactId>
                 <version>${azure-ai-openai.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-storage-blob</artifactId>
+                <version>${azure.storage-blob.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-storage-common</artifactId>
+                <version>${azure.storage-common.version}</version>
             </dependency>
 
             <dependency>
@@ -257,6 +273,12 @@
             </dependency>
 
             <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-xml</artifactId>
+                <version>${jackson-dataformat-xml.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.apache.opennlp</groupId>
                 <artifactId>opennlp-tools</artifactId>
                 <version>1.9.4</version>
@@ -281,6 +303,12 @@
                         <artifactId>netty-handler</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.kohsuke</groupId>
+                <artifactId>github-api</artifactId>
+                <version>${github-api.version}</version>
             </dependency>
 
         </dependencies>
@@ -464,6 +492,11 @@
                                 <license>
                                     <name>Eclipse Public License v2.0</name>
                                     <url>https?://www.eclipse.org/legal/epl-v20\.html</url>
+                                </license>
+                                <!-- for tencent-cos document loader -->
+                                <license>
+                                    <name>cos-java-sdk</name>
+                                    <url>https://github.com/tencentyun/cos-java-sdk-v5</url>
                                 </license>
                             </acceptableLicenses>
                         </configuration>

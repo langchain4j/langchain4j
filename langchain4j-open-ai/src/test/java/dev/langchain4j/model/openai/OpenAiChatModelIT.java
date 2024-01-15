@@ -2,27 +2,30 @@ package dev.langchain4j.model.openai;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
+import java.util.Base64;
 import java.util.List;
 
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiChatModelIT {
+
+    static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
@@ -34,6 +37,15 @@ class OpenAiChatModelIT {
     ChatLanguageModel model = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    ChatLanguageModel visionModel = OpenAiChatModel.builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(GPT_4_VISION_PREVIEW)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
@@ -191,7 +203,7 @@ class OpenAiChatModelIT {
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106.toString()) // supports parallel function calling
+                .modelName(GPT_3_5_TURBO_1106) // supports parallel function calling
                 .temperature(0.0)
                 .build();
 
@@ -259,7 +271,7 @@ class OpenAiChatModelIT {
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(OpenAiModelName.GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
                 .responseFormat("json_object")
                 .logRequests(true)
                 .logResponses(true)
@@ -270,5 +282,98 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+    }
+
+    @Test
+    void should_accept_image_url() {
+
+        // given
+        ImageContent imageContent = ImageContent.from(CAT_IMAGE_URL);
+        UserMessage userMessage = UserMessage.from(imageContent);
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(92);
+    }
+
+    @Test
+    void should_accept_base64_image() {
+
+        // given
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
+        UserMessage userMessage = UserMessage.from(imageContent);
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(92);
+    }
+
+    @Test
+    void should_accept_text_and_image() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see? Reply in one word."),
+                ImageContent.from(CAT_IMAGE_URL)
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("cat");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(102);
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                TextContent.from("What do you see? Reply with one word per image."),
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(DICE_IMAGE_URL)
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
+    }
+
+    @Test
+    void should_accept_text_and_multiple_images_from_different_sources() {
+
+        // given
+        UserMessage userMessage = UserMessage.from(
+                ImageContent.from(CAT_IMAGE_URL),
+                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+                TextContent.from("What do you see? Reply with one word per image.")
+        );
+
+        // when
+        Response<AiMessage> response = visionModel.generate(userMessage);
+
+        // then
+        assertThat(response.content().text())
+                .containsIgnoringCase("cat")
+                .containsIgnoringCase("dice");
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
     }
 }

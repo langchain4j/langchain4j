@@ -7,23 +7,33 @@ import java.net.URI;
 
 class ImageTest implements WithAssertions {
     @Test
-    public void testBuilder() throws Exception{
+    public void testBuilder() throws Exception {
         {
             Image image = Image.builder()
                     .url(new URI("https://example.com/image.png"))
                     .base64Data("base64Data")
+                    .mimeType("image/png")
                     .revisedPrompt("revisedPrompt")
                     .build();
 
             assertThat(image.url().toString()).isEqualTo("https://example.com/image.png");
             assertThat(image.base64Data()).isEqualTo("base64Data");
+            assertThat(image.mimeType()).isEqualTo("image/png");
             assertThat(image.revisedPrompt()).isEqualTo("revisedPrompt");
         }
         {
             Image image = Image.builder().build();
             assertThat(image.url()).isNull();
             assertThat(image.base64Data()).isNull();
+            assertThat(image.mimeType()).isNull();
             assertThat(image.revisedPrompt()).isNull();
+        }
+        {
+            Image image = Image.builder()
+                    .url("https://example.com/image.png")
+                    .build();
+            assertThat(image.url()).isEqualTo(
+                    new URI("https://example.com/image.png"));
         }
     }
 
@@ -32,12 +42,13 @@ class ImageTest implements WithAssertions {
         Image image = Image.builder()
                 .url(URI.create("https://example.com/image.png"))
                 .base64Data("base64Data")
+                .mimeType("image/png")
                 .revisedPrompt("revisedPrompt")
                 .build();
 
         assertThat(image)
                 .hasToString(
-                        "Image{ url=\"https://example.com/image.png\", base64Data=\"base64Data\", revisedPrompt=\"revisedPrompt\"}");
+                        "Image { url = \"https://example.com/image.png\", base64Data = \"base64Data\", mimeType = \"image/png\", revisedPrompt = \"revisedPrompt\" }");
     }
 
     @Test
@@ -45,11 +56,13 @@ class ImageTest implements WithAssertions {
         Image image1 = Image.builder()
                 .url(URI.create("https://example.com/image.png"))
                 .base64Data("base64Data")
+                .mimeType("image/png")
                 .revisedPrompt("revisedPrompt")
                 .build();
         Image image2 = Image.builder()
                 .url(URI.create("https://example.com/image.png"))
                 .base64Data("base64Data")
+                .mimeType("image/png")
                 .revisedPrompt("revisedPrompt")
                 .build();
 
@@ -64,6 +77,7 @@ class ImageTest implements WithAssertions {
                 Image.builder()
                         .url(URI.create("https://change"))
                         .base64Data("base64Data")
+                        .mimeType("image/png")
                         .revisedPrompt("revisedPrompt")
                         .build())
                 .isNotEqualTo(image1)
@@ -73,6 +87,7 @@ class ImageTest implements WithAssertions {
                 Image.builder()
                         .url(URI.create("https://example.com/image.png"))
                         .base64Data("changed")
+                        .mimeType("image/png")
                         .revisedPrompt("revisedPrompt")
                         .build())
                 .isNotEqualTo(image1)
@@ -82,6 +97,17 @@ class ImageTest implements WithAssertions {
                 Image.builder()
                         .url(URI.create("https://example.com/image.png"))
                         .base64Data("base64Data")
+                        .mimeType("changed")
+                        .revisedPrompt("revisedPrompt")
+                        .build())
+                .isNotEqualTo(image1)
+                .doesNotHaveSameHashCodeAs(image1);
+
+        assertThat(
+                Image.builder()
+                        .url(URI.create("https://example.com/image.png"))
+                        .base64Data("base64Data")
+                        .mimeType("image/png")
                         .revisedPrompt("changed")
                         .build())
                 .isNotEqualTo(image1)

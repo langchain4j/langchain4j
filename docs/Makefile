@@ -1,7 +1,7 @@
-build:
+build-docs:
 	npm ci; \
 	npm run build
 
-dev:
+run-docs:
 	npm ci; \
 	npm run start
