@@ -12,10 +12,9 @@ import java.util.Map;
 public class DefaultStructuredPromptFactory implements StructuredPromptFactory {
     private static final Gson GSON = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
 
+    @Override
     public Prompt toPrompt(Object structuredPrompt) {
-        validate(structuredPrompt);
-
-        StructuredPrompt annotation = structuredPrompt.getClass().getAnnotation(StructuredPrompt.class);
+        StructuredPrompt annotation = StructuredPrompt.Util.validateStructuredPrompt(structuredPrompt);
 
         String promptTemplateString = String.join(annotation.delimiter(), annotation.value());
         PromptTemplate promptTemplate = PromptTemplate.from(promptTemplateString);
@@ -23,24 +22,6 @@ public class DefaultStructuredPromptFactory implements StructuredPromptFactory {
         Map<String, Object> variables = extractVariables(structuredPrompt);
 
         return promptTemplate.apply(variables);
-    }
-
-    private void validate(Object structuredPrompt) {
-        if (structuredPrompt == null) {
-            throw new IllegalArgumentException("Structured prompt cannot be null");
-        }
-
-        String structuredPromptClassName = structuredPrompt.getClass().getName();
-
-        StructuredPrompt structuredPromptAnnotation = structuredPrompt.getClass().getAnnotation(StructuredPrompt.class);
-        if (structuredPromptAnnotation == null) {
-            throw new IllegalArgumentException(
-                    String.format(
-                            "%s should be annotated with @StructuredPrompt to be used as a structured prompt",
-                            structuredPromptClassName
-                    )
-            );
-        }
     }
 
     private static Map<String, Object> extractVariables(Object structuredPrompt) {

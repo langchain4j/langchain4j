@@ -33,10 +33,21 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the object is null.
      */
     public static <T> T ensureNotNull(T object, String name) {
-        if (object == null) {
-            throw illegalArgument("%s cannot be null", name);
-        }
+        return ensureNotNull(object, "%s cannot be null", name);
+    }
 
+    /**
+     * Ensures that the given object is not null.
+     * @param object The object to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The object if it is not null.
+     * @param <T> The type of the object.
+     */
+    public static <T> T ensureNotNull(T object, String format, Object... args) {
+        if (object == null) {
+            throw illegalArgument(format, args);
+        }
         return object;
     }
 

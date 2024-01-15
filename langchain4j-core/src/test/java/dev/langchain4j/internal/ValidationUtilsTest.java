@@ -40,7 +40,11 @@ class ValidationUtilsTest implements WithAssertions {
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> ValidationUtils.ensureNotNull(null, "test"))
-                .withMessageContaining("test cannot be null");
+                .withMessage("test cannot be null");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ValidationUtils.ensureNotNull(null, "test %d", 7))
+                .withMessage("test 7");
     }
 
     @Test
