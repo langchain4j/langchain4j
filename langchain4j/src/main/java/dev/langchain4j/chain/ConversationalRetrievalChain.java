@@ -36,15 +36,19 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
     private final PromptTemplate promptTemplate;
     private final Retriever<TextSegment> retriever;
 
+    private final List<String> metadataKeysToInclude;
+
     @Builder
     public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
                                         ChatMemory chatMemory,
                                         PromptTemplate promptTemplate,
-                                        Retriever<TextSegment> retriever) {
+                                        Retriever<TextSegment> retriever,
+                                        List<String> metadataKeysToInclude) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.chatMemory = chatMemory == null ? MessageWindowChatMemory.withMaxMessages(10) : chatMemory;
         this.promptTemplate = promptTemplate == null ? DEFAULT_PROMPT_TEMPLATE : promptTemplate;
         this.retriever = ensureNotNull(retriever, "retriever");
+        this.metadataKeysToInclude = metadataKeysToInclude;
     }
 
     @Override
@@ -56,7 +60,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         Map<String, Object> variables = new HashMap<>();
         variables.put("question", question);
-        variables.put("information", format(relevantSegments));
+        variables.put("information", format(relevantSegments, metadataKeysToInclude));
 
         UserMessage userMessage = promptTemplate.apply(variables).toUserMessage();
 
@@ -69,10 +73,33 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         return aiMessage.text();
     }
 
-    private static String format(List<TextSegment> relevantSegments) {
+    private static String format(List<TextSegment> relevantSegments, List<String> metadata) {
         return relevantSegments.stream()
-                .map(TextSegment::text)
+                .map(textSegment -> textSegmentToText(metadata, textSegment))
                 .map(segment -> "..." + segment + "...")
                 .collect(joining("\n\n"));
+    }
+
+    private static String textSegmentToText(List<String> metadata, TextSegment textSegment) {
+        if (metadata == null) {
+            return textSegment.text();
+        }
+
+        StringBuilder formattedText = new StringBuilder();
+
+        for (String metadataKey : metadata) {
+            String metadataContent = textSegment.metadata(metadataKey);
+            if (metadataContent != null) {
+                formattedText.append(metadataKey).append(": ").append(metadataContent).append("\n");
+            }
+        }
+
+        if (!formattedText.toString().isEmpty()) {
+            formattedText.append("Content: ");
+        }
+
+        formattedText.append(textSegment.text());
+
+        return formattedText.toString();
     }
 }
