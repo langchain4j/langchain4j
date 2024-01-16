@@ -24,14 +24,19 @@ public interface ModerationModel {
      * @param prompt the prompt to moderate.
      * @return the moderation {@code Response}.
      */
-    Response<Moderation> moderate(Prompt prompt);
-
+    default Response<Moderation> moderate(Prompt prompt) {
+        return moderate(prompt.text());
+    }
+  
     /**
      * Moderates the given chat message.
      * @param message the chat message to moderate.
      * @return the moderation {@code Response}.
      */
-    Response<Moderation> moderate(ChatMessage message);
+    @SuppressWarnings("deprecation")
+    default Response<Moderation> moderate(ChatMessage message) {
+        return moderate(message.text());
+    }
 
     /**
      * Moderates the given list of chat messages.
@@ -45,5 +50,7 @@ public interface ModerationModel {
      * @param textSegment the text segment to moderate.
      * @return the moderation {@code Response}.
      */
-    Response<Moderation> moderate(TextSegment textSegment);
+    default Response<Moderation> moderate(TextSegment textSegment) {
+        return moderate(textSegment.text());
+    }
 }
