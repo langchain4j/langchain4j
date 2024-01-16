@@ -14,7 +14,7 @@ public interface OutputParser<T> {
     T parse(String text);
 
     /**
-     * Description of the text format..
+     * Description of the text format.
      * @return the description of the text format.
      */
     String formatInstructions();
