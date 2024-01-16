@@ -5,7 +5,15 @@ import dev.langchain4j.data.embedding.Embedding;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * Utility class for calculating cosine similarity between two vectors.
+ */
 public class CosineSimilarity {
+    private CosineSimilarity() {}
+
+    /**
+     * A small value to avoid division by zero.
+     */
     public static final float EPSILON = 1e-8f;
 
     /**

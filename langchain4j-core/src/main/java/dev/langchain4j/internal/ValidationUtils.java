@@ -98,6 +98,7 @@ public class ValidationUtils {
      * Ensures that the given expression is true.
      * @param i The expression to check.
      * @param name The message to be used in the exception.
+     * @return The value if it is greater than zero.
      * @throws IllegalArgumentException if the expression is false.
      */
     public static int ensureGreaterThanZero(Integer i, String name) {
