@@ -4,42 +4,86 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+/**
+ * Represents the token usage of a response.
+ */
 public class TokenUsage {
 
     private final Integer inputTokenCount;
     private final Integer outputTokenCount;
     private final Integer totalTokenCount;
 
+    /**
+     * Creates a new {@link TokenUsage} instance with all fields set to null.
+     */
     public TokenUsage() {
         this(null);
     }
 
+    /**
+     * Creates a new {@link TokenUsage} instance with the given input token count.
+     *
+     * @param inputTokenCount The input token count.
+     */
     public TokenUsage(Integer inputTokenCount) {
         this(inputTokenCount, null);
     }
 
+    /**
+     * Creates a new {@link TokenUsage} instance with the given input and output token counts.
+     *
+     * @param inputTokenCount The input token count, or null if unknown.
+     * @param outputTokenCount The output token count, or null if unknown.
+     */
     public TokenUsage(Integer inputTokenCount, Integer outputTokenCount) {
         this(inputTokenCount, outputTokenCount, sum(inputTokenCount, outputTokenCount));
     }
 
+    /**
+     * Creates a new {@link TokenUsage} instance with the given input, output and total token counts.
+     *
+     * @param inputTokenCount The input token count, or null if unknown.
+     * @param outputTokenCount The output token count, or null if unknown.
+     * @param totalTokenCount The total token count, or null if unknown.
+     */
     public TokenUsage(Integer inputTokenCount, Integer outputTokenCount, Integer totalTokenCount) {
         this.inputTokenCount = inputTokenCount;
         this.outputTokenCount = outputTokenCount;
         this.totalTokenCount = totalTokenCount;
     }
 
+    /**
+     * Returns the input token count, or null if unknown.
+     * @return the input token count, or null if unknown.
+     */
     public Integer inputTokenCount() {
         return inputTokenCount;
     }
 
+    /**
+     * Returns the output token count, or null if unknown.
+     * @return the output token count, or null if unknown.
+     */
     public Integer outputTokenCount() {
         return outputTokenCount;
     }
 
+    /**
+     * Returns the total token count, or null if unknown.
+     * @return the total token count, or null if unknown.
+     */
     public Integer totalTokenCount() {
         return totalTokenCount;
     }
 
+    /**
+     * Adds the token usage of two responses together.
+     *
+     * <p>Fields which are null in both responses will be null in the result.
+     *
+     * @param that The token usage to add to this one.
+     * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
+     */
     public TokenUsage add(TokenUsage that) {
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),
@@ -48,6 +92,12 @@ public class TokenUsage {
         );
     }
 
+    /**
+     * Sum two integers, returning null if both are null.
+     * @param first The first integer, or null.
+     * @param second The second integer, or null.
+     * @return the sum of the two integers, or null if both are null.
+     */
     private static Integer sum(Integer first, Integer second) {
         if (first == null && second == null) {
             return null;

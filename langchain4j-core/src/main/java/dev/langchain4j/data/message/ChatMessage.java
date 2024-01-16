@@ -1,16 +1,22 @@
 package dev.langchain4j.data.message;
 
-public abstract class ChatMessage {
+/**
+ * A chat message.
+ */
+public interface ChatMessage {
 
-    protected final String text;
+    /**
+     * The type of the message.
+     * @return the type of the message
+     */
+    ChatMessageType type();
 
-    ChatMessage(String text) {
-        this.text = text;
-    }
-
-    public String text() {
-        return text;
-    }
-
-    public abstract ChatMessageType type();
+    /**
+     * The text of the message.
+     *
+     * @deprecated decode through {@link #type()} instead.
+     * @return the text of the message
+     */
+    @Deprecated
+    String text();
 }

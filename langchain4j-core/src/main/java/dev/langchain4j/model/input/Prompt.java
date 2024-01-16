@@ -21,22 +21,42 @@ public class Prompt {
 
     private final String text;
 
+    /**
+     * Create a new Prompt.
+     * @param text the text of the prompt.
+     */
     public Prompt(String text) {
         this.text = ensureNotBlank(text, "text");
     }
 
+    /**
+     * The text of the prompt.
+     * @return the text of the prompt.
+     */
     public String text() {
         return text;
     }
 
+    /**
+     * Convert this prompt to a SystemMessage.
+     * @return the SystemMessage.
+     */
     public SystemMessage toSystemMessage() {
         return systemMessage(text);
     }
 
+    /**
+     * Convert this prompt to a UserMessage.
+     * @return the UserMessage.
+     */
     public UserMessage toUserMessage() {
         return userMessage(text);
     }
 
+    /**
+     * Convert this prompt to an AiMessage.
+     * @return the AiMessage.
+     */
     public AiMessage toAiMessage() {
         return aiMessage(text);
     }
@@ -61,6 +81,11 @@ public class Prompt {
                 " }";
     }
 
+    /**
+     * Create a new Prompt.
+     * @param text the text of the prompt.
+     * @return the new Prompt.
+     */
     public static Prompt from(String text) {
         return new Prompt(text);
     }
