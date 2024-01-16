@@ -30,6 +30,9 @@ Please see examples of how LangChain4j can be used in `langchain4j-examples` rep
 
 Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency which builds on this project) can be found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
 
+## Documentation
+Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
+
 ## News
 
 22 December:
