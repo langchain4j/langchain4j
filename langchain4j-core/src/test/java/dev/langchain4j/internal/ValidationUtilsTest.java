@@ -152,4 +152,21 @@ class ValidationUtilsTest implements WithAssertions {
                     .withMessageContaining("test must be between 0 and 1, but is: -1");
         }
     }
+
+    @Test
+    public void test_ensureBetween_long() {
+        {
+            ValidationUtils.ensureBetween(1L, 0, 1, "test");
+        }
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureBetween(2L, 0, 1, "test"))
+                    .withMessageContaining("test must be between 0 and 1, but is: 2");
+        }
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureBetween(-1L, 0, 1, "test"))
+                    .withMessageContaining("test must be between 0 and 1, but is: -1");
+        }
+    }
 }
