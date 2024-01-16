@@ -14,7 +14,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 public @interface P {
 
     /**
-     * Description of a parameterjj
+     * Description of a parameter
      * @return the description of a parameter
      */
     String value();
