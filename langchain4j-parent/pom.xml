@@ -20,6 +20,7 @@
         <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
         <openai4j.version>0.12.4</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
+        <azure-ai-search.version>11.6.1</azure-ai-search.version>
         <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
         <azure.storage-common.version>12.24.1</azure.storage-common.version>
         <azure.identity.version>1.11.1</azure.identity.version>
@@ -90,6 +91,12 @@
                 <groupId>com.azure</groupId>
                 <artifactId>azure-ai-openai</artifactId>
                 <version>${azure-ai-openai.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.azure</groupId>
+                <artifactId>azure-search-documents</artifactId>
+                <version>${azure-ai-search.version}</version>
             </dependency>
 
             <dependency>
