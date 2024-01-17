@@ -120,12 +120,67 @@ public class ServiceOutputParser {
 
     private static String jsonStructure(Class<?> structured) {
         StringBuilder jsonSchema = new StringBuilder();
-        jsonSchema.append("{\n");
-        for (Field field : structured.getDeclaredFields()) {
-            jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field)));
-        }
-        jsonSchema.append("}");
+
+        jsonStructure(jsonSchema, structured);
+
         return jsonSchema.toString();
+    }
+
+    private static void jsonStructure(StringBuilder jsonSchema, Class<?> structured) {
+        jsonSchema.append("{\n");
+
+        for (Field field : structured.getDeclaredFields()) {
+
+            Type genericType = field.getGenericType();
+
+            if (!(genericType instanceof ParameterizedType)) {
+                if (field.getType().getPackage() == null || field.getType().getPackage().getName().startsWith("java.")) {
+                    // This is a standard Java type.
+                    jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field)));
+                } else if (!field.getName().contains("this")){
+                    // This is a custom Java type.
+                    jsonSchema.append(format("\"%s\": (%s) ", field.getName(), descriptionFor(field)));
+                    jsonStructure(jsonSchema, field.getType());
+                }
+                continue;
+            }
+
+            ParameterizedType pType = (ParameterizedType) genericType;
+
+            if (!(pType.getRawType().equals(List.class) || pType.getRawType().equals(Set.class))) {
+                //TODO: This is not a List or Set type. If necessary, you can add more conditions here to handle other ParameterizedType.
+                continue;
+            }
+
+            Type[] fieldArgsTypes = pType.getActualTypeArguments();
+
+            for(Type oneArgType : fieldArgsTypes){
+                if (oneArgType.getTypeName().startsWith("java.")) {
+                    // This is a list field contains built-in Java type
+                    jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field)));
+                } else if (!oneArgType.getTypeName().contains("this")) {
+                    // This is a list field with custom Java type.
+                    jsonSchema.append(format("\"%s\": (%s) ", field.getName(), descriptionFor(field)));
+                    jsonStructureCustomTypeArray(jsonSchema, oneArgType);
+                }
+            }
+        }
+        jsonSchema.append("},\n");
+    }
+
+    private static void jsonStructureCustomTypeArray(StringBuilder jsonSchema, Type customType) {
+        jsonSchema.append("[\n");
+
+        if (!customType.getTypeName().contains("this")) {
+            // This is a custom Java type.
+            try {
+                Class<?> genericClass = Class.forName(customType.getTypeName());
+                jsonStructure(jsonSchema, genericClass);
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        jsonSchema.append("],\n");
     }
 
     private static String descriptionFor(Field field) {
@@ -181,7 +236,7 @@ public class ServiceOutputParser {
             case "java.time.LocalDateTime":
                 return "date-time string (2023-12-31T23:59:59)";
             default:
-                return type.getTypeName();
+                return "Object";
         }
     }
 }
