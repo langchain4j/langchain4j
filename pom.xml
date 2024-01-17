@@ -30,6 +30,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
 
         <!-- embedding stores -->
+        <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
