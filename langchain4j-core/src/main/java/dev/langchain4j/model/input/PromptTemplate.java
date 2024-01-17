@@ -32,10 +32,22 @@ public class PromptTemplate {
     private final PromptTemplateFactory.Template template;
     private final Clock clock;
 
+    /**
+     * Create a new PromptTemplate.
+     *
+     * <p>The {@code Clock} will be the system clock.</p>
+     *
+     * @param template the template string of the prompt.
+     */
     public PromptTemplate(String template) {
         this(template, Clock.systemDefaultZone());
     }
 
+    /**
+     * Create a new PromptTemplate.
+     * @param template the template string of the prompt.
+     * @param clock the clock to use for the special variables.
+     */
     PromptTemplate(String template, Clock clock) {
         this.template = FACTORY.create(() -> template);
         this.clock = ensureNotNull(clock, "clock");
@@ -62,6 +74,11 @@ public class PromptTemplate {
         return Prompt.from(template.render(injectDateTimeVariables(variables)));
     }
 
+    /**
+     * Injects the special variables {{current_date}}, {{current_time}}, and {{current_date_time}} into the given map.
+     * @param variables the map to inject the variables into.
+     * @return a copy of the map with the variables injected.
+     */
     private Map<String, Object> injectDateTimeVariables(Map<String, Object> variables) {
         Map<String, Object> variablesCopy = new HashMap<>(variables);
         variablesCopy.put(CURRENT_DATE, LocalDate.now(clock));
@@ -70,6 +87,11 @@ public class PromptTemplate {
         return variablesCopy;
     }
 
+    /**
+     * Create a new PromptTemplate.
+     * @param template the template string of the prompt.
+     * @return the PromptTemplate.
+     */
     public static PromptTemplate from(String template) {
         return new PromptTemplate(template);
     }

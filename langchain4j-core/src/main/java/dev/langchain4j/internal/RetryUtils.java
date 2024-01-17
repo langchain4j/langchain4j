@@ -8,6 +8,9 @@ import java.util.concurrent.Callable;
 
 import static java.lang.String.format;
 
+/**
+ * Utility class for retrying actions.
+ */
 public final class RetryUtils {
     private RetryUtils() {}
 
@@ -25,11 +28,19 @@ public final class RetryUtils {
      * This class encapsulates a retry policy.
      */
     public static final class RetryPolicy {
+        /**
+         * This class encapsulates a retry policy builder.
+         */
         public static final class Builder {
             private int maxAttempts = 3;
             private int delayMillis = 1000;
             private double jitterScale = 0.2;
             private double backoffExp = 1.5;
+
+            /**
+             * Construct a RetryPolicy.Builder.
+             */
+            public Builder() {}
 
             /**
              * Sets the default maximum number of attempts.
@@ -99,6 +110,13 @@ public final class RetryUtils {
         private final double jitterScale;
         private final double backoffExp;
 
+        /**
+         * Construct a RetryPolicy.
+         * @param maxAttempts The maximum number of attempts.
+         * @param delayMillis The delay in milliseconds.
+         * @param jitterScale The jitter scale.
+         * @param backoffExp The backoff exponent.
+         */
         public RetryPolicy(
                 int maxAttempts,
                 int delayMillis,
@@ -149,6 +167,7 @@ public final class RetryUtils {
          * If the action fails on all attempts, it throws a RuntimeException.
          *
          * @param action      The action to be executed.
+         * @param <T> The type of the result of the action.
          * @return The result of the action if it is successful.
          * @throws RuntimeException if the action fails on all attempts.
          */
@@ -162,6 +181,7 @@ public final class RetryUtils {
          *
          * @param action      The action to be executed.
          * @param maxAttempts The maximum number of attempts to execute the action.
+         * @param <T> The type of the result of the action.
          * @return The result of the action if it is successful.
          * @throws RuntimeException if the action fails on all attempts.
          */
@@ -184,6 +204,9 @@ public final class RetryUtils {
         }
     }
 
+    /**
+     * Default retry policy used by {@link #withRetry(Callable)}.
+     */
     public static final RetryPolicy DEFAULT_RETRY_POLICY = retryPolicyBuilder()
             .maxAttempts(3)
             .delayMillis(500)
@@ -197,6 +220,8 @@ public final class RetryUtils {
      *
      * @param action      The action to be executed.
      * @param maxAttempts The maximum number of attempts to execute the action.
+     * @param <T> The type of the result of the action.
+     *
      * @return The result of the action if it is successful.
      * @throws RuntimeException if the action fails on all attempts.
      */
@@ -209,6 +234,7 @@ public final class RetryUtils {
      * If the action fails on all attempts, it throws a RuntimeException.
      *
      * @param action      The action to be executed.
+     * @param <T> The type of the result of the action.
      * @return The result of the action if it is successful.
      * @throws RuntimeException if the action fails on all attempts.
      */
