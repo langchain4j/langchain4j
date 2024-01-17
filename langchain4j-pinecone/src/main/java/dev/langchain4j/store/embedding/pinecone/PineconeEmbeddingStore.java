@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.pinecone;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.CosineSimilarity;
@@ -13,11 +14,9 @@ import io.pinecone.PineconeClientConfig;
 import io.pinecone.PineconeConnection;
 import io.pinecone.PineconeConnectionConfig;
 import io.pinecone.proto.*;
+import io.pinecone.proto.Vector;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -156,6 +155,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         QueryRequest queryRequest = QueryRequest
                 .newBuilder()
                 .addAllVector(referenceEmbedding.vectorAsList())
+                .setIncludeMetadata(true)
                 .setNamespace(nameSpace)
                 .setTopK(maxResults)
                 .build();
@@ -190,9 +190,13 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
-        Value textSegmentValue = vector.getMetadata()
+        Struct metadataStruct = vector.getMetadata();
+
+        Value textSegmentValue = metadataStruct
                 .getFieldsMap()
                 .get(metadataTextKey);
+
+        Metadata metadata = Metadata.from(structToMap(metadataStruct));
 
         Embedding embedding = Embedding.from(vector.getValuesList());
         double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
@@ -201,8 +205,20 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 RelevanceScore.fromCosineSimilarity(cosineSimilarity),
                 vector.getId(),
                 embedding,
-                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue())
+                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue(), metadata)
         );
+    }
+
+    // credit: OpenAI/GPT-4
+    private static Map<String, String> structToMap(Struct struct) {
+        Map<String, String> result = new HashMap<>();
+        Map<String, Value> fields = struct.getFieldsMap();
+
+        for (Map.Entry<String, Value> entry : fields.entrySet()) {
+            result.put(entry.getKey(), entry.getValue().getStringValue());
+        }
+
+        return result;
     }
 
     public static Builder builder() {
