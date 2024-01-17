@@ -77,6 +77,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-qianfan</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -196,6 +202,7 @@
                 <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
 
         </dependencies>
     </dependencyManagement>
