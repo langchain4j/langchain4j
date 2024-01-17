@@ -10,10 +10,12 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class InMemoryEmbeddingStoreTest extends EmbeddingStoreIT {
 
@@ -38,15 +40,39 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreIT {
 
     @Test
     void should_serialize_to_and_deserialize_from_file() {
-
         InMemoryEmbeddingStore<TextSegment> originalEmbeddingStore = createEmbeddingStore();
         Path filePath = temporaryDirectory.resolve("embedding-store.json");
 
-        originalEmbeddingStore.serializeToFile(filePath);
-        InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromFile(filePath);
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> originalEmbeddingStore
+                        .serializeToFile(temporaryDirectory.resolve("missing/store.json")))
+                .withCauseInstanceOf(NoSuchFileException.class);
 
-        assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
-        assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> InMemoryEmbeddingStore
+                        .fromFile(temporaryDirectory.resolve("missing/store.json")))
+                .withCauseInstanceOf(NoSuchFileException.class);
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> InMemoryEmbeddingStore
+                        .fromFile(temporaryDirectory.resolve("missing/store.json").toString()))
+                .withCauseInstanceOf(NoSuchFileException.class);
+
+        {
+            originalEmbeddingStore.serializeToFile(filePath);
+            InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromFile(filePath);
+
+            assertThat(deserializedEmbeddingStore.entries)
+                    .isEqualTo(originalEmbeddingStore.entries)
+                            .hasSameHashCodeAs(originalEmbeddingStore.entries);
+            assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+        }
+        {
+            originalEmbeddingStore.serializeToFile(filePath.toString());
+            InMemoryEmbeddingStore<TextSegment> deserializedEmbeddingStore = InMemoryEmbeddingStore.fromFile(filePath);
+
+            assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
+            assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+        }
     }
 
     private InMemoryEmbeddingStore<TextSegment> createEmbeddingStore() {
