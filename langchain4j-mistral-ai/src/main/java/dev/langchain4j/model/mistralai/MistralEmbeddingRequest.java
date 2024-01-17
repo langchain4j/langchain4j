@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class EmbeddingRequest {
+class MistralEmbeddingRequest {
 
     private String model;
     private List<String> input;

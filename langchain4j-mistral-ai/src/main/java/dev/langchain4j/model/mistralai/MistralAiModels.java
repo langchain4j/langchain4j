@@ -57,7 +57,7 @@ public class MistralAiModels {
      * @param modelId the ID of the model
      * @return the response containing the model details
      */
-    public Response<ModelCard> getModelDetails(String modelId){
+    public Response<MistralModelCard> getModelDetails(String modelId){
         return Response.from(
                 this.getModels().content().stream().filter(modelCard -> modelCard.getId().equals(modelId)).findFirst().orElse(null)
         );
@@ -70,7 +70,7 @@ public class MistralAiModels {
      */
     public Response<List<String>> get(){
         return Response.from(
-                this.getModels().content().stream().map(ModelCard::getId).collect(toList())
+                this.getModels().content().stream().map(MistralModelCard::getId).collect(toList())
         );
     }
 
@@ -79,8 +79,8 @@ public class MistralAiModels {
      *
      * @return the response containing the list of models
      */
-    public Response<List<ModelCard>> getModels(){
-        ModelResponse response = withRetry(client::listModels, maxRetries);
+    public Response<List<MistralModelCard>> getModels(){
+        MistralModelResponse response = withRetry(client::listModels, maxRetries);
         return Response.from(
                 response.getData()
         );

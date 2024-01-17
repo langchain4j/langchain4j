@@ -53,13 +53,13 @@ class MistralAiClient {
         mistralAiApi = retrofit.create(MistralAiApi.class);
     }
 
-    public ChatCompletionResponse chatCompletion(ChatCompletionRequest request) {
+    public MistralChatCompletionResponse chatCompletion(MistralChatCompletionRequest request) {
         try {
-            retrofit2.Response<ChatCompletionResponse> retrofitResponse
+            retrofit2.Response<MistralChatCompletionResponse> retrofitResponse
                     = mistralAiApi.chatCompletion(request).execute();
-            LOGGER.debug("ChatCompletionResponse: {}", retrofitResponse);
+            LOGGER.debug("MistralChatCompletionResponse: {}", retrofitResponse);
             if (retrofitResponse.isSuccessful()) {
-                LOGGER.error("ChatCompletionResponseBody: {}", retrofitResponse.body());
+                LOGGER.debug("ChatCompletionResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
             } else {
                 throw toException(retrofitResponse);
@@ -69,10 +69,10 @@ class MistralAiClient {
         }
     }
 
-    public void streamingChatCompletion(ChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
+    public void streamingChatCompletion(MistralChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
             StringBuilder contentBuilder = new StringBuilder();
-            UsageInfo tokenUsage = new UsageInfo();
+            MistralUsageInfo tokenUsage = new MistralUsageInfo();
             FinishReason lastFinishReason = null;
 
             @Override
@@ -94,8 +94,8 @@ class MistralAiClient {
                     handler.onComplete(response);
                 } else {
                     try {
-                        ChatCompletionResponse chatCompletionResponse = GSON.fromJson(data, ChatCompletionResponse.class);
-                        ChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
+                        MistralChatCompletionResponse chatCompletionResponse = GSON.fromJson(data, MistralChatCompletionResponse.class);
+                        MistralChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
                         String chunk = choice.getDelta().getContent();
                         contentBuilder.append(chunk);
                         handler.onNext(chunk);
@@ -149,11 +149,11 @@ class MistralAiClient {
                         eventSourceListener);
     }
 
-    public EmbeddingResponse embedding(EmbeddingRequest request) {
+    public MistralEmbeddingResponse embedding(MistralEmbeddingRequest request) {
         try {
-            retrofit2.Response<EmbeddingResponse> retrofitResponse
+            retrofit2.Response<MistralEmbeddingResponse> retrofitResponse
                     = mistralAiApi.embedding(request).execute();
-            LOGGER.debug("EmbeddingResponse: {}", retrofitResponse);
+            LOGGER.debug("MistralEmbeddingResponse: {}", retrofitResponse);
             if (retrofitResponse.isSuccessful()) {
                 LOGGER.debug("EmbeddingResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
@@ -165,11 +165,11 @@ class MistralAiClient {
         }
     }
 
-    public ModelResponse listModels() {
+    public MistralModelResponse listModels() {
         try {
-            retrofit2.Response<ModelResponse> retrofitResponse
+            retrofit2.Response<MistralModelResponse> retrofitResponse
                     = mistralAiApi.models().execute();
-            LOGGER.debug("ModelResponse: {}", retrofitResponse);
+            LOGGER.debug("MistralModelResponse: {}", retrofitResponse);
             if (retrofitResponse.isSuccessful()) {
                 LOGGER.debug("ModelResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();

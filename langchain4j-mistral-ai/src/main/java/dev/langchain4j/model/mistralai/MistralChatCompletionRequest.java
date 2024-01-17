@@ -12,10 +12,10 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ChatCompletionRequest {
+class MistralChatCompletionRequest {
 
     private String model;
-    private List<ChatMessage> messages;
+    private List<MistralChatMessage> messages;
     private Double temperature;
     private Double topP;
     private Integer maxTokens;

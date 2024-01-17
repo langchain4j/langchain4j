@@ -61,7 +61,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                 .apiKey(ensureNotBlankApiKey(apiKey))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .build();
-        this.modelName = getOrDefault(modelName, ChatCompletionModel.MISTRAL_TINY.toString());
+        this.modelName = getOrDefault(modelName, MistralChatCompletionModel.MISTRAL_TINY.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.maxNewTokens = maxNewTokens;
@@ -89,7 +89,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
-        ChatCompletionRequest request = ChatCompletionRequest.builder()
+        MistralChatCompletionRequest request = MistralChatCompletionRequest.builder()
                 .model(this.modelName)
                 .messages(toMistralAiMessages(messages))
                 .temperature(this.temperature)

@@ -20,18 +20,18 @@ class MistralAiModelsIT {
         // then
         assertThat(response.content()).isNotEmpty();
         assertThat(response.content().size()).isEqualTo(4);
-        assertThat(response.content()).contains(ChatCompletionModel.MISTRAL_TINY.toString());
+        assertThat(response.content()).contains(MistralChatCompletionModel.MISTRAL_TINY.toString());
 
     }
 
     @Test
     void should_return_one_model_card(){
         // when
-        Response<ModelCard> response = models.getModelDetails(ChatCompletionModel.MISTRAL_TINY.toString());
+        Response<MistralModelCard> response = models.getModelDetails(MistralChatCompletionModel.MISTRAL_TINY.toString());
 
         // then
         assertThat(response.content()).isNotNull();
-        assertThat(response.content()).extracting("id").isEqualTo(ChatCompletionModel.MISTRAL_TINY.toString());
+        assertThat(response.content()).extracting("id").isEqualTo(MistralChatCompletionModel.MISTRAL_TINY.toString());
         assertThat(response.content()).extracting("object").isEqualTo("model");
         assertThat(response.content()).extracting("permission").isNotNull();
     }
@@ -39,12 +39,12 @@ class MistralAiModelsIT {
     @Test
     void should_return_all_model_cards(){
         // when
-        Response<List<ModelCard>> response = models.getModels();
+        Response<List<MistralModelCard>> response = models.getModels();
 
         // then
         assertThat(response.content()).isNotEmpty();
         assertThat(response.content().size()).isEqualTo(4);
-        assertThat(response.content()).extracting("id").contains(ChatCompletionModel.MISTRAL_TINY.toString());
+        assertThat(response.content()).extracting("id").contains(MistralChatCompletionModel.MISTRAL_TINY.toString());
         assertThat(response.content()).extracting("object").contains("model");
         assertThat(response.content()).extracting("permission").isNotNull();
     }

@@ -44,7 +44,7 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
                 .apiKey(ensureNotBlankApiKey(apiKey))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .build();
-        this.modelName = getOrDefault(modelName, dev.langchain4j.model.mistralai.EmbeddingModel.MISTRAL_EMBED.toString());
+        this.modelName = getOrDefault(modelName, MistralEmbeddingModelType.MISTRAL_EMBED.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
@@ -67,13 +67,13 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
+        MistralEmbeddingRequest request = MistralEmbeddingRequest.builder()
                 .model(modelName)
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .encodingFormat(MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT)
                 .build();
 
-        EmbeddingResponse response = withRetry(() -> client.embedding(request), maxRetries);
+        MistralEmbeddingResponse response = withRetry(() -> client.embedding(request), maxRetries);
 
         List<Embedding> embeddings = response.getData().stream()
                 .map(mistralAiEmbedding -> Embedding.from(mistralAiEmbedding.getEmbedding()))

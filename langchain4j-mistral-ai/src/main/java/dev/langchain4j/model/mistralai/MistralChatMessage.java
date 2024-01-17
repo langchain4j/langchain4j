@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,9 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class Delta {
+class MistralChatMessage {
 
-    private Role role;
+    private MistralRoleType role;
     private String content;
-
 }

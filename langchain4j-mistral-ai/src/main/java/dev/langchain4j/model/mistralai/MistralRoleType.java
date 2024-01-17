@@ -4,12 +4,12 @@ import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 @Getter
-public enum Role {
+public enum MistralRoleType {
 
     @SerializedName("system") SYSTEM,
     @SerializedName("user") USER,
     @SerializedName("assistant") ASSISTANT;
 
-    private Role() {}
+    private MistralRoleType() {}
 
 }

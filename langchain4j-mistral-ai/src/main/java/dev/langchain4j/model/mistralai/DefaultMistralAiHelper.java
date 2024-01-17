@@ -34,34 +34,34 @@ public class DefaultMistralAiHelper{
         return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
     }
 
-    public static List<dev.langchain4j.model.mistralai.ChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
+    public static List<MistralChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(DefaultMistralAiHelper::toMistralAiMessage)
                 .collect(toList());
     }
 
-    public static dev.langchain4j.model.mistralai.ChatMessage toMistralAiMessage(ChatMessage message) {
-        return dev.langchain4j.model.mistralai.ChatMessage.builder()
+    public static MistralChatMessage toMistralAiMessage(ChatMessage message) {
+        return MistralChatMessage.builder()
                 .role(toMistralAiRole(message.type()))
                 .content(message.text())
                 .build();
     }
 
-    private static Role toMistralAiRole(ChatMessageType chatMessageType) {
+    private static MistralRoleType toMistralAiRole(ChatMessageType chatMessageType) {
         switch (chatMessageType) {
             case SYSTEM:
-                return Role.SYSTEM;
+                return MistralRoleType.SYSTEM;
             case  AI:
-                return Role.ASSISTANT;
+                return MistralRoleType.ASSISTANT;
             case USER:
-                return Role.USER;
+                return MistralRoleType.USER;
             default:
                 throw new IllegalArgumentException("Unknown chat message type: " + chatMessageType);
         }
 
     }
 
-    public static TokenUsage tokenUsageFrom(UsageInfo mistralAiUsage) {
+    public static TokenUsage tokenUsageFrom(MistralUsageInfo mistralAiUsage) {
         if (mistralAiUsage == null) {
             return null;
         }

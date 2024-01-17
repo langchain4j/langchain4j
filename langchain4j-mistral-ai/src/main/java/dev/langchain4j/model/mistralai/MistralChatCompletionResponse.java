@@ -11,14 +11,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ModelCard{
-
+class MistralChatCompletionResponse {
     private String id;
     private String object;
     private Integer created;
-    private String ownerBy;
-    private String root;
-    private String parent;
-    private List<ModelPermission> permission;
-
+    private String model;
+    private List<MistralChatCompletionChoice> choices;
+    private MistralUsageInfo usage;
 }

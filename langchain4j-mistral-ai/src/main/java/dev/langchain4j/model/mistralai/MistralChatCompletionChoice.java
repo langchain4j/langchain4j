@@ -10,11 +10,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ChatCompletionChoice {
+class MistralChatCompletionChoice {
 
     private Integer index;
-    private ChatMessage message;
-    private Delta delta;
+    private MistralChatMessage message;
+    private MistralDeltaMessage delta;
     private String finishReason;
-    private UsageInfo usage; //usageInfo is returned only when the prompt is finished in stream mode
+    private MistralUsageInfo usage; //usageInfo is returned only when the prompt is finished in stream mode
 }

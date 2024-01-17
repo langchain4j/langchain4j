@@ -11,10 +11,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class EmbeddingObject {
+class MistralModelResponse {
 
     private String object;
-    private List<Float> embedding;
-    private Integer index;
+    private List<MistralModelCard> data;
 
 }

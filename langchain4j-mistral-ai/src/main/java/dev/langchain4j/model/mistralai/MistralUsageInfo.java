@@ -5,18 +5,14 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class EmbeddingResponse {
+class MistralUsageInfo {
 
-    private String id;
-    private String object;
-    private String model;
-    private List<EmbeddingObject> data;
-    private UsageInfo usage;
+    private Integer promptTokens;
+    private Integer totalTokens;
+    private Integer completionTokens;
 
 }

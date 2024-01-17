@@ -11,9 +11,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ModelResponse {
+class MistralEmbeddingResponse {
 
+    private String id;
     private String object;
-    private List<ModelCard> data;
+    private String model;
+    private List<MistralEmbeddingObject> data;
+    private MistralUsageInfo usage;
 
 }
