@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.vearch.api.space;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * As a constraint of all engine type only
  *
@@ -7,6 +11,9 @@ package dev.langchain4j.store.embedding.vearch.api.space;
  */
 public abstract class RetrievalParam {
 
+    @Getter
+    @Setter
+    @Builder
     public static class IVFPQParam extends RetrievalParam {
 
         private MetricType metricType;
@@ -22,32 +29,11 @@ public abstract class RetrievalParam {
          * <p>default 64, must be a multiple of 4</p>
          */
         private Integer nsubvector;
-
-        public MetricType getMetricType() {
-            return metricType;
-        }
-
-        public void setMetricType(MetricType metricType) {
-            this.metricType = metricType;
-        }
-
-        public Integer getNcentroids() {
-            return ncentroids;
-        }
-
-        public void setNcentroids(Integer ncentroids) {
-            this.ncentroids = ncentroids;
-        }
-
-        public Integer getNsubvector() {
-            return nsubvector;
-        }
-
-        public void setNsubvector(Integer nsubvector) {
-            this.nsubvector = nsubvector;
-        }
     }
 
+    @Getter
+    @Setter
+    @Builder
     public static class HNSWParam extends RetrievalParam {
 
         private MetricType metricType;
@@ -64,32 +50,11 @@ public abstract class RetrievalParam {
          * <p>The higher the value, the better the construction effect, and the longer it takes</p>
          */
         private Integer efConstruction;
-
-        public Integer getNlinks() {
-            return nlinks;
-        }
-
-        public void setNlinks(Integer nlinks) {
-            this.nlinks = nlinks;
-        }
-
-        public Integer getEfConstruction() {
-            return efConstruction;
-        }
-
-        public void setEfConstruction(Integer efConstruction) {
-            this.efConstruction = efConstruction;
-        }
-
-        public MetricType getMetricType() {
-            return metricType;
-        }
-
-        public void setMetricType(MetricType metricType) {
-            this.metricType = metricType;
-        }
     }
 
+    @Getter
+    @Setter
+    @Builder
     public static class GPUParam extends RetrievalParam {
 
         private MetricType metricType;
@@ -105,32 +70,11 @@ public abstract class RetrievalParam {
          * <p>default 64</p>
          */
         private Integer nsubvector;
-
-        public MetricType getMetricType() {
-            return metricType;
-        }
-
-        public void setMetricType(MetricType metricType) {
-            this.metricType = metricType;
-        }
-
-        public Integer getNcentroids() {
-            return ncentroids;
-        }
-
-        public void setNcentroids(Integer ncentroids) {
-            this.ncentroids = ncentroids;
-        }
-
-        public Integer getNsubvector() {
-            return nsubvector;
-        }
-
-        public void setNsubvector(Integer nsubvector) {
-            this.nsubvector = nsubvector;
-        }
     }
 
+    @Getter
+    @Setter
+    @Builder
     public static class IVFFLATParam extends RetrievalParam {
 
         private MetricType metricType;
@@ -140,24 +84,11 @@ public abstract class RetrievalParam {
          * <p>default 2048</p>
          */
         private Integer ncentroids;
-
-        public MetricType getMetricType() {
-            return metricType;
-        }
-
-        public void setMetricType(MetricType metricType) {
-            this.metricType = metricType;
-        }
-
-        public Integer getNcentroids() {
-            return ncentroids;
-        }
-
-        public void setNcentroids(Integer ncentroids) {
-            this.ncentroids = ncentroids;
-        }
     }
 
+    @Getter
+    @Setter
+    @Builder
     public static class BINARYIVFParam extends RetrievalParam {
 
         /**
@@ -166,26 +97,13 @@ public abstract class RetrievalParam {
          * <p>default 256</p>
          */
         private Integer ncentroids;
-
-        public Integer getNcentroids() {
-            return ncentroids;
-        }
-
-        public void setNcentroids(Integer ncentroids) {
-            this.ncentroids = ncentroids;
-        }
     }
 
+    @Getter
+    @Setter
+    @Builder
     public static class FLAT extends RetrievalParam {
 
         private MetricType metricType;
-
-        public MetricType getMetricType() {
-            return metricType;
-        }
-
-        public void setMetricType(MetricType metricType) {
-            this.metricType = metricType;
-        }
     }
 }

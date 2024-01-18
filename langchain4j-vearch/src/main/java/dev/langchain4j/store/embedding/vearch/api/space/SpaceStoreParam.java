@@ -1,36 +1,25 @@
 package dev.langchain4j.store.embedding.vearch.api.space;
 
+import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+@Builder
 public class SpaceStoreParam {
 
+    /**
+     * It means you will use so much memory, the excess will be kept to disk. For MemoryOnly, this parameter is invalid.
+     */
     private Integer cacheSize;
     private CompressRate compress;
 
+    @Getter
+    @Setter
+    @Builder
     public static class CompressRate {
 
         private Integer rate;
-
-        public Integer getRate() {
-            return rate;
-        }
-
-        public void setRate(Integer rate) {
-            this.rate = rate;
-        }
-    }
-
-    public Integer getCacheSize() {
-        return cacheSize;
-    }
-
-    public void setCacheSize(Integer cacheSize) {
-        this.cacheSize = cacheSize;
-    }
-
-    public CompressRate getCompress() {
-        return compress;
-    }
-
-    public void setCompress(CompressRate compress) {
-        this.compress = compress;
     }
 }

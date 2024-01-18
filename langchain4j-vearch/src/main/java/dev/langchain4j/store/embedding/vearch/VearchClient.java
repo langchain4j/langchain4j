@@ -118,7 +118,7 @@ public class VearchClient {
         }
     }
 
-    public CreateSpaceResponse createSpaceRequest(String dbName, CreateSpaceRequest request) {
+    public CreateSpaceResponse createSpace(String dbName, CreateSpaceRequest request) {
         try {
             Response<ResponseWrapper<CreateSpaceResponse>> response = vearchApi.createSpace(dbName, request).execute();
 
