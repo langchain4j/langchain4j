@@ -7,6 +7,8 @@ import java.util.List;
 
 public interface VearchApi {
 
+    int OK = 200;
+
     /* Database Operation */
 
     @GET("/list/db")
@@ -16,7 +18,7 @@ public interface VearchApi {
     Call<ResponseWrapper<CreateDatabaseResponse>> createDatabase(@Body CreateDatabaseRequest request);
 
     @GET("/list/space")
-    Call<ResponseWrapper<List<ListSpaceResponse>>> viewSpaceOfDatabase(@Query("db_name") String dbName);
+    Call<ResponseWrapper<List<ListSpaceResponse>>> listSpaceOfDatabase(@Query("db_name") String dbName);
 
     /* Space (like a table in relational database) Operation */
 
@@ -27,8 +29,8 @@ public interface VearchApi {
     /* Document Operation */
 
     @POST("/document/upsert")
-    Call<ResponseWrapper<InsertionResponse>> batchInsertion(InsertionRequest request);
+    Call<InsertionResponse> batchInsert(InsertionRequest request);
 
     @POST("/document/search")
-    Call<ResponseWrapper<SearchResponse>> search(@Body SearchRequest request);
+    Call<SearchResponse> search(@Body SearchRequest request);
 }

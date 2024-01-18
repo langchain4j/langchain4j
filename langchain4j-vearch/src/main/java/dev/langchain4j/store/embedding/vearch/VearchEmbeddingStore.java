@@ -19,6 +19,8 @@ import static java.util.stream.Collectors.toList;
  */
 public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
+    private VearchClient vearchClient;
+
     public VearchEmbeddingStore(String baseUrl,
                                 Duration timeout,
                                 String databaseName,
