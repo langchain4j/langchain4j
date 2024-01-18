@@ -5,8 +5,6 @@ import dev.ai4j.openai4j.moderation.ModerationRequest;
 import dev.ai4j.openai4j.moderation.ModerationResponse;
 import dev.ai4j.openai4j.moderation.ModerationResult;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.output.Response;
@@ -93,27 +91,13 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Response<Moderation> moderate(Prompt prompt) {
-        return moderate(prompt.text());
-    }
-
-    @Override
-    public Response<Moderation> moderate(ChatMessage message) {
-        return moderate(message.text());
-    }
-
-    @Override
+    @SuppressWarnings("deprecation")
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
                 .map(ChatMessage::text)
                 .collect(toList());
 
         return moderateInternal(inputs);
-    }
-
-    @Override
-    public Response<Moderation> moderate(TextSegment textSegment) {
-        return moderate(textSegment.text());
     }
 
     public static OpenAiModerationModel withApiKey(String apiKey) {
