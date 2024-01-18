@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.vearch.api;
 
+import okhttp3.RequestBody;
 import retrofit2.Call;
 import retrofit2.http.*;
 
@@ -14,23 +15,27 @@ public interface VearchApi {
     @GET("/list/db")
     Call<ResponseWrapper<List<ListDatabaseResponse>>> listDatabase();
 
-    @PUT("_create")
+    @PUT("/db/_create")
     Call<ResponseWrapper<CreateDatabaseResponse>> createDatabase(@Body CreateDatabaseRequest request);
 
     @GET("/list/space")
-    Call<ResponseWrapper<List<ListSpaceResponse>>> listSpaceOfDatabase(@Query("db_name") String dbName);
+    Call<ResponseWrapper<List<ListSpaceResponse>>> listSpaceOfDatabase(@Query("db") String dbName);
 
     /* Space (like a table in relational database) Operation */
 
-    @POST("/space/{db_name}/_create")
-    Call<ResponseWrapper<CreateSpaceResponse>> createSpace(@Path("db_name") String dbName,
+    @PUT("/space/{db}/_create")
+    Call<ResponseWrapper<CreateSpaceResponse>> createSpace(@Path("db") String dbName,
                                                            @Body CreateSpaceRequest request);
 
     /* Document Operation */
 
-    @POST("/document/upsert")
-    Call<InsertionResponse> batchInsert(InsertionRequest request);
+    @POST("/{db}/{space}/_bulk")
+    Call<List<BulkResponse>> bulk(@Path("db") String db,
+                                  @Path("space") String space,
+                                  @Body RequestBody requestBody);
 
-    @POST("/document/search")
-    Call<SearchResponse> search(@Body SearchRequest request);
+    @POST("/{db}/{space}/_search")
+    Call<SearchResponse> search(@Path("db") String db,
+                                @Path("space") String space,
+                                @Body SearchRequest request);
 }

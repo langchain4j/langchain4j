@@ -4,14 +4,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Map;
 
 @Getter
 @Setter
 @Builder
-public class InsertionRequest {
+public class BulkRequest {
 
-    private String dbName;
-    private String spaceName;
-    private Map<String, Object> documents;
+    private List<Map<String, Object>> documents;
 }

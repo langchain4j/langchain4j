@@ -3,14 +3,18 @@ package dev.langchain4j.store.embedding.vearch;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.store.embedding.vearch.api.*;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.store.embedding.vearch.api.VearchApi.OK;
@@ -136,16 +140,33 @@ public class VearchClient {
         }
     }
 
-    public InsertionResponse batchInsert(InsertionRequest request) {
+    public void bulk(String dbName, String spaceName, BulkRequest request) {
         try {
-            Response<InsertionResponse> response = vearchApi.batchInsert(request).execute();
+            StringBuilder bodyString = new StringBuilder();
+            for (Map<String, Object> document : request.getDocuments()) {
+                Map<String, Object> fieldsExceptId = new HashMap<>();
+                for (Map.Entry<String, Object> entry : document.entrySet()) {
+                    String fieldName = entry.getKey();
+                    Object value = entry.getValue();
+
+                    if ("_id".equals(fieldName)) {
+                        bodyString.append("{\"index\": {\"_id\": \"").append(value).append("\"}}\n");
+                    } else {
+                        fieldsExceptId.put(fieldName, value);
+                    }
+                }
+                bodyString.append(GSON.toJson(fieldsExceptId)).append("\n");
+            }
+            RequestBody body = RequestBody.create(bodyString.toString(), MediaType.parse("application/json; charset=utf-8"));
+            Response<List<BulkResponse>> response = vearchApi.bulk(dbName, spaceName, body).execute();
 
             if (response.isSuccessful() && response.body() != null) {
-                InsertionResponse insertionResponse = response.body();
-                if (insertionResponse.getCode() != OK) {
-                    throw toException(insertionResponse.getCode(), insertionResponse.getMsg());
-                }
-                return insertionResponse;
+                List<BulkResponse> bulkResponses = response.body();
+                bulkResponses.forEach(bulkResponse -> {
+                    if (bulkResponse.getStatus() != OK) {
+                        throw toException(bulkResponse.getStatus(), bulkResponse.getError());
+                    }
+                });
             } else {
                 throw toException(response);
             }
@@ -154,14 +175,14 @@ public class VearchClient {
         }
     }
 
-    public SearchResponse search(SearchRequest request) {
+    public SearchResponse search(String dbName, String spaceName, SearchRequest request) {
         try {
-            Response<SearchResponse> response = vearchApi.search(request).execute();
+            Response<SearchResponse> response = vearchApi.search(dbName, spaceName, request).execute();
 
             if (response.isSuccessful() && response.body() != null) {
                 SearchResponse searchResponse = response.body();
-                if (searchResponse.getCode() != OK) {
-                    throw toException(searchResponse.getCode(), searchResponse.getMsg());
+                if (Boolean.TRUE.equals(searchResponse.getTimeout())) {
+                    throw new RuntimeException("Search Timeout");
                 }
                 return searchResponse;
             } else {

@@ -9,6 +9,7 @@ import lombok.Setter;
 @Builder
 public class SpaceEngine {
 
+    private String name;
     private Long indexSize;
     private RetrievalType retrievalType;
     private RetrievalParam retrievalParam;

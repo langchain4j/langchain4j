@@ -1,17 +1,14 @@
 package dev.langchain4j.store.embedding.vearch.api.space;
 
+import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 public enum SpaceStoreType {
 
-    MEMORY_ONLY("MemoryOnly"),
-    M_MAP("Mmap"),
-    ROCKS_DB("RocksDB");
-
-    @Getter
-    private final String name;
-
-    SpaceStoreType(String name) {
-        this.name = name;
-    }
+    @SerializedName("MemoryOnly")
+    MEMORY_ONLY,
+    @SerializedName("Mmap")
+    M_MAP,
+    @SerializedName("RocksDB")
+    ROCKS_DB
 }

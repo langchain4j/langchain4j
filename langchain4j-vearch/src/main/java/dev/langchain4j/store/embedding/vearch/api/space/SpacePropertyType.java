@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.vearch.api.space;
 
+import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 public enum SpacePropertyType {
@@ -7,18 +8,19 @@ public enum SpacePropertyType {
     /**
      * keyword is equivalent to string
      */
-    KEYWORD("keyword", SpacePropertyParam.KeywordParam.class),
-    INTEGER("integer", SpacePropertyParam.IntegerParam.class),
-    FLOAT("float", SpacePropertyParam.FloatParam.class),
-    VECTOR("vector", SpacePropertyParam.VectorParam.class);
+    @SerializedName("string")
+    STRING(SpacePropertyParam.StringParam.class),
+    @SerializedName("integer")
+    INTEGER(SpacePropertyParam.IntegerParam.class),
+    @SerializedName("float")
+    FLOAT(SpacePropertyParam.FloatParam.class),
+    @SerializedName("vector")
+    VECTOR(SpacePropertyParam.VectorParam.class);
 
-    @Getter
-    private final String name;
     @Getter
     private final Class<? extends SpacePropertyParam> paramClass;
 
-    SpacePropertyType(String name, Class<? extends SpacePropertyParam> paramClass) {
-        this.name = name;
+    SpacePropertyType(Class<? extends SpacePropertyParam> paramClass) {
         this.paramClass = paramClass;
     }
 }

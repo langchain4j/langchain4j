@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.Gson;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -9,14 +10,10 @@ import dev.langchain4j.store.embedding.vearch.api.*;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static dev.langchain4j.store.embedding.vearch.api.VearchApi.OK;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -41,13 +38,13 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .build();
 
         // Step 1: check whether db exist, if not, create it
-        if (!isDatabaseExist(vearchConfig.getDatabaseName())) {
-            createDatabase(vearchConfig.getDatabaseName());
+        if (!isDatabaseExist(this.vearchConfig.getDatabaseName())) {
+            createDatabase(this.vearchConfig.getDatabaseName());
         }
 
         // Step 2: check whether space exist, if not, create it
-        if (!isSpaceExist(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName())) {
-            createSpace(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName());
+        if (!isSpaceExist(this.vearchConfig.getDatabaseName(), this.vearchConfig.getSpaceName())) {
+            createSpace(this.vearchConfig.getDatabaseName(), this.vearchConfig.getSpaceName());
         }
     }
 
@@ -90,23 +87,22 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+        List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
+        fields.addAll(vearchConfig.getMetadataFieldNames());
         SearchRequest request = SearchRequest.builder()
                 .query(SearchRequest.QueryParam.builder()
-                        .vector(singletonList(SearchRequest.VectorParam.builder()
+                        .sum(singletonList(SearchRequest.VectorParam.builder()
                                 .field(vearchConfig.getEmbeddingFieldName())
                                 .feature(referenceEmbedding.vectorAsList())
+                                .minScore(minScore)
                                 .build()))
                         .build())
-                .dbName(vearchConfig.getDatabaseName())
-                .spaceName(vearchConfig.getSpaceName())
                 .size(maxResults)
-                .retrievalParam(SearchRequest.RetrievalParam.builder()
-                        .metricType(vearchConfig.getMetricType())
-                        .build())
+                .fields(fields)
                 .build();
 
-        SearchResponse response = vearchClient.search(request);
-        return toEmbeddingMatch(response.getDocuments());
+        SearchResponse response = vearchClient.search(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName(), request);
+        return toEmbeddingMatch(response.getHits());
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -119,27 +115,31 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
-        Map<String, Object> documents = new HashMap<>(ids.size());
+        List<Map<String, Object>> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            documents.put("_id", ids.get(i));
-            documents.put(vearchConfig.getEmbeddingFieldName(), embeddings.get(i));
+            Map<String, Object> document = new HashMap<>(4);
+            document.put("_id", ids.get(i));
+            Map<String, List<Float>> embeddingValue = new HashMap<>(1);
+            embeddingValue.put("feature", embeddings.get(i).vectorAsList());
+            document.put(vearchConfig.getEmbeddingFieldName(), embeddingValue);
             if (embedded != null) {
-                documents.put(vearchConfig.getTextFieldName(), embedded.get(i).text());
-                documents.putAll(embedded.get(i).metadata().asMap());
+                document.put(vearchConfig.getTextFieldName(), embedded.get(i).text());
+                document.putAll(embedded.get(i).metadata().asMap());
+            } else {
+                // vearch do not allow nullable value
+                document.put(vearchConfig.getTextFieldName(), "");
+                if (!isNullOrEmpty(vearchConfig.getMetadataFieldNames())) {
+                    for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
+                        document.put(metadataFieldName, "");
+                    }
+                }
             }
+            documents.add(document);
         }
-        InsertionRequest request = InsertionRequest.builder()
-                .dbName(vearchConfig.getDatabaseName())
-                .spaceName(vearchConfig.getSpaceName())
+        BulkRequest request = BulkRequest.builder()
                 .documents(documents)
                 .build();
-        InsertionResponse response = vearchClient.batchInsert(request);
-        response.getDocumentIds().forEach(documentId -> {
-            if (documentId.getStatus() != OK) {
-                String errMsg = String.format("encounter exception during insert to vearch, code: %s; msg: %s", documentId.getStatus(), documentId.getError());
-                throw new RuntimeException(errMsg);
-            }
-        });
+        vearchClient.bulk(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName(), request);
     }
 
     private boolean isDatabaseExist(String databaseName) {
@@ -165,18 +165,47 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .replicaNum(1)
                 .partitionNum(1)
                 .properties(vearchConfig.getProperties())
+                .models(vearchConfig.getModelParams())
                 .build());
     }
 
-    private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(List<SearchResponse.SearchedDocument> searchedDocuments) {
-        return searchedDocuments.stream().map(searchedDocument -> {
-            Map<String, Object> source = searchedDocument.get_source();
-            String id = String.valueOf(source.get("_id"));
-            Embedding embedding = new Embedding(GSON.fromJson(String.valueOf(source.get(vearchConfig.getEmbeddingFieldName())), float[].class));
-            // TODO: deserialize textSegment
-            TextSegment textSegment = null;
+    @SuppressWarnings("unchecked")
+    private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse.Hit hit) {
+        List<SearchResponse.SearchedDocument> searchedDocuments = hit.getHits();
+        if (isNullOrEmpty(searchedDocuments)) {
+            return new ArrayList<>();
+        }
 
-            return new EmbeddingMatch<>(searchedDocument.get_score(), id, embedding, textSegment);
+        return searchedDocuments.stream().map(searchedDocument -> {
+            Map<String, Object> source = searchedDocument.getSource();
+            String id = searchedDocument.getId();
+            List<Double> vector = (List<Double>) ((Map<String, Object>) source.get(vearchConfig.getEmbeddingFieldName())).get("feature");
+            Embedding embedding = Embedding.from(vector.stream().map(Double::floatValue).collect(toList()));
+
+            TextSegment textSegment = null;
+            String text = source.get(vearchConfig.getTextFieldName()) == null ? null : String.valueOf(source.get(vearchConfig.getTextFieldName()));
+            if (!isNullOrBlank(text)) {
+                Map<String, String> metadataMap = convertMetadataMap(source);
+                textSegment = TextSegment.from(text, Metadata.from(metadataMap));
+            }
+
+            return new EmbeddingMatch<>(searchedDocument.getScore(), id, embedding, textSegment);
         }).collect(toList());
+    }
+
+    private Map<String, String> convertMetadataMap(Map<String, Object> source) {
+        // Whether there are potential risk in removing fields directly
+        source.remove(vearchConfig.getTextFieldName());
+        if (source.isEmpty()) {
+            return new HashMap<>();
+        }
+        Map<String, String> metadataMap = new HashMap<>(source.size());
+        source.forEach((key, value) -> {
+            if (!isNullOrBlank(String.valueOf(value))) {
+                metadataMap.put(key, String.valueOf(value));
+            }
+        });
+
+        return metadataMap;
     }
 }

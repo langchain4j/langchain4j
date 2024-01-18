@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.vearch.api.space;
 
+import com.google.gson.annotations.SerializedName;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -49,6 +50,7 @@ public abstract class RetrievalParam {
          * <p>default 40</p>
          * <p>The higher the value, the better the construction effect, and the longer it takes</p>
          */
+        @SerializedName("efConstruction")
         private Integer efConstruction;
     }
 
