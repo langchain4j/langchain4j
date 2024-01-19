@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.vearch;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.store.embedding.vearch.api.*;
+import lombok.Builder;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
@@ -27,6 +28,7 @@ public class VearchClient {
 
     private final VearchApi vearchApi;
 
+    @Builder
     public VearchClient(String baseUrl, Duration timeout) {
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -42,30 +44,6 @@ public class VearchClient {
                 .build();
 
         vearchApi = retrofit.create(VearchApi.class);
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static class Builder {
-
-        private String baseUrl;
-        private Duration timeout;
-
-        public Builder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public Builder timeout(Duration timeout) {
-            this.timeout = timeout;
-            return this;
-        }
-
-        public VearchClient build() {
-            return new VearchClient(baseUrl, timeout);
-        }
     }
 
     public List<ListDatabaseResponse> listDatabase() {

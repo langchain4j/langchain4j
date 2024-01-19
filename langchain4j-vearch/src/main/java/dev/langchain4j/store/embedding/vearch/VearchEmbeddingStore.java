@@ -1,11 +1,11 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import com.google.gson.Gson;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.vearch.api.*;
 import lombok.Builder;
 
@@ -20,7 +20,6 @@ import static java.util.stream.Collectors.toList;
 
 public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Gson GSON = new Gson();
     private final VearchConfig vearchConfig;
     private final VearchClient vearchClient;
 
@@ -87,6 +86,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+        double minSimilarity = RelevanceScore.fromRelevanceScore(minScore);
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
         fields.addAll(vearchConfig.getMetadataFieldNames());
         SearchRequest request = SearchRequest.builder()
@@ -94,7 +94,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                         .sum(singletonList(SearchRequest.VectorParam.builder()
                                 .field(vearchConfig.getEmbeddingFieldName())
                                 .feature(referenceEmbedding.vectorAsList())
-                                .minScore(minScore)
+                                .minScore(minSimilarity)
                                 .build()))
                         .build())
                 .size(maxResults)
@@ -124,7 +124,11 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             document.put(vearchConfig.getEmbeddingFieldName(), embeddingValue);
             if (embedded != null) {
                 document.put(vearchConfig.getTextFieldName(), embedded.get(i).text());
-                document.putAll(embedded.get(i).metadata().asMap());
+                Map<String, String> metadata = embedded.get(i).metadata().asMap();
+                for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
+                    metadata.putIfAbsent(metadataFieldName, "");
+                }
+                document.putAll(metadata);
             } else {
                 // vearch do not allow nullable value
                 document.put(vearchConfig.getTextFieldName(), "");
@@ -189,13 +193,14 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                 textSegment = TextSegment.from(text, Metadata.from(metadataMap));
             }
 
-            return new EmbeddingMatch<>(searchedDocument.getScore(), id, embedding, textSegment);
+            return new EmbeddingMatch<>(RelevanceScore.fromCosineSimilarity(searchedDocument.getScore()), id, embedding, textSegment);
         }).collect(toList());
     }
 
     private Map<String, String> convertMetadataMap(Map<String, Object> source) {
         // Whether there are potential risk in removing fields directly
         source.remove(vearchConfig.getTextFieldName());
+        source.remove(vearchConfig.getEmbeddingFieldName());
         if (source.isEmpty()) {
             return new HashMap<>();
         }
