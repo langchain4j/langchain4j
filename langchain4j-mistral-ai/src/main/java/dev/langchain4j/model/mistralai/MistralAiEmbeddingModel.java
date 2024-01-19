@@ -31,6 +31,10 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
      * @param apiKey     the API key for authentication
      * @param modelName  the name of the embedding model. It uses a default value if not specified
      * @param timeout    the timeout duration for API requests. It uses a default value of 60 seconds if not specified
+     *                   <p>
+     *                   The default value is 60 seconds
+     * @param logRequests  a flag indicating whether to log API requests
+     * @param logResponses a flag indicating whether to log API responses
      * @param maxRetries the maximum number of retries for API requests. It uses a default value of 3 if not specified
      */
     @Builder
@@ -38,13 +42,17 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
                                    String apiKey,
                                    String modelName,
                                    Duration timeout,
+                                   Boolean logRequests,
+                                   Boolean logResponses,
                                    Integer maxRetries) {
         this.client = MistralAiClient.builder()
                 .baseUrl(formattedURLForRetrofit(getOrDefault(baseUrl, MISTRALAI_API_URL)))
                 .apiKey(ensureNotBlankApiKey(apiKey))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses,false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralEmbeddingModelType.MISTRAL_EMBED.toString());
+        this.modelName = getOrDefault(modelName, MistralEmbeddingModelName.MISTRAL_EMBED.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 

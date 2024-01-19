@@ -43,6 +43,9 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
      * @param maxNewTokens   the maximum number of new tokens to generate in a chat response
      * @param safePrompt     a flag indicating whether to use a safe prompt for generating chat responses
      * @param randomSeed     the random seed for generating chat responses
+     *                       (if not specified, a random number is used)
+     * @param logRequests    a flag indicating whether to log raw HTTP requests
+     * @param logResponses   a flag indicating whether to log raw HTTP responses
      * @param timeout        the timeout duration for API requests
      */
     @Builder
@@ -54,14 +57,18 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                                        Integer maxNewTokens,
                                        Boolean safePrompt,
                                        Integer randomSeed,
+                                       Boolean logRequests,
+                                       Boolean logResponses,
                                        Duration timeout) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(formattedURLForRetrofit(getOrDefault(baseUrl, MISTRALAI_API_URL)))
                 .apiKey(ensureNotBlankApiKey(apiKey))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralChatCompletionModel.MISTRAL_TINY.toString());
+        this.modelName = getOrDefault(modelName, MistralChatCompletionModelName.MISTRAL_TINY.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.maxNewTokens = maxNewTokens;

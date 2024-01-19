@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralModelPermission {
+public class MistralAiModelPermission {
 
     private String id;
     private String object;

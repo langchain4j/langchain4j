@@ -16,6 +16,8 @@ class MistralAiEmbeddingModelIT {
 
     EmbeddingModel model = MistralAiEmbeddingModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     @Test

@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MistralModelCard {
+public class MistralAiModelCard {
 
     private String id;
     private String object;
@@ -19,6 +19,6 @@ public class MistralModelCard {
     private String ownerBy;
     private String root;
     private String parent;
-    private List<MistralModelPermission> permission;
+    private List<MistralAiModelPermission> permission;
 
 }

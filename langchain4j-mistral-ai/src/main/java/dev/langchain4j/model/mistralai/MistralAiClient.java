@@ -7,6 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
@@ -21,8 +22,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.IOException;
 import java.time.Duration;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
-import static dev.langchain4j.model.output.FinishReason.*;
 
 class MistralAiClient {
 
@@ -35,14 +36,32 @@ class MistralAiClient {
     private final OkHttpClient okHttpClient;
 
     @Builder
-    public MistralAiClient(String baseUrl, String apiKey, Duration timeout) {
-        okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(new MistralAiApiKeyInterceptor(apiKey))
+    public MistralAiClient(String baseUrl,
+                           String apiKey,
+                           Duration timeout,
+                           Boolean logRequests,
+                           Boolean logResponses) {
+        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .build();
+                .writeTimeout(timeout);
+        if (isNullOrBlank(apiKey)) {
+            throw new IllegalArgumentException("MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys/");
+        }else {
+            okHttpClientBuilder.addInterceptor(new MistralAiApiKeyInterceptor(apiKey));
+            // Log raw HTTP requests
+            if (logRequests) {
+                okHttpClientBuilder.addInterceptor(new MistralAiRequestLoggingInterceptor());
+            }
+
+            // Log raw HTTP responses
+            if (logResponses) {
+                okHttpClientBuilder.addInterceptor(new MistralAiResponseLoggingInterceptor());
+            }
+        }
+
+        this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
@@ -57,7 +76,6 @@ class MistralAiClient {
         try {
             retrofit2.Response<MistralChatCompletionResponse> retrofitResponse
                     = mistralAiApi.chatCompletion(request).execute();
-            LOGGER.debug("MistralChatCompletionResponse: {}", retrofitResponse);
             if (retrofitResponse.isSuccessful()) {
                 LOGGER.debug("ChatCompletionResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
@@ -71,14 +89,13 @@ class MistralAiClient {
 
     public void streamingChatCompletion(MistralChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
-            StringBuilder contentBuilder = new StringBuilder();
-            MistralUsageInfo tokenUsage = new MistralUsageInfo();
-            FinishReason lastFinishReason = null;
+            final StringBuffer contentBuilder = new StringBuffer();
+            TokenUsage tokenUsage;
+            FinishReason finishReason;
 
             @Override
             public void onOpen(EventSource eventSource, okhttp3.Response response) {
                 LOGGER.debug("onOpen()");
-                logResponse(response);
             }
 
             @Override
@@ -88,8 +105,8 @@ class MistralAiClient {
                 if ("[DONE]".equals(data)) {
                     Response<AiMessage> response = Response.from(
                             AiMessage.from(contentBuilder.toString()),
-                            tokenUsageFrom(tokenUsage),
-                            lastFinishReason
+                            tokenUsage,
+                            finishReason
                     );
                     handler.onComplete(response);
                 } else {
@@ -100,21 +117,14 @@ class MistralAiClient {
                         contentBuilder.append(chunk);
                         handler.onNext(chunk);
 
-                        //Retrieving token usage of the last choice
-                        if(choice.getFinishReason() != null){
-                            FinishReason finishReason = finishReasonFrom(choice.getFinishReason());
-                            switch (finishReason){
-                                case STOP:
-                                    lastFinishReason = STOP;
-                                    tokenUsage = choice.getUsage();
-                                    break;
-                                case LENGTH:
-                                    lastFinishReason = LENGTH;
-                                    tokenUsage = choice.getUsage();
-                                    break;
-                                default:
-                                     break;
-                            }
+                        MistralUsageInfo usageInfo = choice.getUsage();
+                        if(usageInfo != null){
+                            this.tokenUsage = tokenUsageFrom(usageInfo);
+                        }
+
+                        String finishReasonString = choice.getFinishReason();
+                        if(finishReasonString != null){
+                            this.finishReason = finishReasonFrom(finishReasonString);
                         }
                     } catch (Exception e) {
                         handler.onError(e);
@@ -127,7 +137,6 @@ class MistralAiClient {
             @Override
             public void onFailure(EventSource eventSource, Throwable t, okhttp3.Response response) {
                 LOGGER.debug("onFailure()", t);
-                logResponse(response);
 
                 if (t != null){
                     handler.onError(t);
@@ -153,7 +162,6 @@ class MistralAiClient {
         try {
             retrofit2.Response<MistralEmbeddingResponse> retrofitResponse
                     = mistralAiApi.embedding(request).execute();
-            LOGGER.debug("MistralEmbeddingResponse: {}", retrofitResponse);
             if (retrofitResponse.isSuccessful()) {
                 LOGGER.debug("EmbeddingResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
@@ -169,7 +177,6 @@ class MistralAiClient {
         try {
             retrofit2.Response<MistralModelResponse> retrofitResponse
                     = mistralAiApi.models().execute();
-            LOGGER.debug("MistralModelResponse: {}", retrofitResponse);
             if (retrofitResponse.isSuccessful()) {
                 LOGGER.debug("ModelResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();

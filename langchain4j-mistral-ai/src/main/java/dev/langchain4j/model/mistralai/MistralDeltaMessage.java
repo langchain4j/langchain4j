@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 class MistralDeltaMessage {
 
-    private MistralRoleType role;
+    private MistralRoleName role;
     private String content;
 
 }

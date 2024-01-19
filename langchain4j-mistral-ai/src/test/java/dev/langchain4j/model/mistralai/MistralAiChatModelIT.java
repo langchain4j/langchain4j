@@ -16,6 +16,8 @@ class MistralAiChatModelIT {
     ChatLanguageModel model = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .temperature(0.1)
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     @Test
@@ -127,7 +129,7 @@ class MistralAiChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralChatCompletionModel.MISTRAL_SMALL.toString())
+                .modelName(MistralChatCompletionModelName.MISTRAL_SMALL.toString())
                 .temperature(0.1)
                 .build();
 
@@ -154,7 +156,7 @@ class MistralAiChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralChatCompletionModel.MISTRAL_SMALL.toString())
+                .modelName(MistralChatCompletionModelName.MISTRAL_SMALL.toString())
                 .temperature(0.1)
                 .build();
 
@@ -181,7 +183,7 @@ class MistralAiChatModelIT {
         // given - Mistral Medium = currently relies on an internal prototype model.
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralChatCompletionModel.MISTRAL_MEDIUM.toString())
+                .modelName(MistralChatCompletionModelName.MISTRAL_MEDIUM.toString())
                 .maxNewTokens(10)
                 .build();
 

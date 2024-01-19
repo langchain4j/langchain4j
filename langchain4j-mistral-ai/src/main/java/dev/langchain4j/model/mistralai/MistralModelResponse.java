@@ -14,6 +14,6 @@ import java.util.List;
 class MistralModelResponse {
 
     private String object;
-    private List<MistralModelCard> data;
+    private List<MistralAiModelCard> data;
 
 }

@@ -4,12 +4,13 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import okhttp3.Response;
+import okhttp3.Headers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -17,11 +18,12 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
-public class DefaultMistralAiHelper{
+class DefaultMistralAiHelper{
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMistralAiHelper.class);
     static final String MISTRALAI_API_URL = "https://api.mistral.ai/v1";
     static final String MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT = "float";
+    private static final Pattern MISTRAI_API_KEY_BEARER_PATTERN = Pattern.compile("^(Bearer\\s*) ([A-Za-z0-9]{1,32})$");
 
     public static String ensureNotBlankApiKey(String value) {
         if (isNullOrBlank(value)) {
@@ -47,21 +49,21 @@ public class DefaultMistralAiHelper{
                 .build();
     }
 
-    private static MistralRoleType toMistralAiRole(ChatMessageType chatMessageType) {
+    private static MistralRoleName toMistralAiRole(ChatMessageType chatMessageType) {
         switch (chatMessageType) {
             case SYSTEM:
-                return MistralRoleType.SYSTEM;
+                return MistralRoleName.SYSTEM;
             case  AI:
-                return MistralRoleType.ASSISTANT;
+                return MistralRoleName.ASSISTANT;
             case USER:
-                return MistralRoleType.USER;
+                return MistralRoleName.USER;
             default:
                 throw new IllegalArgumentException("Unknown chat message type: " + chatMessageType);
         }
 
     }
 
-    public static TokenUsage tokenUsageFrom(MistralUsageInfo mistralAiUsage) {
+    static TokenUsage tokenUsageFrom(MistralUsageInfo mistralAiUsage) {
         if (mistralAiUsage == null) {
             return null;
         }
@@ -72,7 +74,7 @@ public class DefaultMistralAiHelper{
         );
     }
 
-    public static FinishReason finishReasonFrom(String mistralAiFinishReason) {
+    static FinishReason finishReasonFrom(String mistralAiFinishReason) {
         if (mistralAiFinishReason == null) {
             return null;
         }
@@ -87,35 +89,32 @@ public class DefaultMistralAiHelper{
         }
     }
 
-    public static void logResponse(Response response){
-        try {
-            LOGGER.debug("Response code: {}", response.code());
-            LOGGER.debug("Response body: {}", getResponseBody(response));
-            LOGGER.debug("Response headers: {}", getResponseHeaders(response));
-        } catch (IOException e) {
-            LOGGER.warn("Error while logging response", e);
-        }
-    }
-
-    private static String getResponseBody(Response response) throws IOException {
-       return isEventStream(response) ? "" : response.peekBody(Long.MAX_VALUE).string();
-    }
-
-    private static String getResponseHeaders(Response response){
-       return (String) StreamSupport.stream(response.headers().spliterator(),false).map(header -> {
+    static String getHeaders(Headers headers){
+       return StreamSupport.stream(headers.spliterator(),false).map(header -> {
            String headerKey = header.component1();
            String headerValue = header.component2();
            if (headerKey.equals("Authorization")) {
-               headerValue = "Bearer " + headerValue.substring(0, 5) + "..." + headerValue.substring(headerValue.length() - 5);
-           } else if (headerKey.equals("api-key")) {
-               headerValue = headerValue.substring(0, 2) + "..." + headerValue.substring(headerValue.length() - 2);
+               headerValue = maskAuthorizationHeaderValue(headerValue);
            }
            return  String.format("[%s: %s]", headerKey, headerValue);
        }).collect(Collectors.joining(", "));
     }
-    private static boolean isEventStream(Response response){
-        String contentType = response.header("Content-Type");
-        return contentType != null && contentType.contains("event-stream");
+
+    private static String maskAuthorizationHeaderValue(String authorizationHeaderValue) {
+        try {
+            Matcher matcher = MISTRAI_API_KEY_BEARER_PATTERN.matcher(authorizationHeaderValue);
+            StringBuffer sb = new StringBuffer();
+
+            while (matcher.find()) {
+                String bearer = matcher.group(1);
+                String token = matcher.group(2);
+                matcher.appendReplacement(sb, bearer + " " + token.substring(0, 7) + "..." + token.substring(token.length() - 7));
+            }
+            matcher.appendTail(sb);
+            return sb.toString();
+        } catch (Exception e) {
+            return "Error while masking Authorization header value";
+        }
     }
 
 }

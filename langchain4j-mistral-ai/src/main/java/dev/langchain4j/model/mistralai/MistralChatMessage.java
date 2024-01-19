@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 @Builder
 class MistralChatMessage {
 
-    private MistralRoleType role;
+    private MistralRoleName role;
     private String content;
 }

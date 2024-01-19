@@ -44,7 +44,11 @@ public class MistralAiChatModel implements ChatLanguageModel {
      * @param safePrompt     a flag indicating whether to use a safe prompt for generating chat responses
      * @param randomSeed     the random seed for generating chat responses
      * @param timeout        the timeout duration for API requests
-     * @param maxRetries     the maximum number of retries for API requests
+     *                       <p>
+     *                       The default value is 60 seconds
+     * @param logRequests    a flag indicating whether to log API requests
+     * @param logResponses   a flag indicating whether to log API responses
+     * @param maxRetries     the maximum number of retries for API requests. It uses the default value 3 if not specified
      */
     @Builder
     public MistralAiChatModel(String baseUrl,
@@ -56,14 +60,18 @@ public class MistralAiChatModel implements ChatLanguageModel {
                               Boolean safePrompt,
                               Integer randomSeed,
                               Duration timeout,
+                              Boolean logRequests,
+                              Boolean logResponses,
                               Integer maxRetries) {
 
         this.client = MistralAiClient.builder()
                 .baseUrl(formattedURLForRetrofit(getOrDefault(baseUrl, MISTRALAI_API_URL)))
                 .apiKey(ensureNotBlankApiKey(apiKey))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralChatCompletionModel.MISTRAL_TINY.toString());
+        this.modelName = getOrDefault(modelName, MistralChatCompletionModelName.MISTRAL_TINY.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.maxNewTokens = maxNewTokens;

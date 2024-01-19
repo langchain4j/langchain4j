@@ -19,7 +19,7 @@ package dev.langchain4j.model.mistralai;
  * 
  * @see <a href="https://docs.mistral.ai/platform/endpoints/">Mistral AI Endpoints</a>
  */
-enum MistralChatCompletionModel {
+public enum MistralChatCompletionModelName {
 
     // powered by Mistral-7B-v0.2
     MISTRAL_TINY("mistral-tiny"),
@@ -30,7 +30,7 @@ enum MistralChatCompletionModel {
 
     private final String value;
 
-    private MistralChatCompletionModel(String value) {
+    private MistralChatCompletionModelName(String value) {
         this.value = value;
     }
 
