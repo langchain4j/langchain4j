@@ -51,7 +51,7 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void toFunctionsShouldReturnCorrectFunctions() {
+    void toToolDefinitionsShouldReturnCorrectToolDefinition() {
         Collection<ToolSpecification> toolSpecifications = new ArrayList<>();
         toolSpecifications.add(ToolSpecification.builder()
                 .name("test-tool")
@@ -59,10 +59,11 @@ class InternalAzureOpenAiHelperTest {
                 .parameters(ToolParameters.builder().build())
                 .build());
 
-        List<FunctionDefinition> functions = InternalAzureOpenAiHelper.toFunctions(toolSpecifications);
+        List<ChatCompletionsToolDefinition> tools = InternalAzureOpenAiHelper.toToolDefinitions(toolSpecifications);
 
-        assertEquals(toolSpecifications.size(), functions.size());
-        assertEquals(toolSpecifications.iterator().next().name(), functions.get(0).getName());
+        assertEquals(toolSpecifications.size(), tools.size());
+        assertInstanceOf(ChatCompletionsFunctionToolDefinition.class, tools.get(0));
+        assertEquals(toolSpecifications.iterator().next().name(), ((ChatCompletionsFunctionToolDefinition) tools.get(0)).getFunction().getName());
     }
 
     @Test

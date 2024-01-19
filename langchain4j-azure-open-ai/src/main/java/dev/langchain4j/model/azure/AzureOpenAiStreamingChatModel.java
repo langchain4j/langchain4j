@@ -25,7 +25,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static java.util.Collections.singletonList;
 
 /**
@@ -191,13 +191,13 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
-            options.setFunctions(toFunctions(singletonList(toolThatMustBeExecuted)));
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
             options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
             if (tokenizer != null) {
                 inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
             }
         } else if (!isNullOrEmpty(toolSpecifications)) {
-            options.setFunctions(toFunctions(toolSpecifications));
+            options.setTools(toToolDefinitions(toolSpecifications));
             if (tokenizer != null) {
                 inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
             }
