@@ -1,12 +1,12 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.ChatCompletions;
-import com.azure.ai.openai.models.ChatCompletionsOptions;
-import com.azure.ai.openai.models.FunctionCallConfig;
+import com.azure.ai.openai.implementation.models.FunctionCallPreset;
+import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
+import com.azure.core.util.BinaryData;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -184,10 +184,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .setFrequencyPenalty(frequencyPenalty);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            options.setFunctions(toFunctions(toolSpecifications));
+            options.setTools(toToolDefinitions(toolSpecifications));
         }
         if (toolThatMustBeExecuted != null) {
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
         }
 
         ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);

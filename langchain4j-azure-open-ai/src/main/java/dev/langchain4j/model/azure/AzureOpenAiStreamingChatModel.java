@@ -26,8 +26,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static java.util.Collections.singletonList;
 
 /**
