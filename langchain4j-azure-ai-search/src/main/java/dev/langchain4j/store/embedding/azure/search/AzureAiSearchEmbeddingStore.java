@@ -1,7 +1,15 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.credential.TokenCredential;
+import com.azure.search.documents.SearchClient;
+import com.azure.search.documents.SearchClientBuilder;
+import com.azure.search.documents.indexes.SearchIndexClient;
+import com.azure.search.documents.indexes.SearchIndexClientBuilder;
+import com.azure.search.documents.indexes.models.*;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.slf4j.Logger;
@@ -21,8 +29,109 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStore.class);
 
-    public AzureAiSearchEmbeddingStore() {
+    private static final String INDEX_NAME = "vectorsearch";
 
+    private static final String DEFAULT_FIELD_ID = "id";
+
+    private static final String DEFAULT_FIELD_CONTENT = "content";
+
+    private static final String DEFAULT_FIELD_CONTENT_VECTOR = "content_vector";
+
+    private static final String DEFAULT_FIELD_METADATA = "metadata";
+
+    private static final String DEFAULT_FIELD_METADATA_SOURCE = "source";
+
+    private static final String DEFAULT_FIELD_METADATA_ATTRS = "attributes";
+
+    private final SearchIndexClient searchIndexClient;
+
+    private final SearchClient searchClient;
+
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential) {
+
+        searchIndexClient = new SearchIndexClientBuilder()
+                .endpoint(endpoint)
+                .credential(keyCredential)
+                .buildClient();
+
+        searchClient = new SearchClientBuilder()
+                .endpoint(endpoint)
+                .credential(keyCredential)
+                .indexName(INDEX_NAME)
+                .buildClient();
+    }
+
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential) {
+
+        searchIndexClient = new SearchIndexClientBuilder()
+                .endpoint(endpoint)
+                .credential(tokenCredential)
+                .buildClient();
+
+        searchClient = new SearchClientBuilder()
+                .endpoint(endpoint)
+                .credential(tokenCredential)
+                .indexName(INDEX_NAME)
+                .buildClient();
+    }
+
+    private void createOrUpdateIndex(EmbeddingModel embeddingModel) {
+
+        // Embed a test query to get the embedding dimensions
+        int embeddingDimensions = embeddingModel.embed("test").content().vector().length;
+
+        List<SearchField> fields = new ArrayList<>();
+        fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
+                .setKey(true)
+                .setFilterable(true));
+        fields.add(new SearchField(DEFAULT_FIELD_CONTENT, SearchFieldDataType.STRING)
+                .setSearchable(true)
+                .setFilterable(true));
+        fields.add(new SearchField(DEFAULT_FIELD_CONTENT_VECTOR, SearchFieldDataType.collection(SearchFieldDataType.SINGLE))
+                .setSearchable(true)
+                .setVectorSearchDimensions(embeddingDimensions)
+                .setVectorSearchProfileName("vector-search-profile"));
+        fields.add((new SearchField(DEFAULT_FIELD_METADATA, SearchFieldDataType.COMPLEX)).setFields(
+                Arrays.asList(
+                        new SearchField(DEFAULT_FIELD_METADATA_SOURCE, SearchFieldDataType.STRING)
+                                .setFilterable(true),
+                        (new SearchField(DEFAULT_FIELD_METADATA_ATTRS, SearchFieldDataType.collection(SearchFieldDataType.COMPLEX))).setFields(
+                                Arrays.asList(
+                                        new SearchField("key", SearchFieldDataType.STRING)
+                                                .setFilterable(true),
+                                        new SearchField("value", SearchFieldDataType.STRING)
+                                                .setFilterable(true)
+                                )
+                        )
+
+                )
+        ));
+
+        VectorSearch vectorSearch = new VectorSearch()
+                .setAlgorithms(Collections.singletonList(
+                        new HnswAlgorithmConfiguration("default")
+                                .setParameters(
+                                        new HnswParameters()
+                                                .setMetric(VectorSearchAlgorithmMetric.COSINE)
+                                                .setM(4)
+                                                .setEfSearch(500)
+                                                .setEfConstruction(400))))
+                .setProfiles(Collections.singletonList(
+                        new VectorSearchProfile("vector-search-profile", "vector-search-algorithm")));
+
+        SemanticSearch semanticSearch = new SemanticSearch().setDefaultConfigurationName("semantic-search-config")
+                .setConfigurations(Arrays.asList(
+                        new SemanticConfiguration("semantic-search-config",
+                                new SemanticPrioritizedFields()
+                                        .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
+                                        .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
+
+        SearchIndex index = new SearchIndex(INDEX_NAME)
+                .setFields(fields)
+                .setVectorSearch(vectorSearch)
+                .setSemanticSearch(semanticSearch);
+
+        searchIndexClient.createOrUpdateIndex(index);
     }
 
     /**
