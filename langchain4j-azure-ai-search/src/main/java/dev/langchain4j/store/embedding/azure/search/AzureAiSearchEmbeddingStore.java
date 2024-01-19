@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.search.documents.SearchClient;
 import com.azure.search.documents.SearchClientBuilder;
@@ -47,7 +48,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private final SearchClient searchClient;
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential) {
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, EmbeddingModel embeddingModel) {
 
         searchIndexClient = new SearchIndexClientBuilder()
                 .endpoint(endpoint)
@@ -59,9 +60,11 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .credential(keyCredential)
                 .indexName(INDEX_NAME)
                 .buildClient();
+
+        createOrUpdateIndex(embeddingModel);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential) {
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, EmbeddingModel embeddingModel) {
 
         searchIndexClient = new SearchIndexClientBuilder()
                 .endpoint(endpoint)
@@ -73,6 +76,8 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .credential(tokenCredential)
                 .indexName(INDEX_NAME)
                 .buildClient();
+
+        createOrUpdateIndex(embeddingModel);
     }
 
     private void createOrUpdateIndex(EmbeddingModel embeddingModel) {
@@ -235,5 +240,74 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 "embeddings size is not equal to embedded size");
 
 
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private String endpoint;
+
+        private AzureKeyCredential keyCredential;
+
+        private TokenCredential tokenCredential;
+
+        private EmbeddingModel embeddingModel;
+
+        /**
+         * Sets the Azure AI Search endpoint. This is a mandatory parameter.
+         *
+         * @param endpoint The Azure AI Search endpoint in the format: https://{resource}.search.windows.net
+         * @return builder
+         */
+        public Builder endpoint(String endpoint) {
+            this.endpoint = endpoint;
+            return this;
+        }
+
+        /**
+         * Sets the Azure AI Search API key.
+         *
+         * @param apiKey The Azure AI Search API key.
+         * @return builder
+         */
+        public Builder apiKey(String apiKey) {
+            this.keyCredential = new AzureKeyCredential(apiKey);
+            return this;
+        }
+
+        /**
+         * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         * @param tokenCredential the credentials to authenticate with Azure Active Directory
+         * @return builder
+         */
+        public Builder tokenCredential(TokenCredential tokenCredential) {
+            this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Sets the embedding model.
+         *
+         * @param embeddingModel The embedding model.
+         * @return builder
+         */
+        public Builder embeddingModel(EmbeddingModel embeddingModel) {
+            this.embeddingModel = embeddingModel;
+            return this;
+        }
+
+        public AzureAiSearchEmbeddingStore build() {
+            ensureNotNull(endpoint, "endpoint");
+            ensureNotNull(embeddingModel, "embeddingModel");
+            ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
+            if (keyCredential != null) {
+                return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, embeddingModel);
+            } else {
+                return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, embeddingModel);
+            }
+        }
     }
 }
