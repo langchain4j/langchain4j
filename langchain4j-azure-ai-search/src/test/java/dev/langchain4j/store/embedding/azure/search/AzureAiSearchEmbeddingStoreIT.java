@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.pgvector;
+package dev.langchain4j.store.embedding.azure.search;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
