@@ -21,7 +21,7 @@ import java.time.Duration;
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
 
-class OllamaClient {
+public class OllamaClient {
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
@@ -162,6 +162,32 @@ class OllamaClient {
     public EmbeddingResponse embed(EmbeddingRequest request) {
         try {
             retrofit2.Response<EmbeddingResponse> retrofitResponse = ollamaApi.embedd(request).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public ModelListResponse modelList() {
+        try {
+            retrofit2.Response<ModelListResponse> retrofitResponse = ollamaApi.modelList().execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public ModelDetailsResponse modelDetails(ModelDetailsRequest modelDetailsRequest) {
+        try {
+            retrofit2.Response<ModelDetailsResponse> retrofitResponse = ollamaApi.modelDetails(modelDetailsRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
