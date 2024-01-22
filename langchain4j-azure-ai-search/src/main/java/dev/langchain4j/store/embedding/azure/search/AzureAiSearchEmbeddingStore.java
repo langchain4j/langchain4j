@@ -5,6 +5,7 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.search.documents.SearchClient;
 import com.azure.search.documents.SearchClientBuilder;
+import com.azure.search.documents.SearchDocument;
 import com.azure.search.documents.indexes.SearchIndexClient;
 import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import com.azure.search.documents.indexes.models.*;
@@ -114,7 +115,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
         VectorSearch vectorSearch = new VectorSearch()
                 .setAlgorithms(Collections.singletonList(
-                        new HnswAlgorithmConfiguration("default")
+                        new HnswAlgorithmConfiguration("vector-search-algorithm")
                                 .setParameters(
                                         new HnswParameters()
                                                 .setMetric(VectorSearchAlgorithmMetric.COSINE)
@@ -130,6 +131,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 new SemanticPrioritizedFields()
                                         .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
                                         .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
+
 
         SearchIndex index = new SearchIndex(INDEX_NAME)
                 .setFields(fields)
@@ -239,7 +241,28 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
 
+        List<Map<String, Object>> documents = new ArrayList<>();
+        IndexDocumentsBatch<Embedding> embeddingsBatch = new IndexDocumentsBatch<>();
+        for (int i = 0; i < ids.size(); ++i) {
+            SearchDocument searchDocument = new SearchDocument();
+            searchDocument.put(DEFAULT_FIELD_ID, ids.get(i));
+            searchDocument.put(DEFAULT_FIELD_CONTENT, embedded == null ? "" : embedded.get(i).text());
+            searchDocument.put(DEFAULT_FIELD_CONTENT_VECTOR, embeddings.get(i).vector());
 
+            if (embedded != null) {
+                TextSegment embeddedSegment = embedded.get(i);
+                searchDocument.put(DEFAULT_FIELD_METADATA, new HashMap<String, Object>() {{
+                    put(DEFAULT_FIELD_METADATA_SOURCE, "langchain4j");
+                    put(DEFAULT_FIELD_METADATA_ATTRS, new HashMap<String, Object>() {{
+                        if (embeddedSegment != null) {
+                            this.putAll(embeddedSegment.metadata().asMap());
+                        }
+                    }});
+                }});
+            }
+        }
+
+        searchClient.uploadDocuments(documents);
     }
 
     public static Builder builder() {

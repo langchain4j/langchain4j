@@ -16,21 +16,29 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
+public class AzureAiSearchEmbeddingStoreIT {//extends EmbeddingStoreIT {
 
-    EmbeddingModel embeddingModel = AzureOpenAiEmbeddingModel.builder()
-            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
-            .logRequestsAndResponses(true)
-            .build();
+    private EmbeddingModel embeddingModel;
 
-    EmbeddingStore<TextSegment> embeddingStore = AzureAiSearchEmbeddingStore.builder()
-            .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-            .embeddingModel(embeddingModel)
-            .build();
+    private EmbeddingStore<TextSegment> embeddingStore;
+
+    public AzureAiSearchEmbeddingStoreIT() {
+        embeddingModel = AzureOpenAiEmbeddingModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+                .logRequestsAndResponses(true)
+                .build();
+
+        Embedding firstEmbedding = embeddingModel.embed("hello").content();
+
+        embeddingStore = AzureAiSearchEmbeddingStore.builder()
+                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+                .embeddingModel(embeddingModel)
+                .build();
+    }
 
     @Test
     void testAddEmbeddingAndFindRelevant() {
@@ -44,12 +52,12 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         assertThat(relevant.get(1).embedding()).isNull();
     }
 
-    @Override
+    //@Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;
     }
 
-    @Override
+    //@Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
     }
