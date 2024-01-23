@@ -11,7 +11,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
@@ -48,28 +49,33 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
-        this(chatLanguageModel, DEFAULT_PROMPT_TEMPLATE, retrieverToDescription);
+        this(
+                ensureNotNull(chatLanguageModel, "chatLanguageModel"),
+                ensureNotEmpty(retrieverToDescription, "retrieverToDescription"),
+                DEFAULT_PROMPT_TEMPLATE
+        );
     }
 
     @Builder
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
-                                    PromptTemplate promptTemplate,
-                                    Map<ContentRetriever, String> retrieverToDescription) {
+                                    Map<ContentRetriever, String> retrieverToDescription,
+                                    PromptTemplate promptTemplate) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.promptTemplate = ensureNotNull(promptTemplate, "promptTemplate");
+        ensureNotEmpty(retrieverToDescription, "retrieverToDescription");
+        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
 
         Map<Integer, ContentRetriever> idToRetriever = new HashMap<>();
         StringBuilder optionsBuilder = new StringBuilder();
         int id = 1;
         for (Map.Entry<ContentRetriever, String> entry : retrieverToDescription.entrySet()) {
-            idToRetriever.put(id, entry.getKey());
+            idToRetriever.put(id, ensureNotNull(entry.getKey(), "ContentRetriever"));
 
             if (id > 1) {
                 optionsBuilder.append("\n");
             }
             optionsBuilder.append(id);
             optionsBuilder.append(": ");
-            optionsBuilder.append(entry.getValue());
+            optionsBuilder.append(ensureNotBlank(entry.getValue(), "ContentRetriever description"));
 
             id++;
         }
