@@ -24,4 +24,13 @@ class RetrieverTest implements WithAssertions {
                 .isThrownBy(() -> retriever.findRelevant("test", "test"))
                 .withMessage("Not implemented");
     }
+
+    @Test
+    public void testFindRelevantByPartitions() {
+        Retriever<String> retriever = new TestRetriever();
+        assertThat(retriever.findRelevant("test", Collections.emptyList())).containsOnly("abc");
+
+        assertThatExceptionOfType(RuntimeException.class).isThrownBy(() -> retriever.findRelevant("test", "test")).withMessage("Not implemented");
+
+    }
 }
