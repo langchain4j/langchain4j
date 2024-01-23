@@ -125,7 +125,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
         }
 
         /**
-         * Use {@link Builder#contentRetriever(ContentRetriever)} instead.
+         * Deprecated. Use {@link Builder#contentRetriever(ContentRetriever)} instead.
          */
         @Deprecated
         public Builder retriever(dev.langchain4j.retriever.Retriever<TextSegment> retriever) {
@@ -133,10 +133,8 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
             return this;
         }
 
-        // TODO check names
-
         /**
-         * Use this instead:<pre>
+         * Deprecated, Use this instead:<pre>
          * .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
          *     .contentInjector(DefaultContentInjector.builder()
          *         .promptTemplate(promptTemplate)

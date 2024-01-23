@@ -6,7 +6,7 @@ import dev.langchain4j.rag.query.Metadata;
 /**
  * Augments the provided {@link UserMessage} with relevant content.
  * <br>
- * This serves as an entry point into the RAG subsystem in LangChain4j.
+ * This serves as an entry point into the RAG flow in LangChain4j.
  * <br>
  * You are free to use the default implementation ({@link DefaultRetrievalAugmentor}) or to implement a custom one.
  *

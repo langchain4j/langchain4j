@@ -42,7 +42,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @see DefaultContentAggregator
  */
-public class RerankingContentAggregator implements ContentAggregator {
+public class ReRankingContentAggregator implements ContentAggregator {
 
     public static final Function<Map<Query, List<List<Content>>>, Query> DEFAULT_QUERY_SELECTOR =
             (queryToContents) -> {
@@ -61,21 +61,21 @@ public class RerankingContentAggregator implements ContentAggregator {
     private final Function<Map<Query, List<List<Content>>>, Query> querySelector;
     private final Double minScore;
 
-    public RerankingContentAggregator(ScoringModel scoringModel) {
+    public ReRankingContentAggregator(ScoringModel scoringModel) {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
     }
 
-    public RerankingContentAggregator(ScoringModel scoringModel,
+    public ReRankingContentAggregator(ScoringModel scoringModel,
                                       Function<Map<Query, List<List<Content>>>, Query> querySelector) {
         this(scoringModel, querySelector, null);
     }
 
-    public RerankingContentAggregator(ScoringModel scoringModel, Double minScore) {
+    public ReRankingContentAggregator(ScoringModel scoringModel, Double minScore) {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, minScore);
     }
 
     @Builder
-    public RerankingContentAggregator(ScoringModel scoringModel,
+    public ReRankingContentAggregator(ScoringModel scoringModel,
                                       Function<Map<Query, List<List<Content>>>, Query> querySelector,
                                       Double minScore) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
@@ -95,13 +95,8 @@ public class RerankingContentAggregator implements ContentAggregator {
         // Fuse all contents retrieved using all queries
         List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
 
-        // Score all the fused contents against the query selected by the query selector
-        List<TextSegment> segments = fusedContents.stream()
-                .map(Content::textSegment)
-                .collect(toList());
-        List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
-
-        List<TextSegment> reRankedAndFilteredSegments = rerankAndFilter(segments, scores);
+        // Re-rank all the fused contents against the query selected by the query selector
+        List<TextSegment> reRankedAndFilteredSegments = reRankAndFilter(fusedContents, query);
 
         return reRankedAndFilteredSegments.stream()
                 .map(Content::from)
@@ -117,7 +112,14 @@ public class RerankingContentAggregator implements ContentAggregator {
         return fused;
     }
 
-    protected List<TextSegment> rerankAndFilter(List<TextSegment> segments, List<Double> scores) {
+    protected List<TextSegment> reRankAndFilter(List<Content> contents, Query query) {
+
+        List<TextSegment> segments = contents.stream()
+                .map(Content::textSegment)
+                .collect(toList());
+
+        List<Double> scores = scoringModel.scoreAll(segments, query.text()).content();
+
         Map<TextSegment, Double> segmentToScore = new HashMap<>();
         for (int i = 0; i < segments.size(); i++) {
             segmentToScore.put(segments.get(i), scores.get(i));

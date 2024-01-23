@@ -21,7 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class RerankingContentAggregatorTest {
+class ReRankingContentAggregatorTest {
 
     @Test
     void should_rerank_when_single_query_and_single_contents() {
@@ -39,7 +39,7 @@ class RerankingContentAggregatorTest {
 
         ScoringModel scoringModel = mock(ScoringModel.class);
         when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.5, 0.7)));
-        ContentAggregator aggregator = new RerankingContentAggregator(scoringModel);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
 
         // when
         List<Content> aggregated = aggregator.aggregate(queryToContents);
@@ -81,7 +81,7 @@ class RerankingContentAggregatorTest {
                         0.7,
                         0.9
                 )));
-        ContentAggregator aggregator = new RerankingContentAggregator(scoringModel);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
 
         // when
         List<Content> aggregated = aggregator.aggregate(queryToContents);
@@ -99,13 +99,13 @@ class RerankingContentAggregatorTest {
         queryToContents.put(Query.from("query 2"), null);
 
         ScoringModel scoringModel = mock(ScoringModel.class);
-        ContentAggregator aggregator = new RerankingContentAggregator(scoringModel);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
 
         // when-then
         assertThatThrownBy(() -> aggregator.aggregate(queryToContents))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The 'queryToContents' contains 2 queries, making the ranking ambiguous. " +
-                        "Because there are multiple queries, it is unclear which one should be used for reranking. " +
+                .hasMessage("The 'queryToContents' contains 2 queries, making the re-ranking ambiguous. " +
+                        "Because there are multiple queries, it is unclear which one should be used for re-ranking. " +
                         "Please provide a 'querySelector' in the constructor/builder.");
     }
 
@@ -163,7 +163,7 @@ class RerankingContentAggregatorTest {
                         0.5
                 )));
 
-        ContentAggregator aggregator = new RerankingContentAggregator(scoringModel, querySelector, minScore);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel, querySelector, minScore);
 
         // when
         List<Content> aggregated = aggregator.aggregate(queryToContents);

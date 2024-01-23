@@ -19,7 +19,7 @@ import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
-import dev.langchain4j.rag.content.aggregator.RerankingContentAggregator;
+import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -249,7 +249,7 @@ class AiServicesWithRagIT {
 
         ScoringModel scoringModel = mock(ScoringModel.class);
         when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.9, 0.7)));
-        ContentAggregator contentAggregator = new RerankingContentAggregator(scoringModel);
+        ContentAggregator contentAggregator = new ReRankingContentAggregator(scoringModel);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(model)
@@ -288,7 +288,7 @@ class AiServicesWithRagIT {
 
         ScoringModel scoringModel = mock(ScoringModel.class);
         when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.9, 0.7)));
-        ContentAggregator contentAggregator = new RerankingContentAggregator(
+        ContentAggregator contentAggregator = new ReRankingContentAggregator(
                 scoringModel,
                 (queryToContents) -> queryToContents.keySet().iterator().next()
         );

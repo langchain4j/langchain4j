@@ -14,12 +14,12 @@ import java.util.Map;
  * <br>
  * Some effective approaches include:
  * <pre>
- * - Re-ranking (see {@link RerankingContentAggregator})
- * - Reciprocal rank fusion (see {@link ReciprocalRankFuser}, utilized in both {@link DefaultContentAggregator} and {@link RerankingContentAggregator})
+ * - Re-ranking (see {@link ReRankingContentAggregator})
+ * - Reciprocal Rank Fusion (see {@link ReciprocalRankFuser}, utilized in both {@link DefaultContentAggregator} and {@link ReRankingContentAggregator})
  * </pre>
  *
  * @see DefaultContentAggregator
- * @see RerankingContentAggregator
+ * @see ReRankingContentAggregator
  */
 public interface ContentAggregator {
 

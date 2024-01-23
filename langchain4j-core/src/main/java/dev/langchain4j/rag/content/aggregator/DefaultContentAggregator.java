@@ -48,7 +48,7 @@ import java.util.Map;
  * </pre>
  *
  * @see ReciprocalRankFuser
- * @see RerankingContentAggregator
+ * @see ReRankingContentAggregator
  */
 public class DefaultContentAggregator implements ContentAggregator {
 

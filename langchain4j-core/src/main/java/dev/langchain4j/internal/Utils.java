@@ -218,7 +218,7 @@ public class Utils {
    * @param <T>  Generic type of the list.
    * @return The copy of the provided list.
    */
-  public static <T> List<T> safeCopy(List<T> list) {
+  public static <T> List<T> copyIfNotNull(List<T> list) {
     if (list == null) {
       return null;
     }

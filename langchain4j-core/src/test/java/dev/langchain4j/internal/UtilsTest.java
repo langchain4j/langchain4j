@@ -189,10 +189,10 @@ class UtilsTest {
     }
 
     @Test
-    void test_safeCopy() {
-        assertThat(Utils.safeCopy(null)).isNull();
-        assertThat(Utils.safeCopy(emptyList())).isEmpty();
-        assertThat(Utils.safeCopy(singletonList("one"))).containsExactly("one");
-        assertThat(Utils.safeCopy(asList("one", "two"))).containsExactly("one", "two");
+    void test_copyIfNotNull() {
+        assertThat(Utils.copyIfNotNull(null)).isNull();
+        assertThat(Utils.copyIfNotNull(emptyList())).isEmpty();
+        assertThat(Utils.copyIfNotNull(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.copyIfNotNull(asList("one", "two"))).containsExactly("one", "two");
     }
 }

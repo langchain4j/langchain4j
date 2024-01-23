@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.safeCopy;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
@@ -67,7 +67,7 @@ public class DefaultContentInjector implements ContentInjector {
     @Builder
     public DefaultContentInjector(PromptTemplate promptTemplate, List<String> metadataKeysToInclude) {
         this.promptTemplate = ensureNotNull(promptTemplate, "promptTemplate");
-        this.metadataKeysToInclude = safeCopy(metadataKeysToInclude);
+        this.metadataKeysToInclude = copyIfNotNull(metadataKeysToInclude);
     }
 
     @Override
