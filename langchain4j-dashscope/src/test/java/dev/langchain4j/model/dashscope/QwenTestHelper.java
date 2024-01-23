@@ -1,11 +1,10 @@
 package dev.langchain4j.model.dashscope;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.*;
 import org.junit.jupiter.params.provider.Arguments;
 
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -29,6 +28,13 @@ public class QwenTestHelper {
         );
     }
 
+    public static Stream<Arguments> multiModalChatModelNameProvider() {
+        return Stream.of(
+                Arguments.of(QwenModelName.QWEN_VL_PLUS),
+                Arguments.of(QwenModelName.QWEN_VL_MAX)
+        );
+    }
+
     public static Stream<Arguments> embeddingModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.TEXT_EMBEDDING_V1)
@@ -48,5 +54,14 @@ public class QwenTestHelper {
         messages.add(AiMessage.from("Jack."));
         messages.add(UserMessage.from("How about the weather today?"));
         return messages;
+    }
+
+    public static List<ChatMessage> multiModalChatMessages() {
+        Image image = Image.builder()
+                .url("https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg")
+                .build();
+        ImageContent imageContent = ImageContent.from(image);
+        TextContent textContent = TextContent.from("What animal is in the picture?");
+        return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 }
