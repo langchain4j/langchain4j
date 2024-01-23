@@ -17,7 +17,7 @@ import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 
 import java.io.File;
 import java.time.Duration;
@@ -25,13 +25,19 @@ import java.time.Duration;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
+/**
+ * If container startup timeout (because atlas cli need to download mongodb binaries, which may take a few minutes),
+ * the alternative way is running `docker compose up -d` in `src/test/resources`
+ */
 public class MongoDBEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static final String MONGO_SERVICE_NAME = "mongo";
     static final Integer MONGO_SERVICE_PORT = 27778;
     static DockerComposeContainer<?> mongodb = new DockerComposeContainer<>(new File("src/test/resources/docker-compose.yml"))
-            .withStartupTimeout(Duration.ofMinutes(10))
-            .withExposedService(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT, Wait.defaultWaitStrategy());
+            .withExposedService(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT, new LogMessageWaitStrategy()
+                    .withRegEx(".*Deployment created!.*\\n")
+                    .withTimes(1)
+                    .withStartupTimeout(Duration.ofMinutes(30)));
 
     static MongoClient client;
 
