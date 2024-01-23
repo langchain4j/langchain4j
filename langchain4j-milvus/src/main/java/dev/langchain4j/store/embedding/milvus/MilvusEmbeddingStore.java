@@ -25,7 +25,10 @@ import io.milvus.param.MetricType;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.response.SearchResultsWrapper;
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -40,6 +43,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   private final MilvusServiceClient milvusClient;
   private final String collectionName;
+  private final String partitionName;
   private final MetricType metricType;
   private final ConsistencyLevelEnum consistencyLevel;
   private final boolean retrieveEmbeddingsOnSearch;
@@ -48,6 +52,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     String host,
     Integer port,
     String collectionName,
+    String partitionName,
     Integer dimension,
     IndexType indexType,
     MetricType metricType,
@@ -73,6 +78,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     this.milvusClient = new MilvusServiceClient(connectBuilder.build());
     this.collectionName = getOrDefault(collectionName, "default");
+    this.partitionName = partitionName;
     this.metricType = getOrDefault(metricType, COSINE);
     this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
     this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
@@ -81,6 +87,11 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
       createCollection(milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
       createIndex(milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
     }
+
+    if (StringUtils.isNotEmpty(partitionName) && !hasPartition(milvusClient, this.collectionName, this.partitionName)) {
+      createPartition(milvusClient, this.collectionName, this.partitionName);
+    }
+
   }
 
   public String add(Embedding embedding) {
@@ -112,10 +123,15 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
   }
 
   public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    return findRelevant(referenceEmbedding, maxResults, minScore, Collections.emptyList());
+  }
+
+  public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, List<String> partitionNames) {
     loadCollectionInMemory(milvusClient, collectionName);
 
     SearchParam searchRequest = buildSearchRequest(
       collectionName,
+      partitionNames,
       referenceEmbedding.vectorAsList(),
       maxResults,
       metricType,
@@ -150,7 +166,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     fields.add(new InsertParam.Field(TEXT_FIELD_NAME, toScalars(textSegments, ids.size())));
     fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
-    insert(milvusClient, collectionName, fields);
+    insert(milvusClient, collectionName, partitionName, fields);
     flush(milvusClient, collectionName);
   }
 
@@ -163,6 +179,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private String host;
     private Integer port;
     private String collectionName;
+    private String partitionName;
     private Integer dimension;
     private IndexType indexType;
     private MetricType metricType;
@@ -202,6 +219,17 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public Builder collectionName(String collectionName) {
       this.collectionName = collectionName;
+      return this;
+    }
+
+    /**
+     * @param partitionName The name of the Milvus collection partition.
+     *                       If there is no such collection partition yet, it will be created automatically.
+     *                       Default value: null, The actual name will be defined by Milvus.
+     * @return builder
+     */
+    public Builder partitionName(String partitionName) {
+      this.partitionName = partitionName;
       return this;
     }
 
@@ -310,6 +338,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         host,
         port,
         collectionName,
+        partitionName,
         dimension,
         indexType,
         metricType,

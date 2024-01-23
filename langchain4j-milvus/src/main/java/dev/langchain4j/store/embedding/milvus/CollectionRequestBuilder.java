@@ -8,8 +8,12 @@ import io.milvus.param.collection.LoadCollectionParam;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
+import io.milvus.param.partition.HasPartitionParam;
+import org.apache.commons.lang3.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
 import static java.lang.String.format;
@@ -31,11 +35,25 @@ class CollectionRequestBuilder {
                 .build();
     }
 
-    static InsertParam buildInsertRequest(String collectionName, List<InsertParam.Field> fields) {
-        return InsertParam.newBuilder()
+    static HasPartitionParam buildHasPartitionsRequest(String collectionName, String partitionName) {
+        return HasPartitionParam.newBuilder()
                 .withCollectionName(collectionName)
-                .withFields(fields)
+                .withPartitionName(partitionName)
                 .build();
+    }
+
+    static InsertParam buildInsertRequest(String collectionName, List<InsertParam.Field> fields) {
+        return buildInsertRequest(collectionName, null, fields);
+    }
+
+    static InsertParam buildInsertRequest(String collectionName, String partitionName, List<InsertParam.Field> fields) {
+        InsertParam.Builder builder = InsertParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withFields(fields);
+        if (StringUtils.isNotEmpty(partitionName)) {
+            builder.withPartitionName(partitionName);
+        }
+        return builder.build();
     }
 
     static LoadCollectionParam buildLoadCollectionInMemoryRequest(String collectionName) {
@@ -49,15 +67,27 @@ class CollectionRequestBuilder {
                                           int maxResults,
                                           MetricType metricType,
                                           ConsistencyLevelEnum consistencyLevel) {
-        return SearchParam.newBuilder()
+        return buildSearchRequest(collectionName, Collections.emptyList(), vector, maxResults, metricType, consistencyLevel);
+    }
+
+    static SearchParam buildSearchRequest(String collectionName,
+                                          List<String> partitionNames,
+                                          List<Float> vector,
+                                          int maxResults,
+                                          MetricType metricType,
+                                          ConsistencyLevelEnum consistencyLevel) {
+        SearchParam.Builder builder = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withVectors(singletonList(vector))
                 .withVectorFieldName(VECTOR_FIELD_NAME)
                 .withTopK(maxResults)
                 .withMetricType(metricType)
                 .withConsistencyLevel(consistencyLevel)
-                .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME))
-                .build();
+                .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME));
+        if (Objects.nonNull(partitionNames) && !partitionNames.isEmpty()) {
+            builder.withPartitionNames(partitionNames);
+        }
+        return builder.build();
     }
 
     static QueryParam buildQueryRequest(String collectionName,

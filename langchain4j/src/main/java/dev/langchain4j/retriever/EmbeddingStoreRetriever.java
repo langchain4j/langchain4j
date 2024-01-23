@@ -6,7 +6,9 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import static java.util.stream.Collectors.toList;
 
@@ -29,14 +31,27 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
     @Override
     public List<TextSegment> findRelevant(String text) {
+        return findRelevant(text, Collections.emptyList());
+    }
+
+    @Override
+    public List<TextSegment> findRelevant(String text, List<String> partitions) {
 
         Embedding embeddedText = embeddingModel.embed(text).content();
 
         List<EmbeddingMatch<TextSegment>> relevant;
         if (minScore == null) {
-            relevant = embeddingStore.findRelevant(embeddedText, maxResults);
+            if (Objects.isNull(partitions) || partitions.isEmpty()) {
+                relevant = embeddingStore.findRelevant(embeddedText, maxResults);
+            } else {
+                relevant = embeddingStore.findRelevant(embeddedText, maxResults, partitions);
+            }
         } else {
-            relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore);
+            if (Objects.isNull(partitions) || partitions.isEmpty()) {
+                relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore);
+            } else {
+                relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore, partitions);
+            }
         }
 
         return relevant.stream()
