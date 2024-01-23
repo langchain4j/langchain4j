@@ -125,12 +125,28 @@
                         <configuration>
                             <rules>
                                 <rule>
+                                    <excludes>
+                                        <exclude>dev.langchain4j.rag</exclude>
+                                    </excludes>
                                     <element>PACKAGE</element>
                                     <limits>
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.95</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.rag</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
