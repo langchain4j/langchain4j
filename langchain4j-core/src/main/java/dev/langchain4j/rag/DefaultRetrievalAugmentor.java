@@ -56,6 +56,7 @@ import static java.util.stream.Collectors.*;
  * </pre>
  * Visual representation of this flow can be found
  * <a href="https://langchain4j.github.io/langchain4j/img/advanced-rag.png">here</a>.
+ * <br>
  * For each base component listed above, we offer several ready-to-use implementations,
  * each based on a recognized approach.
  * We intend to introduce more such implementations over time and welcome your contributions.
