@@ -15,12 +15,14 @@ Console output can be switched on and off by setting `.logRequests()` and `.logR
                 .build();
 ```
 
-### Default logging: Tinylog
-By default, we offer the Tinylog framework. An example can be found in langchain4j-examples/tutorials.
-Logging properties are set in `tinylog.properties`, as follows
+### Default logging: slf4j 
+LangChain4j comes with an slf4j facade, but the user is free to use any logging backend (e.g. log4j, logback, tinylog, etc.)
+
+An example of Tinylog backend can be found in langchain4j-examples/tutorials, where logging properties are set in `tinylog.properties`, as follows:
 ```
 writer.level = info
 ```
+
 Typical log level settings are `error`, `warn`, `info` and `debug`. 
 
 An overview of all the options:
@@ -32,7 +34,17 @@ An overview of all the options:
 - `error`: Only log messages of error level will be written to the log output. Warn, info, debug, and trace messages will be ignored.
 - `fatal`: This level is not part of the standard log levels in Tinylog. You can use it to specify a custom level for log messages. By default, it behaves the same as the `error` level.
 
-Or you can choose to add you own logger.
+## Quarkus
+In Quarkus examples, logging properties are set in the `application.properties` file:
+```
+quarkus.log.console.enable = true
+quarkus.log.file.enable = false
+quarkus.langchain4j.openai.chat-model.log-responses = true
+quarkus.langchain4j.openai.chat-model.log-requests = true
+```
+
+These properties can also be set and changed in the Quarkus Dev UI, when running the application in dev mode (command: `quarkus dev`).
+The Dev UI can then be accessed via `host:port/q/dev-ui`.
 
 ## Spring Boot
 In Spring Boot examples, logging properties are set in the `application.properties` file

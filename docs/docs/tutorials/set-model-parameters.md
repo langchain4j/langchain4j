@@ -11,23 +11,22 @@ Depending on which model and which model provider you use, you can set a lot of 
 Typically, you will find all the parameters and their meaning on the provider's website.
 
 
-For example, OpenAI API's parameters can be found at https://platform.openai.com/docs/api-reference/chat
+For example, OpenAI API's parameters can be found at https://platform.openai.com/docs/api-reference/chat (most up-to-date version)
 and include options like
 
-| Parameter          | Description                                                                                                                                                                                                                                                                                              | Type      |
-|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| `modelName`        | The name of the model to use (gtp-3.5-turbo, gpt-4-1106-preview, ...)                                                                                                                                                                                                                                    | `String`  |
-| `temperature`      | The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use log probability to automatically increase the temperature until certain thresholds are hit. | `Double`  |
-| `max_tokens`       | The maximum number of tokens that can be generated in the chat completion.                                                                                                                                                                                                                               | `Integer` |
-| `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.                                                                                                               | `Double`  |
-| `n`                | How many chat completion choices to generate for each input message. Note that you will be charged based on the number of generated tokens across all of the choices. Keep n as 1 to minimize costs.                                                                                                     | `Integer` |
-| `...`              | ...                                                                                                                                                                                                                                                                                                      | `...`     |
+| Parameter          | Description                                                                                                                                                                                          | Type      |
+|--------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `modelName`        | The name of the model to use (gtp-3.5-turbo, gpt-4-1106-preview, ...)                                                                                                                                | `String`  |
+| `temperature`      | What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.                 | `Double`  |
+| `max_tokens`       | The maximum number of tokens that can be generated in the chat completion.                                                                                                                           | `Integer` |
+| `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.           | `Double`  |
+| `...`              | ...                                                                                                                                                                                                  | `...`     |
 
 For the full list of parameters in OpenAI LLMs, see the [OpenAI Language Model page](/docs/integrations/language-models/openai).
 Full lists of parameters and default values per model can be found under the separate model pages (under Integration, Language Model and Image Model).
 
 ## Default Parameter Settings
-The LangChain4j framework for very easy model constructors with a lot of parameters set under the hood to sane defaults. The minimal way to construct a model object is
+The LangChain4j framework offers very easy model constructors with a lot of parameters set under the hood to sensible defaults. The fastest way to construct a model object is
 ```
 ChatLanguageModel model = OpenAiChatModel.withApiKey("demo");
 ```
