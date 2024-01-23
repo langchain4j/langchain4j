@@ -9,8 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ModelDetailsResponse {
-
+public class ModelDetailsResponse {
     private String modelfile;
     private String parameters;
     private String template;

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class OllamaModel {
+public class OllamaModel {
     private String name;
     private long size;
     private String digest;

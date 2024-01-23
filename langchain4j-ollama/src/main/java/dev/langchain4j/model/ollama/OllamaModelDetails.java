@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class OllamaModelDetails {
+public class OllamaModelDetails {
     private String format;
     private String family;
     private List<String> families;

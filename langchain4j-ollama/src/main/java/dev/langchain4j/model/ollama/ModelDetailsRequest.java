@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ModelDetailsRequest {
+public class ModelDetailsRequest {
     private String name;
 }
