@@ -8,6 +8,7 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import java.util.List;
 import java.util.Objects;
 
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -22,7 +23,7 @@ public class Metadata {
     public Metadata(UserMessage userMessage, Object chatMemoryId, List<ChatMessage> chatMemory) {
         this.userMessage = ensureNotNull(userMessage, "userMessage");
         this.chatMemoryId = chatMemoryId;
-        this.chatMemory = chatMemory;
+        this.chatMemory = copyIfNotNull(chatMemory);
     }
 
     /**
