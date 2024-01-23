@@ -93,4 +93,41 @@ class CompressingQueryTransformerTest {
                         "reformulate the following query: How old is he?"
         );
     }
+
+    @Test
+    void should_compress_query_and_chat_memory_into_single_query_using_custom_prompt_template_builder() {
+
+        // given
+        PromptTemplate promptTemplate = PromptTemplate.from(
+                "Given the following conversation: {{chatMemory}} reformulate the following query: {{query}}");
+
+        List<ChatMessage> chatMemory = asList(
+                UserMessage.from("Tell me about Klaus Heisler"),
+                AiMessage.from("He is a cool guy")
+        );
+        UserMessage userMessage = UserMessage.from("How old is he?");
+        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+        Query query = Query.from(userMessage.text(), metadata);
+
+        String expectedResultingQuery = "How old is Klaus Heisler?";
+        ChatModelMock model = ChatModelMock.withStaticResponse(expectedResultingQuery);
+
+        CompressingQueryTransformer transformer = CompressingQueryTransformer.builder()
+                .chatLanguageModel(model)
+                .promptTemplate(promptTemplate)
+                .build();
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(Query.from(expectedResultingQuery));
+
+        assertThat(model.userMessageText()).isEqualTo(
+                "Given the following conversation: " +
+                        "User: Tell me about Klaus Heisler\n" +
+                        "AI: He is a cool guy " +
+                        "reformulate the following query: How old is he?"
+        );
+    }
 }

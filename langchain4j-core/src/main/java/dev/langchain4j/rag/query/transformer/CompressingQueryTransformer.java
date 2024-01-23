@@ -8,9 +8,11 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Query;
+import lombok.Builder;
 
 import java.util.*;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
@@ -53,9 +55,10 @@ public class CompressingQueryTransformer implements QueryTransformer {
         this(chatLanguageModel, DEFAULT_PROMPT_TEMPLATE);
     }
 
+    @Builder
     public CompressingQueryTransformer(ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.promptTemplate = ensureNotNull(promptTemplate, "promptTemplate");
+        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
     }
 
     @Override
