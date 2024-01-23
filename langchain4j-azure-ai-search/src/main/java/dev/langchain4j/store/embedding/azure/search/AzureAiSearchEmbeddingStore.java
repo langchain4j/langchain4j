@@ -241,8 +241,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
 
-        List<Map<String, Object>> documents = new ArrayList<>();
-        IndexDocumentsBatch<Embedding> embeddingsBatch = new IndexDocumentsBatch<>();
+        List<SearchDocument> searchDocuments = new ArrayList<>();
         for (int i = 0; i < ids.size(); ++i) {
             SearchDocument searchDocument = new SearchDocument();
             searchDocument.put(DEFAULT_FIELD_ID, ids.get(i));
@@ -260,9 +259,9 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     }});
                 }});
             }
+            searchDocuments.add(searchDocument);
         }
-
-        searchClient.uploadDocuments(documents);
+        searchClient.uploadDocuments(searchDocuments);
     }
 
     public static Builder builder() {
