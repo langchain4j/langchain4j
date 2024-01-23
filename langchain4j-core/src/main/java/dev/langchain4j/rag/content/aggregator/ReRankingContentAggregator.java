@@ -48,9 +48,9 @@ public class ReRankingContentAggregator implements ContentAggregator {
             (queryToContents) -> {
                 if (queryToContents.size() > 1) {
                     throw illegalArgument(
-                            "The 'queryToContents' contains %s queries, making the ranking ambiguous. " +
-                                    "Because there are multiple queries, it is unclear which one should be used for reranking. " +
-                                    "Please provide a 'querySelector' in the constructor/builder.",
+                            "The 'queryToContents' contains %s queries, making the re-ranking ambiguous. " +
+                                    "Because there are multiple queries, it is unclear which one should be " +
+                                    "used for re-ranking. Please provide a 'querySelector' in the constructor/builder.",
                             queryToContents.size()
                     );
                 }
