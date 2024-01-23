@@ -54,6 +54,7 @@
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
+        <module>langchain4j-mongodb-atlas</module>
 
     </modules>
 
