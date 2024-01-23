@@ -86,16 +86,17 @@ class ExpandingQueryTransformerTest {
     }
 
     @Test
-    void should_expand_query_with_custom_prompt_template_builder() {
+    void should_expand_query_with_custom_prompt_template_and_n_builder() {
 
         // given
-        PromptTemplate promptTemplate = PromptTemplate.from("Generate 7 variations of {{query}}");
+        PromptTemplate promptTemplate = PromptTemplate.from("Generate {{n}} variations of {{query}}");
 
         ChatModelMock model = ChatModelMock.withStaticResponse("does not matter");
 
         QueryTransformer transformer = ExpandingQueryTransformer.builder()
                 .chatLanguageModel(model)
                 .promptTemplate(promptTemplate)
+                .n(7)
                 .build();
 
         Query query = Query.from("query");

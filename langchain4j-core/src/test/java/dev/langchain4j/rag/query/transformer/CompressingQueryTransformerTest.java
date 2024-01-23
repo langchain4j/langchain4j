@@ -1,7 +1,9 @@
 package dev.langchain4j.rag.query.transformer;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -26,8 +28,14 @@ class CompressingQueryTransformerTest {
 
         // given
         List<ChatMessage> chatMemory = asList(
+                SystemMessage.from("Be polite"), // this message will be ignored
                 UserMessage.from("Tell me about Klaus Heisler"),
-                AiMessage.from("He is a cool guy")
+                AiMessage.from("He is a cool guy"),
+                AiMessage.from(ToolExecutionRequest.builder() // this message will be ignored
+                        .id("12345")
+                        .name("current_time")
+                        .arguments("{}")
+                        .build())
         );
 
         UserMessage userMessage = UserMessage.from("How old is he?");
