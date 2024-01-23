@@ -6,6 +6,7 @@ import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
+import com.alibaba.dashscope.protocol.Protocol;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
@@ -28,10 +29,12 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
     private final Float repetitionPenalty;
     private final Float temperature;
     private final List<String> stops;
+    private final Integer maxTokens;
     private final Generation generation;
 
     @Builder
-    public QwenStreamingChatModel(String apiKey,
+    public QwenStreamingChatModel(String baseUrl,
+                                  String apiKey,
                                   String modelName,
                                   Double topP,
                                   Integer topK,
@@ -39,7 +42,8 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
                                   Integer seed,
                                   Float repetitionPenalty,
                                   Float temperature,
-                                  List<String> stops) {
+                                  List<String> stops,
+                                  Integer maxTokens) {
         if (Utils.isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
         }
@@ -52,7 +56,15 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
         this.repetitionPenalty = repetitionPenalty;
         this.temperature = temperature;
         this.stops = stops;
-        this.generation = new Generation();
+        this.maxTokens = maxTokens;
+
+        if (Utils.isNullOrBlank(baseUrl)) {
+            this.generation = new Generation();
+        } else if (baseUrl.startsWith("wss://")) {
+            this.generation = new Generation(Protocol.WEBSOCKET.getValue(), baseUrl);
+        } else {
+            this.generation = new Generation(Protocol.HTTP.getValue(), baseUrl);
+        }
     }
 
     @Override
@@ -67,6 +79,7 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
                     .seed(seed)
                     .repetitionPenalty(repetitionPenalty)
                     .temperature(temperature)
+                    .maxTokens(maxTokens)
                     .incrementalOutput(true)
                     .messages(toQwenMessages(messages))
                     .resultFormat(MESSAGE);
