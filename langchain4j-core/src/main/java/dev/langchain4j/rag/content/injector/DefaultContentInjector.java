@@ -12,8 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
+import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
@@ -57,16 +57,16 @@ public class DefaultContentInjector implements ContentInjector {
     }
 
     public DefaultContentInjector(List<String> metadataKeysToInclude) {
-        this(DEFAULT_PROMPT_TEMPLATE, metadataKeysToInclude);
+        this(DEFAULT_PROMPT_TEMPLATE, ensureNotEmpty(metadataKeysToInclude, "metadataKeysToInclude"));
     }
 
     public DefaultContentInjector(PromptTemplate promptTemplate) {
-        this(promptTemplate, null);
+        this(ensureNotNull(promptTemplate, "promptTemplate"), null);
     }
 
     @Builder
     public DefaultContentInjector(PromptTemplate promptTemplate, List<String> metadataKeysToInclude) {
-        this.promptTemplate = ensureNotNull(promptTemplate, "promptTemplate");
+        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.metadataKeysToInclude = copyIfNotNull(metadataKeysToInclude);
     }
 

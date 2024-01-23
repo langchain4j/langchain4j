@@ -6,8 +6,13 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -111,8 +116,11 @@ class DefaultContentInjectorTest {
         );
     }
 
-    @Test
-    void should_inject_multiple_contents_with_multiple_metadatas() {
+    @ParameterizedTest
+    @MethodSource
+    void should_inject_multiple_contents_with_multiple_metadata_entries(
+            Function<List<String>, ContentInjector> contentInjectorProvider
+    ) {
 
         // given
         UserMessage userMessage = UserMessage.from("Tell me about bananas.");
@@ -131,7 +139,7 @@ class DefaultContentInjectorTest {
 
         List<String> metadataKeysToInclude = asList("source", "reliability", "date");
 
-        ContentInjector injector = new DefaultContentInjector(metadataKeysToInclude);
+        ContentInjector injector = contentInjectorProvider.apply(metadataKeysToInclude);
 
         // when
         UserMessage injected = injector.inject(contents, userMessage);
@@ -151,8 +159,24 @@ class DefaultContentInjectorTest {
         );
     }
 
-    @Test
-    void should_inject_multiple_contents_with_custom_prompt_template() {
+    static Stream<Arguments> should_inject_multiple_contents_with_multiple_metadata_entries() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        (Function<List<String>, ContentInjector>) DefaultContentInjector::new
+                ))
+                .add(Arguments.of(
+                        (Function<List<String>, ContentInjector>)
+                                (metadataKeysToInclude) -> DefaultContentInjector.builder()
+                                        .metadataKeysToInclude(metadataKeysToInclude)
+                                        .build()
+                ))
+                .build();
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_inject_multiple_contents_with_custom_prompt_template(
+            Function<PromptTemplate, ContentInjector> contentInjectorProvider) {
 
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("{{userMessage}}\n{{contents}}");
@@ -162,7 +186,7 @@ class DefaultContentInjectorTest {
                 Content.from("Bananas are awesome!"),
                 Content.from("Bananas are healthy!")
         );
-        ContentInjector injector = new DefaultContentInjector(promptTemplate);
+        ContentInjector injector = contentInjectorProvider.apply(promptTemplate);
 
         // when
         UserMessage injected = injector.inject(contents, userMessage);
@@ -174,5 +198,19 @@ class DefaultContentInjectorTest {
                         "\n" +
                         "Bananas are healthy!"
         );
+    }
+
+    static Stream<Arguments> should_inject_multiple_contents_with_custom_prompt_template() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        (Function<PromptTemplate, ContentInjector>) DefaultContentInjector::new
+                ))
+                .add(Arguments.of(
+                        (Function<PromptTemplate, ContentInjector>)
+                                (promptTemplate) -> DefaultContentInjector.builder()
+                                        .promptTemplate(promptTemplate)
+                                        .build()
+                ))
+                .build();
     }
 }
