@@ -3,19 +3,11 @@ package dev.langchain4j.chain;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.retriever.EmbeddingStoreRetriever;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -24,28 +16,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class ConversationalChainTest {
-
-    private final String aiMessage = "Hi there";
-
-    private final String question = "Hello";
-
-    private final ChatLanguageModel chatLanguageModel = mock(ChatLanguageModel.class);
-
-    private final EmbeddingStoreRetriever retriever = mock(EmbeddingStoreRetriever.class);
-
-    private final ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
-
-    private final PromptTemplate promptTemplate = mock(PromptTemplate.class);
-
-    @Captor
-    ArgumentCaptor<Map<String, Object>> variablesCaptor;
 
     @Test
     void should_store_user_and_ai_messages_in_chat_memory() {
         // Given
         ChatLanguageModel chatLanguageModel = mock(ChatLanguageModel.class);
+        String aiMessage = "Hi there";
         when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(aiMessage)));
 
         ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
@@ -54,6 +31,8 @@ class ConversationalChainTest {
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemory(chatMemory)
                 .build();
+
+        String question = "Hello";
 
         // When
         String response = chain.execute(question);
