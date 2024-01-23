@@ -3,6 +3,7 @@ package dev.langchain4j.rag.query.transformer;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
@@ -13,7 +14,10 @@ import java.util.Collection;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class CompressingQueryTransformerTest {
 
@@ -58,6 +62,29 @@ class CompressingQueryTransformerTest {
                         "It is very important that you provide only reformulated query and nothing else! " +
                         "Do not prepend a query with anything!"
         );
+    }
+
+    @Test
+    void should_not_compress_when_empty_chat_memory() {
+
+        // given
+        List<ChatMessage> chatMemory = emptyList();
+
+        UserMessage userMessage = UserMessage.from("Hello");
+        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+
+        Query query = Query.from(userMessage.text(), metadata);
+
+        ChatLanguageModel model = mock(ChatLanguageModel.class);
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        // when
+        Collection<Query> queries = transformer.transform(query);
+
+        // then
+        assertThat(queries).containsExactly(query);
+
+        verifyNoInteractions(model);
     }
 
     @Test
