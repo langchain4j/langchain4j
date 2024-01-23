@@ -1,11 +1,11 @@
 package dev.langchain4j.model.scoring;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureEq;
 import static java.util.Collections.singletonList;
 
 /**
@@ -37,7 +37,7 @@ public interface ScoringModel {
      */
     default Response<Double> score(TextSegment segment, String query) {
         Response<List<Double>> response = scoreAll(singletonList(segment), query);
-        ValidationUtils.ensureEq(response.content().size(), 1,
+        ensureEq(response.content().size(), 1,
                 "Expected a single score, but received %d", response.content().size());
         return Response.from(response.content().get(0), response.tokenUsage(), response.finishReason());
     }
