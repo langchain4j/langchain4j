@@ -84,4 +84,26 @@ class ExpandingQueryTransformerTest {
         // then
         assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
     }
+
+    @Test
+    void should_expand_query_with_custom_prompt_template_builder() {
+
+        // given
+        PromptTemplate promptTemplate = PromptTemplate.from("Generate 7 variations of {{query}}");
+
+        ChatModelMock model = ChatModelMock.withStaticResponse("does not matter");
+
+        QueryTransformer transformer = ExpandingQueryTransformer.builder()
+                .chatLanguageModel(model)
+                .promptTemplate(promptTemplate)
+                .build();
+
+        Query query = Query.from("query");
+
+        // when
+        transformer.transform(query);
+
+        // then
+        assertThat(model.userMessageText()).isEqualTo("Generate 7 variations of query");
+    }
 }

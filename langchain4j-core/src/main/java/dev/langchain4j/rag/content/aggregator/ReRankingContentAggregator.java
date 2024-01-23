@@ -63,7 +63,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
     private final Double minScore;
 
     public ReRankingContentAggregator(ScoringModel scoringModel) {
-        this(ensureNotNull(scoringModel, "scoringModel"), DEFAULT_QUERY_SELECTOR, null);
+        this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
     }
 
     @Builder

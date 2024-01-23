@@ -49,11 +49,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
-        this(
-                ensureNotNull(chatLanguageModel, "chatLanguageModel"),
-                ensureNotEmpty(retrieverToDescription, "retrieverToDescription"),
-                DEFAULT_PROMPT_TEMPLATE
-        );
+        this(chatLanguageModel, retrieverToDescription, DEFAULT_PROMPT_TEMPLATE);
     }
 
     @Builder

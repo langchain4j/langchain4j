@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.stream;
@@ -58,14 +59,14 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     }
 
     public ExpandingQueryTransformer(ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate) {
-        this(chatLanguageModel, promptTemplate, DEFAULT_N);
+        this(chatLanguageModel, ensureNotNull(promptTemplate, "promptTemplate"), DEFAULT_N);
     }
 
     @Builder
     public ExpandingQueryTransformer(ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate, Integer n) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.promptTemplate = ensureNotNull(promptTemplate, "promptTemplate");
-        this.n = ensureGreaterThanZero(n, "n");
+        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
+        this.n = ensureGreaterThanZero(getOrDefault(n, DEFAULT_N), "n");
     }
 
     @Override
