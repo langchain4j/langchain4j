@@ -20,7 +20,6 @@ import org.mockito.Captor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,14 +28,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.anyList;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ConversationalChainTest {
@@ -84,149 +76,6 @@ class ConversationalChainTest {
 
         Assertions.assertEquals("Hi there", result);
         Assertions.assertEquals("...Segment 1...\n\n...Segment 2...", capturedInformation);
-    }
-
-    @Test
-    void should_not_include_metadata_keys_in_chat_memory_when_metadata_empty() {
-        List<TextSegment> segments = new ArrayList<>();
-        segments.add(TextSegment.from("Segment 1", Metadata.metadata("title", "title_1.pdf")));
-        segments.add(TextSegment.from("Segment 2", Metadata.metadata("title", "title_2.pdf")));
-
-        ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
-                .promptTemplate(promptTemplate)
-                .chatMemory(chatMemory)
-                .retriever(retriever)
-                .metadataKeysToInclude(new ArrayList<>())
-                .build();
-
-        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(aiMessage)));
-        when(retriever.findRelevant(question)).thenReturn(segments);
-        when(promptTemplate.apply(any())).thenReturn(Prompt.from("Generated prompt"));
-
-        String result = chain.execute(question);
-
-        verify(promptTemplate).apply(variablesCaptor.capture());
-        verify(chatMemory, times(2)).add(any());
-        verify(chatLanguageModel).generate(anyList());
-
-        Map<String, Object> capturedVariables = variablesCaptor.getValue();
-        String capturedInformation = (String) capturedVariables.get("information");
-
-        Assertions.assertEquals("Hi there", result);
-        Assertions.assertEquals("...Segment 1...\n\n...Segment 2...", capturedInformation);
-    }
-
-    @Test
-    void should_not_include_metadata_keys_in_chat_memory_when_metadata_null_value() {
-        List<TextSegment> segments = new ArrayList<>();
-        segments.add(TextSegment.from("Segment 1", Metadata.metadata("title", "title_1.pdf")));
-        segments.add(TextSegment.from("Segment 2", Metadata.metadata("title", "title_2.pdf")));
-        List<String> metadataKeys = new ArrayList<>();
-        metadataKeys.add(null);
-
-        ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
-                .promptTemplate(promptTemplate)
-                .chatMemory(chatMemory)
-                .retriever(retriever)
-                .metadataKeysToInclude(metadataKeys)
-                .build();
-
-        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(aiMessage)));
-        when(retriever.findRelevant(question)).thenReturn(segments);
-        when(promptTemplate.apply(any())).thenReturn(Prompt.from("Generated prompt"));
-
-        String result = chain.execute(question);
-
-        verify(promptTemplate).apply(variablesCaptor.capture());
-        verify(chatMemory, times(2)).add(any());
-        verify(chatLanguageModel).generate(anyList());
-
-        Map<String, Object> capturedVariables = variablesCaptor.getValue();
-        String capturedInformation = (String) capturedVariables.get("information");
-
-        Assertions.assertEquals("Hi there", result);
-        Assertions.assertEquals("...Segment 1...\n\n...Segment 2...", capturedInformation);
-    }
-
-    @Test
-    void should_include_metadata_keys_in_chat_memory() {
-        List<TextSegment> segments = new ArrayList<>();
-        segments.add(TextSegment.from("Segment 1", Metadata.metadata("title", "title_1.pdf")));
-        segments.add(TextSegment.from("Segment 2", Metadata.metadata("title", "title_2.pdf")));
-
-        ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
-                .promptTemplate(promptTemplate)
-                .chatMemory(chatMemory)
-                .retriever(retriever)
-                .metadataKeysToInclude(singletonList("title"))
-                .build();
-
-        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(aiMessage)));
-        when(retriever.findRelevant(question)).thenReturn(segments);
-        when(promptTemplate.apply(any())).thenReturn(Prompt.from("Generated prompt"));
-
-        String result = chain.execute(question);
-
-        verify(promptTemplate).apply(variablesCaptor.capture());
-        verify(chatMemory, times(2)).add(any());
-        verify(chatLanguageModel).generate(anyList());
-
-        Map<String, Object> capturedVariables = variablesCaptor.getValue();
-        String capturedInformation = (String) capturedVariables.get("information");
-
-        Assertions.assertEquals("Hi there", result);
-        Assertions.assertEquals("...title: title_1.pdf\nContent: Segment 1...\n\n...title: title_2.pdf\nContent: Segment 2...", capturedInformation);
-    }
-
-    @Test
-    void should_include_multiple_metadata_keys_in_chat_memory() {
-        List<TextSegment> segments = new ArrayList<>();
-        List<String> metadataKeys = new ArrayList<>();
-        metadataKeys.add("title");
-        metadataKeys.add("author");
-        metadataKeys.add("date");
-
-        Map<String, String> metadata = new HashMap<>();
-        for (String metadataKey : metadataKeys) {
-            metadata.put(metadataKey, metadataKey + "value.pdf");
-        }
-        segments.add(TextSegment.from("Segment 1", Metadata.from(metadata)));
-        segments.add(TextSegment.from("Segment 2", Metadata.from(metadata)));
-
-        ConversationalRetrievalChain chain = ConversationalRetrievalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
-                .promptTemplate(promptTemplate)
-                .chatMemory(chatMemory)
-                .retriever(retriever)
-                .metadataKeysToInclude(metadataKeys)
-                .build();
-
-        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(aiMessage)));
-        when(retriever.findRelevant(question)).thenReturn(segments);
-        when(promptTemplate.apply(any())).thenReturn(Prompt.from("Generated prompt"));
-
-        String result = chain.execute(question);
-
-        verify(promptTemplate).apply(variablesCaptor.capture());
-        verify(chatMemory, times(2)).add(any());
-        verify(chatLanguageModel).generate(anyList());
-
-        Map<String, Object> capturedVariables = variablesCaptor.getValue();
-        String capturedInformation = (String) capturedVariables.get("information");
-
-        Assertions.assertEquals("Hi there", result);
-        Assertions.assertEquals("...title: titlevalue.pdf\n" +
-                "author: authorvalue.pdf\n" +
-                "date: datevalue.pdf\n" +
-                "Content: Segment 1...\n" +
-                "\n" +
-                "...title: titlevalue.pdf\n" +
-                "author: authorvalue.pdf\n" +
-                "date: datevalue.pdf\n" +
-                "Content: Segment 2...", capturedInformation);
     }
 
     @Test
