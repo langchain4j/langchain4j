@@ -127,6 +127,13 @@
                                 <rule>
                                     <excludes>
                                         <exclude>dev.langchain4j.rag</exclude>
+                                        <exclude>dev.langchain4j.rag.content</exclude>
+                                        <exclude>dev.langchain4j.rag.content.aggregator</exclude>
+                                        <exclude>dev.langchain4j.rag.content.injector</exclude>
+                                        <exclude>dev.langchain4j.rag.content.retriever</exclude>
+                                        <exclude>dev.langchain4j.rag.query</exclude>
+                                        <exclude>dev.langchain4j.rag.query.router</exclude>
+                                        <exclude>dev.langchain4j.rag.query.transformer</exclude>
                                     </excludes>
                                     <element>PACKAGE</element>
                                     <limits>
@@ -140,6 +147,13 @@
                                 <rule>
                                     <includes>
                                         <include>dev.langchain4j.rag</include>
+                                        <include>dev.langchain4j.rag.content</include>
+                                        <include>dev.langchain4j.rag.content.aggregator</include>
+                                        <include>dev.langchain4j.rag.content.injector</include>
+                                        <include>dev.langchain4j.rag.content.retriever</include>
+                                        <include>dev.langchain4j.rag.query</include>
+                                        <include>dev.langchain4j.rag.query.router</include>
+                                        <include>dev.langchain4j.rag.query.transformer</include>
                                     </includes>
                                     <element>PACKAGE</element>
                                     <limits>
