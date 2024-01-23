@@ -3,12 +3,15 @@ package dev.langchain4j.store.embedding.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.util.Context;
 import com.azure.search.documents.SearchClient;
 import com.azure.search.documents.SearchClientBuilder;
 import com.azure.search.documents.SearchDocument;
 import com.azure.search.documents.indexes.SearchIndexClient;
 import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import com.azure.search.documents.indexes.models.*;
+import com.azure.search.documents.models.*;
+import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -219,8 +222,28 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      */
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
+        List<Float> vector = new ArrayList<>();
+        for (float f : referenceEmbedding.vector()) {
+            vector.add(f);
+        }
+        VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
+                .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
+                .setKNearestNeighborsCount(maxResults);
 
+        SearchPagedIterable searchResults = searchClient.search(null, new SearchOptions()
+                        .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
+                Context.NONE);
+
+        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
+        for (SearchResult searchResult : searchResults) {
+            Double score = searchResult.getScore();
+            SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
+            String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
+            TextSegment embedded = TextSegment.textSegment((String) searchDocument.get(DEFAULT_FIELD_CONTENT));
+            Embedding embedding = Embedding.from((float[]) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR));
+            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
+            result.add(embeddingMatch);
+        }
         return result;
     }
 
@@ -237,6 +260,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             log.info("Empty embeddings - no ops");
             return;
         }
+        if (isNullOrEmpty(embedded)) {
+            log.info("Empty embedded - no ops");
+            return;
+        }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
@@ -245,23 +272,26 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         for (int i = 0; i < ids.size(); ++i) {
             SearchDocument searchDocument = new SearchDocument();
             searchDocument.put(DEFAULT_FIELD_ID, ids.get(i));
-            searchDocument.put(DEFAULT_FIELD_CONTENT, embedded == null ? "" : embedded.get(i).text());
+            searchDocument.put(DEFAULT_FIELD_CONTENT, embedded.get(i).text());
             searchDocument.put(DEFAULT_FIELD_CONTENT_VECTOR, embeddings.get(i).vector());
 
-            if (embedded != null) {
-                TextSegment embeddedSegment = embedded.get(i);
-                searchDocument.put(DEFAULT_FIELD_METADATA, new HashMap<String, Object>() {{
-                    put(DEFAULT_FIELD_METADATA_SOURCE, "langchain4j");
-                    put(DEFAULT_FIELD_METADATA_ATTRS, new HashMap<String, Object>() {{
-                        if (embeddedSegment != null) {
-                            this.putAll(embeddedSegment.metadata().asMap());
-                        }
-                    }});
+            TextSegment embeddedSegment = embedded.get(i);
+            searchDocument.put(DEFAULT_FIELD_METADATA, new HashMap<String, Object>() {{
+                put(DEFAULT_FIELD_METADATA_SOURCE, "langchain4j");
+                put(DEFAULT_FIELD_METADATA_ATTRS, new HashMap<String, Object>() {{
+                    if (embeddedSegment != null) {
+                        this.putAll(embeddedSegment.metadata().asMap());
+                    }
                 }});
-            }
+            }});
             searchDocuments.add(searchDocument);
         }
-        searchClient.uploadDocuments(searchDocuments);
+        List<IndexingResult> indexingResults = searchClient.uploadDocuments(searchDocuments).getResults();
+        for (IndexingResult indexingResult : indexingResults) {
+            if (!indexingResult.isSucceeded()) {
+                log.error("Failed to add embedding: {}", indexingResult.getErrorMessage());
+            }
+        }
     }
 
     public static Builder builder() {
