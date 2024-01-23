@@ -66,19 +66,6 @@ public class ReRankingContentAggregator implements ContentAggregator {
         this(ensureNotNull(scoringModel, "scoringModel"), DEFAULT_QUERY_SELECTOR, null);
     }
 
-    public ReRankingContentAggregator(ScoringModel scoringModel,
-                                      Function<Map<Query, List<List<Content>>>, Query> querySelector) {
-        this(
-                ensureNotNull(scoringModel, "scoringModel"),
-                ensureNotNull(querySelector, "querySelector"),
-                null
-        );
-    }
-
-    public ReRankingContentAggregator(ScoringModel scoringModel, double minScore) {
-        this(ensureNotNull(scoringModel, "scoringModel"), DEFAULT_QUERY_SELECTOR, minScore);
-    }
-
     @Builder
     public ReRankingContentAggregator(ScoringModel scoringModel,
                                       Function<Map<Query, List<List<Content>>>, Query> querySelector,
