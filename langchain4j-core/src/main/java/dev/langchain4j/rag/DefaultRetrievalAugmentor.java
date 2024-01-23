@@ -130,11 +130,12 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         queries.forEach(query -> {
             CompletableFuture<List<List<Content>>> futureContents =
                     supplyAsync(() -> {
-                        Collection<ContentRetriever> retrievers = queryRouter.route(query);
-                        log(query, retrievers);
-                        return retrievers;
-                    }, executor)
-                            .thenCompose(retrievers -> retrieveFromAll(retrievers, query));
+                                Collection<ContentRetriever> retrievers = queryRouter.route(query);
+                                log(query, retrievers);
+                                return retrievers;
+                            },
+                            executor
+                    ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
             queryToFutureContents.put(query, futureContents);
         });
 
@@ -145,10 +146,12 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
         UserMessage augmentedUserMessage = contentInjector.inject(contents, userMessage);
         log(augmentedUserMessage);
+
         return augmentedUserMessage;
     }
 
-    private CompletableFuture<List<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers, Query query) {
+    private CompletableFuture<List<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
+                                                                   Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
                 .map(retriever -> supplyAsync(() -> {
                     List<Content> contents = retriever.retrieve(query);
@@ -188,7 +191,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 .collect(joining("\n")));
     }
 
-    private void log(Query query, Collection<ContentRetriever> retrievers) {
+    private static void log(Query query, Collection<ContentRetriever> retrievers) {
         // TODO use retriever id
         log.debug("Routing query '{}' to the following retrievers:\n{}",
                 query.text(), retrievers.stream()
