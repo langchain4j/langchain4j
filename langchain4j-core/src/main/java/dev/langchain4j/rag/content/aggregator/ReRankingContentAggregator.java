@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
@@ -62,16 +63,20 @@ public class ReRankingContentAggregator implements ContentAggregator {
     private final Double minScore;
 
     public ReRankingContentAggregator(ScoringModel scoringModel) {
-        this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
+        this(ensureNotNull(scoringModel, "scoringModel"), DEFAULT_QUERY_SELECTOR, null);
     }
 
     public ReRankingContentAggregator(ScoringModel scoringModel,
                                       Function<Map<Query, List<List<Content>>>, Query> querySelector) {
-        this(scoringModel, querySelector, null);
+        this(
+                ensureNotNull(scoringModel, "scoringModel"),
+                ensureNotNull(querySelector, "querySelector"),
+                null
+        );
     }
 
-    public ReRankingContentAggregator(ScoringModel scoringModel, Double minScore) {
-        this(scoringModel, DEFAULT_QUERY_SELECTOR, minScore);
+    public ReRankingContentAggregator(ScoringModel scoringModel, double minScore) {
+        this(ensureNotNull(scoringModel, "scoringModel"), DEFAULT_QUERY_SELECTOR, minScore);
     }
 
     @Builder
@@ -79,7 +84,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
                                       Function<Map<Query, List<List<Content>>>, Query> querySelector,
                                       Double minScore) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
-        this.querySelector = ensureNotNull(querySelector, "querySelector");
+        this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
         this.minScore = minScore;
     }
 

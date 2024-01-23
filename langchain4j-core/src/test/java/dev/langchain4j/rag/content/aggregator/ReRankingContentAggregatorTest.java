@@ -5,12 +5,16 @@ import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -23,8 +27,11 @@ import static org.mockito.Mockito.when;
 
 class ReRankingContentAggregatorTest {
 
-    @Test
-    void should_rerank_when_single_query_and_single_contents() {
+    @ParameterizedTest
+    @MethodSource
+    void should_rerank_when_single_query_and_single_contents(
+            Function<ScoringModel, ContentAggregator> contentAggregatorProvider
+    ) {
 
         // given
         Query query = Query.from("query");
@@ -39,13 +46,28 @@ class ReRankingContentAggregatorTest {
 
         ScoringModel scoringModel = mock(ScoringModel.class);
         when(scoringModel.scoreAll(any(), any())).thenReturn(Response.from(asList(0.5, 0.7)));
-        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+        ContentAggregator aggregator = contentAggregatorProvider.apply(scoringModel);
 
         // when
         List<Content> aggregated = aggregator.aggregate(queryToContents);
 
         // then
         assertThat(aggregated).containsExactly(content2, content1);
+    }
+
+
+    static Stream<Arguments> should_rerank_when_single_query_and_single_contents() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        (Function<ScoringModel, ContentAggregator>) ReRankingContentAggregator::new
+                ))
+                .add(Arguments.of(
+                        (Function<ScoringModel, ContentAggregator>)
+                                (scoringModel) -> ReRankingContentAggregator.builder()
+                                        .scoringModel(scoringModel)
+                                        .build()
+                ))
+                .build();
     }
 
     @Test
