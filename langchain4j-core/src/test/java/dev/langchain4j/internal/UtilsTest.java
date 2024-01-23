@@ -14,6 +14,9 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.quoted;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
@@ -57,7 +60,7 @@ class UtilsTest {
     @Test
     public void test_isNullOrEmpty() {
         assertThat(Utils.isNullOrEmpty(null)).isTrue();
-        assertThat(Utils.isNullOrEmpty(Collections.emptyList())).isTrue();
+        assertThat(Utils.isNullOrEmpty(emptyList())).isTrue();
         assertThat(Utils.isNullOrEmpty(Collections.singletonList("abc"))).isFalse();
     }
 
@@ -65,7 +68,7 @@ class UtilsTest {
     @SuppressWarnings("deprecation")
     public void test_isCollectionEmpty() {
         assertThat(Utils.isCollectionEmpty(null)).isTrue();
-        assertThat(Utils.isCollectionEmpty(Collections.emptyList())).isTrue();
+        assertThat(Utils.isCollectionEmpty(emptyList())).isTrue();
         assertThat(Utils.isCollectionEmpty(Collections.singletonList("abc"))).isFalse();
     }
 
@@ -183,5 +186,13 @@ class UtilsTest {
         } finally {
             httpServer.stop(0);
         }
+    }
+
+    @Test
+    void test_safeCopy() {
+        assertThat(Utils.safeCopy(null)).isNull();
+        assertThat(Utils.safeCopy(emptyList())).isEmpty();
+        assertThat(Utils.safeCopy(singletonList("one"))).containsExactly("one");
+        assertThat(Utils.safeCopy(asList("one", "two"))).containsExactly("one", "two");
     }
 }

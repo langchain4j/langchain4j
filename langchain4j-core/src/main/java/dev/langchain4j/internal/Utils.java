@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import static java.net.HttpURLConnection.HTTP_OK;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.unmodifiableList;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -10,6 +11,7 @@ import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -206,5 +208,21 @@ public class Utils {
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  /**
+   * Returns an (unmodifiable) copy of the provided list.
+   * Returns <code>null</code> if the provided list is <code>null</code>.
+   *
+   * @param list The list to copy.
+   * @param <T>  Generic type of the list.
+   * @return The copy of the provided list.
+   */
+  public static <T> List<T> safeCopy(List<T> list) {
+    if (list == null) {
+      return null;
+    }
+
+    return unmodifiableList(list);
   }
 }
