@@ -246,16 +246,6 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             return this;
         }
 
-        public Builder contentRetrievers(ContentRetriever... contentRetrievers) {
-            this.queryRouter = new DefaultQueryRouter(ensureNotNull(contentRetrievers, "contentRetrievers"));
-            return this;
-        }
-
-        public Builder contentRetrievers(Collection<ContentRetriever> contentRetrievers) {
-            this.queryRouter = new DefaultQueryRouter(ensureNotEmpty(contentRetrievers, "contentRetrievers"));
-            return this;
-        }
-
         public Builder contentAggregator(ContentAggregator contentAggregator) {
             this.contentAggregator = contentAggregator;
             return this;
