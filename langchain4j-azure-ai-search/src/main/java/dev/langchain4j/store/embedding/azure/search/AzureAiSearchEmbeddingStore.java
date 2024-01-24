@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -84,7 +85,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         createOrUpdateIndex(embeddingModel);
     }
 
-    private void createOrUpdateIndex(EmbeddingModel embeddingModel) {
+     void createOrUpdateIndex(EmbeddingModel embeddingModel) {
 
         // Embed a test query to get the embedding dimensions
         int embeddingDimensions = embeddingModel.embed("test").content().vector().length;
@@ -142,6 +143,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .setSemanticSearch(semanticSearch);
 
         searchIndexClient.createOrUpdateIndex(index);
+    }
+
+    void cleanUpIndex() {
+        searchIndexClient.deleteIndex(INDEX_NAME);
     }
 
     /**
@@ -222,10 +227,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      */
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Float> vector = new ArrayList<>();
-        for (float f : referenceEmbedding.vector()) {
-            vector.add(f);
-        }
+        List<Float> vector = floatsArrayToList(referenceEmbedding.vector());
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
                 .setKNearestNeighborsCount(maxResults);
@@ -239,9 +241,17 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             Double score = searchResult.getScore();
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
             String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
-            TextSegment embedded = TextSegment.textSegment((String) searchDocument.get(DEFAULT_FIELD_CONTENT));
-            Embedding embedding = Embedding.from((float[]) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR));
-            EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
+            List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
+            float[] embeddingArray = doublesListToFloatArray(embeddingList);
+            Embedding embedding = Embedding.from(embeddingArray);
+            String embbededContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
+            EmbeddingMatch<TextSegment> embeddingMatch;
+            if (isNotNullOrBlank(embbededContent)) {
+                TextSegment embedded = TextSegment.textSegment(embbededContent);
+                embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
+            } else {
+                embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, null);
+            }
             result.add(embeddingMatch);
         }
         return result;
@@ -260,10 +270,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             log.info("Empty embeddings - no ops");
             return;
         }
-        if (isNullOrEmpty(embedded)) {
-            log.info("Empty embedded - no ops");
-            return;
-        }
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
@@ -272,26 +278,47 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         for (int i = 0; i < ids.size(); ++i) {
             SearchDocument searchDocument = new SearchDocument();
             searchDocument.put(DEFAULT_FIELD_ID, ids.get(i));
-            searchDocument.put(DEFAULT_FIELD_CONTENT, embedded.get(i).text());
-            searchDocument.put(DEFAULT_FIELD_CONTENT_VECTOR, embeddings.get(i).vector());
-
-            TextSegment embeddedSegment = embedded.get(i);
-            searchDocument.put(DEFAULT_FIELD_METADATA, new HashMap<String, Object>() {{
-                put(DEFAULT_FIELD_METADATA_SOURCE, "langchain4j");
-                put(DEFAULT_FIELD_METADATA_ATTRS, new HashMap<String, Object>() {{
-                    if (embeddedSegment != null) {
-                        this.putAll(embeddedSegment.metadata().asMap());
-                    }
+            searchDocument.put(DEFAULT_FIELD_CONTENT_VECTOR, floatsArrayToList(embeddings.get(i).vector()));
+            if (embedded != null) {
+                searchDocument.put(DEFAULT_FIELD_CONTENT, embedded.get(i).text());
+                TextSegment embeddedSegment = embedded.get(i);
+                searchDocument.put(DEFAULT_FIELD_METADATA, new HashMap<String, Object>() {{
+                    put(DEFAULT_FIELD_METADATA_SOURCE, "langchain4j");
+                    put(DEFAULT_FIELD_METADATA_ATTRS, new HashMap<String, Object>() {{
+                        if (embeddedSegment != null) {
+                            this.putAll(embeddedSegment.metadata().asMap());
+                        }
+                    }});
                 }});
-            }});
+            } else {
+                searchDocument.put(DEFAULT_FIELD_CONTENT, "");
+            }
             searchDocuments.add(searchDocument);
         }
         List<IndexingResult> indexingResults = searchClient.uploadDocuments(searchDocuments).getResults();
         for (IndexingResult indexingResult : indexingResults) {
             if (!indexingResult.isSucceeded()) {
                 log.error("Failed to add embedding: {}", indexingResult.getErrorMessage());
+            } else {
+                log.info("Added embedding: {}", indexingResult.getKey());
             }
         }
+    }
+
+    private List<Float> floatsArrayToList(float[] floats) {
+        List<Float> list = new ArrayList<>();
+        for (float f : floats) {
+            list.add(f);
+        }
+        return list;
+    }
+
+    private float[] doublesListToFloatArray(List<Double> doubles) {
+        float[] array = new float[doubles.size()];
+        for (int i = 0; i < doubles.size(); ++i) {
+            array[i] = doubles.get(i).floatValue();
+        }
+        return array;
     }
 
     public static Builder builder() {
