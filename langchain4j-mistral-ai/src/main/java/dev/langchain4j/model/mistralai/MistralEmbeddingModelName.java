@@ -3,7 +3,7 @@ package dev.langchain4j.model.mistralai;
 /**
  * The MistralEmbeddingModelName enum represents the available embedding models in the Mistral AI module.
  */
-public enum MistralEmbeddingModelName {
+public enum MistralAiEmbeddingModelName {
 
     /**
      * The MISTRAL_EMBED model.
