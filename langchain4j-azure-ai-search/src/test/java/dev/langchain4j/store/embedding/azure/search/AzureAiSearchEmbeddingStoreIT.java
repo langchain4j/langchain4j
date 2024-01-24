@@ -7,6 +7,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -30,26 +31,35 @@ public class AzureAiSearchEmbeddingStoreIT {//extends EmbeddingStoreIT {
                 .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
                 .logRequestsAndResponses(true)
                 .build();
+    }
 
-        Embedding firstEmbedding = embeddingModel.embed("hello").content();
-
-        embeddingStore = AzureAiSearchEmbeddingStore.builder()
+    @BeforeEach
+    void cleanUp() {
+        // Delete and recreate the index before each test, so they are idempotent
+        AzureAiSearchEmbeddingStore azureAiSearchEmbeddingStore = AzureAiSearchEmbeddingStore.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .embeddingModel(embeddingModel)
                 .build();
+
+        azureAiSearchEmbeddingStore.cleanUpIndex();
+        azureAiSearchEmbeddingStore.createOrUpdateIndex(embeddingModel);
+        embeddingStore = azureAiSearchEmbeddingStore;
     }
 
     @Test
     void testAddEmbeddingAndFindRelevant() {
-        Embedding firstEmbedding = embeddingModel.embed("hello").content();
-        Embedding secondEmbedding = embeddingModel.embed("hi").content();
-        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+        Embedding firstEmbedding = embeddingModel.embed("Chihuahua").content();
+        Embedding secondEmbedding = embeddingModel.embed("Pet").content();
+        Embedding thirdEmbedding = embeddingModel.embed("Dog").content();
+        Embedding fourthEmbedding = embeddingModel.embed("Chocolate cookie").content();
+        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding, thirdEmbedding, fourthEmbedding));
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-        assertThat(relevant.get(0).embedding()).isNull();
-        assertThat(relevant.get(1).embedding()).isNull();
+        assertThat(relevant).hasSize(3);
+        assertThat(relevant.get(0).embedding()).isNotNull();
+        assertThat(relevant.get(1).embedding()).isNotNull();
+        assertThat(relevant.get(2).embedding()).isNotNull();
     }
 
     //@Override
