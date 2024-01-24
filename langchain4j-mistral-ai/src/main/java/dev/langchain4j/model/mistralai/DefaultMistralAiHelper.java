@@ -108,7 +108,7 @@ class DefaultMistralAiHelper{
             while (matcher.find()) {
                 String bearer = matcher.group(1);
                 String token = matcher.group(2);
-                matcher.appendReplacement(sb, bearer + " " + token.substring(0, 7) + "..." + token.substring(token.length() - 7));
+                matcher.appendReplacement(sb, bearer + " " + token.substring(0, 2) + "..." + token.substring(token.length() - 2));
             }
             matcher.appendTail(sb);
             return sb.toString();
