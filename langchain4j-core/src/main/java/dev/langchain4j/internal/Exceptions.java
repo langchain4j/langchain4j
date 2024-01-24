@@ -1,5 +1,8 @@
 package dev.langchain4j.internal;
 
+/**
+ * Utility methods for creating common exceptions.
+ */
 public class Exceptions {
     private Exceptions() {}
 

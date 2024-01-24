@@ -14,10 +14,18 @@ public class SystemMessage implements ChatMessage {
 
     private final String text;
 
+    /**
+     * Creates a new system message.
+     * @param text the message text.
+     */
     public SystemMessage(String text) {
         this.text = ensureNotBlank(text, "text");
     }
 
+    /**
+     * Returns the message text.
+     * @return the message text.
+     */
     public String text() {
         return text;
     }
@@ -47,10 +55,20 @@ public class SystemMessage implements ChatMessage {
                 " }";
     }
 
+    /**
+     * Creates a new system message.
+     * @param text the message text.
+     * @return the system message.
+     */
     public static SystemMessage from(String text) {
         return new SystemMessage(text);
     }
 
+    /**
+     * Creates a new system message.
+     * @param text the message text.
+     * @return the system message.
+     */
     public static SystemMessage systemMessage(String text) {
         return from(text);
     }

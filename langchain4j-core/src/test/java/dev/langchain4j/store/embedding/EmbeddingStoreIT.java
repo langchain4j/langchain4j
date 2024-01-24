@@ -24,9 +24,16 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         String id = embeddingStore().add(embedding, segment);
         assertThat(id).isNotBlank();
 
+        {
+            // Not returned.
+            TextSegment altSegment = TextSegment.from("hello?");
+            Embedding altEmbedding = embeddingModel().embed(altSegment.text()).content();
+            embeddingStore().add(altEmbedding, segment);
+        }
+
         awaitUntilPersisted();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
