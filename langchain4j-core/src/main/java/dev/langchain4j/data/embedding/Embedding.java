@@ -41,6 +41,13 @@ public class Embedding {
         return vector.length;
     }
 
+    /**
+     * Return the L2 Norm of the feature vector.
+     *
+     * <code>{@pre Sqrt(Sum(f[i] ** 2))}</code>
+     *
+     * @return float the norm.
+     */
     public float magnitude() {
         float sumOfSquares = 0;
         for (float v : vector) {
