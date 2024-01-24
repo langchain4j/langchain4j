@@ -37,12 +37,12 @@ public class DocumentSplitters {
      * If some paragraphs are too long, they are recursively split into lines, then sentences,
      * then words, and then characters until they fit into a segment.
      *
-     * @param maxSegmentSizeInChars  The maximum size of the segment, defined in characters.
-     * @param maxOverlapSizeInTokens The maximum size of the overlap, defined in characters.
-     *                               Only full sentences are considered for the overlap.
+     * @param maxSegmentSizeInChars The maximum size of the segment, defined in characters.
+     * @param maxOverlapSizeInChars The maximum size of the overlap, defined in characters.
+     *                              Only full sentences are considered for the overlap.
      * @return recursive document splitter
      */
-    public static DocumentSplitter recursive(int maxSegmentSizeInChars, int maxOverlapSizeInTokens) {
-        return recursive(maxSegmentSizeInChars, maxOverlapSizeInTokens, null);
+    public static DocumentSplitter recursive(int maxSegmentSizeInChars, int maxOverlapSizeInChars) {
+        return recursive(maxSegmentSizeInChars, maxOverlapSizeInChars, null);
     }
 }

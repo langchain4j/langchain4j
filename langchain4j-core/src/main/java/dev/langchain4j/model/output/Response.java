@@ -16,24 +16,50 @@ public class Response<T> {
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
 
+    /**
+     * Create a new Response.
+     *
+     * <p>Will contain {@code null} {@code TokenUsage} and {@code FinishReason}</p>
+     *
+     * @param content the content to wrap.
+     */
     public Response(T content) {
         this(content, null, null);
     }
 
+    /**
+     * Create a new Response.
+     *
+     * @param content the content to wrap.
+     * @param tokenUsage the token usage statistics, or {@code null}.
+     * @param finishReason the finish reason, or {@code null}.
+     */
     public Response(T content, TokenUsage tokenUsage, FinishReason finishReason) {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = tokenUsage;
         this.finishReason = finishReason;
     }
 
+    /**
+     * Get the content.
+     * @return the content.
+     */
     public T content() {
         return content;
     }
 
+    /**
+     * Get the token usage statistics.
+     * @return the token usage statistics, or {@code null}.
+     */
     public TokenUsage tokenUsage() {
         return tokenUsage;
     }
 
+    /**
+     * Get the finish reason.
+     * @return the finish reason, or {@code null}.
+     */
     public FinishReason finishReason() {
         return finishReason;
     }
@@ -62,14 +88,35 @@ public class Response<T> {
                 " }";
     }
 
+    /**
+     * Create a new Response.
+     * @param content the content to wrap.
+     * @return the new Response.
+     * @param <T> the type of content.
+     */
     public static <T> Response<T> from(T content) {
         return new Response<>(content);
     }
 
+    /**
+     * Create a new Response.
+     * @param content the content to wrap.
+     * @param tokenUsage the token usage statistics.
+     * @return the new Response.
+     * @param <T> the type of content.
+     */
     public static <T> Response<T> from(T content, TokenUsage tokenUsage) {
         return new Response<>(content, tokenUsage, null);
     }
 
+    /**
+     * Create a new Response.
+     * @param content the content to wrap.
+     * @param tokenUsage the token usage statistics.
+     * @param finishReason the finish reason.
+     * @return the new Response.
+     * @param <T> the type of content.
+     */
     public static <T> Response<T> from(T content, TokenUsage tokenUsage, FinishReason finishReason) {
         return new Response<>(content, tokenUsage, finishReason);
     }
