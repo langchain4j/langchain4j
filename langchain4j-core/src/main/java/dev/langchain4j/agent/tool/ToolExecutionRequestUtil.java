@@ -5,8 +5,20 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+/**
+ * Utility class for {@link ToolExecutionRequest}.
+ */
 public class ToolExecutionRequestUtil {
+    private ToolExecutionRequestUtil() {}
+
+    /**
+     * Gson instance.
+     */
     public static final Gson GSON = new Gson();
+
+    /**
+     * Utility {@link TypeToken} describing {@code Map<String, Object>}.
+     */
     public static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
     }.getType();
 
