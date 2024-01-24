@@ -46,6 +46,8 @@
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <netty.version>4.1.104.Final</netty.version>
+        <awaitility.version>4.2.0</awaitility.version>
+        <jsonpath.version>2.8.0</jsonpath.version>
     </properties>
 
     <dependencyManagement>
@@ -300,6 +302,18 @@
                 </exclusions>
             </dependency>
 
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.jayway.jsonpath</groupId>
+                <artifactId>json-path</artifactId>
+                <version>${jsonpath.version}</version>
+            </dependency>
+          
             <dependency>
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>
