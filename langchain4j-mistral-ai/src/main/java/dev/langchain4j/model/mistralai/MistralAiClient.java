@@ -117,7 +117,7 @@ class MistralAiClient {
                         contentBuilder.append(chunk);
                         handler.onNext(chunk);
 
-                        MistralUsageInfo usageInfo = choice.getUsage();
+                        MistralUsageInfo usageInfo = chatCompletionResponse.getUsage();
                         if(usageInfo != null){
                             this.tokenUsage = tokenUsageFrom(usageInfo);
                         }
