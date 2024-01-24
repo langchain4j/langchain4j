@@ -13,7 +13,11 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Utility methods for {@link ToolSpecification}s.
+ */
 public class ToolSpecifications {
+    private ToolSpecifications() {}
 
     /**
      * Get the {@link ToolSpecification}s for each {@link Tool} method of the given object.

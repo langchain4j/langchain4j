@@ -18,20 +18,38 @@ public class ToolExecutionResultMessage implements ChatMessage {
     private final String toolName;
     private final String text;
 
+    /**
+     * Creates a {@link ToolExecutionResultMessage}.
+     * @param id the id of the tool.
+     * @param toolName the name of the tool.
+     * @param text the result of the tool execution.
+     */
     public ToolExecutionResultMessage(String id, String toolName, String text) {
         this.id = id;
         this.toolName = toolName;
         this.text = ensureNotBlank(text, "text");
     }
 
+    /**
+     * Returns the id of the tool.
+     * @return the id of the tool.
+     */
     public String id() {
         return id;
     }
 
+    /**
+     * Returns the name of the tool.
+     * @return the name of the tool.
+     */
     public String toolName() {
         return toolName;
     }
 
+    /**
+     * Returns the result of the tool execution.
+     * @return the result of the tool execution.
+     */
     public String text() {
         return text;
     }
@@ -65,18 +83,44 @@ public class ToolExecutionResultMessage implements ChatMessage {
                 " }";
     }
 
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
+     * @param request the request.
+     * @param toolExecutionResult the result of the tool execution.
+     * @return the {@link ToolExecutionResultMessage}.
+     */
     public static ToolExecutionResultMessage from(ToolExecutionRequest request, String toolExecutionResult) {
         return new ToolExecutionResultMessage(request.id(), request.name(), toolExecutionResult);
     }
 
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
+     * @param id the id of the tool.
+     * @param toolName the name of the tool.
+     * @param toolExecutionResult the result of the tool execution.
+     * @return the {@link ToolExecutionResultMessage}.
+     */
     public static ToolExecutionResultMessage from(String id, String toolName, String toolExecutionResult) {
         return new ToolExecutionResultMessage(id, toolName, toolExecutionResult);
     }
 
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
+     * @param request the request.
+     * @param toolExecutionResult the result of the tool execution.
+     * @return the {@link ToolExecutionResultMessage}.
+     */
     public static ToolExecutionResultMessage toolExecutionResultMessage(ToolExecutionRequest request, String toolExecutionResult) {
         return from(request, toolExecutionResult);
     }
 
+    /**
+     * Creates a {@link ToolExecutionResultMessage} from a {@link ToolExecutionRequest} and the result of the tool execution.
+     * @param id the id of the tool.
+     * @param toolName the name of the tool.
+     * @param toolExecutionResult the result of the tool execution.
+     * @return the {@link ToolExecutionResultMessage}.
+     */
     public static ToolExecutionResultMessage toolExecutionResultMessage(String id, String toolName, String toolExecutionResult) {
         return from(id, toolName, toolExecutionResult);
     }

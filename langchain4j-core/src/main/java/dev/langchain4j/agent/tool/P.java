@@ -15,6 +15,7 @@ public @interface P {
 
     /**
      * Description of a parameter
+     * @return the description of a parameter
      */
     String value();
 }

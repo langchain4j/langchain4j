@@ -19,19 +19,37 @@ public class TextSegment {
     private final String text;
     private final Metadata metadata;
 
+    /**
+     * Creates a new text segment.
+     * @param text the text.
+     * @param metadata the metadata.
+     */
     public TextSegment(String text, Metadata metadata) {
         this.text = ensureNotBlank(text, "text");
         this.metadata = ensureNotNull(metadata, "metadata");
     }
 
+    /**
+     * Returns the text.
+     * @return the text.
+     */
     public String text() {
         return text;
     }
 
+    /**
+     * Returns the metadata.
+     * @return the metadata.
+     */
     public Metadata metadata() {
         return metadata;
     }
 
+    /**
+     * Returns the metadata value for the given key.
+     * @param key the key.
+     * @return the metadata value, or null if not found.
+     */
     public String metadata(String key) {
         return metadata.get(key);
     }
@@ -58,18 +76,40 @@ public class TextSegment {
                 " }";
     }
 
+    /**
+     * Creates a new text segment.
+     * @param text the text.
+     * @return the text segment.
+     */
     public static TextSegment from(String text) {
         return new TextSegment(text, new Metadata());
     }
 
+    /**
+     * Creates a new text segment.
+     * @param text the text.
+     * @param metadata the metadata.
+     * @return the text segment.
+     */
     public static TextSegment from(String text, Metadata metadata) {
         return new TextSegment(text, metadata);
     }
 
+    /**
+     * Creates a new text segment.
+     * @param text the text.
+     * @return the text segment.
+     */
     public static TextSegment textSegment(String text) {
         return from(text);
     }
 
+    /**
+     * Creates a new text segment.
+     * @param text the text.
+     * @param metadata the metadata.
+     * @return the text segment.
+     */
     public static TextSegment textSegment(String text, Metadata metadata) {
         return from(text, metadata);
     }

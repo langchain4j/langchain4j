@@ -2,6 +2,10 @@ package dev.langchain4j.retriever;
 
 import java.util.List;
 
+/**
+ * Interface for retrieving relevant items.
+ * @param <T> the type of the items.
+ */
 public interface Retriever<T> {
 
     /**

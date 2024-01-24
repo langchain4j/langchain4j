@@ -19,6 +19,14 @@ public class EmbeddingMatch<Embedded> {
     private final Embedding embedding;
     private final Embedded embedded;
 
+    /**
+     * Creates a new instance.
+     * @param score The relevance score (derivative of cosine distance) of this embedding compared to
+     *              a reference embedding during a search.
+     * @param embeddingId The ID of the embedding assigned when adding this embedding to the store.
+     * @param embedding The embedding that has been matched.
+     * @param embedded The original content that was embedded. Typically, this is a {@link dev.langchain4j.data.segment.TextSegment}.
+     */
     public EmbeddingMatch(Double score, String embeddingId, Embedding embedding, Embedded embedded) {
         this.score = ensureNotNull(score, "score");
         this.embeddingId = ensureNotBlank(embeddingId, "embeddingId");
@@ -38,6 +46,7 @@ public class EmbeddingMatch<Embedded> {
     }
 
     /**
+     * The ID of the embedding assigned when adding this embedding to the store.
      * @return The ID of the embedding assigned when adding this embedding to the store.
      */
     public String embeddingId() {
@@ -45,6 +54,7 @@ public class EmbeddingMatch<Embedded> {
     }
 
     /**
+     * Returns the embedding that has been matched.
      * @return The embedding that has been matched.
      */
     public Embedding embedding() {
@@ -52,6 +62,7 @@ public class EmbeddingMatch<Embedded> {
     }
 
     /**
+     * Returns the original content that was embedded.
      * @return The original content that was embedded. Typically, this is a {@link dev.langchain4j.data.segment.TextSegment}.
      */
     public Embedded embedded() {

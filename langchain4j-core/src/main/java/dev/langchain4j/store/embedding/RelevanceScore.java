@@ -1,6 +1,10 @@
 package dev.langchain4j.store.embedding;
 
+/**
+ * Utility class for converting between cosine similarity and relevance score.
+ */
 public class RelevanceScore {
+    private RelevanceScore() {}
 
     /**
      * Converts cosine similarity into relevance score.

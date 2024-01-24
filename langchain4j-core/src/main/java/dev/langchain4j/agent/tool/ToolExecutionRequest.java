@@ -4,25 +4,44 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
+/**
+ * Represents a request to execute a tool.
+ */
 public class ToolExecutionRequest {
     private final String id;
     private final String name;
     private final String arguments;
 
+    /**
+     * Creates a {@link ToolExecutionRequest} from a {@link Builder}.
+     * @param builder the builder.
+     */
     private ToolExecutionRequest(Builder builder) {
         this.id = builder.id;
         this.name = builder.name;
         this.arguments = builder.arguments;
     }
 
+    /**
+     * Returns the id of the tool.
+     * @return the id of the tool.
+     */
     public String id() {
         return id;
     }
 
+    /**
+     * Returns the name of the tool.
+     * @return the name of the tool.
+     */
     public String name() {
         return name;
     }
 
+    /**
+     * Returns the arguments of the tool.
+     * @return the arguments of the tool.
+     */
     public String arguments() {
         return arguments;
     }
@@ -74,6 +93,9 @@ public class ToolExecutionRequest {
         private String name;
         private String arguments;
 
+        /**
+         * Creates a builder for {@code ToolExecutionRequest}.
+         */
         private Builder() {
         }
 

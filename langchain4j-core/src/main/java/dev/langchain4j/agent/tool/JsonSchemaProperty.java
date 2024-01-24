@@ -6,14 +6,44 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Collections.singletonMap;
 
+/**
+ * Represents a property in a JSON schema.
+ */
 public class JsonSchemaProperty {
 
+    /**
+     * A property with key "type" and value "string".
+     */
     public static final JsonSchemaProperty STRING = type("string");
+
+    /**
+     * A property with key "type" and value "integer".
+     */
     public static final JsonSchemaProperty INTEGER = type("integer");
+
+    /**
+     * A property with key "type" and value "number".
+     */
     public static final JsonSchemaProperty NUMBER = type("number");
+
+    /**
+     * A property with key "type" and value "object".
+     */
     public static final JsonSchemaProperty OBJECT = type("object");
+
+    /**
+     * A property with key "type" and value "array".
+     */
     public static final JsonSchemaProperty ARRAY = type("array");
+
+    /**
+     * A property with key "type" and value "boolean".
+     */
     public static final JsonSchemaProperty BOOLEAN = type("boolean");
+
+    /**
+     * A property with key "type" and value "null".
+     */
     public static final JsonSchemaProperty NULL = type("null");
 
     private final String key;
@@ -29,10 +59,18 @@ public class JsonSchemaProperty {
         this.value = value;
     }
 
+    /**
+     * Get the key.
+     * @return the key.
+     */
     public String key() {
         return key;
     }
 
+    /**
+     * Get the value.
+     * @return the value.
+     */
     public Object value() {
         return value;
     }
@@ -44,6 +82,11 @@ public class JsonSchemaProperty {
                 && equalTo((JsonSchemaProperty) another);
     }
 
+    /**
+     * Utility method to compare two {@link JsonSchemaProperty} instances.
+     * @param another the other instance.
+     * @return true if the two instances are equal.
+     */
     private boolean equalTo(JsonSchemaProperty another) {
         if (!Objects.equals(key, another.key)) return false;
 

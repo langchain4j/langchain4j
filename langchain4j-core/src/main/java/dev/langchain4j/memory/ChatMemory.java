@@ -13,6 +13,7 @@ import java.util.List;
 public interface ChatMemory {
 
     /**
+     * The ID of the {@link ChatMemory}.
      * @return The ID of the {@link ChatMemory}.
      */
     Object id();

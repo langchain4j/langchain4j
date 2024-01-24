@@ -9,12 +9,30 @@ import dev.langchain4j.model.input.Prompt;
  */
 public interface TokenCountEstimator {
 
+    /**
+     * Estimates the count of tokens in the given text.
+     * @param text the text.
+     * @return the estimated count of tokens.
+     */
     int estimateTokenCount(String text);
 
+    /**
+     * Estimates the count of tokens in the given prompt.
+     * @param prompt the prompt.
+     * @return the estimated count of tokens.
+     */
     default int estimateTokenCount(Prompt prompt) {
         return estimateTokenCount(prompt.text());
     }
 
+    /**
+     * Estimates the count of tokens in the given text segment.
+     *
+     * <p>The metadata will not be included in the estimate.</p>
+     *
+     * @param textSegment the text segment.
+     * @return the estimated count of tokens.
+     */
     default int estimateTokenCount(TextSegment textSegment) {
         return estimateTokenCount(textSegment.text());
     }

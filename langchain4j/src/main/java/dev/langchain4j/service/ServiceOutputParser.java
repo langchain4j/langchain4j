@@ -122,7 +122,12 @@ public class ServiceOutputParser {
         StringBuilder jsonSchema = new StringBuilder();
         jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
-            jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field)));
+            String name = field.getName();
+            if (name.equals("__$hits$__")) {
+                // Skip coverage instrumentation field.
+                continue;
+            }
+            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field)));
         }
         jsonSchema.append("}");
         return jsonSchema.toString();

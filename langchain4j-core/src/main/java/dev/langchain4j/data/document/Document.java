@@ -15,8 +15,17 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class Document {
 
+    /**
+     * Common metadata key for the name of the file from which the document was loaded.
+     */
     public static final String FILE_NAME = "file_name";
+    /**
+     * Common metadata key for the absolute path of the directory from which the document was loaded.
+     */
     public static final String ABSOLUTE_DIRECTORY_PATH = "absolute_directory_path";
+    /**
+     * Common metadata key for the URL from which the document was loaded.
+     */
     public static final String URL = "url";
 
     private final String text;
@@ -106,7 +115,7 @@ public class Document {
     /**
      * Creates a new Document from the given text.
      *
-     * <p></p>The created document will have empty metadata.
+     * <p>The created document will have empty metadata.</p>
      *
      * @param text the text of the document.
      * @return a new Document.
@@ -129,7 +138,7 @@ public class Document {
     /**
      * Creates a new Document from the given text.
      *
-     * <p></p>The created document will have empty metadata.
+     * <p>The created document will have empty metadata.</p>
      *
      * @param text the text of the document.
      * @return a new Document.

@@ -23,9 +23,7 @@ import java.util.*;
 import java.util.concurrent.*;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -153,12 +151,10 @@ public abstract class AiServices<T> {
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
         AiServiceContext context = new AiServiceContext(aiService);
-        Collection<AiServicesFactory> aiServicesFactories = ServiceHelper.loadFactories(AiServicesFactory.class);
-        for (AiServicesFactory factory : aiServicesFactories) {
-            return factory.create(context);
-        }
-        // fallback to default
-        return new DefaultAiServices<>(context);
+        return ServiceHelper.loadFactoryService(
+                AiServicesFactory.class,
+                f -> f.create(context),
+                () -> new DefaultAiServices<>(context));
     }
 
     /**

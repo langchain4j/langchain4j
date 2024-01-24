@@ -2,6 +2,13 @@ package dev.langchain4j.model;
 
 import dev.langchain4j.model.output.Response;
 
+/**
+ * Represents a handler for streaming responses from a language model.
+ * The handler is invoked each time the model generates a new token in a textual response.
+ * If the model executes a tool instead, {@link #onComplete} will be invoked instead.
+ *
+ * @param <T> The type of the response.
+ */
 public interface StreamingResponseHandler<T> {
 
     /**

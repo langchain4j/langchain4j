@@ -13,6 +13,9 @@ import java.util.Collection;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+/**
+ * Utility methods.
+ */
 public class Utils {
   private Utils() {}
 
