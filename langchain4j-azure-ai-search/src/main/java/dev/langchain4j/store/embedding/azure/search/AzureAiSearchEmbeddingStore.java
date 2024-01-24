@@ -11,6 +11,7 @@ import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import com.azure.search.documents.indexes.models.*;
 import com.azure.search.documents.models.*;
 import com.azure.search.documents.util.SearchPagedIterable;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -26,6 +27,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Azure AI Search EmbeddingStore Implementation
@@ -246,7 +248,17 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             String embbededContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embbededContent)) {
-                TextSegment embedded = TextSegment.textSegment(embbededContent);
+                LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
+                List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
+                Map<String, String> attributesMap = new HashMap<>();
+                for (Object attribute : attributes) {
+                    LinkedHashMap innerAttribute = (LinkedHashMap) attribute;
+                    String key = (String) innerAttribute.get("key");
+                    String value = (String) innerAttribute.get("value");
+                    attributesMap.put(key, value);
+                }
+                Metadata langChainMetada = Metadata.from(attributesMap);
+                TextSegment embedded = TextSegment.textSegment(embbededContent, langChainMetada);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, null);
