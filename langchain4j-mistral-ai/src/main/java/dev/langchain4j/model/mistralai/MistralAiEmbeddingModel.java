@@ -52,7 +52,7 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses,false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralEmbeddingModelName.MISTRAL_EMBED.toString());
+        this.modelName = getOrDefault(modelName, MistralAiEmbeddingModelName.MISTRAL_EMBED.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 

@@ -68,7 +68,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, MistralChatCompletionModelName.MISTRAL_TINY.toString());
+        this.modelName = getOrDefault(modelName, MistralAiChatModelName.MISTRAL_TINY.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.maxNewTokens = maxNewTokens;

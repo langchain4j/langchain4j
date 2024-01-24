@@ -1,7 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 /**
- * The MistralEmbeddingModelName enum represents the available embedding models in the Mistral AI module.
+ * The MistralAiEmbeddingModelName enum represents the available embedding models in the Mistral AI module.
  */
 public enum MistralAiEmbeddingModelName {
 
@@ -12,7 +12,7 @@ public enum MistralAiEmbeddingModelName {
 
     private final String value;
 
-    private MistralEmbeddingModelName(String value) {
+    private MistralAiEmbeddingModelName(String value) {
         this.value = value;
     }
 

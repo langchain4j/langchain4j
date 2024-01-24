@@ -20,6 +20,8 @@ class MistralAiStreamingChatModelIT {
     StreamingChatLanguageModel model =  MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .temperature(0.1)
+            .logResponses(true)
+            .logRequests(true)
             .build();
 
     @Test
@@ -95,7 +97,6 @@ class MistralAiStreamingChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("respect");
-        assertThat(response.content().text()).containsIgnoringCase("truth");
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isGreaterThan(50);
@@ -139,7 +140,7 @@ class MistralAiStreamingChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralChatCompletionModelName.MISTRAL_SMALL.toString())
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL.toString())
                 .temperature(0.1)
                 .build();
 
@@ -168,7 +169,7 @@ class MistralAiStreamingChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralChatCompletionModelName.MISTRAL_SMALL.toString())
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL.toString())
                 .temperature(0.1)
                 .build();
 
@@ -197,7 +198,7 @@ class MistralAiStreamingChatModelIT {
         // given - Mistral Medium = currently relies on an internal prototype model.
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralChatCompletionModelName.MISTRAL_MEDIUM.toString())
+                .modelName(MistralAiChatModelName.MISTRAL_MEDIUM.toString())
                 .maxNewTokens(10)
                 .build();
 

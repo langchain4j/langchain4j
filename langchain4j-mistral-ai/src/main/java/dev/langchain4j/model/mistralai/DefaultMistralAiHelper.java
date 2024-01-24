@@ -1,12 +1,9 @@
 package dev.langchain4j.model.mistralai;
 
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.Headers;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.regex.Matcher;
@@ -15,12 +12,12 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
 class DefaultMistralAiHelper{
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultMistralAiHelper.class);
     static final String MISTRALAI_API_URL = "https://api.mistral.ai/v1";
     static final String MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT = "float";
     private static final Pattern MISTRAI_API_KEY_BEARER_PATTERN = Pattern.compile("^(Bearer\\s*) ([A-Za-z0-9]{1,32})$");
@@ -45,7 +42,7 @@ class DefaultMistralAiHelper{
     public static MistralChatMessage toMistralAiMessage(ChatMessage message) {
         return MistralChatMessage.builder()
                 .role(toMistralAiRole(message.type()))
-                .content(message.text())
+                .content(toMistralChatMessageContent(message))
                 .build();
     }
 
@@ -60,6 +57,23 @@ class DefaultMistralAiHelper{
             default:
                 throw new IllegalArgumentException("Unknown chat message type: " + chatMessageType);
         }
+
+    }
+
+    private static String toMistralChatMessageContent(ChatMessage message) {
+        if (message instanceof SystemMessage) {
+            return ((SystemMessage) message).text();
+        }
+
+        if(message instanceof AiMessage){
+            return ((AiMessage) message).text();
+        }
+
+        if(message instanceof UserMessage){
+            return ((UserMessage) message).text(); // MistralAI support Text Content only as String
+        }
+
+        throw new IllegalArgumentException("Unknown message type: " + message.type());
 
     }
 

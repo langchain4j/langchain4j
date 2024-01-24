@@ -22,6 +22,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.IOException;
 import java.time.Duration;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
 
@@ -34,6 +35,7 @@ class MistralAiClient {
             .create();
     private final MistralAiApi mistralAiApi;
     private final OkHttpClient okHttpClient;
+    private final boolean logStreamingResponses;
 
     @Builder
     public MistralAiClient(String baseUrl,
@@ -48,7 +50,7 @@ class MistralAiClient {
                 .writeTimeout(timeout);
         if (isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException("MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys/");
-        }else {
+        } else {
             okHttpClientBuilder.addInterceptor(new MistralAiApiKeyInterceptor(apiKey));
             // Log raw HTTP requests
             if (logRequests) {
@@ -61,6 +63,7 @@ class MistralAiClient {
             }
         }
 
+        this.logStreamingResponses = logResponses;
         this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -77,7 +80,6 @@ class MistralAiClient {
             retrofit2.Response<MistralChatCompletionResponse> retrofitResponse
                     = mistralAiApi.chatCompletion(request).execute();
             if (retrofitResponse.isSuccessful()) {
-                LOGGER.debug("ChatCompletionResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
             } else {
                 throw toException(retrofitResponse);
@@ -95,13 +97,16 @@ class MistralAiClient {
 
             @Override
             public void onOpen(EventSource eventSource, okhttp3.Response response) {
-                LOGGER.debug("onOpen()");
+                if (logStreamingResponses) {
+                    LOGGER.debug("onOpen()");
+                }
             }
 
             @Override
             public void onEvent(EventSource eventSource, String id, String type, String data) {
-
-                LOGGER.debug("onEvent() {}", data);
+                if (logStreamingResponses){
+                    LOGGER.debug("onEvent() {}", data);
+                }
                 if ("[DONE]".equals(data)) {
                     Response<AiMessage> response = Response.from(
                             AiMessage.from(contentBuilder.toString()),
@@ -136,7 +141,9 @@ class MistralAiClient {
 
             @Override
             public void onFailure(EventSource eventSource, Throwable t, okhttp3.Response response) {
-                LOGGER.debug("onFailure()", t);
+                if (logStreamingResponses){
+                    LOGGER.debug("onFailure()", t);
+                }
 
                 if (t != null){
                     handler.onError(t);
@@ -147,7 +154,9 @@ class MistralAiClient {
 
             @Override
             public void onClosed(EventSource eventSource) {
-                LOGGER.debug("onClosed()");
+                if (logStreamingResponses){
+                    LOGGER.debug("onClosed()");
+                }
             }
 
         };
@@ -163,7 +172,6 @@ class MistralAiClient {
             retrofit2.Response<MistralEmbeddingResponse> retrofitResponse
                     = mistralAiApi.embedding(request).execute();
             if (retrofitResponse.isSuccessful()) {
-                LOGGER.debug("EmbeddingResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
             } else {
                 throw toException(retrofitResponse);
@@ -178,7 +186,6 @@ class MistralAiClient {
             retrofit2.Response<MistralModelResponse> retrofitResponse
                     = mistralAiApi.models().execute();
             if (retrofitResponse.isSuccessful()) {
-                LOGGER.debug("ModelResponseBody: {}", retrofitResponse.body());
                 return retrofitResponse.body();
             } else {
                 throw toException(retrofitResponse);

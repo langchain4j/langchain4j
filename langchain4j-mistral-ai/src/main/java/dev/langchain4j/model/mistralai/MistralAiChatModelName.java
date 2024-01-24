@@ -10,12 +10,12 @@ package dev.langchain4j.model.mistralai;
  * 
  * <p>
  * The available chat completion models are:
+ * </p>
  * <ul>
  *   <li>{@link #MISTRAL_TINY} - powered by Mistral-7B-v0.2</li>
  *   <li>{@link #MISTRAL_SMALL} - powered by Mixtral-8X7B-v0.1</li>
  *   <li>{@link #MISTRAL_MEDIUM} - currently relies on an internal prototype model</li>
  * </ul>
- * </p>
  * 
  * @see <a href="https://docs.mistral.ai/platform/endpoints/">Mistral AI Endpoints</a>
  */
@@ -30,7 +30,7 @@ public enum MistralAiChatModelName {
 
     private final String value;
 
-    private MistralChatCompletionModelName(String value) {
+    private MistralAiChatModelName(String value) {
         this.value = value;
     }
 

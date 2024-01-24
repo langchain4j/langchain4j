@@ -55,7 +55,6 @@
             <version>2.0.7</version>
         </dependency>
 
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -93,6 +92,7 @@
             <artifactId>tinylog-impl</artifactId>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.tinylog</groupId>
             <artifactId>slf4j-tinylog</artifactId>

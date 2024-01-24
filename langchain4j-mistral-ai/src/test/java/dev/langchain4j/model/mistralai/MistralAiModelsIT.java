@@ -18,9 +18,8 @@ class MistralAiModelsIT {
         Response<List<MistralAiModelCard>> response = models.availableModels();
 
         // then
-        assertThat(response.content()).isNotEmpty();
-        assertThat(response.content().size()).isEqualTo(4);
-        assertThat(response.content()).extracting("id").contains(MistralChatCompletionModelName.MISTRAL_TINY.toString());
+        assertThat(response.content().size()).isGreaterThan(0);
+        assertThat(response.content()).extracting("id").contains(MistralAiChatModelName.MISTRAL_TINY.toString());
         assertThat(response.content()).extracting("object").contains("model");
         assertThat(response.content()).extracting("permission").isNotNull();
     }

@@ -4,7 +4,6 @@ import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import okio.Buffer;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,9 +15,9 @@ class MistralAiRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MistralAiRequestLoggingInterceptor.class);
 
-    @NotNull
+
     @Override
-    public Response intercept(@NotNull Chain chain) throws IOException {
+    public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
         this.log(request);
         return chain.proceed(request);
@@ -27,13 +26,7 @@ class MistralAiRequestLoggingInterceptor implements Interceptor {
     private void log(Request request) {
         String message = "Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}";
         try {
-            if (LOGGER.isInfoEnabled()) {
-                LOGGER.info(message, new Object[]{request.method(), request.url(), getHeaders(request.headers()), getBody(request)});
-            } else if (LOGGER.isWarnEnabled()) {
-                LOGGER.warn(message, new Object[]{request.method(), request.url(), getHeaders(request.headers()), getBody(request)});
-            } else if (LOGGER.isErrorEnabled()) {
-                LOGGER.error(message, new Object[]{request.method(), request.url(), getHeaders(request.headers()), getBody(request)});
-            } else {
+            if (LOGGER.isDebugEnabled()){
                 LOGGER.debug(message, new Object[]{request.method(), request.url(), getHeaders(request.headers()), getBody(request)});
             }
         } catch (Exception e) {
