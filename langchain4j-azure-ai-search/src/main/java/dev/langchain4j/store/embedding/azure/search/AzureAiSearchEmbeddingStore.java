@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import com.azure.core.credential.AzureKeyCredential;
-import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.Context;
 import com.azure.search.documents.SearchClient;
@@ -145,7 +144,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         searchIndexClient.createOrUpdateIndex(index);
     }
 
-    void cleanUpIndex() {
+    void deleteIndex() {
         searchIndexClient.deleteIndex(INDEX_NAME);
     }
 
@@ -274,26 +273,28 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
 
-        List<SearchDocument> searchDocuments = new ArrayList<>();
+        List<Document> searchDocuments = new ArrayList<>();
         for (int i = 0; i < ids.size(); ++i) {
-            SearchDocument searchDocument = new SearchDocument();
-            searchDocument.put(DEFAULT_FIELD_ID, ids.get(i));
-            searchDocument.put(DEFAULT_FIELD_CONTENT_VECTOR, floatsArrayToList(embeddings.get(i).vector()));
+            Document document = new Document();
+            document.setId(ids.get(i));
+            document.setContent_vector(floatsArrayToList(embeddings.get(i).vector()));
             if (embedded != null) {
-                searchDocument.put(DEFAULT_FIELD_CONTENT, embedded.get(i).text());
-                TextSegment embeddedSegment = embedded.get(i);
-                searchDocument.put(DEFAULT_FIELD_METADATA, new HashMap<String, Object>() {{
-                    put(DEFAULT_FIELD_METADATA_SOURCE, "langchain4j");
-                    put(DEFAULT_FIELD_METADATA_ATTRS, new HashMap<String, Object>() {{
-                        if (embeddedSegment != null) {
-                            this.putAll(embeddedSegment.metadata().asMap());
-                        }
-                    }});
-                }});
+                document.setContent(embedded.get(i).text());
+                Document.Metadata metadata = new Document.Metadata();
+                metadata.setSource("langchain4j");
+                List<Document.Metadata.Attribute> attributes = new ArrayList<>();
+                for (Map.Entry<String, String> entry : embedded.get(i).metadata().asMap().entrySet()) {
+                    Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
+                    attribute.setKey(entry.getKey());
+                    attribute.setValue(entry.getValue());
+                    attributes.add(attribute);
+                }
+                metadata.setAttributes(attributes);
+                document.setMetadata(metadata);
             } else {
-                searchDocument.put(DEFAULT_FIELD_CONTENT, "");
+                document.setContent("");
             }
-            searchDocuments.add(searchDocument);
+            searchDocuments.add(document);
         }
         List<IndexingResult> indexingResults = searchClient.uploadDocuments(searchDocuments).getResults();
         for (IndexingResult indexingResult : indexingResults) {
