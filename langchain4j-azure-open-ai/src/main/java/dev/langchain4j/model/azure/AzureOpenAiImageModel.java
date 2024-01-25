@@ -6,10 +6,11 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 
-import java.nio.file.Path;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -154,7 +155,10 @@ public class AzureOpenAiImageModel implements ImageModel {
     }
 
     public static Builder builder() {
-        return new Builder();
+        return ServiceHelper.loadFactoryService(
+                AzureOpenAiImageModelBuilderFactory.class,
+                Builder::new
+        );
     }
 
     public static class Builder {

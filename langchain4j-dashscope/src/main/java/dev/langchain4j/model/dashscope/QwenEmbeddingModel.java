@@ -5,9 +5,11 @@ import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.dashscope.spi.QwenEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.ArrayList;
@@ -118,6 +120,20 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 }
                 return Response.from(embeddings, new TokenUsage(tokens));
             }
+        }
+    }
+
+    public static QwenEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenEmbeddingModelBuilderFactory.class,
+                QwenEmbeddingModelBuilder::new
+        );
+    }
+
+    public static class QwenEmbeddingModelBuilder {
+        public QwenEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }
