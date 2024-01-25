@@ -3,7 +3,9 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -53,5 +55,19 @@ public class OllamaEmbeddingModel implements EmbeddingModel {
         });
 
         return Response.from(embeddings);
+    }
+
+    public static OllamaEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OllamaEmbeddingModelBuilderFactory.class,
+                OllamaEmbeddingModelBuilder::new
+        );
+    }
+
+    public static class OllamaEmbeddingModelBuilder {
+        public OllamaEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

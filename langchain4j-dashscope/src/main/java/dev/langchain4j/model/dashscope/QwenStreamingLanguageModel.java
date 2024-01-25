@@ -9,8 +9,10 @@ import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.dashscope.spi.QwenStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -104,6 +106,20 @@ public class QwenStreamingLanguageModel implements StreamingLanguageModel {
             });
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static QwenStreamingLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenStreamingLanguageModelBuilderFactory.class,
+                QwenStreamingLanguageModelBuilder::new
+        );
+    }
+
+    public static class QwenStreamingLanguageModelBuilder {
+        public QwenStreamingLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }

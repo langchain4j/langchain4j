@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 @Testcontainers
-public class OpenSearchEmbeddingStoreAWSTest extends EmbeddingStoreIT {
+class OpenSearchEmbeddingStoreAwsIT extends EmbeddingStoreIT {
 
     @Container
     private static final LocalStackContainer localstack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:latest"));
@@ -53,11 +53,11 @@ public class OpenSearchEmbeddingStoreAWSTest extends EmbeddingStoreIT {
         await().pollInterval(Duration.ofSeconds(30))
                 .atMost(Duration.ofSeconds(300))
                 .untilAsserted(() -> {
-            ExecResult execResult = localstack.execInContainer(describeDomainCmd);
-            String response = execResult.getStdout();
-            JSONArray processed = JsonPath.read(response, "$.DomainStatus[?(@.Processing == false)]");
-            assertThat(processed).isNotEmpty();
-        });
+                    ExecResult execResult = localstack.execInContainer(describeDomainCmd);
+                    String response = execResult.getStdout();
+                    JSONArray processed = JsonPath.read(response, "$.DomainStatus[?(@.Processing == false)]");
+                    assertThat(processed).isNotEmpty();
+                });
     }
 
     @Override

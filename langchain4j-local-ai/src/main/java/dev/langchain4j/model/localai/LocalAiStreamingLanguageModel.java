@@ -5,8 +5,10 @@ import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.localai.spi.LocalAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -85,5 +87,19 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
                 })
                 .onError(handler::onError)
                 .execute();
+    }
+
+    public static LocalAiStreamingLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                LocalAiStreamingLanguageModelBuilderFactory.class,
+                LocalAiStreamingLanguageModelBuilder::new
+        );
+    }
+
+    public static class LocalAiStreamingLanguageModelBuilder {
+        public LocalAiStreamingLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

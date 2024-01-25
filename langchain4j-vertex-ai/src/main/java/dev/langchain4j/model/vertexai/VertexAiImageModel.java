@@ -10,6 +10,8 @@ import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.vertexai.spi.VertexAiImageModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -280,7 +282,10 @@ public class VertexAiImageModel implements ImageModel {
     }
 
     public static Builder builder() {
-        return new Builder();
+        return ServiceHelper.loadFactoryService(
+                VertexAiImageModelBuilderFactory.class,
+                Builder::new
+        );
     }
 
     public static class Builder {

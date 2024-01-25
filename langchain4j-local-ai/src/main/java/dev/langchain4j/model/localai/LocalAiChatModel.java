@@ -7,7 +7,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.localai.spi.LocalAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -105,5 +107,19 @@ public class LocalAiChatModel implements ChatLanguageModel {
                 null,
                 finishReasonFrom(response.choices().get(0).finishReason())
         );
+    }
+
+    public static LocalAiChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                LocalAiChatModelBuilderFactory.class,
+                LocalAiChatModelBuilder::new
+        );
+    }
+
+    public static class LocalAiChatModelBuilder {
+        public LocalAiChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
