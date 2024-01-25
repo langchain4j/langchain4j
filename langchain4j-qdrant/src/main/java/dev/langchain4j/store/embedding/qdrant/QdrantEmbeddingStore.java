@@ -74,6 +74,17 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     this.payloadTextKey = payloadTextKey;
   }
 
+  /**
+   * @param client A Qdrant client instance.
+   * @param collectionName The name of the Qdrant collection.
+   * @param payloadTextKey The field name of the text segment in the Qdrant payload.
+   */
+  public QdrantEmbeddingStore(QdrantClient client, String collectionName, String payloadTextKey) {
+    this.client = client;
+    this.collectionName = collectionName;
+    this.payloadTextKey = payloadTextKey;
+  }
+
   @Override
   public String add(Embedding embedding) {
     String id = randomUUID();
@@ -249,6 +260,7 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
     private boolean useTls = false;
     private String payloadTextKey = "text_segment";
     private String apiKey = null;
+    private QdrantClient client = null;
 
     /**
      * @param host The host of the Qdrant instance. Defaults to "localhost".
@@ -302,8 +314,20 @@ public class QdrantEmbeddingStore implements EmbeddingStore<TextSegment> {
       return this;
     }
 
+    /**
+     * @param client A Qdrant client instance. Defaults to null.
+     */
+    public Builder client(QdrantClient client) {
+      this.client = client;
+      return this;
+    }
+
     public QdrantEmbeddingStore build() {
       Objects.requireNonNull(collectionName, "collectionName cannot be null");
+
+      if (client != null) {
+        return new QdrantEmbeddingStore(client, collectionName, payloadTextKey);
+      }
       return new QdrantEmbeddingStore(collectionName, host, port, useTls, payloadTextKey, apiKey);
     }
   }
