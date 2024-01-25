@@ -10,6 +10,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.io.IOException;
@@ -109,5 +111,19 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                 TokenUsageMapper.map(response.getUsageMetadata()),
                 FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
         );
+    }
+
+    public static VertexAiGeminiChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                VertexAiGeminiChatModelBuilderFactory.class,
+                VertexAiGeminiChatModelBuilder::new
+        );
+    }
+
+    public static class VertexAiGeminiChatModelBuilder {
+        public VertexAiGeminiChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
