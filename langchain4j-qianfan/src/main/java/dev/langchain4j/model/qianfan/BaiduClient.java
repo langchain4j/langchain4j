@@ -21,7 +21,7 @@ import java.net.Proxy;
 import java.time.Duration;
 
 
-public class BaiduClient {
+class BaiduClient {
 
     private static final Logger log = LoggerFactory.getLogger(BaiduClient.class);
     private final String baseUrl;
