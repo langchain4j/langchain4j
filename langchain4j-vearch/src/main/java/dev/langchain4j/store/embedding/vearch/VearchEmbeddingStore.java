@@ -21,16 +21,16 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final VearchConfig vearchConfig;
     private final VearchClient vearchClient;
-    private final boolean normalize;
+    private final boolean normalizeEmbedding;
 
     public VearchEmbeddingStore(String baseUrl,
                                 Duration timeout,
                                 VearchConfig vearchConfig,
-                                Boolean normalize) {
+                                Boolean normalizeEmbedding) {
         // Step 0: initialize some attribute
         baseUrl = ensureNotNull(baseUrl, "baseUrl");
         this.vearchConfig = getOrDefault(vearchConfig, VearchConfig.getDefaultConfig());
-        this.normalize = getOrDefault(normalize, false);
+        this.normalizeEmbedding = getOrDefault(normalizeEmbedding, false);
 
         vearchClient = VearchClient.builder()
                 .baseUrl(baseUrl)
@@ -57,7 +57,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         private VearchConfig vearchConfig;
         private String baseUrl;
         private Duration timeout;
-        private Boolean normalize;
+        private Boolean normalizeEmbedding;
 
         public Builder vearchConfig(VearchConfig vearchConfig) {
             this.vearchConfig = vearchConfig;
@@ -74,13 +74,13 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder normalize(Boolean normalize) {
-            this.normalize = normalize;
+        public Builder normalizeEmbedding(Boolean normalizeEmbedding) {
+            this.normalizeEmbedding = normalizeEmbedding;
             return this;
         }
 
         public VearchEmbeddingStore build() {
-            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalize);
+            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbedding);
         }
     }
 
@@ -158,7 +158,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             document.put("_id", ids.get(i));
             Map<String, List<Float>> embeddingValue = new HashMap<>(1);
             Embedding embedding = embeddings.get(i);
-            if (normalize) {
+            if (normalizeEmbedding) {
                 embedding.normalize();
             }
             embeddingValue.put("feature", embedding.vectorAsList());
