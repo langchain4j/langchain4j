@@ -10,7 +10,7 @@ import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import retrofit2.Call;
 import retrofit2.http.*;
 
-public interface BaiduApi {
+interface BaiduApi {
 
         @POST("rpc/2.0/ai_custom/v1/wenxinworkshop/chat/{endpoint}")
         @Headers({"Content-Type: application/json"})
