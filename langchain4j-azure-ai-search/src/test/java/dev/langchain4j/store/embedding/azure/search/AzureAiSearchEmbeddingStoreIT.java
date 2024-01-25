@@ -2,7 +2,7 @@ package dev.langchain4j.store.embedding.azure.search;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.azure.AzureOpenAiEmbeddingModel;
+import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -23,13 +23,8 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     private EmbeddingStore<TextSegment> embeddingStore;
 
     public AzureAiSearchEmbeddingStoreIT() {
-        embeddingModel = AzureOpenAiEmbeddingModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
-                .logRequestsAndResponses(true)
-                .build();
+
+        embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
         embeddingStore =  AzureAiSearchEmbeddingStore.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
