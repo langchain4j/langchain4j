@@ -9,6 +9,8 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
@@ -17,6 +19,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
 public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
+
+    private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStoreIT.class);
 
     private EmbeddingModel embeddingModel;
 
@@ -35,11 +39,13 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Test
     void testAddEmbeddingsAndFindRelevant() {
-        String content1 = "Chihuahua";
-        String content2 = "Poodle";
-        String content3 = "Golden retriever";
-        String content4 = "Chocolate cookie";
-        List<String> contents = asList(content1, content2, content3, content4);
+        String content1 = "banana";
+        String content2 = "computer";
+        String content3 = "apple";
+        String content4 = "pizza";
+        String content5 = "strawberry";
+        String content6 = "chess";
+        List<String> contents = asList(content1, content2, content3, content4, content5, content6);
 
         for (String content : contents) {
             TextSegment textSegment = TextSegment.from(content);
@@ -47,12 +53,20 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
             embeddingStore.add(embedding, textSegment);
         }
 
-        Embedding relevantEmbedding = embeddingModel.embed("Cake").content();
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(relevantEmbedding, 10);
+        awaitUntilPersisted();
+
+        Embedding relevantEmbedding = embeddingModel.embed("fruit").content();
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(relevantEmbedding, 3);
         assertThat(relevant).hasSize(3);
         assertThat(relevant.get(0).embedding()).isNotNull();
+        assertThat(relevant.get(0).embedded().text()).isIn(content1, content3, content5);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
         assertThat(relevant.get(1).embedding()).isNotNull();
+        assertThat(relevant.get(1).embedded().text()).isIn(content1, content3, content5);
+        log.info("#2 relevant item: {}", relevant.get(1).embedded().text());
         assertThat(relevant.get(2).embedding()).isNotNull();
+        assertThat(relevant.get(2).embedded().text()).isIn(content1, content3, content5);
+        log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
     }
 
     @Override
