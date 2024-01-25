@@ -13,7 +13,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.dashscope.spi.QwenMultiModalChatModelBuilderFactory;
 import dev.langchain4j.model.dashscope.spi.QwenMultiModalStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.spi.ServiceHelper;
@@ -22,7 +21,6 @@ import lombok.Builder;
 import java.util.List;
 
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
-import static dev.langchain4j.model.dashscope.QwenHelper.finishReasonFrom;
 
 public class QwenMultiModalStreamingChatModel implements StreamingChatLanguageModel {
     private final String apiKey;

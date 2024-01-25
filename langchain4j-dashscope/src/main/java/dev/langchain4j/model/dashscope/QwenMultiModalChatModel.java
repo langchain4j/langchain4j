@@ -10,7 +10,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.dashscope.spi.QwenChatModelBuilderFactory;
 import dev.langchain4j.model.dashscope.spi.QwenMultiModalChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.spi.ServiceHelper;

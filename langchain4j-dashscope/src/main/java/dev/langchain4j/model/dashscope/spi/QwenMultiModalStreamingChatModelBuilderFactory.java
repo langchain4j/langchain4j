@@ -1,6 +1,5 @@
 package dev.langchain4j.model.dashscope.spi;
 
-import dev.langchain4j.model.dashscope.QwenMultiModalChatModel;
 import dev.langchain4j.model.dashscope.QwenMultiModalStreamingChatModel;
 
 import java.util.function.Supplier;
