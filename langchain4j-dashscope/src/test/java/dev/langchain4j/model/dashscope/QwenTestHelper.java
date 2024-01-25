@@ -2,12 +2,22 @@ package dev.langchain4j.model.dashscope;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.provider.Arguments;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class QwenTestHelper {
     public static Stream<Arguments> languageModelNameProvider() {
@@ -56,12 +66,37 @@ public class QwenTestHelper {
         return messages;
     }
 
-    public static List<ChatMessage> multiModalChatMessages() {
+    public static List<ChatMessage> multiModalChatMessagesWithImageUrl() {
         Image image = Image.builder()
                 .url("https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg")
                 .build();
         ImageContent imageContent = ImageContent.from(image);
         TextContent textContent = TextContent.from("What animal is in the picture?");
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
+    }
+
+    public static List<ChatMessage> multiModalChatMessagesWithImageData() {
+        Image image = Image.builder()
+                .base64Data(multiModalImageData())
+                .build();
+        ImageContent imageContent = ImageContent.from(image);
+        TextContent textContent = TextContent.from("What animal is in the picture?");
+        return Collections.singletonList(UserMessage.from(imageContent, textContent));
+    }
+
+    public static String multiModalImageData() {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        try (InputStream in = QwenTestHelper.class.getResourceAsStream("/parrot.jpg")) {
+            assertNotNull(in);
+            byte[] data = new byte[512];
+            int n;
+            while ((n = in.read(data)) != -1) {
+                buffer.write(data, 0, n);
+            }
+        } catch (IOException e) {
+            fail(e.getMessage());
+        }
+
+        return Base64.getEncoder().encodeToString(buffer.toByteArray());
     }
 }

@@ -9,9 +9,13 @@ import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -99,15 +103,48 @@ class QwenHelper {
                 String imageContent;
                 if (image.url() != null) {
                     imageContent = image.url().toString();
+                    return Collections.singletonMap("image", imageContent);
+                } else if (Utils.isNotNullOrBlank(image.base64Data())) {
+                    // The dashscope sdk supports local file url: file://...
+                    // Using the temporary directory for storing temporary files is a safe practice,
+                    // as most operating systems will periodically clean up the contents of this directory
+                    // or do so upon system reboot.
+                    imageContent = saveImageAsTemporaryFile(image.base64Data(), image.mimeType());
+
+                    // In this case, the dashscope sdk requires a writable map.
+                    HashMap<String, Object> contentMap = new HashMap<>(1);
+                    contentMap.put("image", imageContent);
+                    return contentMap;
                 } else {
-                    imageContent = image.base64Data();
+                    return Collections.emptyMap();
                 }
-                return Collections.singletonMap("image", imageContent);
             case TEXT:
                 return Collections.singletonMap("text", ((TextContent) content).text());
             default:
                 return Collections.emptyMap();
         }
+    }
+
+    private static String saveImageAsTemporaryFile(String base64Data, String mimeType) {
+        String tmpDir = System.getProperty("java.io.tmpdir", "/tmp");
+        String tmpImageName = UUID.randomUUID().toString();
+        if (Utils.isNotNullOrBlank(mimeType)) {
+            // e.g. "image/png", "image/jpeg"...
+            int lastSlashIndex = mimeType.lastIndexOf("/");
+            if (lastSlashIndex >= 0 && lastSlashIndex < mimeType.length() - 1) {
+                String imageSuffix = mimeType.substring(lastSlashIndex + 1);
+                tmpImageName = tmpImageName + "." + imageSuffix;
+            }
+        }
+
+        Path tmpImagePath = Paths.get(tmpDir, tmpImageName);
+        byte[] data = Base64.getDecoder().decode(base64Data);
+        try {
+            Files.copy(new ByteArrayInputStream(data), tmpImagePath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return tmpImagePath.toAbsolutePath().toUri().toString();
     }
 
     static String roleFrom(ChatMessage message) {

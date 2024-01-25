@@ -12,14 +12,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static dev.langchain4j.model.dashscope.QwenTestHelper.multiModalChatMessages;
+import static dev.langchain4j.model.dashscope.QwenTestHelper.multiModalChatMessagesWithImageData;
+import static dev.langchain4j.model.dashscope.QwenTestHelper.multiModalChatMessagesWithImageUrl;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class QwenMultiModalStreamingChatModelIT {
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multiModalChatModelNameProvider")
-    public void should_send_messages_and_receive_response(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
+    public void should_send_image_url_and_receive_response(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
         String apiKey = QwenTestHelper.apiKey();
         if (Utils.isNullOrBlank(apiKey)) {
             return;
@@ -31,7 +32,7 @@ public class QwenMultiModalStreamingChatModelIT {
                 .build();;
 
         CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
-        model.generate(multiModalChatMessages(), new StreamingResponseHandler<AiMessage>() {
+        model.generate(multiModalChatMessagesWithImageUrl(), new StreamingResponseHandler<AiMessage>() {
             @Override
             public void onNext(String token) {
                 System.out.println("onNext: '" + token + "'");
@@ -53,5 +54,43 @@ public class QwenMultiModalStreamingChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("dog");
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#multiModalChatModelNameProvider")
+    public void should_send_image_data_and_receive_response(String modelName) throws ExecutionException, InterruptedException, TimeoutException {
+        String apiKey = QwenTestHelper.apiKey();
+        if (Utils.isNullOrBlank(apiKey)) {
+            return;
+        }
+
+        StreamingChatLanguageModel model = QwenMultiModalStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .modelName(modelName)
+                .build();;
+
+        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        model.generate(multiModalChatMessagesWithImageData(), new StreamingResponseHandler<AiMessage>() {
+            @Override
+            public void onNext(String token) {
+                System.out.println("onNext: '" + token + "'");
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                future.complete(response);
+                System.out.println("onComplete: '" + response.content().text() + "'");
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response = future.get(30, SECONDS);
+        System.out.println(response);
+
+        assertThat(response.content().text()).containsIgnoringCase("parrot");
     }
 }
