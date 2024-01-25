@@ -25,7 +25,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
-public class InternalQianfanHelper {
+class InternalQianfanHelper {
 
     public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
