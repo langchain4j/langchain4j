@@ -50,6 +50,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param scheme           The scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
      * @param host             The host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
      *                         Find in under Details of your Weaviate cluster.
+     *                         Can include the port at the end, e.g. "localhost:8080".
      * @param objectClass      The object class you want to store, e.g. "MyGreatClass". Must start from an uppercase letter.
      * @param avoidDups        If true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
      *                         provided text segment, which avoids duplicated entries in DB.
