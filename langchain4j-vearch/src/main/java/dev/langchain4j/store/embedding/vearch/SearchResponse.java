@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api;
+package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.Builder;
@@ -11,11 +11,14 @@ import java.util.Map;
 @Getter
 @Setter
 @Builder
-public class SearchResponse {
+class SearchResponse {
 
     private Integer took;
     @SerializedName("timed_out")
     private Boolean timeout;
+    /**
+     * not support shards yet
+     */
     @SerializedName("_shards")
     private Object shards;
     private Hit hits;

@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api;
+package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.Builder;
@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class BulkResponse {
+class BulkResponse {
 
     private Integer status;
     private String error;

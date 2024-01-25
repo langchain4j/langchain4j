@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api;
+package dev.langchain4j.store.embedding.vearch;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -10,7 +10,7 @@ import java.util.Map;
 @Getter
 @Setter
 @Builder
-public class BulkRequest {
+class BulkRequest {
 
     private List<Map<String, Object>> documents;
 }

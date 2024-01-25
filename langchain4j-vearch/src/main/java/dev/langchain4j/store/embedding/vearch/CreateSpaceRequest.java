@@ -1,8 +1,8 @@
-package dev.langchain4j.store.embedding.vearch.api;
+package dev.langchain4j.store.embedding.vearch;
 
-import dev.langchain4j.store.embedding.vearch.api.space.ModelParam;
-import dev.langchain4j.store.embedding.vearch.api.space.SpaceEngine;
-import dev.langchain4j.store.embedding.vearch.api.space.SpacePropertyParam;
+import dev.langchain4j.store.embedding.vearch.ModelParam;
+import dev.langchain4j.store.embedding.vearch.SpaceEngine;
+import dev.langchain4j.store.embedding.vearch.SpacePropertyParam;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,7 +13,7 @@ import java.util.Map;
 @Getter
 @Setter
 @Builder
-public class CreateSpaceRequest {
+class CreateSpaceRequest {
 
     private String name;
     private Integer partitionNum;

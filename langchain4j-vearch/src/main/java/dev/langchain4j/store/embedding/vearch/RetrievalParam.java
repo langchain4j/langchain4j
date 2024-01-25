@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api.space;
+package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.Builder;
@@ -17,7 +17,8 @@ public abstract class RetrievalParam {
     @Builder
     public static class IVFPQParam extends RetrievalParam {
 
-        private MetricType metricType;
+        @Builder.Default
+        private MetricType metricType = MetricType.INNER_PRODUCT;
         /**
          * number of buckets for indexing
          *
@@ -37,7 +38,8 @@ public abstract class RetrievalParam {
     @Builder
     public static class HNSWParam extends RetrievalParam {
 
-        private MetricType metricType;
+        @Builder.Default
+        private MetricType metricType = MetricType.INNER_PRODUCT;
         /**
          * neighbors number of each node
          *
@@ -59,7 +61,8 @@ public abstract class RetrievalParam {
     @Builder
     public static class GPUParam extends RetrievalParam {
 
-        private MetricType metricType;
+        @Builder.Default
+        private MetricType metricType = MetricType.INNER_PRODUCT;
         /**
          * number of buckets for indexing
          *
@@ -79,7 +82,8 @@ public abstract class RetrievalParam {
     @Builder
     public static class IVFFLATParam extends RetrievalParam {
 
-        private MetricType metricType;
+        @Builder.Default
+        private MetricType metricType = MetricType.INNER_PRODUCT;
         /**
          * number of buckets for indexing
          *
@@ -106,6 +110,7 @@ public abstract class RetrievalParam {
     @Builder
     public static class FLAT extends RetrievalParam {
 
-        private MetricType metricType;
+        @Builder.Default
+        private MetricType metricType = MetricType.INNER_PRODUCT;
     }
 }

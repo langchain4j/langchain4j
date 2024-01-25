@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api.space;
+package dev.langchain4j.store.embedding.vearch;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,7 +7,7 @@ import lombok.Setter;
 /**
  * As a constraint type of all Space property only
  *
- * @see dev.langchain4j.store.embedding.vearch.api.CreateSpaceRequest
+ * @see CreateSpaceRequest
  */
 public abstract class SpacePropertyParam {
 

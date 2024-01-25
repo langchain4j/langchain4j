@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api.space;
+package dev.langchain4j.store.embedding.vearch;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -26,7 +26,7 @@ public class SpaceEngine {
     public void setRetrievalParam(RetrievalParam retrievalParam) {
         // do some constraint check
         Class<? extends RetrievalParam> clazz = retrievalType.getParamClass();
-        if (clazz.isInstance(retrievalParam)) {
+        if (!clazz.isInstance(retrievalParam)) {
             throw new UnsupportedOperationException(
                     String.format("can't assign unknown param of engine %s, please use class %s to assign engine param",
                             retrievalType.name(), clazz.getSimpleName()));

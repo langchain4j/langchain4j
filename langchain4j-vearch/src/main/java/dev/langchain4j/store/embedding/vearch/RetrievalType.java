@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api.space;
+package dev.langchain4j.store.embedding.vearch;
 
 import lombok.Getter;
 

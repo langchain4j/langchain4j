@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import dev.langchain4j.store.embedding.vearch.api.space.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -20,11 +19,14 @@ public class VearchConfig {
     private String spaceName;
     private SpaceEngine spaceEngine;
     /**
-     * This attribute's key set should contain {@link VearchConfig#metadataFieldNames}
+     * This attribute's key set should contain
+     * {@link VearchConfig#embeddingFieldName}, {@link VearchConfig#textFieldName} and {@link VearchConfig#metadataFieldNames}
      */
     private Map<String, SpacePropertyParam> properties;
-    private String embeddingFieldName;
-    private String textFieldName;
+    @Builder.Default
+    private String embeddingFieldName = "embedding";
+    @Builder.Default
+    private String textFieldName = "text";
     private List<ModelParam> modelParams;
     /**
      * This attribute should be the subset of {@link VearchConfig#properties}'s key set
@@ -32,20 +34,14 @@ public class VearchConfig {
     private List<String> metadataFieldNames;
 
     public static VearchConfig getDefaultConfig() {
-        String embeddingFieldName = "text_embedding";
-        String textFieldName = "text";
-        String metadataFieldName = "metadata";
-
         // init properties
         Map<String, SpacePropertyParam> properties = new HashMap<>(4);
-        properties.put(embeddingFieldName, SpacePropertyParam.VectorParam.builder()
+        properties.put("embedding", SpacePropertyParam.VectorParam.builder()
                 .index(true)
                 .storeType(SpaceStoreType.MEMORY_ONLY)
                 .dimension(384)
                 .build());
-        properties.put(textFieldName, SpacePropertyParam.StringParam.builder().build());
-        // metadata
-        properties.put(metadataFieldName, SpacePropertyParam.StringParam.builder().build());
+        properties.put("text", SpacePropertyParam.StringParam.builder().build());
 
         return VearchConfig.builder()
                 .spaceEngine(SpaceEngine.builder()
@@ -53,12 +49,9 @@ public class VearchConfig {
                         .indexSize(1L)
                         .retrievalType(RetrievalType.FLAT)
                         .retrievalParam(RetrievalParam.FLAT.builder()
-                                .metricType(MetricType.INNER_PRODUCT)
                                 .build())
                         .build())
                 .properties(properties)
-                .embeddingFieldName(embeddingFieldName)
-                .textFieldName(textFieldName)
                 .databaseName("embedding_db")
                 .spaceName("embedding_space")
                 .modelParams(singletonList(ModelParam.builder()
@@ -66,7 +59,6 @@ public class VearchConfig {
                         .fields(singletonList("string"))
                         .out("feature")
                         .build()))
-                .metadataFieldNames(singletonList(metadataFieldName))
                 .build();
     }
 }

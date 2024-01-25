@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api;
+package dev.langchain4j.store.embedding.vearch;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -9,7 +9,7 @@ import java.util.List;
 @Getter
 @Setter
 @Builder
-public class SearchRequest {
+class SearchRequest {
 
     private QueryParam query;
     private Integer size;

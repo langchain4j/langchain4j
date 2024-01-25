@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.vearch.api;
+package dev.langchain4j.store.embedding.vearch;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,8 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class CreateSpaceResponse {
+class CreateDatabaseResponse {
 
-    private Integer id;
+    private Long id;
     private String name;
 }

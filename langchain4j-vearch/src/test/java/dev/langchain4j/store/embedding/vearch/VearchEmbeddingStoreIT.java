@@ -5,8 +5,6 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import dev.langchain4j.store.embedding.vearch.api.CreateSpaceRequest;
-import dev.langchain4j.store.embedding.vearch.api.space.*;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.BindMode;
@@ -70,7 +68,6 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
                         .indexSize(1L)
                         .retrievalType(RetrievalType.FLAT)
                         .retrievalParam(RetrievalParam.FLAT.builder()
-                                .metricType(MetricType.INNER_PRODUCT)
                                 .build())
                         .build())
                 .properties(properties)

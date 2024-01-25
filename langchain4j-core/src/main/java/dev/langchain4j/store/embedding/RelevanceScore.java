@@ -15,14 +15,4 @@ public class RelevanceScore {
     public static double fromCosineSimilarity(double cosineSimilarity) {
         return (cosineSimilarity + 1) / 2;
     }
-
-    /**
-     * Converts relevance score into cosine similarity
-     *
-     * @param relevanceScore Relevance score in the range [0..1] where 0 is not relevant and 1 is relevant.
-     * @return Cosine similarity in the range [-1..1] where -1 is not relevant and 1 is relevant.
-     */
-    public static double fromRelevanceScore(double relevanceScore) {
-        return relevanceScore * 2 - 1;
-    }
 }

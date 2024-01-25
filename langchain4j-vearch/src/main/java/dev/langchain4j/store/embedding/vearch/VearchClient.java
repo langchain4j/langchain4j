@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import dev.langchain4j.store.embedding.vearch.api.*;
 import lombok.Builder;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -18,9 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
-import static dev.langchain4j.store.embedding.vearch.api.VearchApi.OK;
+import static dev.langchain4j.store.embedding.vearch.VearchApi.OK;
 
-public class VearchClient {
+class VearchClient {
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)

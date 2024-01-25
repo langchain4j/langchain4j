@@ -3,11 +3,10 @@ package dev.langchain4j.store.embedding.vearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import dev.langchain4j.store.embedding.vearch.api.*;
-import lombok.Builder;
 
 import java.time.Duration;
 import java.util.*;
@@ -22,14 +21,16 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final VearchConfig vearchConfig;
     private final VearchClient vearchClient;
+    private final boolean normalize;
 
-    @Builder
     public VearchEmbeddingStore(String baseUrl,
                                 Duration timeout,
-                                VearchConfig vearchConfig) {
+                                VearchConfig vearchConfig,
+                                Boolean normalize) {
         // Step 0: initialize some attribute
         baseUrl = ensureNotNull(baseUrl, "baseUrl");
         this.vearchConfig = getOrDefault(vearchConfig, VearchConfig.getDefaultConfig());
+        this.normalize = getOrDefault(normalize, false);
 
         vearchClient = VearchClient.builder()
                 .baseUrl(baseUrl)
@@ -44,6 +45,42 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Step 2: check whether space exist, if not, create it
         if (!isSpaceExist(this.vearchConfig.getDatabaseName(), this.vearchConfig.getSpaceName())) {
             createSpace(this.vearchConfig.getDatabaseName(), this.vearchConfig.getSpaceName());
+        }
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static class Builder {
+
+        private VearchConfig vearchConfig;
+        private String baseUrl;
+        private Duration timeout;
+        private Boolean normalize;
+
+        public Builder vearchConfig(VearchConfig vearchConfig) {
+            this.vearchConfig = vearchConfig;
+            return this;
+        }
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder normalize(Boolean normalize) {
+            this.normalize = normalize;
+            return this;
+        }
+
+        public VearchEmbeddingStore build() {
+            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalize);
         }
     }
 
@@ -86,7 +123,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        double minSimilarity = RelevanceScore.fromRelevanceScore(minScore);
+        double minSimilarity = CosineSimilarity.fromRelevanceScore(minScore);
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
         fields.addAll(vearchConfig.getMetadataFieldNames());
         SearchRequest request = SearchRequest.builder()
@@ -120,7 +157,11 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             Map<String, Object> document = new HashMap<>(4);
             document.put("_id", ids.get(i));
             Map<String, List<Float>> embeddingValue = new HashMap<>(1);
-            embeddingValue.put("feature", embeddings.get(i).vectorAsList());
+            Embedding embedding = embeddings.get(i);
+            if (normalize) {
+                embedding.normalize();
+            }
+            embeddingValue.put("feature", embedding.vectorAsList());
             document.put(vearchConfig.getEmbeddingFieldName(), embeddingValue);
             if (embedded != null) {
                 document.put(vearchConfig.getTextFieldName(), embedded.get(i).text());
