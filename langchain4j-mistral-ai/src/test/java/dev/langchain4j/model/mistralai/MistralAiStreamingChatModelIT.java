@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class MistralAiStreamingChatModelIT {
 
-    StreamingChatLanguageModel model =  MistralAiStreamingChatModel.builder()
+    StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
             .temperature(0.1)
             .logResponses(true)
@@ -52,9 +52,9 @@ class MistralAiStreamingChatModelIT {
     void should_stream_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
-        StreamingChatLanguageModel model =  MistralAiStreamingChatModel.builder()
+        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .maxNewTokens(10)
+                .maxTokens(10)
                 .build();
 
         // given
@@ -199,7 +199,7 @@ class MistralAiStreamingChatModelIT {
         StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiChatModelName.MISTRAL_MEDIUM.toString())
-                .maxNewTokens(10)
+                .maxTokens(10)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Peru?");

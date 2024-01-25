@@ -11,10 +11,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralEmbeddingObject {
+class MistralAiChatCompletionResponse {
 
+    private String id;
     private String object;
-    private List<Float> embedding;
-    private Integer index;
-
+    private Integer created;
+    private String model;
+    private List<MistralAiChatCompletionChoice> choices;
+    private MistralAiUsage usage;
 }
