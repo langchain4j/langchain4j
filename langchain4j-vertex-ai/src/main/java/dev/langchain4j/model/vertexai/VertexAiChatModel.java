@@ -11,14 +11,14 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.vertexai.spi.VertexAiChatModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 
 import java.io.IOException;
 import java.util.List;
 
 import static com.google.protobuf.Value.newBuilder;
-import static dev.langchain4j.data.message.ChatMessageType.AI;
-import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
-import static dev.langchain4j.data.message.ChatMessageType.USER;
+import static dev.langchain4j.data.message.ChatMessageType.*;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -152,7 +152,10 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     public static Builder builder() {
-        return new Builder();
+        return ServiceHelper.loadFactoryService(
+                VertexAiChatModelBuilderFactory.class,
+                Builder::new
+        );
     }
 
     public static class Builder {

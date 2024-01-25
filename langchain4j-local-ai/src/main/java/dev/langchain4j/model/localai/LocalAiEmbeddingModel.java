@@ -6,7 +6,9 @@ import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.localai.spi.LocalAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -70,5 +72,19 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
                 .collect(toList());
 
         return Response.from(embeddings);
+    }
+
+    public static LocalAiEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                LocalAiEmbeddingModelBuilderFactory.class,
+                LocalAiEmbeddingModelBuilder::new
+        );
+    }
+
+    public static class LocalAiEmbeddingModelBuilder {
+        public LocalAiEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
