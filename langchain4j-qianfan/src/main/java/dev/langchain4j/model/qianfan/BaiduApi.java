@@ -26,7 +26,7 @@ interface BaiduApi {
 
         @GET("oauth/2.0/token")
         @Headers({"Content-Type: application/json"})
-        Call<ChatTokenResponse> getToken(@Query("grant_type") String grantType,@Query("client_id") String clientId,@Query("client_secret") String clientSecret);
+        Call<ChatTokenResponse> getToken(@Query("grant_type") String grantType, @Query("client_id") String clientId, @Query("client_secret") String clientSecret);
 
     }
 
