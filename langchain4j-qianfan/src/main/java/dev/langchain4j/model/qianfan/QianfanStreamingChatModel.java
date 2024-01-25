@@ -128,9 +128,7 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
                     Response<AiMessage> messageResponse = responseBuilder.build();
                     handler.onComplete(messageResponse);
                 })
-                .onError(throwable-> System.out.println("111"+throwable.getMessage())
-
-
+                .onError(handler::onError
                 )
                 .execute();
 
