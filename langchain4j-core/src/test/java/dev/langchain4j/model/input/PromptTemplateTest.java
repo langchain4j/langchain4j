@@ -165,4 +165,17 @@ class PromptTemplateTest {
         // then
         assertThat(prompt.text()).isEqualTo("My name is Klaus and now is " + LocalDateTime.now(clock));
     }
+
+    @Test
+    void should_create_prompt_from_template_with_it_variable_and_special_chars() {
+
+        // given
+        PromptTemplate promptTemplate = PromptTemplate.from("My name is {{it}}.");
+
+        // when
+        Prompt prompt = promptTemplate.apply("$$Klaus$$");
+
+        // then
+        assertThat(prompt.text()).isEqualTo("My name is $$Klaus$$.");
+    }
 }
