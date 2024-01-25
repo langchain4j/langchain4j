@@ -4,9 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
@@ -14,8 +12,10 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
 public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -67,6 +67,30 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         assertThat(relevant.get(2).embedding()).isNotNull();
         assertThat(relevant.get(2).embedded().text()).isIn(content1, content3, content5);
         log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
+    }
+
+    @Test
+    void should_return_correct_score() {
+
+        Embedding embedding = embeddingModel().embed("hello").content();
+
+        String id = embeddingStore().add(embedding);
+        assertThat(id).isNotBlank();
+
+        awaitUntilPersisted();
+
+        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(referenceEmbedding, 1);
+        assertThat(relevant).hasSize(1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        log.error("score: {}", match.score());
+        log.error("relevance score: {}", RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)));
+        assertThat(match.score()).isCloseTo(
+                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
+                withPercentage(1)
+        );
     }
 
     @Override

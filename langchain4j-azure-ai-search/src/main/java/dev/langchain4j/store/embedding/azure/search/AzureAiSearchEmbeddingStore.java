@@ -17,6 +17,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,14 +120,19 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         ));
 
         VectorSearch vectorSearch = new VectorSearch()
-                .setAlgorithms(Collections.singletonList(
+                /*.setAlgorithms(Collections.singletonList(
                         new HnswAlgorithmConfiguration("vector-search-algorithm")
                                 .setParameters(
                                         new HnswParameters()
                                                 .setMetric(VectorSearchAlgorithmMetric.COSINE)
                                                 .setM(4)
                                                 .setEfSearch(500)
-                                                .setEfConstruction(400))))
+                                                .setEfConstruction(400))))*/
+                .setAlgorithms(Collections.singletonList(
+                        new ExhaustiveKnnAlgorithmConfiguration("vector-search-algorithm")
+                                .setParameters(
+                                        new ExhaustiveKnnParameters()
+                                                .setMetric(VectorSearchAlgorithmMetric.COSINE))))
                 .setProfiles(Collections.singletonList(
                         new VectorSearchProfile("vector-search-profile", "vector-search-algorithm")));
 
@@ -233,13 +239,18 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
                 .setKNearestNeighborsCount(maxResults);
 
-        SearchPagedIterable searchResults = searchClient.search(null, new SearchOptions()
-                        .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
-                Context.NONE);
+        SearchPagedIterable searchResults =
+                searchClient.search(null,
+                        new SearchOptions()
+                                .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
+                        Context.NONE);
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
-            Double score = searchResult.getScore();
+            Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
+            if (score < minScore) {
+                break;
+            }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
             String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
             List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
@@ -332,6 +343,21 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             array[i] = doubles.get(i).floatValue();
         }
         return array;
+    }
+
+    /**
+     * Calculates LangChain4J's RelevanceScore from Azure AI Search's score.
+     *
+     * Score in Azure AI Search is the cosine distance, and not the cosine similarity.
+     * RelevanceScore in LangChain4J is a derivative of cosine similarity,
+     * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
+     *
+     * See https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
+     */
+    private double fromAzureScoreToRelevanceScore(double score) {
+        double cosineDistance = (1 - score) / score;
+        double cosineSimilarity = -cosineDistance + 1;
+        return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
     }
 
     public static Builder builder() {
