@@ -4,6 +4,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -69,5 +71,19 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .build();
 
         client.streamingChat(request, handler);
+    }
+
+    public static OllamaStreamingChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OllamaStreamingChatModelBuilderFactory.class,
+                OllamaStreamingChatModelBuilder::new
+        );
+    }
+
+    public static class OllamaStreamingChatModelBuilder {
+        public OllamaStreamingChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

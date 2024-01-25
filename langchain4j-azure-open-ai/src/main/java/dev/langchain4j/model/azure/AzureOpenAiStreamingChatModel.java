@@ -13,10 +13,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.List;
@@ -239,7 +241,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     public static Builder builder() {
-        return new Builder();
+        return ServiceHelper.loadFactoryService(
+                AzureOpenAiStreamingChatModelBuilderFactory.class,
+                Builder::new
+        );
     }
 
     public static class Builder {
