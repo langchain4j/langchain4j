@@ -8,7 +8,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
+import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.MISTRALAI_API_URL;
 
 /**
  * Represents a collection of Mistral AI models.
@@ -22,12 +22,12 @@ public class MistralAiModels {
     /**
      * Constructs a new instance of MistralAiModels.
      *
-     * @param baseUrl    the base URL of the Mistral AI API. It uses the default value if not specified
-     * @param apiKey     the API key for authentication
-     * @param timeout    the timeout duration for API requests. It uses the default value of 60 seconds if not specified
-     * @param logRequests a flag whether to log raw HTTP requests
+     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey       the API key for authentication
+     * @param timeout      the timeout duration for API requests. It uses the default value of 60 seconds if not specified
+     * @param logRequests  a flag whether to log raw HTTP requests
      * @param logResponses a flag whether to log raw HTTP responses
-     * @param maxRetries the maximum number of retries for API requests. It uses the default value of 3 if not specified
+     * @param maxRetries   the maximum number of retries for API requests. It uses the default value of 3 if not specified
      */
     @Builder
     public MistralAiModels(String baseUrl,
@@ -37,8 +37,8 @@ public class MistralAiModels {
                            Boolean logResponses,
                            Integer maxRetries) {
         this.client = MistralAiClient.builder()
-                .baseUrl(formattedURLForRetrofit(getOrDefault(baseUrl, MISTRALAI_API_URL)))
-                .apiKey(ensureNotBlankApiKey(apiKey))
+                .baseUrl(getOrDefault(baseUrl, MISTRALAI_API_URL))
+                .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
@@ -61,10 +61,8 @@ public class MistralAiModels {
      *
      * @return the response containing the list of models
      */
-    public Response<List<MistralAiModelCard>> availableModels(){
-        MistralModelResponse response = withRetry(client::listModels, maxRetries);
-        return Response.from(
-                response.getData()
-        );
+    public Response<List<MistralAiModelCard>> availableModels() {
+        MistralAiModelResponse response = withRetry(client::listModels, maxRetries);
+        return Response.from(response.getData());
     }
 }

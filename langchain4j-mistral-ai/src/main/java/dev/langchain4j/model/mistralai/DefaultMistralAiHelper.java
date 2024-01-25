@@ -11,53 +11,41 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
-class DefaultMistralAiHelper{
+class DefaultMistralAiHelper {
 
     static final String MISTRALAI_API_URL = "https://api.mistral.ai/v1";
     static final String MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT = "float";
-    private static final Pattern MISTRAI_API_KEY_BEARER_PATTERN = Pattern.compile("^(Bearer\\s*) ([A-Za-z0-9]{1,32})$");
+    private static final Pattern MISTRAI_API_KEY_BEARER_PATTERN =
+            Pattern.compile("^(Bearer\\s*) ([A-Za-z0-9]{1,32})$");
 
-    public static String ensureNotBlankApiKey(String value) {
-        if (isNullOrBlank(value)) {
-            throw new IllegalArgumentException("MistralAI API Key must be defined. It can be generated here: https://console.mistral.ai/user/api-keys/");
-        }
-        return value;
-    }
-
-    public static String formattedURLForRetrofit(String baseUrl) {
-        return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
-    }
-
-    public static List<MistralChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
+    static List<MistralAiChatMessage> toMistralAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(DefaultMistralAiHelper::toMistralAiMessage)
                 .collect(toList());
     }
 
-    public static MistralChatMessage toMistralAiMessage(ChatMessage message) {
-        return MistralChatMessage.builder()
+    static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
+        return MistralAiChatMessage.builder()
                 .role(toMistralAiRole(message.type()))
                 .content(toMistralChatMessageContent(message))
                 .build();
     }
 
-    private static MistralRoleName toMistralAiRole(ChatMessageType chatMessageType) {
+    private static MistralAiRole toMistralAiRole(ChatMessageType chatMessageType) {
         switch (chatMessageType) {
             case SYSTEM:
-                return MistralRoleName.SYSTEM;
-            case  AI:
-                return MistralRoleName.ASSISTANT;
+                return MistralAiRole.SYSTEM;
+            case AI:
+                return MistralAiRole.ASSISTANT;
             case USER:
-                return MistralRoleName.USER;
+                return MistralAiRole.USER;
             default:
                 throw new IllegalArgumentException("Unknown chat message type: " + chatMessageType);
         }
-
     }
 
     private static String toMistralChatMessageContent(ChatMessage message) {
@@ -65,19 +53,18 @@ class DefaultMistralAiHelper{
             return ((SystemMessage) message).text();
         }
 
-        if(message instanceof AiMessage){
+        if (message instanceof AiMessage) {
             return ((AiMessage) message).text();
         }
 
-        if(message instanceof UserMessage){
-            return ((UserMessage) message).text(); // MistralAI support Text Content only as String
+        if (message instanceof UserMessage) {
+            return message.text(); // MistralAI support Text Content only as String
         }
 
         throw new IllegalArgumentException("Unknown message type: " + message.type());
-
     }
 
-    static TokenUsage tokenUsageFrom(MistralUsageInfo mistralAiUsage) {
+    static TokenUsage tokenUsageFrom(MistralAiUsage mistralAiUsage) {
         if (mistralAiUsage == null) {
             return null;
         }
@@ -103,15 +90,15 @@ class DefaultMistralAiHelper{
         }
     }
 
-    static String getHeaders(Headers headers){
-       return StreamSupport.stream(headers.spliterator(),false).map(header -> {
-           String headerKey = header.component1();
-           String headerValue = header.component2();
-           if (headerKey.equals("Authorization")) {
-               headerValue = maskAuthorizationHeaderValue(headerValue);
-           }
-           return  String.format("[%s: %s]", headerKey, headerValue);
-       }).collect(Collectors.joining(", "));
+    static String getHeaders(Headers headers) {
+        return StreamSupport.stream(headers.spliterator(), false).map(header -> {
+            String headerKey = header.component1();
+            String headerValue = header.component2();
+            if (headerKey.equals("Authorization")) {
+                headerValue = maskAuthorizationHeaderValue(headerValue);
+            }
+            return String.format("[%s: %s]", headerKey, headerValue);
+        }).collect(Collectors.joining(", "));
     }
 
     private static String maskAuthorizationHeaderValue(String authorizationHeaderValue) {
@@ -130,5 +117,4 @@ class DefaultMistralAiHelper{
             return "Error while masking Authorization header value";
         }
     }
-
 }
