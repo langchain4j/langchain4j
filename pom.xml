@@ -28,6 +28,7 @@
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
+        <module>langchain4j-mistral-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-cassandra</module>

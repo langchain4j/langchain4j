@@ -6,7 +6,9 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
+import dev.langchain4j.model.huggingface.spi.HuggingFaceEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -71,5 +73,19 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
 
     public static HuggingFaceEmbeddingModel withAccessToken(String accessToken) {
         return builder().accessToken(accessToken).build();
+    }
+
+    public static HuggingFaceEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                HuggingFaceEmbeddingModelBuilderFactory.class,
+                HuggingFaceEmbeddingModelBuilder::new
+        );
+    }
+
+    public static class HuggingFaceEmbeddingModelBuilder {
+        public HuggingFaceEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
