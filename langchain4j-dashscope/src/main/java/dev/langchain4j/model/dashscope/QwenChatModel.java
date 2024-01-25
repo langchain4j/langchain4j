@@ -9,7 +9,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.dashscope.spi.QwenChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -81,6 +83,20 @@ public class QwenChatModel implements ChatLanguageModel {
                     tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static QwenChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenChatModelBuilderFactory.class,
+                QwenChatModelBuilder::new
+        );
+    }
+
+    public static class QwenChatModelBuilder {
+        public QwenChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }
