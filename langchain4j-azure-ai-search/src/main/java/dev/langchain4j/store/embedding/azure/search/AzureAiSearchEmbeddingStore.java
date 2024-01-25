@@ -120,19 +120,14 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         ));
 
         VectorSearch vectorSearch = new VectorSearch()
-                /*.setAlgorithms(Collections.singletonList(
+                .setAlgorithms(Collections.singletonList(
                         new HnswAlgorithmConfiguration("vector-search-algorithm")
                                 .setParameters(
                                         new HnswParameters()
                                                 .setMetric(VectorSearchAlgorithmMetric.COSINE)
                                                 .setM(4)
                                                 .setEfSearch(500)
-                                                .setEfConstruction(400))))*/
-                .setAlgorithms(Collections.singletonList(
-                        new ExhaustiveKnnAlgorithmConfiguration("vector-search-algorithm")
-                                .setParameters(
-                                        new ExhaustiveKnnParameters()
-                                                .setMetric(VectorSearchAlgorithmMetric.COSINE))))
+                                                .setEfConstruction(400))))
                 .setProfiles(Collections.singletonList(
                         new VectorSearchProfile("vector-search-profile", "vector-search-algorithm")));
 
