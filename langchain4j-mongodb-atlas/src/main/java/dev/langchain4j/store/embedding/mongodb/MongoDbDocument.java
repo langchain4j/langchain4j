@@ -13,7 +13,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MongoDBDocument {
+public class MongoDbDocument {
 
     @BsonId
     private String id;

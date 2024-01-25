@@ -22,11 +22,11 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Disabled("Need Cloud Mongo Atlas Credential")
-public class MongoDBEmbeddingStoreCloudIT extends EmbeddingStoreIT {
+public class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
-    MongoDBEmbeddingStore embeddingStore = MongoDBEmbeddingStore.builder()
+    MongoDbEmbeddingStore embeddingStore = MongoDbEmbeddingStore.builder()
             .fromClient(client)
             .databaseName("test_database")
             .collectionName("test_collection")
@@ -58,12 +58,12 @@ public class MongoDBEmbeddingStoreCloudIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(MongoDBDocument.class, MongoDBMatchedDocument.class)
+                .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
-        MongoCollection<MongoDBDocument> collection = client.getDatabase("test_database")
-                .getCollection("test_collection", MongoDBDocument.class)
+        MongoCollection<MongoDbDocument> collection = client.getDatabase("test_database")
+                .getCollection("test_collection", MongoDbDocument.class)
                 .withCodecRegistry(codecRegistry);
 
         Bson filter = Filters.exists("embedding");

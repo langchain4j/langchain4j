@@ -21,7 +21,7 @@ public class IndexMapping {
         Set<String> metadataFieldNames = new HashSet<>(1);
         metadataFieldNames.add("type");
         return IndexMapping.builder()
-                .dimension(384)
+                .dimension(1536)
                 .metadataFieldNames(metadataFieldNames)
                 .build();
     }

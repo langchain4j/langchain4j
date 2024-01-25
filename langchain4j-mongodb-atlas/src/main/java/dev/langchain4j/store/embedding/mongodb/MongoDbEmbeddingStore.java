@@ -32,7 +32,7 @@ import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.mongodb.IndexMapping.defaultIndexMapping;
-import static dev.langchain4j.store.embedding.mongodb.MappingUtils.toIndexMapping;
+import static dev.langchain4j.store.embedding.mongodb.MappingUtils.fromIndexMapping;
 import static dev.langchain4j.store.embedding.mongodb.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -46,17 +46,17 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  * <p>
  * <a href="https://www.mongodb.com/developer/products/atlas/semantic-search-mongodb-atlas-vector-search/">tutorial</a> how to use a knn-vector in MongoDB Atlas (great startingpoint)
  */
-public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(MongoDBEmbeddingStore.class);
+    private static final Logger log = LoggerFactory.getLogger(MongoDbEmbeddingStore.class);
 
-    private final MongoCollection<MongoDBDocument> collection;
+    private final MongoCollection<MongoDbDocument> collection;
 
     private final String indexName;
     private final long maxResultRatio;
     private final VectorSearchOptions vectorSearchOptions;
 
-    public MongoDBEmbeddingStore(MongoClient mongoClient,
+    public MongoDbEmbeddingStore(MongoClient mongoClient,
                                  String databaseName,
                                  String collectionName,
                                  String indexName,
@@ -71,7 +71,7 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.maxResultRatio = getOrDefault(maxResultRatio, 10L);
 
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(MongoDBDocument.class, MongoDBMatchedDocument.class)
+                .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
@@ -81,7 +81,7 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
             createCollection(database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
         }
 
-        this.collection = database.getCollection(collectionName, MongoDBDocument.class).withCodecRegistry(codecRegistry);
+        this.collection = database.getCollection(collectionName, MongoDbDocument.class).withCodecRegistry(codecRegistry);
         this.vectorSearchOptions = filter == null ? vectorSearchOptions() : vectorSearchOptions().filter(filter);
 
         // create index if not exist
@@ -150,8 +150,8 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public MongoDBEmbeddingStore build() {
-            return new MongoDBEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping);
+        public MongoDbEmbeddingStore build() {
+            return new MongoDbEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping);
         }
     }
 
@@ -218,7 +218,7 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
                 ));
 
         try {
-            AggregateIterable<MongoDBMatchedDocument> results = collection.aggregate(pipeline, MongoDBMatchedDocument.class);
+            AggregateIterable<MongoDbMatchedDocument> results = collection.aggregate(pipeline, MongoDbMatchedDocument.class);
 
             return StreamSupport.stream(results.spliterator(), false)
                     .map(MappingUtils::toEmbeddingMatch)
@@ -244,15 +244,17 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
-        List<MongoDBDocument> documents = new ArrayList<>(ids.size());
+        List<MongoDbDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            MongoDBDocument document = toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
+            MongoDbDocument document = toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
             documents.add(document);
         }
 
         InsertManyResult result = collection.insertMany(documents);
         if (!result.wasAcknowledged() && log.isWarnEnabled()) {
-            log.warn("Add document failed, Document={}", documents);
+            String errMsg = String.format("[MongoDbEmbeddingStore] Add document failed, Document=%s", documents);
+            log.warn(errMsg);
+            throw new RuntimeException(errMsg);
         }
     }
 
@@ -271,7 +273,7 @@ public class MongoDBEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void createIndex(String indexName, IndexMapping indexMapping) {
-        Document index = toIndexMapping(indexMapping);
+        Document index = fromIndexMapping(indexMapping);
         collection.createSearchIndex(indexName, index);
     }
 }

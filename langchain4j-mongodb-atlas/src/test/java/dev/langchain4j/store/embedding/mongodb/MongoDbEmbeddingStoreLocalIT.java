@@ -29,7 +29,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  * If container startup timeout (because atlas cli need to download mongodb binaries, which may take a few minutes),
  * the alternative way is running `docker compose up -d` in `src/test/resources`
  */
-public class MongoDBEmbeddingStoreLocalIT extends EmbeddingStoreIT {
+public class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static final String MONGO_SERVICE_NAME = "mongo";
     static final Integer MONGO_SERVICE_PORT = 27778;
@@ -41,7 +41,7 @@ public class MongoDBEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
-    EmbeddingStore<TextSegment> embeddingStore = MongoDBEmbeddingStore.builder()
+    EmbeddingStore<TextSegment> embeddingStore = MongoDbEmbeddingStore.builder()
             .fromClient(client)
             .databaseName("test_database")
             .collectionName("test_collection")
@@ -84,12 +84,12 @@ public class MongoDBEmbeddingStoreLocalIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(MongoDBDocument.class, MongoDBMatchedDocument.class)
+                .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
-        MongoCollection<MongoDBDocument> collection = client.getDatabase("test_database")
-                .getCollection("test_collection", MongoDBDocument.class)
+        MongoCollection<MongoDbDocument> collection = client.getDatabase("test_database")
+                .getCollection("test_collection", MongoDbDocument.class)
                 .withCodecRegistry(codecRegistry);
 
         Bson filter = Filters.exists("embedding");

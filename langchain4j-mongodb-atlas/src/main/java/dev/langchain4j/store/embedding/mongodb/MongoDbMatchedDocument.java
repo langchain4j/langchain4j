@@ -10,7 +10,7 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class MongoDBMatchedDocument {
+public class MongoDbMatchedDocument {
 
     private String id;
     private List<Float> embedding;

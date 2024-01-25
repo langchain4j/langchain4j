@@ -14,22 +14,23 @@ class MappingUtils {
         throw new InstantiationException("can't instantiate this class");
     }
 
-    static MongoDBDocument toMongoDbDocument(String id, Embedding embedding, TextSegment textSegment) {
+    static MongoDbDocument toMongoDbDocument(String id, Embedding embedding, TextSegment textSegment) {
         if (textSegment == null) {
-            return new MongoDBDocument(id, embedding.vectorAsList(), null, null);
+            return new MongoDbDocument(id, embedding.vectorAsList(), null, null);
         }
-        return new MongoDBDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
+        return new MongoDbDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
     }
 
-    static EmbeddingMatch<TextSegment> toEmbeddingMatch(MongoDBMatchedDocument matchedDocument) {
+    static EmbeddingMatch<TextSegment> toEmbeddingMatch(MongoDbMatchedDocument matchedDocument) {
         TextSegment textSegment = null;
-        if (matchedDocument.getMetadata() != null) {
-            textSegment = TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
+        if (matchedDocument.getText() != null) {
+            textSegment = matchedDocument.getMetadata() == null ? TextSegment.from(matchedDocument.getText()) :
+                    TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
         }
         return new EmbeddingMatch<>(matchedDocument.getScore(), matchedDocument.getId(), Embedding.from(matchedDocument.getEmbedding()), textSegment);
     }
 
-    static Document toIndexMapping(IndexMapping indexMapping) {
+    static Document fromIndexMapping(IndexMapping indexMapping) {
         Document mapping = new Document();
         mapping.append("dynamic", false);
 
