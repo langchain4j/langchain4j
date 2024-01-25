@@ -11,6 +11,8 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.dashscope.spi.QwenStreamingChatModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -98,6 +100,20 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
             });
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static QwenStreamingChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenStreamingChatModelBuilderFactory.class,
+                QwenStreamingChatModelBuilder::new
+        );
+    }
+
+    public static class QwenStreamingChatModelBuilder {
+        public QwenStreamingChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }
