@@ -176,7 +176,7 @@ public class QianfanStreamingResponseBuilder {
 
         int outputTokenCount = 0;
         if (forcefulToolExecution) {
-            // erniebot calculates output tokens differently when tool is executed forcefully
+            // Qianfan calculates output tokens differently when tool is executed forcefully
             for (ToolExecutionRequest toolExecutionRequest : toolExecutionRequests) {
                 outputTokenCount += tokenizer.estimateTokenCountInForcefulToolExecutionRequest(toolExecutionRequest);
             }

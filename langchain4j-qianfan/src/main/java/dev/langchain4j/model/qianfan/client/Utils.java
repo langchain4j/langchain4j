@@ -8,10 +8,10 @@ public class Utils {
     }
 
     static RuntimeException toException(Response<?> response) throws IOException {
-        return new BaiduHttpException(response.code(), response.errorBody().string());
+        return new QianfanHttpException(response.code(), response.errorBody().string());
     }
 
     static RuntimeException toException(okhttp3.Response response) throws IOException {
-        return new BaiduHttpException(response.code(), response.body().string());
+        return new QianfanHttpException(response.code(), response.body().string());
     }
 }

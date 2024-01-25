@@ -1,9 +1,9 @@
 package dev.langchain4j.model.qianfan.client;
 
-public class BaiduHttpException extends RuntimeException {
+public class QianfanHttpException extends RuntimeException {
     private final int code;
 
-    public BaiduHttpException(int code, String message) {
+    public QianfanHttpException(int code, String message) {
         super(message);
         this.code = code;
     }

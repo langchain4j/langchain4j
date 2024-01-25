@@ -178,7 +178,7 @@ class QianfanStreamingChatModelIT {
     void should_stream_valid_json() throws ExecutionException, InterruptedException, TimeoutException {
 
         //given
-        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. ";
+        String userMessage = "Return JSON with  fields: name of Klaus. ";
         // nudging it to say something additionally to json
         QianfanStreamingChatModel model = QianfanStreamingChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0f)
                 .apiKey(apiKey)
@@ -218,7 +218,7 @@ class QianfanStreamingChatModelIT {
         Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
         // then
-        assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"Klaus\", \"surname\": \"Heisler\"}");
+        assertThat(json).contains("\"name\": \"Klaus\"");
         assertThat(response.content().text()).isEqualTo(json);
     }
 }

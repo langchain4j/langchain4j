@@ -50,7 +50,7 @@ class InternalQianfanHelper {
                 .required(toolParameters.required())
                 .build();
     }
-    public static Message toErnieBotMessage(ChatMessage message) {
+    public static Message toQianfanMessage(ChatMessage message) {
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
@@ -107,14 +107,14 @@ class InternalQianfanHelper {
         return Optional.of(response)
                 .map(ChatCompletionResponse::getUsage)
                 .map(usage -> new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens()))
-                .orElse(new TokenUsage(null, null, null));
+                .orElse(null);
     }
 
     static TokenUsage tokenUsageFrom(CompletionResponse response) {
         return Optional.of(response)
                 .map(CompletionResponse::getUsage)
                 .map(usage -> new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens()))
-                .orElse(new TokenUsage(null, null, null));
+                .orElse(null);
     }
 
 
@@ -122,29 +122,9 @@ class InternalQianfanHelper {
         return Optional.of(response)
                 .map(EmbeddingResponse::getUsage)
                 .map(usage -> new TokenUsage(usage.promptTokens(), usage.completionTokens(), usage.totalTokens()))
-                .orElse(new TokenUsage(null, null, null));
+                .orElse(null);
     }
 
-    static FinishReason finishReasonFrom(ChatCompletionResponse response) {
-        String finishReason = Optional.of(response)
-                .map(ChatCompletionResponse::getFinish_reason)
-                .orElse("");
-
-        switch (finishReason) {
-            case "normal":
-                return STOP;
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            case "content_filter":
-                return CONTENT_FILTER;
-            case "function_call":
-                return TOOL_EXECUTION;
-            default:
-                return null;
-        }
-    }
 
     static FinishReason finishReasonFrom(String finishReason) {
 
@@ -181,26 +161,7 @@ class InternalQianfanHelper {
 
         return aiMessage(response.getResult());
     }
-    static FinishReason finishReasonFrom(CompletionResponse response) {
-        String finishReason = Optional.of(response)
-                .map(CompletionResponse::getFinish_reason)
-                .orElse("");
 
-        switch (finishReason) {
-            case "normal":
-                return STOP;
-            case "stop":
-                return STOP;
-            case "length":
-                return LENGTH;
-            case "content_filter":
-                return CONTENT_FILTER;
-            case "function_call":
-                return TOOL_EXECUTION;
-            default:
-                return null;
-        }
-    }
 
     static String getSystenMessage(List<ChatMessage> messages) {
 
@@ -213,7 +174,7 @@ class InternalQianfanHelper {
     }
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
-                .map(InternalQianfanHelper::toErnieBotMessage)
+                .map(InternalQianfanHelper::toQianfanMessage)
                 .collect(toList());
     }
 

@@ -3,7 +3,7 @@ package dev.langchain4j.model.qianfan;
 import lombok.Getter;
 
 /**
- * Baidu ERNIE Bot big model, the most perfect model in China at present
+ * Qianfan model, the most perfect model in China at present
  */
 @Getter
 public enum QianfanModelEnum {

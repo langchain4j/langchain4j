@@ -21,7 +21,7 @@ import static java.util.stream.Collectors.toList;
 public class QianfanEmbeddingModel implements EmbeddingModel {
 
 
-    private final BaiduClient client;
+    private final QianfanClient client;
 
     private final String baseUrl;
 
@@ -44,7 +44,7 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
                                  String user
                              ) {
         if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
-            throw new IllegalArgumentException(" client id and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
+            throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
         }
 
 
@@ -52,11 +52,11 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
         this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanModelEnum.getEndpoint(modelName):endpoint;
 
         if (Utils.isNullOrBlank(this.endpoint) ) {
-            throw new IllegalArgumentException("baidu is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
+            throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
         this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
-        this.client = BaiduClient.builder().baseUrl(this.baseUrl).wenXinApiKey(apiKey).wenXinSecretKey(secretKey).logStreamingResponses(true).build();
+        this.client = QianfanClient.builder().baseUrl(this.baseUrl).apiKey(apiKey).secretKey(secretKey).logStreamingResponses(true).build();
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.user = user;
     }

@@ -19,7 +19,7 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
 
 
 
-    private final BaiduClient client;
+    private final QianfanClient client;
 
     private final String baseUrl;
 
@@ -54,12 +54,12 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
         this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanModelEnum.getEndpoint(modelName):endpoint;
 
         if (Utils.isNullOrBlank(this.endpoint) ) {
-            throw new IllegalArgumentException("baidu is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
+            throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
         this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
 
-        this.client = BaiduClient.builder().baseUrl(this.baseUrl).wenXinApiKey(apiKey).wenXinSecretKey(secretKey).logStreamingResponses(true).build();
+        this.client = QianfanClient.builder().baseUrl(this.baseUrl).apiKey(apiKey).secretKey(secretKey).logStreamingResponses(true).build();
         this.temperature = getOrDefault(temperature, 0.7f);
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.topP = topP;

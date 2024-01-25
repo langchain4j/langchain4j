@@ -21,35 +21,35 @@ import java.net.Proxy;
 import java.time.Duration;
 
 
-class BaiduClient {
+class QianfanClient {
 
-    private static final Logger log = LoggerFactory.getLogger(BaiduClient.class);
+    private static final Logger log = LoggerFactory.getLogger(QianfanClient.class);
     private final String baseUrl;
     private String token;
     private final OkHttpClient okHttpClient;
-    private final BaiduApi baiduApi;
-    private final String wenxinClientId;
-    private final String wenxinClientSecret;
+    private final QianfanApi qianfanApi;
+    private final String apiKey;
+    private final String secretKey;
 
     private final boolean logStreamingResponses;
 
     public static final String GRANT_TYPE = "client_credentials";
-    public BaiduClient(String apiKey, String secretKey) {
-        this(builder().wenXinApiKey(apiKey).wenXinSecretKey(secretKey));
+    public QianfanClient(String apiKey, String secretKey) {
+        this(builder().apiKey(apiKey).secretKey(secretKey));
     }
 
-    private BaiduClient(Builder serviceBuilder) {
+    private QianfanClient(Builder serviceBuilder) {
         this.baseUrl = serviceBuilder.baseUrl;
         OkHttpClient.Builder okHttpClientBuilder = (new OkHttpClient.Builder()).callTimeout(serviceBuilder.callTimeout)
                 .connectTimeout(serviceBuilder.connectTimeout).readTimeout(serviceBuilder.readTimeout)
                 .writeTimeout(serviceBuilder.writeTimeout);
-        if (serviceBuilder.wenXinApiKey == null) {
-            throw new IllegalArgumentException("wenXinApiKey must be defined");
-        } else if (serviceBuilder.wenXinSecretKey == null) {
-            throw new IllegalArgumentException("wenXinSecretKey must be defined");
+        if (serviceBuilder.apiKey == null) {
+            throw new IllegalArgumentException("apiKey must be defined");
+        } else if (serviceBuilder.secretKey == null) {
+            throw new IllegalArgumentException("secretKey must be defined");
         } else {
-            if (serviceBuilder.wenXinApiKey != null) {
-                okHttpClientBuilder.addInterceptor(new AuthorizationHeaderInjector(serviceBuilder.wenXinApiKey));
+            if (serviceBuilder.apiKey != null) {
+                okHttpClientBuilder.addInterceptor(new AuthorizationHeaderInjector(serviceBuilder.apiKey));
             }
 
             if (serviceBuilder.proxy != null) {
@@ -65,12 +65,12 @@ class BaiduClient {
             }
 
             this.logStreamingResponses = serviceBuilder.logStreamingResponses;
-            this.wenxinClientId = serviceBuilder.wenXinApiKey;
-            this.wenxinClientSecret = serviceBuilder.wenXinSecretKey;
+            this.apiKey = serviceBuilder.apiKey;
+            this.secretKey = serviceBuilder.secretKey;
             this.okHttpClient = okHttpClientBuilder.build();
             Retrofit retrofit = (new Retrofit.Builder()).baseUrl(serviceBuilder.baseUrl).client(this.okHttpClient)
                     .addConverterFactory(GsonConverterFactory.create(Json.GSON)).build();
-            this.baiduApi = retrofit.create(BaiduApi.class);
+            this.qianfanApi = retrofit.create(QianfanApi.class);
         }
     }
 
@@ -97,7 +97,7 @@ class BaiduClient {
     public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request,String endpoint) {
         refreshToken();
 
-        return new RequestExecutor(this.baiduApi.chatCompletions(endpoint,request, this.token), (r) -> {
+        return new RequestExecutor(this.qianfanApi.chatCompletions(endpoint,request, this.token), (r) -> {
             return r;
         }, this.okHttpClient, this.formatUrl("rpc/2.0/ai_custom/v1/wenxinworkshop/chat/"+endpoint+"?access_token="+this.token), () -> {
             return ChatCompletionRequest.builder().from(request).stream(true).build();
@@ -114,7 +114,7 @@ class BaiduClient {
                                                                  String endpoint) {
         refreshToken();
         CompletionRequest syncRequest = CompletionRequest.builder().from(request).stream(stream).build();
-        return new RequestExecutor(this.baiduApi.completions(endpoint,request, this.token), (r) -> {
+        return new RequestExecutor(this.qianfanApi.completions(endpoint,request, this.token), (r) -> {
             return r;
         }, this.okHttpClient, this.formatUrl("rpc/2.0/ai_custom/v1/wenxinworkshop/completions/"+endpoint+"?access_token="+this.token), () -> {
             return CompletionRequest.builder().from(request).stream(true).build();
@@ -127,7 +127,7 @@ class BaiduClient {
 
     public SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request, String serviceName) {
         refreshToken();
-        return new RequestExecutor(this.baiduApi.embeddings(serviceName, request, this.token), (r) -> {
+        return new RequestExecutor(this.qianfanApi.embeddings(serviceName, request, this.token), (r) -> {
             return r;
         });
     }
@@ -135,8 +135,8 @@ class BaiduClient {
 
     private String refreshToken() {
         RequestExecutor<String, ChatTokenResponse, String> executor = new RequestExecutor<>(
-                this.baiduApi.getToken(GRANT_TYPE, this.wenxinClientId,
-                        this.wenxinClientSecret), ChatTokenResponse::getAccess_token);
+                this.qianfanApi.getToken(GRANT_TYPE, this.apiKey,
+                        this.secretKey), ChatTokenResponse::getAccess_token);
         String response = executor.execute();
         log.debug("response token is :{}", response);
         this.token = response;
@@ -152,8 +152,8 @@ class BaiduClient {
     public static class Builder {
 
         private String baseUrl;
-        private String wenXinApiKey;
-        private String wenXinSecretKey;
+        private String apiKey;
+        private String secretKey;
         private Duration callTimeout;
         private Duration connectTimeout;
         private Duration readTimeout;
@@ -181,21 +181,21 @@ class BaiduClient {
         }
 
 
-        public Builder wenXinApiKey(String wenXinApiKey) {
-            if (wenXinApiKey != null && !wenXinApiKey.trim().isEmpty()) {
-                this.wenXinApiKey = wenXinApiKey;
+        public Builder apiKey(String apiKey) {
+            if (apiKey != null && !apiKey.trim().isEmpty()) {
+                this.apiKey = apiKey;
                 return this;
             } else {
-                throw new IllegalArgumentException("wenXinApiKey cannot be null or empty. ");
+                throw new IllegalArgumentException("apiKey cannot be null or empty. ");
             }
         }
 
-        public Builder wenXinSecretKey(String wenXinSecretKey) {
-            if (wenXinSecretKey != null && !wenXinSecretKey.trim().isEmpty()) {
-                this.wenXinSecretKey = wenXinSecretKey;
+        public Builder secretKey(String secretKey) {
+            if (secretKey != null && !secretKey.trim().isEmpty()) {
+                this.secretKey = secretKey;
                 return this;
             } else {
-                throw new IllegalArgumentException("wenXinSecretKey cannot be null or empty. ");
+                throw new IllegalArgumentException("secretKey cannot be null or empty. ");
             }
         }
 
@@ -285,8 +285,8 @@ class BaiduClient {
             return this;
         }
 
-        public BaiduClient build() {
-            return new BaiduClient(this);
+        public QianfanClient build() {
+            return new QianfanClient(this);
         }
     }
 }
