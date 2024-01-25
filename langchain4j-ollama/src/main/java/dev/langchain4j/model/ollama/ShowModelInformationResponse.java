@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ModelDetailsRequest {
-    private String name;
+class ShowModelInformationResponse {
+    private String modelfile;
+    private String parameters;
+    private String template;
+    private OllamaModelDetails details;
 }

@@ -30,9 +30,9 @@ interface OllamaApi {
 
     @GET("/api/tags")
     @Headers({"Content-Type: application/json"})
-    Call<ModelListResponse> modelList();
+    Call<ModelsListResponse> listModels();
 
     @POST("/api/show")
     @Headers({"Content-Type: application/json"})
-    Call<ModelDetailsResponse> modelDetails(@Body ModelDetailsRequest modelDetailsRequest);
+    Call<ShowModelInformationResponse> showInformation(@Body ShowModelInformationRequest modelDetailsRequest);
 }

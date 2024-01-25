@@ -21,7 +21,7 @@ import java.time.Duration;
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
 
-public class OllamaClient {
+class OllamaClient {
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
@@ -172,9 +172,9 @@ public class OllamaClient {
         }
     }
 
-    public ModelListResponse modelList() {
+    public ModelsListResponse listModels() {
         try {
-            retrofit2.Response<ModelListResponse> retrofitResponse = ollamaApi.modelList().execute();
+            retrofit2.Response<ModelsListResponse> retrofitResponse = ollamaApi.listModels().execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -185,9 +185,9 @@ public class OllamaClient {
         }
     }
 
-    public ModelDetailsResponse modelDetails(ModelDetailsRequest modelDetailsRequest) {
+    public ShowModelInformationResponse showInformation(ShowModelInformationRequest showInformationRequest) {
         try {
-            retrofit2.Response<ModelDetailsResponse> retrofitResponse = ollamaApi.modelDetails(modelDetailsRequest).execute();
+            retrofit2.Response<ShowModelInformationResponse> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
