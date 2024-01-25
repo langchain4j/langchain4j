@@ -7,8 +7,10 @@ import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.protocol.Protocol;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.dashscope.spi.QwenLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -92,6 +94,20 @@ public class QwenLanguageModel implements LanguageModel {
                     tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static QwenLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenLanguageModelBuilderFactory.class,
+                QwenLanguageModelBuilder::new
+        );
+    }
+
+    public static class QwenLanguageModelBuilder {
+        public QwenLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }

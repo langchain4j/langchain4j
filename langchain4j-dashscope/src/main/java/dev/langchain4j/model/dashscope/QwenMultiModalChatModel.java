@@ -10,7 +10,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.dashscope.spi.QwenChatModelBuilderFactory;
+import dev.langchain4j.model.dashscope.spi.QwenMultiModalChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -82,6 +85,20 @@ public class QwenMultiModalChatModel implements ChatLanguageModel {
                     tokenUsageFrom(result), finishReasonFrom(result));
         } catch (NoApiKeyException | UploadFileException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static QwenMultiModalChatModel.QwenMultiModalChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenMultiModalChatModelBuilderFactory.class,
+                QwenMultiModalChatModel.QwenMultiModalChatModelBuilder::new
+        );
+    }
+
+    public static class QwenMultiModalChatModelBuilder {
+        public QwenMultiModalChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }
