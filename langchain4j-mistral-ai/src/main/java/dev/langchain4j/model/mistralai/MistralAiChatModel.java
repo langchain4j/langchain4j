@@ -26,7 +26,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
     private final String modelName;
     private final Double temperature;
     private final Double topP;
-    private final Integer maxNewTokens;
+    private final Integer maxTokens;
     private final Boolean safePrompt;
     private final Integer randomSeed;
 
@@ -35,20 +35,20 @@ public class MistralAiChatModel implements ChatLanguageModel {
     /**
      * Constructs a MistralAiChatModel with the specified parameters.
      *
-     * @param baseUrl        the base URL of the Mistral AI API. It uses the default value if not specified
-     * @param apiKey         the API key for authentication
-     * @param modelName      the name of the Mistral AI model to use
-     * @param temperature    the temperature parameter for generating chat responses
-     * @param topP           the top-p parameter for generating chat responses
-     * @param maxNewTokens   the maximum number of new tokens to generate in a chat response
-     * @param safePrompt     a flag indicating whether to use a safe prompt for generating chat responses
-     * @param randomSeed     the random seed for generating chat responses
-     * @param timeout        the timeout duration for API requests
-     *                       <p>
-     *                       The default value is 60 seconds
-     * @param logRequests    a flag indicating whether to log API requests
-     * @param logResponses   a flag indicating whether to log API responses
-     * @param maxRetries     the maximum number of retries for API requests. It uses the default value 3 if not specified
+     * @param baseUrl      the base URL of the Mistral AI API. It uses the default value if not specified
+     * @param apiKey       the API key for authentication
+     * @param modelName    the name of the Mistral AI model to use
+     * @param temperature  the temperature parameter for generating chat responses
+     * @param topP         the top-p parameter for generating chat responses
+     * @param maxTokens    the maximum number of new tokens to generate in a chat response
+     * @param safePrompt   a flag indicating whether to use a safe prompt for generating chat responses
+     * @param randomSeed   the random seed for generating chat responses
+     * @param timeout      the timeout duration for API requests
+     *                     <p>
+     *                     The default value is 60 seconds
+     * @param logRequests  a flag indicating whether to log API requests
+     * @param logResponses a flag indicating whether to log API responses
+     * @param maxRetries   the maximum number of retries for API requests. It uses the default value 3 if not specified
      */
     @Builder
     public MistralAiChatModel(String baseUrl,
@@ -56,7 +56,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                               String modelName,
                               Double temperature,
                               Double topP,
-                              Integer maxNewTokens,
+                              Integer maxTokens,
                               Boolean safePrompt,
                               Integer randomSeed,
                               Duration timeout,
@@ -65,8 +65,8 @@ public class MistralAiChatModel implements ChatLanguageModel {
                               Integer maxRetries) {
 
         this.client = MistralAiClient.builder()
-                .baseUrl(formattedURLForRetrofit(getOrDefault(baseUrl, MISTRALAI_API_URL)))
-                .apiKey(ensureNotBlankApiKey(apiKey))
+                .baseUrl(getOrDefault(baseUrl, MISTRALAI_API_URL))
+                .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
@@ -74,11 +74,10 @@ public class MistralAiChatModel implements ChatLanguageModel {
         this.modelName = getOrDefault(modelName, MistralAiChatModelName.MISTRAL_TINY.toString());
         this.temperature = temperature;
         this.topP = topP;
-        this.maxNewTokens = maxNewTokens;
+        this.maxTokens = maxTokens;
         this.safePrompt = safePrompt;
         this.randomSeed = randomSeed;
         this.maxRetries = getOrDefault(maxRetries, 3);
-
     }
 
     /**
@@ -100,18 +99,18 @@ public class MistralAiChatModel implements ChatLanguageModel {
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");
 
-        MistralChatCompletionRequest request = MistralChatCompletionRequest.builder()
+        MistralAiChatCompletionRequest request = MistralAiChatCompletionRequest.builder()
                 .model(this.modelName)
                 .messages(toMistralAiMessages(messages))
                 .temperature(this.temperature)
-                .maxTokens(this.maxNewTokens)
+                .maxTokens(this.maxTokens)
                 .topP(this.topP)
                 .randomSeed(this.randomSeed)
                 .safePrompt(this.safePrompt)
                 .stream(false)
                 .build();
 
-        MistralChatCompletionResponse response = withRetry(() -> client.chatCompletion(request), maxRetries);
+        MistralAiChatCompletionResponse response = withRetry(() -> client.chatCompletion(request), maxRetries);
         return Response.from(
                 aiMessage(response.getChoices().get(0).getMessage().getContent()),
                 tokenUsageFrom(response.getUsage()),

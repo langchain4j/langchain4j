@@ -8,8 +8,9 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
-import static dev.langchain4j.model.output.FinishReason.*;
 
 class MistralAiChatModelIT {
 
@@ -21,7 +22,7 @@ class MistralAiChatModelIT {
             .build();
 
     @Test
-    void should_generate_answer_and_return_token_usage_and_finish_reason_stop(){
+    void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
         UserMessage userMessage = userMessage("What is the capital of Peru?");
@@ -42,35 +43,35 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_generate_answer_and_return_token_usage_and_finish_reason_length(){
+    void should_generate_answer_and_return_token_usage_and_finish_reason_length() {
 
-            // given
-            ChatLanguageModel model = MistralAiChatModel.builder()
-                    .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                    .maxNewTokens(4)
-                    .build();
+        // given
+        ChatLanguageModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .maxTokens(4)
+                .build();
 
-            // given
-            UserMessage userMessage = userMessage("What is the capital of Peru?");
+        // given
+        UserMessage userMessage = userMessage("What is the capital of Peru?");
 
-            // when
-            Response<AiMessage> response = model.generate(userMessage);
+        // when
+        Response<AiMessage> response = model.generate(userMessage);
 
-            // then
-            assertThat(response.content().text()).isNotBlank();
+        // then
+        assertThat(response.content().text()).isNotBlank();
 
-            TokenUsage tokenUsage = response.tokenUsage();
-            assertThat(tokenUsage.inputTokenCount()).isEqualTo(15);
-            assertThat(tokenUsage.outputTokenCount()).isEqualTo(4);
-            assertThat(tokenUsage.totalTokenCount())
-                    .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(15);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(4);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-            assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     //https://docs.mistral.ai/platform/guardrailing/
     @Test
-    void should_generate_system_prompt_to_enforce_guardrails(){
+    void should_generate_system_prompt_to_enforce_guardrails() {
         // given
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
@@ -99,7 +100,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_generate_answer_and_return_token_usage_and_finish_reason_stop_with_multiple_messages(){
+    void should_generate_answer_and_return_token_usage_and_finish_reason_stop_with_multiple_messages() {
 
         // given
         UserMessage userMessage1 = userMessage("What is the capital of Peru?");
@@ -124,7 +125,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_generate_answer_in_french_using_model_small_and_return_token_usage_and_finish_reason_stop(){
+    void should_generate_answer_in_french_using_model_small_and_return_token_usage_and_finish_reason_stop() {
 
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
@@ -151,7 +152,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_generate_answer_in_spanish_using_model_small_and_return_token_usage_and_finish_reason_stop(){
+    void should_generate_answer_in_spanish_using_model_small_and_return_token_usage_and_finish_reason_stop() {
 
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
@@ -178,13 +179,13 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_generate_answer_using_model_medium_and_return_token_usage_and_finish_reason_length(){
+    void should_generate_answer_using_model_medium_and_return_token_usage_and_finish_reason_length() {
 
         // given - Mistral Medium = currently relies on an internal prototype model.
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .modelName(MistralAiChatModelName.MISTRAL_MEDIUM.toString())
-                .maxNewTokens(10)
+                .maxTokens(10)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Peru?");

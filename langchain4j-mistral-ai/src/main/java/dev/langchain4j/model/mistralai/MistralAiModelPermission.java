@@ -24,5 +24,4 @@ public class MistralAiModelPermission {
     private String organization;
     private String group;
     private Boolean isBlocking;
-
 }

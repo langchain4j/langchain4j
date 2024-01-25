@@ -13,7 +13,7 @@ class MistralAiModelsIT {
 
     //https://docs.mistral.ai/models/
     @Test
-    void should_return_all_model_cards(){
+    void should_return_all_model_cards() {
         // when
         Response<List<MistralAiModelCard>> response = models.availableModels();
 

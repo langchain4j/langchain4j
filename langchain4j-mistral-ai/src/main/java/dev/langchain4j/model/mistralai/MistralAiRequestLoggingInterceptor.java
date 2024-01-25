@@ -15,7 +15,6 @@ class MistralAiRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MistralAiRequestLoggingInterceptor.class);
 
-
     @Override
     public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
@@ -24,17 +23,15 @@ class MistralAiRequestLoggingInterceptor implements Interceptor {
     }
 
     private void log(Request request) {
-        String message = "Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}";
         try {
-            if (LOGGER.isDebugEnabled()){
-                LOGGER.debug(message, new Object[]{request.method(), request.url(), getHeaders(request.headers()), getBody(request)});
-            }
+            LOGGER.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}",
+                    request.method(), request.url(), getHeaders(request.headers()), getBody(request));
         } catch (Exception e) {
             LOGGER.warn("Error while logging request: {}", e.getMessage());
         }
     }
 
-    private static String getBody(Request request){
+    private static String getBody(Request request) {
         try {
             Buffer buffer = new Buffer();
             if (request.body() == null) {

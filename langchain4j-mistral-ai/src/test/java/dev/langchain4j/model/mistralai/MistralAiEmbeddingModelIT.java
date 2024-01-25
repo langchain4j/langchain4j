@@ -41,7 +41,7 @@ class MistralAiEmbeddingModelIT {
     }
 
     @Test
-    void should_embed_and_return_token_usage_with_multiple_inputs(){
+    void should_embed_and_return_token_usage_with_multiple_inputs() {
 
         // given
         TextSegment textSegment1 = TextSegment.from("Embed this sentence.");

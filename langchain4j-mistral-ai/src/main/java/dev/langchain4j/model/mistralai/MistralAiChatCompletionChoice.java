@@ -5,16 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralChatCompletionChoice {
+class MistralAiChatCompletionChoice {
 
     private Integer index;
-    private MistralChatMessage message;
-    private MistralDeltaMessage delta;
+    private MistralAiChatMessage message;
+    private MistralAiDeltaMessage delta;
     private String finishReason;
-    private MistralUsageInfo usage; //usageInfo is returned only when the prompt is finished in stream mode
+    private MistralAiUsage usage; // usageInfo is returned only when the prompt is finished in stream mode
 }

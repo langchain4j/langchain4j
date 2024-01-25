@@ -9,9 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralDeltaMessage {
+class MistralAiUsage {
 
-    private MistralRoleName role;
-    private String content;
-
+    private Integer promptTokens;
+    private Integer totalTokens;
+    private Integer completionTokens;
 }
