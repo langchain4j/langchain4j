@@ -3,8 +3,10 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -79,6 +81,20 @@ public class OllamaChatModel implements ChatLanguageModel {
                 AiMessage.from(response.getMessage().getContent()),
                 new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
         );
+    }
+
+    public static OllamaChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OllamaChatModelBuilderFactory.class,
+                OllamaChatModelBuilder::new
+        );
+    }
+
+    public static class OllamaChatModelBuilder {
+        public OllamaChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 
 }

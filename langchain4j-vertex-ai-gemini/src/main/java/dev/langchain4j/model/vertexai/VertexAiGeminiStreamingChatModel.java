@@ -9,6 +9,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.vertexai.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.io.IOException;
@@ -81,6 +83,20 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             handler.onComplete(responseBuilder.build());
         } catch (Exception exception) {
             handler.onError(exception);
+        }
+    }
+
+    public static VertexAiGeminiStreamingChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                VertexAiGeminiStreamingChatModelBuilderFactory.class,
+                VertexAiGeminiStreamingChatModelBuilder::new
+        );
+    }
+
+    public static class VertexAiGeminiStreamingChatModelBuilder {
+        public VertexAiGeminiStreamingChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }
