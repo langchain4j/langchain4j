@@ -18,7 +18,8 @@ public interface BaiduApi {
 
         @POST("rpc/2.0/ai_custom/v1/wenxinworkshop/completions/{endpoint}")
         @Headers({"Content-Type: application/json"})
-        Call<CompletionResponse> completions(@Path(value = "endpoint",encoded = false) String serviceName, @Body CompletionRequest var1, @Query("access_token") String accessToken);
+        Call<CompletionResponse> completions(@Path(value = "endpoint", encoded = false) String serviceName, @Body CompletionRequest request, @Query("access_token") String accessToken);
+
         @POST("rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/{endpoint}")
         @Headers({"Content-Type: application/json"})
         Call<EmbeddingResponse> embeddings(@Path(value = "endpoint",encoded = false) String serviceName, @Body EmbeddingRequest var1, @Query("access_token") String accessToken);
