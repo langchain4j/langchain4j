@@ -13,6 +13,7 @@ import dev.langchain4j.rag.query.router.DefaultQueryRouter;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.DefaultQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
+import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,6 +106,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private final ContentInjector contentInjector;
     private final Executor executor;
 
+    @Builder
     public DefaultRetrievalAugmentor(QueryTransformer queryTransformer,
                                      QueryRouter queryRouter,
                                      ContentAggregator contentAggregator,
@@ -153,25 +155,27 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
                                                                          Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
-                .map(retriever -> supplyAsync(() -> {
-                    List<Content> contents = retriever.retrieve(query);
-                    log(query, retriever, contents);
-                    return contents;
-                }, executor))
+                .map(retriever -> supplyAsync(() -> retrieve(retriever, query), executor))
                 .collect(toList());
 
         return allOf(futureContents.toArray(new CompletableFuture[0]))
-                .thenApply(v ->
+                .thenApply(ignored ->
                         futureContents.stream()
                                 .map(CompletableFuture::join)
                                 .collect(toList())
                 );
     }
 
+    private static List<Content> retrieve(ContentRetriever retriever, Query query) {
+        List<Content> contents = retriever.retrieve(query);
+        log(query, retriever, contents);
+        return contents;
+    }
+
     private static Map<Query, Collection<List<Content>>> join(
             Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents) {
         return allOf(queryToFutureContents.values().toArray(new CompletableFuture[0]))
-                .thenApply(v ->
+                .thenApply(ignored ->
                         queryToFutureContents.entrySet().stream()
                                 .collect(toMap(
                                         Map.Entry::getKey,
@@ -219,56 +223,15 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         log.debug("Augmented user message: " + augmentedUserMessage);
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public static DefaultRetrievalAugmentorBuilder builder() {
+        return new DefaultRetrievalAugmentorBuilder();
     }
 
-    public static class Builder {
+    public static class DefaultRetrievalAugmentorBuilder {
 
-        private QueryTransformer queryTransformer;
-        private QueryRouter queryRouter;
-        private ContentAggregator contentAggregator;
-        private ContentInjector contentInjector;
-        private Executor executor;
-
-        public Builder queryTransformer(QueryTransformer queryTransformer) {
-            this.queryTransformer = queryTransformer;
-            return this;
-        }
-
-        public Builder queryRouter(QueryRouter queryRouter) {
-            this.queryRouter = queryRouter;
-            return this;
-        }
-
-        public Builder contentRetriever(ContentRetriever contentRetriever) {
+        public DefaultRetrievalAugmentorBuilder contentRetriever(ContentRetriever contentRetriever) {
             this.queryRouter = new DefaultQueryRouter(ensureNotNull(contentRetriever, "contentRetriever"));
             return this;
-        }
-
-        public Builder contentAggregator(ContentAggregator contentAggregator) {
-            this.contentAggregator = contentAggregator;
-            return this;
-        }
-
-        public Builder contentInjector(ContentInjector contentInjector) {
-            this.contentInjector = contentInjector;
-            return this;
-        }
-
-        public Builder executor(Executor executor) {
-            this.executor = executor;
-            return this;
-        }
-
-        public DefaultRetrievalAugmentor build() {
-            return new DefaultRetrievalAugmentor(
-                    queryTransformer,
-                    queryRouter,
-                    contentAggregator,
-                    contentInjector,
-                    executor
-            );
         }
     }
 }
