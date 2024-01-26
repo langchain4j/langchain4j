@@ -233,7 +233,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             Embedding embedding = Embedding.from(embeddingArray);
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
-            if (isNotNullOrBlank(embbededContent)) {
+            if (isNotNullOrBlank(embeddedContent)) {
                 LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
                 List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
                 Map<String, String> attributesMap = new HashMap<>();
@@ -244,7 +244,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     attributesMap.put(key, value);
                 }
                 Metadata langChainMetada = Metadata.from(attributesMap);
-                TextSegment embedded = TextSegment.textSegment(embbededContent, langChainMetada);
+                TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetada);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, null);
