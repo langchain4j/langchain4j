@@ -68,6 +68,7 @@ import static java.util.stream.Collectors.*;
  * using a {@link QueryTransformer} into one or multiple {@link Query}s.
  * <br>
  * 2. Each {@link Query} is routed to the appropriate {@link ContentRetriever} using a {@link QueryRouter}.
+ * Each {@link ContentRetriever} retrieves one or multiple {@link Content}s using a {@link Query}.
  * <br>
  * 3. All {@link Content}s retrieved by all {@link ContentRetriever}s using all {@link Query}s are
  * aggregated (fused/re-ranked/filtered/etc.) into a final list of {@link Content}s using a {@link ContentAggregator}.
