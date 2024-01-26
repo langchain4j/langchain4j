@@ -96,9 +96,6 @@
             <plugin>
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <configuration>
-                    <skipCompliance>true</skipCompliance>
-                </configuration>
             </plugin>
         </plugins>
     </build>
