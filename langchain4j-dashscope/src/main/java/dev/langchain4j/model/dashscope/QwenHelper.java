@@ -23,7 +23,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.common.Role.*;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
@@ -52,9 +51,8 @@ class QwenHelper {
     static String toSingleText(ChatMessage message) {
         switch (message.type()) {
             case USER:
-                UserMessage userMessage = (UserMessage) message;
-                List<Content> contents = ensureNotEmpty(userMessage.contents(), "contents");
-                return contents.stream()
+                return ((UserMessage) message).contents()
+                        .stream()
                         .filter(TextContent.class::isInstance)
                         .map(TextContent.class::cast)
                         .map(TextContent::text)
@@ -86,8 +84,8 @@ class QwenHelper {
     static List<Map<String, Object>> toMultiModalContents(ChatMessage message) {
         switch (message.type()) {
             case USER:
-                UserMessage userMessage = (UserMessage) message;
-                return userMessage.contents().stream()
+                return((UserMessage) message).contents()
+                        .stream()
                         .map(QwenHelper::toMultiModalContent)
                         .collect(Collectors.toList());
             case AI:
