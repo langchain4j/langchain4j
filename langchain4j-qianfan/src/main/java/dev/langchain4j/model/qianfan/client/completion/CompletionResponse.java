@@ -13,15 +13,15 @@ public final class CompletionResponse {
     private  String errorMsg;
     private  String object;
     private  Integer created;
-    private  Integer sentence_id;
-    private  Boolean is_end;
-    private  Boolean is_truncated;
+    private  Integer sentenceId;
+    private  Boolean isEnd;
+    private  Boolean isTruncated;
     private  String result;
-    private  String finish_reason;
-    private  Boolean need_clear_history;
-    private  Integer ban_round;
+    private  String finishReason;
+    private  Boolean needClearHistory;
+    private  Integer banRound;
     private  Usage usage;
-    private FunctionCall function_call;
+    private FunctionCall functionCall;
 
 
 

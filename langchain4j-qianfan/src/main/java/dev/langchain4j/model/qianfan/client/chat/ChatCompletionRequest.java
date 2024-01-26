@@ -142,7 +142,7 @@ public final class ChatCompletionRequest {
             return this;
         }
 
-        public Builder adduserMessage(String userMessage) {
+        public Builder addUserMessage(String userMessage) {
             if (this.messages == null) {
                 this.messages = new ArrayList();
             }

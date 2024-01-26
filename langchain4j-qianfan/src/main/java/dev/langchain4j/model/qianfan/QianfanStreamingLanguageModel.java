@@ -35,7 +35,7 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
     private  final Double penaltyScore;
     private final Integer maxRetries;
 
-    private final Double topK;
+    private final Integer topK;
 
     private final String endpoint;
     @Builder
@@ -44,7 +44,7 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
                                          String secretKey,
                                          Double temperature,
                                          Integer maxRetries,
-                                         Double topK,
+                                         Integer topK,
                                          Double topP,
                                          String modelName,
                                          String endpoint,
@@ -84,7 +84,7 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
 
         CompletionRequest request = CompletionRequest.builder()
                 .prompt(prompt)
-                .topP(topK)
+                .topK(topK)
                 .topP(topP)
                 .temperature(temperature)
                 .penaltyScore(penaltyScore)

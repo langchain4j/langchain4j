@@ -97,7 +97,7 @@ public class QianfanLanguageModel implements LanguageModel {
         return Response.from(
                 response.getResult(),
                 tokenUsageFrom(response),
-                finishReasonFrom(response.getFinish_reason())
+                finishReasonFrom(response.getFinishReason())
         );
     }
 

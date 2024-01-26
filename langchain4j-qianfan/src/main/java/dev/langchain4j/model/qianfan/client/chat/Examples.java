@@ -6,13 +6,13 @@ public class Examples {
     private final Role role;
     private final String name;
     private final String content;
-    private final FunctionCall function_call;
+    private final FunctionCall functionCall;
 
     private Examples(Builder builder) {
         this.name = builder.name;
         this.role = builder.role;
         this.content = builder.content;
-        this.function_call = builder.function_call;
+        this.functionCall = builder.functionCall;
     }
 
     public Role getRole() {
@@ -27,8 +27,8 @@ public class Examples {
         return content;
     }
 
-    public FunctionCall getfunction_call() {
-        return function_call;
+    public FunctionCall getFunctionCall() {
+        return functionCall;
     }
 
 
@@ -40,7 +40,7 @@ public class Examples {
                 "role=" + role +
                 ", name='" + name + '\'' +
                 ", content='" + content + '\'' +
-                ", function_call=" + function_call +
+                ", functionCall=" + functionCall +
                 '}';
     }
 
@@ -53,12 +53,12 @@ public class Examples {
         private Role role;
         private String name;
         private String content;
-        private FunctionCall function_call;
+        private FunctionCall functionCall;
 
         private Builder() {
         }
 
-        public Builder Role(Role role) {
+        public Builder role(Role role) {
             this.role = role;
             return this;
         }
@@ -73,8 +73,8 @@ public class Examples {
             return this;
         }
 
-        public Builder function_call(FunctionCall function_call) {
-            this.function_call = function_call;
+        public Builder functionCall(FunctionCall functionCall) {
+            this.functionCall = functionCall;
             return this;
         }
     }

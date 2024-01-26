@@ -52,7 +52,7 @@ public class QianfanStreamingResponseBuilder {
         }
 
 
-        String finishReason = partialResponse.getFinish_reason();
+        String finishReason = partialResponse.getFinishReason();
         if (finishReason != null) {
             this.finishReason = finishReason;
         }
@@ -71,7 +71,7 @@ public class QianfanStreamingResponseBuilder {
         }
 
 
-        FunctionCall functionCall = partialResponse.getFunction_call();
+        FunctionCall functionCall = partialResponse.getFunctionCall();
 
         if (functionCall != null) {
 
@@ -97,7 +97,7 @@ public class QianfanStreamingResponseBuilder {
             return;
         }
 
-        String finishReason = partialResponse.getFinish_reason();
+        String finishReason = partialResponse.getFinishReason();
         if (finishReason != null) {
             this.finishReason = finishReason;
         }

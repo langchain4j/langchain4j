@@ -12,8 +12,8 @@ public final class EmbeddingResponse {
     private final Integer created;
     private final List<EmbeddingData> data;
     private final Usage usage;
-    private String error_code;
-    private String error_msg;
+    private String errorCode;
+    private String errorMsg;
 
     private EmbeddingResponse(Builder builder) {
         this.object = builder.object;

@@ -149,7 +149,7 @@ public class InternalQianfanHelper {
     }
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
 
-        FunctionCall functionCall = response.getFunction_call();
+        FunctionCall functionCall = response.getFunctionCall();
 
         if (functionCall != null) {
             ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()

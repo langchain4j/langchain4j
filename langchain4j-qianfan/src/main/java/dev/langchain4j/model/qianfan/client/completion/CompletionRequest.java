@@ -5,7 +5,7 @@ import java.util.List;
 public final class CompletionRequest {
     private final String prompt;
     private final Boolean stream;
-    private final String user_id;
+    private final String userId;
 
     private final Double temperature;
     private final Integer topK;
@@ -17,7 +17,7 @@ public final class CompletionRequest {
     private CompletionRequest(Builder builder) {
         this.prompt = builder.prompt;
         this.stream = builder.stream;
-        this.user_id = builder.user_id;
+        this.userId = builder.userId;
         this.temperature = builder.temperature;
         this.topK = builder.topK;
         this.topP = builder.topP;
@@ -46,7 +46,7 @@ public final class CompletionRequest {
     public static final class Builder {
         private String prompt;
         private Boolean stream;
-        private String user_id;
+        private String userId;
 
         private  Double temperature;
         private  Integer topK;
@@ -63,10 +63,10 @@ public final class CompletionRequest {
                 CompletionRequest request) {
             this.prompt(request.prompt);
             this.stream(request.stream);
-            this.user(request.user_id);
+            this.user(request.userId);
             this.prompt(request.prompt);
             this.stream(request.stream);
-            this.user(request.user_id);
+            this.user(request.userId);
             this.temperature(request.temperature);
             this.topK(request.topK);
             this.topP(request.topP);
@@ -106,7 +106,7 @@ public final class CompletionRequest {
         }
 
         public Builder user(String userId) {
-            this.user_id = userId;
+            this.userId = userId;
             return this;
         }
 

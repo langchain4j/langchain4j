@@ -128,7 +128,7 @@ public class QianfanChatModel implements ChatLanguageModel {
 
 
           return  Response.from(aiMessageFrom(response),
-                    tokenUsageFrom(response), finishReasonFrom(response.getFinish_reason()));
+                    tokenUsageFrom(response), finishReasonFrom(response.getFinishReason()));
 
 
     }

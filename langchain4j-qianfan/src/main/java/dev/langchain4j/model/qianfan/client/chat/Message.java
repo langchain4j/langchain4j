@@ -6,13 +6,13 @@ public final class Message {
     private final Role role;
     private final String content;
     private final String name;
-    private final FunctionCall function_call;
+    private final FunctionCall functionCall;
 
     private Message(Builder builder) {
         this.role = builder.role;
         this.content = builder.content;
         this.name = builder.name;
-        this.function_call = builder.function_call;
+        this.functionCall = builder.functionCall;
     }
 
     public Role role() {
@@ -28,7 +28,7 @@ public final class Message {
     }
 
     public FunctionCall functionCall() {
-        return this.function_call;
+        return this.functionCall;
     }
 
     public boolean equals(Object another) {
@@ -40,7 +40,7 @@ public final class Message {
     }
 
     private boolean equalTo(Message another) {
-        return Objects.equals(this.role, another.role) && Objects.equals(this.content, another.content) && Objects.equals(this.name, another.name) && Objects.equals(this.function_call, another.function_call);
+        return Objects.equals(this.role, another.role) && Objects.equals(this.content, another.content) && Objects.equals(this.name, another.name) && Objects.equals(this.functionCall, another.functionCall);
     }
 
     public int hashCode() {
@@ -48,12 +48,12 @@ public final class Message {
         h += (h << 5) + Objects.hashCode(this.role);
         h += (h << 5) + Objects.hashCode(this.content);
         h += (h << 5) + Objects.hashCode(this.name);
-        h += (h << 5) + Objects.hashCode(this.function_call);
+        h += (h << 5) + Objects.hashCode(this.functionCall);
         return h;
     }
 
     public String toString() {
-        return "Message{role=" + this.role + ", content=" + this.content + ", name=" + this.name + ", function_call=" + this.function_call + "}";
+        return "Message{role=" + this.role + ", content=" + this.content + ", name=" + this.name + ", functionCall=" + this.functionCall + "}";
     }
 
     public static Message systemMessage(String content) {
@@ -80,7 +80,7 @@ public final class Message {
         private Role role;
         private String content;
         private String name;
-        private FunctionCall function_call;
+        private FunctionCall functionCall;
 
         private Builder() {
         }
@@ -105,7 +105,7 @@ public final class Message {
         }
 
         public Builder functionCall(FunctionCall functionCall) {
-            this.function_call = functionCall;
+            this.functionCall = functionCall;
             return this;
         }
 

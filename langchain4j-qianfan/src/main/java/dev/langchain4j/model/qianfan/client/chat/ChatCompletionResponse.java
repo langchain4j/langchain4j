@@ -9,33 +9,33 @@ public final class ChatCompletionResponse {
     private final String errorMsg;
     private final String object;
     private final Integer created;
-    private final Integer sentence_id;
-    private final Boolean is_end;
-    private final Boolean is_truncated;
+    private final Integer sentenceId;
+    private final Boolean isEnd;
+    private final Boolean isTruncated;
     private final String result;
-    private final Boolean need_clear_history;
-    private final Integer ban_round;
+    private final Boolean needClearHistory;
+    private final Integer banRound;
     private final Usage usage;
-    private final FunctionCall function_call;
+    private final FunctionCall functionCall;
 
 
-    private final String finish_reason;
+    private final String finishReason;
 
     private ChatCompletionResponse(Builder builder) {
         this.id = builder.id;
         this.created = builder.created;
         this.object = builder.object;
-        this.sentence_id = builder.sentence_id;
-        this.is_end = builder.is_end;
-        this.is_truncated = builder.is_truncated;
+        this.sentenceId = builder.sentenceId;
+        this.isEnd = builder.isEnd;
+        this.isTruncated = builder.isTruncated;
         this.result = builder.result;
-        this.need_clear_history = builder.need_clear_history;
-        this.ban_round = builder.ban_round;
-        this.function_call = builder.function_call;
+        this.needClearHistory = builder.needClearHistory;
+        this.banRound = builder.banRound;
+        this.functionCall = builder.functionCall;
         this.usage = builder.usage;
         this.errorCode = builder.errorCode;
         this.errorMsg = builder.errorMsg;
-        this.finish_reason = builder.finish_reason;
+        this.finishReason = builder.finishReason;
     }
 
 
@@ -48,15 +48,15 @@ public final class ChatCompletionResponse {
                 ", errorMsg='" + errorMsg + '\'' +
                 ", object='" + object + '\'' +
                 ", created=" + created +
-                ", sentence_id=" + sentence_id +
-                ", is_end=" + is_end +
-                ", is_truncated=" + is_truncated +
+                ", sentenceId=" + sentenceId +
+                ", isEnd=" + isEnd +
+                ", isTruncated=" + isTruncated +
                 ", result='" + result + '\'' +
-                ", need_clear_history=" + need_clear_history +
-                ", ban_round=" + ban_round +
+                ", needClearHistory=" + needClearHistory +
+                ", banRound=" + banRound +
                 ", usage=" + usage +
-                ", function_call=" + function_call +
-                ", finish_reason=" + finish_reason +
+                ", functionCall=" + functionCall +
+                ", finishReason=" + finishReason +
                 '}';
     }
 
@@ -80,40 +80,40 @@ public final class ChatCompletionResponse {
         return created;
     }
 
-    public Integer getSentence_id() {
-        return sentence_id;
+    public Integer getSentenceId() {
+        return sentenceId;
     }
 
-    public Boolean getIs_end() {
-        return is_end;
+    public Boolean getIsEnd() {
+        return isEnd;
     }
 
-    public Boolean getIs_truncated() {
-        return is_truncated;
+    public Boolean getIsTruncated() {
+        return isTruncated;
     }
 
     public String getResult() {
         return result;
     }
 
-    public Boolean getNeed_clear_history() {
-        return need_clear_history;
+    public Boolean getNeedClearHistory() {
+        return needClearHistory;
     }
 
-    public Integer getBan_round() {
-        return ban_round;
+    public Integer getBanRound() {
+        return banRound;
     }
 
     public Usage getUsage() {
         return usage;
     }
 
-    public FunctionCall getFunction_call() {
-        return function_call;
+    public FunctionCall getFunctionCall() {
+        return functionCall;
     }
 
-    public String getFinish_reason() {
-        return finish_reason;
+    public String getFinishReason() {
+        return finishReason;
     }
 
 
@@ -126,18 +126,18 @@ public final class ChatCompletionResponse {
         private String id;
         private String object;
         private Integer created;
-        private Integer sentence_id;
-        private Boolean is_end;
-        private Boolean is_truncated;
+        private Integer sentenceId;
+        private Boolean isEnd;
+        private Boolean isTruncated;
         private String result;
-        private Boolean need_clear_history;
-        private Integer ban_round;
+        private Boolean needClearHistory;
+        private Integer banRound;
         private Usage usage;
-        private FunctionCall function_call;
+        private FunctionCall functionCall;
         private  Integer errorCode;
         private  String errorMsg;
 
-        private  String finish_reason;
+        private  String finishReason;
 
         private Builder() {
         }
@@ -160,13 +160,13 @@ public final class ChatCompletionResponse {
             return this;
         }
 
-        public Builder sentence_id(Integer sentence_id) {
-            this.sentence_id = sentence_id;
+        public Builder sentenceId(Integer sentenceId) {
+            this.sentenceId = sentenceId;
             return this;
         }
 
-        public Builder is_end(Boolean is_end) {
-            this.is_end = is_end;
+        public Builder isEnd(Boolean isEnd) {
+            this.isEnd = isEnd;
             return this;
         }
 
@@ -175,13 +175,13 @@ public final class ChatCompletionResponse {
             return this;
         }
 
-        public Builder need_clear_history(Boolean need_clear_history) {
-            this.need_clear_history = need_clear_history;
+        public Builder needClearHistory(Boolean needClearHistory) {
+            this.needClearHistory = needClearHistory;
             return this;
         }
 
-        public Builder ban_round(Integer ban_round) {
-            this.ban_round = ban_round;
+        public Builder banRound(Integer banRound) {
+            this.banRound = banRound;
             return this;
         }
 
@@ -190,17 +190,17 @@ public final class ChatCompletionResponse {
             return this;
         }
 
-        public Builder function_call(FunctionCall function_call) {
-            this.function_call = function_call;
+        public Builder functionCall(FunctionCall functionCall) {
+            this.functionCall = functionCall;
             return this;
         }
-        public Builder is_truncated(Boolean is_truncated ) {
-            this.is_truncated = is_truncated;
+        public Builder isTruncated(Boolean isTruncated ) {
+            this.isTruncated = isTruncated;
             return this;
         }
 
-        public Builder finish_reson(String finish_reason ) {
-            this.finish_reason = finish_reason;
+        public Builder finishReason(String finishReason ) {
+            this.finishReason = finishReason;
             return this;
         }
 

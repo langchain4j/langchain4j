@@ -136,7 +136,7 @@ public class QianfanClient {
     private void refreshToken() {
         RequestExecutor<String, ChatTokenResponse, String> executor = new RequestExecutor<>(
                 this.qianfanApi.getToken(GRANT_TYPE, this.apiKey,
-                        this.secretKey), ChatTokenResponse::getAccess_token);
+                        this.secretKey), ChatTokenResponse::getAccessToken);
         this.token = executor.execute();
 
     }
