@@ -279,7 +279,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             if (embedded != null) {
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
-                metadata.setSource("langchain4j");
+                //metadata.setSource("langchain4j");
                 List<Document.Metadata.Attribute> attributes = new ArrayList<>();
                 for (Map.Entry<String, String> entry : embedded.get(i).metadata().asMap().entrySet()) {
                     Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
