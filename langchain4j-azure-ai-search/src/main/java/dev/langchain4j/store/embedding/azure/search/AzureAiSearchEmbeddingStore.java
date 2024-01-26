@@ -231,7 +231,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
             float[] embeddingArray = doublesListToFloatArray(embeddingList);
             Embedding embedding = Embedding.from(embeddingArray);
-            String embbededContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
+            String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embbededContent)) {
                 LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
