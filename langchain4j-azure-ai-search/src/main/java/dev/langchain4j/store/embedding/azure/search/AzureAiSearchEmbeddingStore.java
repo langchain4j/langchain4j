@@ -244,7 +244,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     attributesMap.put(key, value);
                 }
                 Metadata langChainMetadata = Metadata.from(attributesMap);
-                TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetada);
+                TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetadata);
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
             } else {
                 embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, null);
