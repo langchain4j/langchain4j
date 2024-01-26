@@ -15,7 +15,7 @@ import java.util.List;
 
 public class AbstractLocalAiInfrastructure {
 
-    private static final String LOCAL_AI_IMAGE = "quay.io/go-skynet/local-ai:v1.40.0";
+    private static final String LOCAL_AI_IMAGE = "localai/localai:latest";
 
     private static final String LOCAL_IMAGE_NAME = "tc-local-ai";
 
