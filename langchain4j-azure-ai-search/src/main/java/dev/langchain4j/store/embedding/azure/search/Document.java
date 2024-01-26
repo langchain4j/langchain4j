@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Collection;
 
 public class Document {
@@ -8,7 +10,8 @@ public class Document {
 
     private String content;
 
-    private Collection<Float> content_vector;
+    @JsonProperty("content_vector")
+    private Collection<Float> contentVector;
 
     private Metadata metadata;
 
@@ -28,12 +31,12 @@ public class Document {
         this.content = content;
     }
 
-    public Collection<Float> getContent_vector() {
-        return content_vector;
+    public Collection<Float> getContentVector() {
+        return contentVector;
     }
 
     public void setContentVector(Collection<Float> contentVector) {
-        this.content_vector = content_vector;
+        this.contentVector = contentVector;
     }
 
     public Metadata getMetadata() {
