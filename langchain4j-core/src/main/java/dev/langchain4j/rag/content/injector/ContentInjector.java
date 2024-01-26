@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.injector;
 
+import dev.langchain4j.MightChangeInTheFuture;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 
@@ -13,6 +14,7 @@ import java.util.List;
  *
  * @see DefaultContentInjector
  */
+@MightChangeInTheFuture("This is an experimental feature. Time will tell if this is the right abstraction.")
 public interface ContentInjector {
 
     /**
