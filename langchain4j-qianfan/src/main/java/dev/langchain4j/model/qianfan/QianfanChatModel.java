@@ -87,7 +87,7 @@ public class QianfanChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generate(messages, singletonList(toolSpecification), toolSpecification);
+        throw new RuntimeException("Not supported");
     }
 
 
