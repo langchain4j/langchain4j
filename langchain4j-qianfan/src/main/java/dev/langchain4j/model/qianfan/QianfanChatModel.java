@@ -8,13 +8,13 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
+import dev.langchain4j.model.qianfan.spi.QianfanChatModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import java.util.List;
-import java.util.Objects;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
-import static java.util.Collections.singletonList;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 
 /**
@@ -134,5 +134,17 @@ public class QianfanChatModel implements ChatLanguageModel {
     }
 
 
+    public static QianfanChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QianfanChatModelBuilderFactory.class,
+                QianfanChatModelBuilder::new
+        );
+    }
 
+    public static class QianfanChatModelBuilder {
+        public QianfanChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+    }
 }

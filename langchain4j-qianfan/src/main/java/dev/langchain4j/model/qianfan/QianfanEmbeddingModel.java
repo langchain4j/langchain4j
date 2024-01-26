@@ -8,6 +8,8 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
+import dev.langchain4j.model.qianfan.spi.QianfanEmbeddingModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -100,5 +102,17 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
         );
     }
 
+    public static QianfanEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QianfanEmbeddingModelBuilderFactory.class,
+                QianfanEmbeddingModelBuilder::new
+        );
+    }
 
+    public static class QianfanEmbeddingModelBuilder {
+        public QianfanEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+    }
 }

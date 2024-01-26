@@ -10,6 +10,8 @@ import dev.langchain4j.model.qianfan.client.QianfanStreamingResponseBuilder;
 import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.SyncOrAsyncOrStreaming;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
+import dev.langchain4j.model.qianfan.spi.QianfanStreamingLanguageModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
@@ -117,4 +119,17 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
         handler.onNext(result);
     }
 
+    public static QianfanStreamingLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QianfanStreamingLanguageModelBuilderFactory.class,
+                QianfanStreamingLanguageModelBuilder::new
+        );
+    }
+
+    public static class QianfanStreamingLanguageModelBuilder {
+        public QianfanStreamingLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+    }
 }

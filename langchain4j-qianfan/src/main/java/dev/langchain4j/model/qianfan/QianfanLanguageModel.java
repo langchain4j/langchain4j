@@ -8,6 +8,8 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
+import dev.langchain4j.model.qianfan.spi.QianfanLanguageModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -99,5 +101,17 @@ public class QianfanLanguageModel implements LanguageModel {
         );
     }
 
+    public static QianfanLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QianfanLanguageModelBuilderFactory.class,
+                QianfanLanguageModelBuilder::new
+        );
+    }
 
+    public static class QianfanLanguageModelBuilder {
+        public QianfanLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+    }
 }
