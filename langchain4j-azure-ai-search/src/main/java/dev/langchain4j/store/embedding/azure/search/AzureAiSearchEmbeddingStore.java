@@ -275,7 +275,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         for (int i = 0; i < ids.size(); ++i) {
             Document document = new Document();
             document.setId(ids.get(i));
-            document.setContentVector(floatsArrayToList(embeddings.get(i).vector()));
+            document.setContentVector(embeddings.get(i).vectorAsList());
             if (embedded != null) {
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
@@ -289,8 +289,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 }
                 metadata.setAttributes(attributes);
                 document.setMetadata(metadata);
-            } else {
-                document.setContent("");
             }
             searchDocuments.add(document);
         }
@@ -302,14 +300,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 log.info("Added embedding: {}", indexingResult.getKey());
             }
         }
-    }
-
-    private List<Float> floatsArrayToList(float[] floats) {
-        List<Float> list = new ArrayList<>();
-        for (float f : floats) {
-            list.add(f);
-        }
-        return list;
     }
 
     private float[] doublesListToFloatArray(List<Double> doubles) {
