@@ -21,8 +21,6 @@ public class AzureOpenAiModelName {
 
 
     // Use with AzureOpenAiLanguageModel and AzureOpenAiStreamingLanguageModel
-    public static final String TEXT_DAVINCI_003 = "text-davinci-003";
-
     public static final String GPT_3_5_TURBO_INSTRUCT = "gpt-3.5-turbo-instruct";
 
 

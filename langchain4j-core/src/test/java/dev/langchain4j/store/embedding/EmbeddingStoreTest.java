@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 
 class EmbeddingStoreTest implements WithAssertions {
+
     public static class MinimalEmbeddingStore implements EmbeddingStore<String> {
         @Override
         public String add(Embedding embedding) {
@@ -41,11 +42,7 @@ class EmbeddingStoreTest implements WithAssertions {
                         0.5,
                         "id",
                         referenceEmbedding,
-                        String.format(
-                                "%s, %d, %.2f",
-                                referenceEmbedding.vectorAsList(),
-                                maxResults,
-                                minScore)));
+                        "embedded"));
         }
     }
 
@@ -58,12 +55,7 @@ class EmbeddingStoreTest implements WithAssertions {
                         0.5,
                         "id",
                         referenceEmbedding,
-                        String.format(
-                                "%s, %s, %d, %.2f",
-                                memoryId,
-                                referenceEmbedding.vectorAsList(),
-                                maxResults,
-                                minScore)));
+                        "embedded"));
         }
     }
 
@@ -79,7 +71,7 @@ class EmbeddingStoreTest implements WithAssertions {
                             0.5,
                             "id",
                             referenceEmbedding,
-                            "[0.5, 1.5], 12, 0.00"));
+                            "embedded"));
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> store.findRelevant("MemoryId", referenceEmbedding, 12))
@@ -98,6 +90,6 @@ class EmbeddingStoreTest implements WithAssertions {
                             0.5,
                             "id",
                             referenceEmbedding,
-                            "abc, [0.5, 1.5], 12, 0.00"));
+                            "embedded"));
     }
 }

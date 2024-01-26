@@ -8,7 +8,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.Network;
@@ -96,11 +95,10 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "MILVUS_API_KEY", matches = ".+")
     void should_use_cloud_instance() {
 
         EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-                .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com")
+                .uri(System.getenv("MILVUS_URI"))
                 .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName("test")
                 .dimension(384)

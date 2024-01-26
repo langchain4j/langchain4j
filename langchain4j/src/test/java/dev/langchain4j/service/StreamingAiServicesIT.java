@@ -29,6 +29,7 @@ import static org.mockito.Mockito.*;
 public class StreamingAiServicesIT {
 
     StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
@@ -298,6 +299,7 @@ public class StreamingAiServicesIT {
         Calculator calculator = spy(new Calculator());
 
         StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106)
