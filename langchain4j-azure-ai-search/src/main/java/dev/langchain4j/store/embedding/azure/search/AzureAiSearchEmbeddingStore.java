@@ -170,7 +170,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         searchIndexClient.createOrUpdateIndex(index);
     }
 
-    void deleteIndex() {
+    public void deleteIndex() {
         searchIndexClient.deleteIndex(INDEX_NAME);
     }
 
