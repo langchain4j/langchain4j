@@ -246,4 +246,9 @@ class QwenHelper {
                 return null;
         }
     }
+
+    public static boolean isMultimodalModel(String modelName) {
+        // for now, multimodal models start with "qwen-vl"
+        return modelName.startsWith("qwen-vl");
+    }
 }

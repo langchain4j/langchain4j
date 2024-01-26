@@ -2,14 +2,11 @@ package dev.langchain4j.model.dashscope;
 
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.provider.Arguments;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -29,7 +26,7 @@ public class QwenTestHelper {
         );
     }
 
-    public static Stream<Arguments> chatModelNameProvider() {
+    public static Stream<Arguments> nonMultimodalChatModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_TURBO),
                 Arguments.of(QwenModelName.QWEN_PLUS),
@@ -38,7 +35,7 @@ public class QwenTestHelper {
         );
     }
 
-    public static Stream<Arguments> multiModalChatModelNameProvider() {
+    public static Stream<Arguments> multimodalChatModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_VL_PLUS),
                 Arguments.of(QwenModelName.QWEN_VL_MAX)
@@ -66,7 +63,7 @@ public class QwenTestHelper {
         return messages;
     }
 
-    public static List<ChatMessage> multiModalChatMessagesWithImageUrl() {
+    public static List<ChatMessage> multimodalChatMessagesWithImageUrl() {
         Image image = Image.builder()
                 .url("https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg")
                 .build();
@@ -75,16 +72,16 @@ public class QwenTestHelper {
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 
-    public static List<ChatMessage> multiModalChatMessagesWithImageData() {
+    public static List<ChatMessage> multimodalChatMessagesWithImageData() {
         Image image = Image.builder()
-                .base64Data(multiModalImageData())
+                .base64Data(multimodalImageData())
                 .build();
         ImageContent imageContent = ImageContent.from(image);
         TextContent textContent = TextContent.from("What animal is in the picture?");
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 
-    public static String multiModalImageData() {
+    public static String multimodalImageData() {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try (InputStream in = QwenTestHelper.class.getResourceAsStream("/parrot.jpg")) {
             assertNotNull(in);
