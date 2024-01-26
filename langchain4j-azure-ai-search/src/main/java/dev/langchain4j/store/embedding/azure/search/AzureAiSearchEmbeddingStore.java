@@ -275,7 +275,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         for (int i = 0; i < ids.size(); ++i) {
             Document document = new Document();
             document.setId(ids.get(i));
-            document.setContent_vector(floatsArrayToList(embeddings.get(i).vector()));
+            document.setContentVector(floatsArrayToList(embeddings.get(i).vector()));
             if (embedded != null) {
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
