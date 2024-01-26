@@ -209,7 +209,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Float> vector = floatsArrayToList(referenceEmbedding.vector());
+        List<Float> vector = referenceEmbedding.vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
                 .setKNearestNeighborsCount(maxResults);
