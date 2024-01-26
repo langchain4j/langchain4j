@@ -4,6 +4,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,7 @@ class DefaultContentAggregatorTest {
         Content content1 = Content.from("content 1");
         Content content2 = Content.from("content 2");
 
-        Map<Query, List<List<Content>>> queryToContents = singletonMap(
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(
                 query,
                 singletonList(asList(content1, content2))
         );
@@ -47,7 +48,7 @@ class DefaultContentAggregatorTest {
         Content content3 = Content.from("content 3");
         Content content4 = Content.from("content 4");
 
-        Map<Query, List<List<Content>>> queryToContents = singletonMap(
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(
                 query,
                 asList(
                         asList(content1, content2),
@@ -72,7 +73,7 @@ class DefaultContentAggregatorTest {
         Content content3 = Content.from("content");
         Content content4 = Content.from("content 4");
 
-        Map<Query, List<List<Content>>> queryToContents = singletonMap(
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(
                 query,
                 asList(
                         asList(content1, content2),
@@ -106,7 +107,7 @@ class DefaultContentAggregatorTest {
         Content content8 = Content.from("content 8");
 
         // LinkedHashMap is used to ensure a predictable order in the test
-        Map<Query, List<List<Content>>> queryToContents = new LinkedHashMap<>();
+        Map<Query, Collection<List<Content>>> queryToContents = new LinkedHashMap<>();
         queryToContents.put(
                 query1,
                 asList(
@@ -147,7 +148,7 @@ class DefaultContentAggregatorTest {
         Content content8 = Content.from("content 8");
 
         // LinkedHashMap is used to ensure a predictable order in the test
-        Map<Query, List<List<Content>>> queryToContents = new LinkedHashMap<>();
+        Map<Query, Collection<List<Content>>> queryToContents = new LinkedHashMap<>();
         queryToContents.put(
                 query1,
                 asList(

@@ -25,7 +25,6 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
@@ -127,9 +126,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         log(queries);
 
-        Map<Query, CompletableFuture<List<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
+        Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
         queries.forEach(query -> {
-            CompletableFuture<List<List<Content>>> futureContents =
+            CompletableFuture<Collection<List<Content>>> futureContents =
                     supplyAsync(() -> {
                                 Collection<ContentRetriever> retrievers = queryRouter.route(query);
                                 log(query, retrievers);
@@ -140,7 +139,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             queryToFutureContents.put(query, futureContents);
         });
 
-        Map<Query, List<List<Content>>> queryToContents = join(queryToFutureContents);
+        Map<Query, Collection<List<Content>>> queryToContents = join(queryToFutureContents);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
         log(contents);
@@ -151,8 +150,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         return augmentedUserMessage;
     }
 
-    private CompletableFuture<List<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
-                                                                   Query query) {
+    private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
+                                                                         Query query) {
         List<CompletableFuture<List<Content>>> futureContents = retrievers.stream()
                 .map(retriever -> supplyAsync(() -> {
                     List<Content> contents = retriever.retrieve(query);
@@ -169,8 +168,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 );
     }
 
-    private static Map<Query, List<List<Content>>> join(
-            Map<Query, CompletableFuture<List<List<Content>>>> queryToFutureContents) {
+    private static Map<Query, Collection<List<Content>>> join(
+            Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents) {
         return allOf(queryToFutureContents.values().toArray(new CompletableFuture[0]))
                 .thenApply(v ->
                         queryToFutureContents.entrySet().stream()

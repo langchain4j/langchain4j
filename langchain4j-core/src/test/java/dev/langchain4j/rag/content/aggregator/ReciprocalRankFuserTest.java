@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -21,7 +22,7 @@ class ReciprocalRankFuserTest {
 
     @ParameterizedTest
     @MethodSource
-    void should_fuse(List<List<Content>> contents, List<Content> expected) {
+    void should_fuse(Collection<List<Content>> contents, List<Content> expected) {
         assertThat(fuse(contents)).isEqualTo(expected);
     }
 

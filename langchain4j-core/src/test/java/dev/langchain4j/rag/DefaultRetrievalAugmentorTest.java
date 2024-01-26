@@ -96,7 +96,7 @@ class DefaultRetrievalAugmentorTest {
         verify(contentRetriever2).retrieve(query2);
         verifyNoMoreInteractions(contentRetriever2);
 
-        Map<Query, List<List<Content>>> queryToContents = new HashMap<>();
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
         queryToContents.put(query1, asList(
                 asList(content1, content2),
                 asList(content3, content4)
@@ -158,10 +158,10 @@ class DefaultRetrievalAugmentorTest {
     static class TestContentAggregator implements ContentAggregator {
 
         @Override
-        public List<Content> aggregate(Map<Query, List<List<Content>>> queryToContents) {
+        public List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents) {
             return queryToContents.values()
                     .stream()
-                    .flatMap(List::stream)
+                    .flatMap(Collection::stream)
                     .flatMap(List::stream)
                     .collect(toList());
         }

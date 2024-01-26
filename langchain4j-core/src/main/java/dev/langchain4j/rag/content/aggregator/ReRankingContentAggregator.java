@@ -7,10 +7,7 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 import lombok.Builder;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -45,7 +42,7 @@ import static java.util.stream.Collectors.toList;
  */
 public class ReRankingContentAggregator implements ContentAggregator {
 
-    public static final Function<Map<Query, List<List<Content>>>, Query> DEFAULT_QUERY_SELECTOR =
+    public static final Function<Map<Query, Collection<List<Content>>>, Query> DEFAULT_QUERY_SELECTOR =
             (queryToContents) -> {
                 if (queryToContents.size() > 1) {
                     throw illegalArgument(
@@ -59,7 +56,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
             };
 
     private final ScoringModel scoringModel;
-    private final Function<Map<Query, List<List<Content>>>, Query> querySelector;
+    private final Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
     private final Double minScore;
 
     public ReRankingContentAggregator(ScoringModel scoringModel) {
@@ -68,7 +65,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
     @Builder
     public ReRankingContentAggregator(ScoringModel scoringModel,
-                                      Function<Map<Query, List<List<Content>>>, Query> querySelector,
+                                      Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
                                       Double minScore) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
         this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
@@ -76,7 +73,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
     }
 
     @Override
-    public List<Content> aggregate(Map<Query, List<List<Content>>> queryToContents) {
+    public List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents) {
 
         // Select a query against which all contents will be re-ranked
         Query query = querySelector.apply(queryToContents);
@@ -95,10 +92,10 @@ public class ReRankingContentAggregator implements ContentAggregator {
                 .collect(toList());
     }
 
-    protected Map<Query, List<Content>> fuse(Map<Query, List<List<Content>>> queryToContents) {
+    protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {
         Map<Query, List<Content>> fused = new LinkedHashMap<>();
         for (Query query : queryToContents.keySet()) {
-            List<List<Content>> contents = queryToContents.get(query);
+            Collection<List<Content>> contents = queryToContents.get(query);
             fused.put(query, ReciprocalRankFuser.fuse(contents));
         }
         return fused;

@@ -9,10 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -39,7 +36,7 @@ class ReRankingContentAggregatorTest {
         Content content1 = Content.from("content 1");
         Content content2 = Content.from("content 2");
 
-        Map<Query, List<List<Content>>> queryToContents = singletonMap(
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(
                 query,
                 singletonList(asList(content1, content2))
         );
@@ -82,7 +79,7 @@ class ReRankingContentAggregatorTest {
         Content content3 = Content.from("content");
         Content content4 = Content.from("content 4");
 
-        Map<Query, List<List<Content>>> queryToContents = singletonMap(
+        Map<Query, Collection<List<Content>>> queryToContents = singletonMap(
                 query,
                 asList(
                         asList(content1, content2),
@@ -116,7 +113,7 @@ class ReRankingContentAggregatorTest {
     void should_fail_when_multiple_queries_with_default_query_selector() {
 
         // given
-        Map<Query, List<List<Content>>> queryToContents = new HashMap<>();
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
         queryToContents.put(Query.from("query 1"), null);
         queryToContents.put(Query.from("query 2"), null);
 
@@ -135,7 +132,7 @@ class ReRankingContentAggregatorTest {
     void should_fuse_then_rerank_against_first_query_then_filter_by_minScore() {
 
         // given
-        Function<Map<Query, List<List<Content>>>, Query> querySelector =
+        Function<Map<Query, Collection<List<Content>>>, Query> querySelector =
                 (q) -> q.keySet().iterator().next(); // always selects first query
 
         double minScore = 0.4;
@@ -157,7 +154,7 @@ class ReRankingContentAggregatorTest {
         Content content8 = Content.from("content 8");
 
         // LinkedHashMap is used to ensure a predictable order in the test
-        Map<Query, List<List<Content>>> queryToContents = new LinkedHashMap<>();
+        Map<Query, Collection<List<Content>>> queryToContents = new LinkedHashMap<>();
         queryToContents.put(query1, asList(
                 asList(content1, content2),
                 asList(content3, content4)

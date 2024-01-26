@@ -5,6 +5,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -27,13 +28,14 @@ public interface ContentAggregator {
 
     /**
      * Aggregates all {@link Content}s retrieved by all {@link ContentRetriever}s using all {@link Query}s.
-     * The {@link Content}s are sorted by relevance, with the most relevant {@link Content}s appearing
-     * at the beginning of the returned {@code List<Content>}.
+     * The {@link Content}s, both on input and output, are sorted by relevance,
+     * with the most relevant {@link Content}s appearing at the beginning of {@code List<Content>}.
      *
      * @param queryToContents A map from a {@link Query} to all {@code List<Content>} retrieved with that {@link Query}.
      *                        Given that each {@link Query} can be routed to multiple {@link ContentRetriever}s, the
-     *                        value of this map is a {@code List<List<Content>>} rather than a simple {@code List<Content>}.
+     *                        value of this map is a {@code Collection<List<Content>>}
+     *                        rather than a simple {@code List<Content>}.
      * @return A list of aggregated {@link Content}s.
      */
-    List<Content> aggregate(Map<Query, List<List<Content>>> queryToContents);
+    List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents);
 }

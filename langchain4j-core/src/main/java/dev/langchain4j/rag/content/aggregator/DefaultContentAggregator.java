@@ -3,6 +3,7 @@ package dev.langchain4j.rag.content.aggregator;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,7 +19,7 @@ import java.util.Map;
  * <br>
  * <br>
  * This implementation employs Reciprocal Rank Fusion (see {@link ReciprocalRankFuser}) in two stages
- * to aggregate all {@code List<List<Content>>} into a single {@code List<Content>}.
+ * to aggregate all {@code Collection<List<Content>>} into a single {@code List<Content>}.
  * The {@link Content}s in both the input and output lists are expected to be sorted by relevance,
  * with the most relevant {@link Content}s at the beginning of the {@code List<Content>}.
  * <br>
@@ -53,7 +54,7 @@ import java.util.Map;
 public class DefaultContentAggregator implements ContentAggregator {
 
     @Override
-    public List<Content> aggregate(Map<Query, List<List<Content>>> queryToContents) {
+    public List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents) {
 
         // First, for each query, fuse all contents retrieved from different sources using that query.
         Map<Query, List<Content>> fused = fuse(queryToContents);
@@ -62,10 +63,10 @@ public class DefaultContentAggregator implements ContentAggregator {
         return ReciprocalRankFuser.fuse(fused.values());
     }
 
-    protected Map<Query, List<Content>> fuse(Map<Query, List<List<Content>>> queryToContents) {
+    protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {
         Map<Query, List<Content>> fused = new LinkedHashMap<>();
         for (Query query : queryToContents.keySet()) {
-            List<List<Content>> contents = queryToContents.get(query);
+            Collection<List<Content>> contents = queryToContents.get(query);
             fused.put(query, ReciprocalRankFuser.fuse(contents));
         }
         return fused;
