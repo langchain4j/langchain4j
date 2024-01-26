@@ -313,11 +313,11 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     /**
      * Calculates LangChain4J's RelevanceScore from Azure AI Search's score.
      *
-     * Score in Azure AI Search is the cosine distance, and not the cosine similarity.
+     * Score in Azure AI Search is transformed into a cosine similarity as described here:
+     * https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
+     *
      * RelevanceScore in LangChain4J is a derivative of cosine similarity,
      * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
-     *
-     * See https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
      */
     private double fromAzureScoreToRelevanceScore(double score) {
         double cosineDistance = (1 - score) / score;
