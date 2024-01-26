@@ -8,7 +8,9 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
+import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -108,5 +110,19 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
 
     public static OpenAiEmbeddingModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static OpenAiEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OpenAiEmbeddingModelBuilderFactory.class,
+                OpenAiEmbeddingModelBuilder::new
+        );
+    }
+
+    public static class OpenAiEmbeddingModelBuilder {
+        public OpenAiEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
