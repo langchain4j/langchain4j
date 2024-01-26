@@ -35,7 +35,7 @@ import java.util.List;
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
  * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
  */
-public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegment> {
 
   static final String ID_FIELD_NAME = "id";
   static final String TEXT_FIELD_NAME = "text";

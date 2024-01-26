@@ -125,7 +125,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     @Test
     void should_use_partition_searching() {
         String partitionName = "partition_" + randomUUID().replace("-", "");
-        EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+        MilvusEmbeddingStoreExtend<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
                 .host(milvus.getHost())
                 .port(milvus.getMappedPort(19530))
                 .collectionName("collection_" + randomUUID().replace("-", ""))

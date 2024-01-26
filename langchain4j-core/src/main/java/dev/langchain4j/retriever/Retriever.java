@@ -30,18 +30,4 @@ public interface Retriever<T> {
             @SuppressWarnings("unused") String text) {
         throw new RuntimeException("Not implemented");
     }
-
-    /**
-     * Find relevant items for the given text and partitions.
-     * Currently only milvus is supported.
-     *
-     * <p>Default implementation throws an exception.
-     *
-     * @param text          the text to search for.
-     * @param partitions    milvus collection partition list.
-     * @return  the list of relevant items.
-     */
-    default List<T> findRelevant(String text, List<String> partitions) {
-         throw new RuntimeException("Not implemented");
-    }
 }
