@@ -119,6 +119,8 @@ public class EmbeddingStoreIngestor {
 
         /**
          * Sets the document splitter.
+         * {@code DocumentSplitters.recursive()} is a good starting point.
+         *
          * @param documentSplitter the document splitter.
          * @return {@code this}
          */
