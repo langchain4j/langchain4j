@@ -47,6 +47,7 @@
         <module>langchain4j-weaviate</module>
         <module>langchain4j-neo4j</module>
         <module>langchain4j-vearch</module>
+        <module>langchain4j-infinispan</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
