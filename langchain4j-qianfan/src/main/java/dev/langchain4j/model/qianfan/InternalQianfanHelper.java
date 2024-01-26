@@ -163,7 +163,7 @@ class InternalQianfanHelper {
     }
 
 
-    static String getSystenMessage(List<ChatMessage> messages) {
+    static String getSystemMessage(List<ChatMessage> messages) {
 
         for (ChatMessage message : messages) {
             if (message instanceof SystemMessage) {
