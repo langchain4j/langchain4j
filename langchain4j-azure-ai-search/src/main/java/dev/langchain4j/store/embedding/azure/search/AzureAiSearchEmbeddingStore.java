@@ -174,12 +174,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         searchIndexClient.deleteIndex(INDEX_NAME);
     }
 
-    /**
-     * Adds a given embedding to the store.
-     *
-     * @param embedding The embedding to be added to the store.
-     * @return The auto-generated ID associated with the added embedding.
-     */
     @Override
     public String add(Embedding embedding) {
         String id = randomUUID();
@@ -187,24 +181,11 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         return id;
     }
 
-    /**
-     * Adds a given embedding to the store.
-     *
-     * @param id        The unique identifier for the embedding to be added.
-     * @param embedding The embedding to be added to the store.
-     */
     @Override
     public void add(String id, Embedding embedding) {
         addInternal(id, embedding, null);
     }
 
-    /**
-     * Adds a given embedding and the corresponding content that has been embedded to the store.
-     *
-     * @param embedding   The embedding to be added to the store.
-     * @param textSegment Original content that was embedded.
-     * @return The auto-generated ID associated with the added embedding.
-     */
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
         String id = randomUUID();
@@ -212,12 +193,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         return id;
     }
 
-    /**
-     * Adds multiple embeddings to the store.
-     *
-     * @param embeddings A list of embeddings to be added to the store.
-     * @return A list of auto-generated IDs associated with the added embeddings.
-     */
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
@@ -225,13 +200,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         return ids;
     }
 
-    /**
-     * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
-     *
-     * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
-     * @return A list of auto-generated IDs associated with the added embeddings.
-     */
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
@@ -239,17 +207,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         return ids;
     }
 
-    /**
-     * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
-     *
-     * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
-     * @param maxResults         The maximum number of embeddings to be returned.
-     * @param minScore           The minimum relevance score, ranging from 0 to 1 (inclusive).
-     *                           Only embeddings with a score of this value or higher will be returned.
-     * @return A list of embedding matches.
-     * Each embedding match includes a relevance score (derivative of cosine distance),
-     * ranging from 0 (not relevant) to 1 (highly relevant).
-     */
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         List<Float> vector = floatsArrayToList(referenceEmbedding.vector());
