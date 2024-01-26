@@ -16,6 +16,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
@@ -119,5 +120,32 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isNull();
         assertThat(match.embedded()).isNull();
+    }
+
+    @Test
+    void should_use_partition_searching() {
+        String partitionName = "partition_" + randomUUID().replace("-", "");
+        MilvusEmbeddingStoreExtend<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+                .host(milvus.getHost())
+                .port(milvus.getMappedPort(19530))
+                .collectionName("collection_" + randomUUID().replace("-", ""))
+                .partitionName(partitionName)
+                .dimension(384)
+                .retrieveEmbeddingsOnSearch(false)
+                .build();
+
+        Embedding firstEmbedding = embeddingModel.embed("hello").content();
+        Embedding secondEmbedding = embeddingModel.embed("hi").content();
+        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10, 0);
+        assertThat(relevant).hasSize(2);
+        assertThat(relevant.get(0).embedding()).isNull();
+        assertThat(relevant.get(1).embedding()).isNull();
+
+        List<EmbeddingMatch<TextSegment>> relevantByPartition = embeddingStore.findRelevant(firstEmbedding, 10, 0, Collections.singletonList(partitionName));
+        assertThat(relevantByPartition).hasSize(2);
+        assertThat(relevantByPartition.get(0).embedding()).isNull();
+        assertThat(relevantByPartition.get(1).embedding()).isNull();
     }
 }
