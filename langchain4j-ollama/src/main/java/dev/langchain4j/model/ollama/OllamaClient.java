@@ -185,9 +185,9 @@ class OllamaClient {
         }
     }
 
-    public ShowModelInformationResponse showInformation(ShowModelInformationRequest showInformationRequest) {
+    public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
         try {
-            retrofit2.Response<ShowModelInformationResponse> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
+            retrofit2.Response<OllamaModelCard> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {

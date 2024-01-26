@@ -30,24 +30,15 @@ public class OllamaModels {
     }
 
     public Response<OllamaModelCard> modelCard(OllamaModel ollamaModel) {
-        return fetchModelInfo(ollamaModel.getName());
+        return modelCard(ollamaModel.getName());
     }
 
     public Response<OllamaModelCard> modelCard(String modelName) {
-        ShowModelInformationResponse response = withRetry(() -> client.showInformation(
+        OllamaModelCard response = withRetry(() -> client.showInformation(
                 ShowModelInformationRequest.builder()
                         .name(modelName)
                         .build()
         ), maxRetries);
-        return Response.from(mapToModelInformation(response));
-    }
-
-    private OllamaModelInfo mapToModelInformation(ShowModelInformationResponse showInformationResponse) {
-        return OllamaModelInfo.builder()
-                .modelfile(showInformationResponse.getModelfile())
-                .parameters(showInformationResponse.getParameters())
-                .template(showInformationResponse.getTemplate())
-                .details(showInformationResponse.getDetails())
-                .build();
+        return Response.from(response);
     }
 }

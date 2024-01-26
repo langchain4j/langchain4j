@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class ShowModelInformationResponse {
+public class OllamaModelCard {
     private String modelfile;
     private String parameters;
     private String template;

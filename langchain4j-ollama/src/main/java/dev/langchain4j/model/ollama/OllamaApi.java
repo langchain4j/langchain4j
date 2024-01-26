@@ -34,5 +34,5 @@ interface OllamaApi {
 
     @POST("/api/show")
     @Headers({"Content-Type: application/json"})
-    Call<ShowModelInformationResponse> showInformation(@Body ShowModelInformationRequest modelDetailsRequest);
+    Call<OllamaModelCard> showInformation(@Body ShowModelInformationRequest modelDetailsRequest);
 }

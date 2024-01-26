@@ -34,7 +34,7 @@ class OllamaModelsTest extends AbstractOllamaInfrastructure {
                 .name("phi:latest")
                 .build();
 
-        Response<OllamaModelInfo> response = ollamaModels.fetchModelInfo(ollamaModel);
+        Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
 
         // then
         assertThat(response.content().getModelfile()).isNotBlank();
@@ -48,7 +48,7 @@ class OllamaModelsTest extends AbstractOllamaInfrastructure {
         // given AbstractOllamaInfrastructure
 
         // when
-        Response<OllamaModelInfo> response = ollamaModels.fetchModelInfo("phi:latest");
+        Response<OllamaModelCard> response = ollamaModels.modelCard("phi:latest");
 
         // then
         assertThat(response.content().getModelfile()).isNotBlank();

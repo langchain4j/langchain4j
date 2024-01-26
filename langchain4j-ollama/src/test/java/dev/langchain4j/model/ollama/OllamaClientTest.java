@@ -38,7 +38,7 @@ class OllamaClientTest extends AbstractOllamaInfrastructure {
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
-        ShowModelInformationResponse modelDetailsResponse = ollamaClient.showInformation(ShowModelInformationRequest.builder()
+        OllamaModelCard modelDetailsResponse = ollamaClient.showInformation(ShowModelInformationRequest.builder()
                 .name("phi:latest")
                 .build());
 
