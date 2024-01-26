@@ -25,7 +25,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
-class InternalQianfanHelper {
+public class InternalQianfanHelper {
 
     public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
@@ -126,7 +126,7 @@ class InternalQianfanHelper {
     }
 
 
-    static FinishReason finishReasonFrom(String finishReason) {
+    public static FinishReason finishReasonFrom(String finishReason) {
 
         if(Utils.isNullOrBlank(finishReason)){
             return null;
@@ -165,12 +165,18 @@ class InternalQianfanHelper {
 
     static String getSystemMessage(List<ChatMessage> messages) {
 
-        for (ChatMessage message : messages) {
-            if (message instanceof SystemMessage) {
-                return  message.text();
-            }
+        List<ChatMessage> systemMessages = messages.stream().filter(message -> message instanceof SystemMessage).collect(toList());
+
+        if (systemMessages.size() > 1) {
+            throw new RuntimeException("Multiple system messages are not supported");
         }
-        return  null;
+
+        if(Utils.isNullOrEmpty(systemMessages)){
+            return  null;
+        }
+
+        return ((SystemMessage) systemMessages.get(0)).text();
+
     }
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()

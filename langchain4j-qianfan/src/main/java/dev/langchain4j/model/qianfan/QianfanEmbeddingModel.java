@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
 import lombok.Builder;
@@ -41,7 +42,9 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
                                  Integer maxRetries,
                                  String modelName,
                                  String endpoint,
-                                 String user
+                                 String user,
+                                 Boolean logRequests,
+                                 Boolean logResponses
                              ) {
         if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
@@ -49,14 +52,20 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
 
 
         this.modelName=modelName;
-        this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanModelEnum.getEndpoint(modelName):endpoint;
+        this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanEmbeddingModelNameEnum.getEndpoint(modelName):endpoint;
 
         if (Utils.isNullOrBlank(this.endpoint) ) {
             throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
         this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
-        this.client = QianfanClient.builder().baseUrl(this.baseUrl).apiKey(apiKey).secretKey(secretKey).logStreamingResponses(true).build();
+        this.client = QianfanClient.builder()
+                .baseUrl(this.baseUrl)
+                .apiKey(apiKey)
+                .secretKey(secretKey)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.user = user;
     }

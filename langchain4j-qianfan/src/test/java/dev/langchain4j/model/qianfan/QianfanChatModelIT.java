@@ -25,7 +25,7 @@ class QianfanChatModelIT {
     private String secretKey ="your secret key";
 
 
-    QianfanChatModel model = QianfanChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0f).maxRetries(1)
+    QianfanChatModel model = QianfanChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0).maxRetries(1)
             .apiKey(apiKey)
             .secretKey(secretKey)
             .build();
@@ -101,7 +101,7 @@ class QianfanChatModelIT {
 
     @Test
     void should_generate_valid_json() {
-        QianfanChatModel model = QianfanChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0f).maxRetries(1)
+        QianfanChatModel model = QianfanChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0).maxRetries(1)
                 .apiKey(apiKey)
                 .secretKey(secretKey)
                 .responseFormat("json_object")

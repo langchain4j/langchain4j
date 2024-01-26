@@ -10,25 +10,25 @@ public final class ChatCompletionRequest {
 
     private final List<Message> messages;
     private final Double temperature;
-    private final Float top_p;
+    private final Double topP;
     private final Boolean stream;
-    private final Float penalty_score;
-    private final String user_id;
+    private final Double penaltyScore;
+    private final String userId;
     private final List<Function> functions;
     private final String system;
 
-    private final String response_format;
+    private final String responseFormat;
 
     private ChatCompletionRequest(Builder builder) {
         this.messages = builder.messages;
         this.temperature = builder.temperature;
-        this.top_p = builder.top_p;
+        this.topP = builder.topP;
         this.stream = builder.stream;
-        this.penalty_score = builder.penalty_score;
-        this.user_id = builder.user_id;
+        this.penaltyScore = builder.penaltyScore;
+        this.userId = builder.userId;
         this.functions = builder.functions;
         this.system = builder.system;
-        this.response_format = builder.response_format;
+        this.responseFormat = builder.responseFormat;
     }
 
 
@@ -41,8 +41,8 @@ public final class ChatCompletionRequest {
     }
 
 
-    public Float top_p() {
-        return this.top_p;
+    public Double topP() {
+        return this.topP;
     }
 
     public Boolean stream() {
@@ -53,13 +53,13 @@ public final class ChatCompletionRequest {
     }
 
 
-    public Float penalty_score() {
-        return this.penalty_score;
+    public Double penaltyScore() {
+        return this.penaltyScore;
     }
 
 
-    public String user_id() {
-        return this.user_id;
+    public String userId() {
+        return this.userId;
     }
 
     public List<Function> functions() {
@@ -75,10 +75,10 @@ public final class ChatCompletionRequest {
         return "ChatCompletionRequest{" +
                 "messages=" + messages +
                 ", temperature=" + temperature +
-                ", top_p=" + top_p +
+                ", topP=" + topP +
                 ", stream=" + stream +
-                ", penalty_score=" + penalty_score +
-                ", user_id='" + user_id + '\'' +
+                ", penaltyScore=" + penaltyScore +
+                ", userId='" + userId + '\'' +
                 ", functions=" + functions +
                 ", system='" + system + '\'' +
                 '}';
@@ -92,14 +92,14 @@ public final class ChatCompletionRequest {
 
         private List<Message> messages;
         private Double temperature;
-        private Float top_p;
+        private Double topP;
         private Boolean stream;
-        private Float penalty_score;
-        private String user_id;
+        private Double penaltyScore;
+        private String userId;
         private List<Function> functions;
         private  String system;
 
-        private  String response_format;
+        private  String responseFormat;
 
         private Builder() {
         }
@@ -108,13 +108,13 @@ public final class ChatCompletionRequest {
                 ChatCompletionRequest instance) {
             this.messages(instance.messages);
             this.temperature(instance.temperature);
-            this.top_p(instance.top_p);
+            this.topP(instance.topP);
             this.stream(instance.stream);
-            this.penalty_score(instance.penalty_score);
-            this.user_id(instance.user_id);
+            this.penaltyScore(instance.penaltyScore);
+            this.userId(instance.userId);
             this.functions(instance.functions);
             this.system(instance.system);
-            this.response_format(instance.response_format);
+            this.responseFormat(instance.responseFormat);
             return this;
         }
 
@@ -178,15 +178,15 @@ public final class ChatCompletionRequest {
             return this;
         }
 
-        public Builder response_format(String response_format) {
-            this.response_format = response_format;
+        public Builder responseFormat(String responseFormat) {
+            this.responseFormat = responseFormat;
             return this;
         }
 
 
 
-        public Builder top_p(Float top_p) {
-            this.top_p = top_p;
+        public Builder topP(Double topP) {
+            this.topP = topP;
             return this;
         }
 
@@ -196,14 +196,14 @@ public final class ChatCompletionRequest {
         }
 
 
-        public Builder penalty_score(Float penalty_score) {
-            this.penalty_score = penalty_score;
+        public Builder penaltyScore(Double penaltyScore) {
+            this.penaltyScore = penaltyScore;
             return this;
         }
 
 
-        public Builder user_id(String user_id) {
-            this.user_id = user_id;
+        public Builder userId(String userId) {
+            this.userId = userId;
             return this;
         }
 

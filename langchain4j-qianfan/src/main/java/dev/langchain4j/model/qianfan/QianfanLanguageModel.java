@@ -5,6 +5,7 @@ package dev.langchain4j.model.qianfan;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import lombok.Builder;
@@ -25,12 +26,12 @@ public class QianfanLanguageModel implements LanguageModel {
 
     private final String baseUrl;
 
-    private final Float temperature;
-    private final Float topP;
+    private final Double temperature;
+    private final Double topP;
     private final String modelName;
 
 
-    private  final Float penaltyScore;
+    private  final Double penaltyScore;
     private final Integer maxRetries;
 
     private final Integer topK;
@@ -40,20 +41,22 @@ public class QianfanLanguageModel implements LanguageModel {
     public QianfanLanguageModel(String baseUrl,
                                 String apiKey,
                                 String secretKey,
-                                Float temperature,
+                                Double temperature,
                                 Integer maxRetries,
                                 Integer topK,
-                                Float topP,
+                                Double topP,
                                 String modelName,
                                 String endpoint,
-                                Float penaltyScore
+                                Double penaltyScore,
+                                Boolean logRequests,
+                                Boolean logResponses
                              ) {
         if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
         }
 
         this.modelName=modelName;
-        this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanModelEnum.getEndpoint(modelName):endpoint;
+        this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanLanguageModelNameEnum.getEndpoint(modelName):endpoint;
 
         if (Utils.isNullOrBlank(this.endpoint) ) {
             throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
@@ -61,8 +64,14 @@ public class QianfanLanguageModel implements LanguageModel {
 
         this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
 
-        this.client = QianfanClient.builder().baseUrl(this.baseUrl).apiKey(apiKey).secretKey(secretKey).logStreamingResponses(true).build();
-        this.temperature = getOrDefault(temperature, 0.7f);
+        this.client = QianfanClient.builder()
+                .baseUrl(this.baseUrl)
+                .apiKey(apiKey)
+                .secretKey(secretKey)
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .build();
+        this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.topP = topP;
         this.topK = topK;
@@ -74,10 +83,10 @@ public class QianfanLanguageModel implements LanguageModel {
 
         CompletionRequest request = CompletionRequest.builder()
                 .prompt(prompt)
-                .top_k(topK)
-                .top_p(topP)
+                .topK(topK)
+                .topP(topP)
                 .temperature(temperature)
-                .penalty_score(penaltyScore)
+                .penaltyScore(penaltyScore)
                 .build();
 
 

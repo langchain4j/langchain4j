@@ -1,4 +1,4 @@
-package dev.langchain4j.model.qianfan;
+package dev.langchain4j.model.qianfan.client;
 
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -7,13 +7,15 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.qianfan.client.Usage;
+import dev.langchain4j.model.qianfan.InternalQianfanHelper;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.client.chat.FunctionCall;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 

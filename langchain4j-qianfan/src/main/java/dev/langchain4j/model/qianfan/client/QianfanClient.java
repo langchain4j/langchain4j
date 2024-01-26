@@ -1,27 +1,27 @@
-package dev.langchain4j.model.qianfan;
+package dev.langchain4j.model.qianfan.client;
 
 
-import dev.langchain4j.model.qianfan.client.*;
-import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.client.chat.ChatTokenResponse;
+import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.time.Duration;
 
 
-class QianfanClient {
+public class QianfanClient {
 
     private static final Logger log = LoggerFactory.getLogger(QianfanClient.class);
     private final String baseUrl;
@@ -133,14 +133,11 @@ class QianfanClient {
     }
 
 
-    private String refreshToken() {
+    private void refreshToken() {
         RequestExecutor<String, ChatTokenResponse, String> executor = new RequestExecutor<>(
                 this.qianfanApi.getToken(GRANT_TYPE, this.apiKey,
                         this.secretKey), ChatTokenResponse::getAccess_token);
-        String response = executor.execute();
-        log.debug("response token is :{}", response);
-        this.token = response;
-        return this.token;
+        this.token = executor.execute();
 
     }
 

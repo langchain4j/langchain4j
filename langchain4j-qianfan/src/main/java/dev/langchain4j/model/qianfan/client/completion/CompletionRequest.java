@@ -7,11 +7,11 @@ public final class CompletionRequest {
     private final Boolean stream;
     private final String user_id;
 
-    private final Float temperature;
-    private final Integer top_k;
+    private final Double temperature;
+    private final Integer topK;
 
-    private final Float top_p;
-    private final Float penalty_score;
+    private final Double topP;
+    private final Double penaltyScore;
 
     private final List<String> stop;
     private CompletionRequest(Builder builder) {
@@ -19,9 +19,9 @@ public final class CompletionRequest {
         this.stream = builder.stream;
         this.user_id = builder.user_id;
         this.temperature = builder.temperature;
-        this.top_k = builder.top_k;
-        this.top_p = builder.top_p;
-        this.penalty_score = builder.penalty_score;
+        this.topK = builder.topK;
+        this.topP = builder.topP;
+        this.penaltyScore = builder.penaltyScore;
         this.stop = builder.stop;
     }
 
@@ -48,11 +48,11 @@ public final class CompletionRequest {
         private Boolean stream;
         private String user_id;
 
-        private  Float temperature;
-        private  Integer top_k;
+        private  Double temperature;
+        private  Integer topK;
 
-        private  Float top_p;
-        private  Float penalty_score;
+        private  Double topP;
+        private  Double penaltyScore;
 
         private  List<String> stop;
         private Builder() {
@@ -68,31 +68,31 @@ public final class CompletionRequest {
             this.stream(request.stream);
             this.user(request.user_id);
             this.temperature(request.temperature);
-            this.top_k(request.top_k);
-            this.top_p(request.top_p);
-            this.penalty_score(request.penalty_score);
+            this.topK(request.topK);
+            this.topP(request.topP);
+            this.penaltyScore(request.penaltyScore);
 
             return this;
         }
 
-        public Builder temperature(Float temperature) {
+        public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
 
-        public Builder top_k(Integer top_k) {
-            this.top_k = top_k;
+        public Builder topK(Integer topK) {
+            this.topK = topK;
             return this;
         }
 
 
-        public Builder top_p(Float top_p) {
-            this.top_p = top_p;
+        public Builder topP(Double topP) {
+            this.topP = topP;
             return this;
         }
 
-        public Builder penalty_score(Float penalty_score) {
-            this.penalty_score = penalty_score;
+        public Builder penaltyScore(Double penaltyScore) {
+            this.penaltyScore = penaltyScore;
             return this;
         }
         public Builder prompt(String prompt) {

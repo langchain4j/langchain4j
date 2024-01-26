@@ -1,12 +1,12 @@
-package dev.langchain4j.model.qianfan;
+package dev.langchain4j.model.qianfan.client;
 
-import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.client.chat.ChatTokenResponse;
+import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import retrofit2.Call;
 import retrofit2.http.*;
 
