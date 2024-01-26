@@ -32,7 +32,7 @@ public class Document {
         return content_vector;
     }
 
-    public void setContent_vector(Collection<Float> content_vector) {
+    public void setContentVector(Collection<Float> contentVector) {
         this.content_vector = content_vector;
     }
 
