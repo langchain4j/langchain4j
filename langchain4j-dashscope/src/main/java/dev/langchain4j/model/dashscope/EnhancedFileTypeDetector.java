@@ -16,7 +16,7 @@ import java.nio.file.spi.FileTypeDetector;
  * Here, we are using java.net.URLConnection.guessContentTypeFromStream() to identify the mimeType,
  * which yields very accurate results for image-type files.
  */
-public class ImageFileTypeDetector extends FileTypeDetector {
+public class EnhancedFileTypeDetector extends FileTypeDetector {
     @Override
     public String probeContentType(Path path) {
         try (InputStream in = new BufferedInputStream(

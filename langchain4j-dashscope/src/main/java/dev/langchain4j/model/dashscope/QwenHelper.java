@@ -15,11 +15,15 @@ import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.common.Role.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
@@ -49,8 +53,12 @@ class QwenHelper {
         switch (message.type()) {
             case USER:
                 UserMessage userMessage = (UserMessage) message;
-                return userMessage.hasSingleText() ?
-                        ((TextContent) userMessage.contents().get(0)).text() : "";
+                List<Content> contents = ensureNotEmpty(userMessage.contents(), "contents");
+                return contents.stream()
+                        .filter(TextContent.class::isInstance)
+                        .map(TextContent.class::cast)
+                        .map(TextContent::text)
+                        .collect(Collectors.joining("\n"));
             case AI:
                 return ((AiMessage) message).text();
             case SYSTEM:
@@ -169,7 +177,7 @@ class QwenHelper {
                 .orElseGet(() -> Optional.of(result)
                         .map(GenerationResult::getOutput)
                         .map(GenerationOutput::getText)
-                        .orElse(""));
+                        .orElseThrow(NullPointerException::new));
     }
 
     static String answerFrom(MultiModalConversationResult result) {
@@ -184,21 +192,21 @@ class QwenHelper {
                 .map(contents -> contents.get(0))
                 .map(content -> content.get("text"))
                 .map(String.class::cast)
-                .orElse("");
+                .orElseThrow(NullPointerException::new);
     }
 
     static TokenUsage tokenUsageFrom(GenerationResult result) {
         return Optional.of(result)
                 .map(GenerationResult::getUsage)
                 .map(usage -> new TokenUsage(usage.getInputTokens(), usage.getOutputTokens()))
-                .orElse(new TokenUsage(null, null));
+                .orElse(null);
     }
 
     static TokenUsage tokenUsageFrom(MultiModalConversationResult result) {
         return Optional.of(result)
                 .map(MultiModalConversationResult::getUsage)
                 .map(usage -> new TokenUsage(usage.getInputTokens(), usage.getOutputTokens()))
-                .orElse(new TokenUsage(null, null));
+                .orElse(null);
     }
 
     static FinishReason finishReasonFrom(GenerationResult result) {
