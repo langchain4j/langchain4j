@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -33,10 +34,21 @@ public class ValidationUtils {
      * @throws IllegalArgumentException if the object is null.
      */
     public static <T> T ensureNotNull(T object, String name) {
-        if (object == null) {
-            throw illegalArgument("%s cannot be null", name);
-        }
+        return ensureNotNull(object, "%s cannot be null", name);
+    }
 
+    /**
+     * Ensures that the given object is not null.
+     * @param object The object to check.
+     * @param format The format of the exception message.
+     * @param args The arguments for the exception message.
+     * @return The object if it is not null.
+     * @param <T> The type of the object.
+     */
+    public static <T> T ensureNotNull(T object, String format, Object... args) {
+        if (object == null) {
+            throw illegalArgument(format, args);
+        }
         return object;
     }
 
@@ -54,6 +66,24 @@ public class ValidationUtils {
         }
 
         return collection;
+    }
+
+    /**
+     * Ensures that the given map is not null and not empty.
+     *
+     * @param map  The map to check.
+     * @param name The name of the map to be used in the exception message.
+     * @param <K>  The type of the key.
+     * @param <V>  The type of the value.
+     * @return The map if it is not null and not empty.
+     * @throws IllegalArgumentException if the collection is null or empty.
+     */
+    public static <K, V> Map<K, V> ensureNotEmpty(Map<K, V> map, String name) {
+        if (map == null || map.isEmpty()) {
+            throw illegalArgument("%s cannot be null or empty", name);
+        }
+
+        return map;
     }
 
     /**
@@ -87,6 +117,7 @@ public class ValidationUtils {
      * Ensures that the given expression is true.
      * @param i The expression to check.
      * @param name The message to be used in the exception.
+     * @return The value if it is greater than zero.
      * @throws IllegalArgumentException if the expression is false.
      */
     public static int ensureGreaterThanZero(Integer i, String name) {

@@ -5,11 +5,11 @@ import dev.ai4j.openai4j.moderation.ModerationRequest;
 import dev.ai4j.openai4j.moderation.ModerationResponse;
 import dev.ai4j.openai4j.moderation.ModerationResult;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -93,16 +93,7 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     @Override
-    public Response<Moderation> moderate(Prompt prompt) {
-        return moderate(prompt.text());
-    }
-
-    @Override
-    public Response<Moderation> moderate(ChatMessage message) {
-        return moderate(message.text());
-    }
-
-    @Override
+    @SuppressWarnings("deprecation")
     public Response<Moderation> moderate(List<ChatMessage> messages) {
         List<String> inputs = messages.stream()
                 .map(ChatMessage::text)
@@ -111,12 +102,21 @@ public class OpenAiModerationModel implements ModerationModel {
         return moderateInternal(inputs);
     }
 
-    @Override
-    public Response<Moderation> moderate(TextSegment textSegment) {
-        return moderate(textSegment.text());
-    }
-
     public static OpenAiModerationModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static OpenAiModerationModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OpenAiModerationModelBuilderFactory.class,
+                OpenAiModerationModelBuilder::new
+        );
+    }
+
+    public static class OpenAiModerationModelBuilder {
+        public OpenAiModerationModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

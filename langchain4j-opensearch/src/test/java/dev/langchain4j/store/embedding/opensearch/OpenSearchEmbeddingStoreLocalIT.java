@@ -7,15 +7,13 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.opensearch.testcontainers.OpensearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@Disabled("Needs OpenSearch running locally")
-class OpenSearchEmbeddingStoreLocalTest extends EmbeddingStoreIT {
+class OpenSearchEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     /**
      * To run the tests locally, you don't need to have OpenSearch up-and-running. This implementation

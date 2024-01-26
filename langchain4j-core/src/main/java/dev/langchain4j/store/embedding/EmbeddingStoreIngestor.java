@@ -31,6 +31,14 @@ public class EmbeddingStoreIngestor {
     private final EmbeddingModel embeddingModel;
     private final EmbeddingStore<TextSegment> embeddingStore;
 
+    /**
+     * Creates a new EmbeddingStoreIngestor.
+     * @param documentTransformer the document transformer to use, or null if no transformation is needed.
+     * @param documentSplitter the document splitter to use.
+     * @param textSegmentTransformer the text segment transformer to use, or null if no transformation is needed.
+     * @param embeddingModel the embedding model to use.
+     * @param embeddingStore the embedding store to use.
+     */
     public EmbeddingStoreIngestor(DocumentTransformer documentTransformer,
                                   DocumentSplitter documentSplitter,
                                   TextSegmentTransformer textSegmentTransformer,
@@ -43,14 +51,26 @@ public class EmbeddingStoreIngestor {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
     }
 
+    /**
+     * Ingests a single document.
+     * @param document the document.
+     */
     public void ingest(Document document) {
         ingest(singletonList(document));
     }
 
+    /**
+     * Ingests multiple documents.
+     * @param documents the documents.
+     */
     public void ingest(Document... documents) {
         ingest(asList(documents));
     }
 
+    /**
+     * Ingests multiple documents.
+     * @param documents the documents.
+     */
     public void ingest(List<Document> documents) {
         if (documentTransformer != null) {
             documents = documentTransformer.transformAll(documents);
@@ -63,10 +83,17 @@ public class EmbeddingStoreIngestor {
         embeddingStore.addAll(embeddings, segments);
     }
 
+    /**
+     * Creates a new EmbeddingStoreIngestor builder.
+     * @return the builder.
+     */
     public static Builder builder() {
         return new Builder();
     }
 
+    /**
+     * EmbeddingStoreIngestor builder.
+     */
     public static class Builder {
 
         private DocumentTransformer documentTransformer;
@@ -75,31 +102,67 @@ public class EmbeddingStoreIngestor {
         private EmbeddingModel embeddingModel;
         private EmbeddingStore<TextSegment> embeddingStore;
 
+        /**
+         * Creates a new EmbeddingStoreIngestor builder.
+         */
+        public Builder() {}
+
+        /**
+         * Sets the document transformer.
+         * @param documentTransformer the document transformer.
+         * @return {@code this}
+         */
         public Builder documentTransformer(DocumentTransformer documentTransformer) {
             this.documentTransformer = documentTransformer;
             return this;
         }
 
+        /**
+         * Sets the document splitter.
+         * {@code DocumentSplitters.recursive()} is a good starting point.
+         *
+         * @param documentSplitter the document splitter.
+         * @return {@code this}
+         */
         public Builder documentSplitter(DocumentSplitter documentSplitter) {
             this.documentSplitter = documentSplitter;
             return this;
         }
 
+        /**
+         * Sets the text segment transformer.
+         * @param textSegmentTransformer the text segment transformer.
+         * @return {@code this}
+         */
         public Builder textSegmentTransformer(TextSegmentTransformer textSegmentTransformer) {
             this.textSegmentTransformer = textSegmentTransformer;
             return this;
         }
 
+        /**
+         * Sets the embedding model.
+         * @param embeddingModel the embedding model.
+         * @return {@code this}
+         */
         public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
         }
 
+        /**
+         * Sets the embedding store.
+         * @param embeddingStore the embedding store.
+         * @return {@code this}
+         */
         public Builder embeddingStore(EmbeddingStore<TextSegment> embeddingStore) {
             this.embeddingStore = embeddingStore;
             return this;
         }
 
+        /**
+         * Builds the EmbeddingStoreIngestor.
+         * @return the EmbeddingStoreIngestor.
+         */
         public EmbeddingStoreIngestor build() {
             return new EmbeddingStoreIngestor(
                     documentTransformer,

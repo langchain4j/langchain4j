@@ -17,6 +17,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
         <openai4j.version>0.12.4</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
         <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
@@ -42,11 +43,12 @@
         <opensearch-containers.version>2.0.0</opensearch-containers.version>
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.16.1</jackson.version>
-        <jackson-dataformat-xml.version>2.16.1</jackson-dataformat-xml.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <netty.version>4.1.104.Final</netty.version>
+        <awaitility.version>4.2.0</awaitility.version>
+        <jsonpath.version>2.9.0</jsonpath.version>
     </properties>
 
     <dependencyManagement>
@@ -267,15 +269,11 @@
             </dependency>
 
             <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
                 <version>${jackson.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.fasterxml.jackson.dataformat</groupId>
-                <artifactId>jackson-dataformat-xml</artifactId>
-                <version>${jackson-dataformat-xml.version}</version>
+                <scope>import</scope>
+                <type>pom</type>
             </dependency>
 
             <dependency>
@@ -305,6 +303,18 @@
                 </exclusions>
             </dependency>
 
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${awaitility.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.jayway.jsonpath</groupId>
+                <artifactId>json-path</artifactId>
+                <version>${jsonpath.version}</version>
+            </dependency>
+          
             <dependency>
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>

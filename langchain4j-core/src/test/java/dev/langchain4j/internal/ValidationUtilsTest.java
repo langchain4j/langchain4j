@@ -6,8 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
@@ -40,11 +39,15 @@ class ValidationUtilsTest implements WithAssertions {
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> ValidationUtils.ensureNotNull(null, "test"))
-                .withMessageContaining("test cannot be null");
+                .withMessage("test cannot be null");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ValidationUtils.ensureNotNull(null, "test %d", 7))
+                .withMessage("test 7");
     }
 
     @Test
-    public void test_ensureNotEmpty() {
+    public void test_ensureNotEmpty_collection() {
         {
             List<Object> list = new ArrayList<>();
             list.add(new Object());
@@ -61,7 +64,30 @@ class ValidationUtilsTest implements WithAssertions {
 
         {
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(null, "test"))
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((Collection<?>) null, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+    }
+
+    @Test
+    public void test_ensureNotEmpty_map() {
+        {
+            Map<Object, Object> map = new HashMap<>();
+            map.put(new Object(), new Object());
+            assertThat(ValidationUtils.ensureNotEmpty(map, "test"))
+                    .isSameAs(map);
+        }
+
+        {
+            Map<Object, Object> map = new HashMap<>();
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(map, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((Map<?, ?>) null, "test"))
                     .withMessageContaining("test cannot be null or empty");
         }
     }
@@ -145,6 +171,23 @@ class ValidationUtilsTest implements WithAssertions {
         {
             assertThatExceptionOfType(IllegalArgumentException.class)
                     .isThrownBy(() -> ValidationUtils.ensureBetween(-1, 0, 1, "test"))
+                    .withMessageContaining("test must be between 0 and 1, but is: -1");
+        }
+    }
+
+    @Test
+    public void test_ensureBetween_long() {
+        {
+            ValidationUtils.ensureBetween(1L, 0, 1, "test");
+        }
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureBetween(2L, 0, 1, "test"))
+                    .withMessageContaining("test must be between 0 and 1, but is: 2");
+        }
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureBetween(-1L, 0, 1, "test"))
                     .withMessageContaining("test must be between 0 and 1, but is: -1");
         }
     }
