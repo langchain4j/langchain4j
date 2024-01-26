@@ -103,8 +103,8 @@ public class QianfanChatModel implements ChatLanguageModel {
                     .top_p(topP)
                     .penalty_score(penaltyScore);
 
-            if(Objects.nonNull(getSystenMessage(messages))){
-                builder.system(getSystenMessage(messages));
+            if(Objects.nonNull(getSystemMessage(messages))){
+                builder.system(getSystemMessage(messages));
             }
 
             if(Utils.isNotNullOrBlank(responseFormat)){

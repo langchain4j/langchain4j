@@ -97,8 +97,8 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
                 .top_p(topP)
                 .penalty_score(penaltyScore);
 
-        if(Objects.nonNull(InternalQianfanHelper.getSystenMessage(messages))){
-            builder.system(InternalQianfanHelper.getSystenMessage(messages));
+        if(Objects.nonNull(InternalQianfanHelper.getSystemMessage(messages))){
+            builder.system(InternalQianfanHelper.getSystemMessage(messages));
         }
 
         if(Utils.isNullOrBlank(responseFormat)){
