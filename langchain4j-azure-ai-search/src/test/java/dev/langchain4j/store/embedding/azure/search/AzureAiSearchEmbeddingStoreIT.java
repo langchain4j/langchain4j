@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
@@ -26,14 +25,17 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     private EmbeddingStore<TextSegment> embeddingStore;
 
+    private int dimensions;
+
     public AzureAiSearchEmbeddingStoreIT() {
 
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+        dimensions = embeddingModel.embed("test").content().vector().length;
 
         embeddingStore =  AzureAiSearchEmbeddingStore.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .embeddingModel(embeddingModel)
+                .dimensions(dimensions)
                 .build();
     }
 
@@ -107,7 +109,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     protected void clearStore() {
         AzureAiSearchEmbeddingStore azureAiSearchEmbeddingStore = (AzureAiSearchEmbeddingStore) embeddingStore;
         azureAiSearchEmbeddingStore.deleteIndex();
-        azureAiSearchEmbeddingStore.createOrUpdateIndex(embeddingModel);
+        azureAiSearchEmbeddingStore.createOrUpdateIndex(dimensions);
     }
 
     @Override

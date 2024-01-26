@@ -14,7 +14,6 @@ import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
@@ -28,7 +27,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * Azure AI Search EmbeddingStore Implementation
@@ -55,7 +53,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private final SearchClient searchClient;
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, EmbeddingModel embeddingModel) {
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions) {
 
         searchIndexClient = new SearchIndexClientBuilder()
                 .endpoint(endpoint)
@@ -68,10 +66,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .indexName(INDEX_NAME)
                 .buildClient();
 
-        createOrUpdateIndex(embeddingModel);
+        createOrUpdateIndex(dimensions);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, EmbeddingModel embeddingModel) {
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions) {
 
         searchIndexClient = new SearchIndexClientBuilder()
                 .endpoint(endpoint)
@@ -84,14 +82,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .indexName(INDEX_NAME)
                 .buildClient();
 
-        createOrUpdateIndex(embeddingModel);
+        createOrUpdateIndex(dimensions);
     }
 
-     void createOrUpdateIndex(EmbeddingModel embeddingModel) {
-
-        // Embed a test query to get the embedding dimensions
-        int embeddingDimensions = embeddingModel.embed("test").content().vector().length;
-
+     void createOrUpdateIndex(int dimensions) {
         List<SearchField> fields = new ArrayList<>();
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
                 .setKey(true)
@@ -101,7 +95,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 .setFilterable(true));
         fields.add(new SearchField(DEFAULT_FIELD_CONTENT_VECTOR, SearchFieldDataType.collection(SearchFieldDataType.SINGLE))
                 .setSearchable(true)
-                .setVectorSearchDimensions(embeddingDimensions)
+                .setVectorSearchDimensions(dimensions)
                 .setVectorSearchProfileName("vector-search-profile"));
         fields.add((new SearchField(DEFAULT_FIELD_METADATA, SearchFieldDataType.COMPLEX)).setFields(
                 Arrays.asList(
@@ -367,7 +361,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
         private TokenCredential tokenCredential;
 
-        private EmbeddingModel embeddingModel;
+        private int dimensions;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -402,24 +396,24 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         /**
-         * Sets the embedding model.
+         * Sets the number of dimensions of the embeddings.
          *
-         * @param embeddingModel The embedding model.
+         * @param dimensions The number of dimensions of the embeddings.
          * @return builder
          */
-        public Builder embeddingModel(EmbeddingModel embeddingModel) {
-            this.embeddingModel = embeddingModel;
+        public Builder dimensions(int dimensions) {
+            this.dimensions = dimensions;
             return this;
         }
 
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
-            ensureNotNull(embeddingModel, "embeddingModel");
+            ensureNotNull(dimensions, "dimensions");
             ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
             if (keyCredential != null) {
-                return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, embeddingModel);
+                return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, dimensions);
             } else {
-                return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, embeddingModel);
+                return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions);
             }
         }
     }
