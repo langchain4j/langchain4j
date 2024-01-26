@@ -224,7 +224,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         for (SearchResult searchResult : searchResults) {
             Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
             if (score < minScore) {
-                break;
+                continue;
             }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
             String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
