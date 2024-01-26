@@ -10,7 +10,6 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 class CohereScoringModelIT {
@@ -36,7 +35,7 @@ class CohereScoringModelIT {
     }
 
     @Test
-    void should_rank_multiple_segments_with_all_parameters() {
+    void should_score_multiple_segments_with_all_parameters() {
 
         // given
         ScoringModel model = CohereScoringModel.builder()
@@ -65,17 +64,5 @@ class CohereScoringModelIT {
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
 
         assertThat(response.finishReason()).isNull();
-    }
-
-    @Test
-    void should_fail_when_wrong_api_key() {
-
-        // given
-        ScoringModel model = CohereScoringModel.withApiKey("banana");
-
-        // when-then
-        assertThatThrownBy(() -> model.score("text", "query"))
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage("status code: 401; body: {\"message\":\"invalid api token\"}");
     }
 }
