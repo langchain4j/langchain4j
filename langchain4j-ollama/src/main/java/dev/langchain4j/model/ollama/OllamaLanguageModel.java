@@ -1,8 +1,10 @@
 package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -74,5 +76,19 @@ public class OllamaLanguageModel implements LanguageModel {
                 response.getResponse(),
                 new TokenUsage(response.getPromptEvalCount(), response.getEvalCount())
         );
+    }
+
+    public static OllamaLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OllamaLanguageModelBuilderFactory.class,
+                OllamaLanguageModelBuilder::new
+        );
+    }
+
+    public static class OllamaLanguageModelBuilder {
+        public OllamaLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

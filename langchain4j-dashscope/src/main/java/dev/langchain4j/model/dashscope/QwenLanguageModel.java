@@ -5,8 +5,12 @@ import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
+import com.alibaba.dashscope.protocol.Protocol;
+import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.dashscope.spi.QwenLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -26,10 +30,12 @@ public class QwenLanguageModel implements LanguageModel {
     private final Float repetitionPenalty;
     private final Float temperature;
     private final List<String> stops;
+    private final Integer maxTokens;
     private final Generation generation;
 
     @Builder
-    public QwenLanguageModel(String apiKey,
+    public QwenLanguageModel(String baseUrl,
+                             String apiKey,
                              String modelName,
                              Double topP,
                              Integer topK,
@@ -37,7 +43,8 @@ public class QwenLanguageModel implements LanguageModel {
                              Integer seed,
                              Float repetitionPenalty,
                              Float temperature,
-                             List<String> stops) {
+                             List<String> stops,
+                             Integer maxTokens) {
         if (isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
         }
@@ -50,7 +57,15 @@ public class QwenLanguageModel implements LanguageModel {
         this.repetitionPenalty = repetitionPenalty;
         this.temperature = temperature;
         this.stops = stops;
-        this.generation = new Generation();
+        this.maxTokens = maxTokens;
+
+        if (Utils.isNullOrBlank(baseUrl)) {
+            this.generation = new Generation();
+        } else if (baseUrl.startsWith("wss://")) {
+            this.generation = new Generation(Protocol.WEBSOCKET.getValue(), baseUrl);
+        } else {
+            this.generation = new Generation(Protocol.HTTP.getValue(), baseUrl);
+        }
     }
 
     @Override
@@ -65,6 +80,7 @@ public class QwenLanguageModel implements LanguageModel {
                     .seed(seed)
                     .repetitionPenalty(repetitionPenalty)
                     .temperature(temperature)
+                    .maxTokens(maxTokens)
                     .prompt(prompt)
                     .resultFormat(MESSAGE);
 
@@ -78,6 +94,20 @@ public class QwenLanguageModel implements LanguageModel {
                     tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    public static QwenLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenLanguageModelBuilderFactory.class,
+                QwenLanguageModelBuilder::new
+        );
+    }
+
+    public static class QwenLanguageModelBuilder {
+        public QwenLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }
