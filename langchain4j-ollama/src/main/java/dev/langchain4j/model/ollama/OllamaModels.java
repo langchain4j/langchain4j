@@ -29,11 +29,11 @@ public class OllamaModels {
         return Response.from(response.getModels());
     }
 
-    public Response<OllamaModelInfo> fetchModelInfo(OllamaModel ollamaModel) {
+    public Response<OllamaModelCard> modelCard(OllamaModel ollamaModel) {
         return fetchModelInfo(ollamaModel.getName());
     }
 
-    public Response<OllamaModelInfo> fetchModelInfo(String modelName) {
+    public Response<OllamaModelCard> modelCard(String modelName) {
         ShowModelInformationResponse response = withRetry(() -> client.showInformation(
                 ShowModelInformationRequest.builder()
                         .name(modelName)
