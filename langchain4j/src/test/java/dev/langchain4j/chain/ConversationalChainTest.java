@@ -1,61 +1,50 @@
 package dev.langchain4j.chain;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.chat.mock.ChatModelMock;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-public class ConversationalChainTest {
-
-    private static final String QUESTION = "question";
-    private static final String ANSWER = "answer";
-
-    @Mock
-    ChatLanguageModel chatLanguageModel;
-
-    @Spy
-    ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+class ConversationalChainTest {
 
     @Test
     void should_store_user_and_ai_messages_in_chat_memory() {
 
         // given
-        when(chatLanguageModel.generate(anyList())).thenReturn(Response.from(aiMessage(ANSWER)));
+        ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
+
+        String aiMessage = "Hi there";
+        ChatModelMock model = ChatModelMock.withStaticResponse(aiMessage);
 
         ConversationalChain chain = ConversationalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
+                .chatLanguageModel(model)
                 .chatMemory(chatMemory)
                 .build();
 
-        // when
-        String response = chain.execute(QUESTION);
+        String userMessage = "Hello";
+
+        // When
+        String response = chain.execute(userMessage);
 
         // then
-        assertThat(response).isEqualTo(ANSWER);
+        assertThat(response).isEqualTo(aiMessage);
 
-        verify(chatMemory).add(userMessage(QUESTION));
+        verify(chatMemory).add(UserMessage.from(userMessage));
         verify(chatMemory, times(3)).messages();
-        verify(chatLanguageModel).generate(singletonList(userMessage(QUESTION)));
-        verify(chatMemory).add(aiMessage(ANSWER));
-
+        verify(chatMemory).add(AiMessage.from(aiMessage));
         verifyNoMoreInteractions(chatMemory);
-        verifyNoMoreInteractions(chatLanguageModel);
+
+        assertThat(model.userMessageText()).isEqualTo(userMessage);
     }
 
     @ParameterizedTest
@@ -65,7 +54,7 @@ public class ConversationalChainTest {
 
         // given
         ConversationalChain chain = ConversationalChain.builder()
-                .chatLanguageModel(chatLanguageModel)
+                .chatLanguageModel(mock(ChatLanguageModel.class))
                 .build();
 
         // when-then

@@ -2,10 +2,9 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -14,8 +13,7 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import dev.langchain4j.rag.query.Metadata;
 
 import java.lang.reflect.*;
 import java.util.*;
@@ -30,11 +28,8 @@ import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
 import static java.util.Collections.singletonMap;
-import static java.util.stream.Collectors.joining;
 
 class DefaultAiServices<T> extends AiServices<T> {
-
-    private final Logger log = LoggerFactory.getLogger(AiServices.class);
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -50,7 +45,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
-            UserMessage userMessage = parameter.getAnnotation(UserMessage.class);
+            dev.langchain4j.service.UserMessage userMessage = parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
             if (v == null && userMessage == null && memoryId == null && userName == null) {
@@ -90,28 +85,22 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        Optional<ChatMessage> systemMessage = prepareSystemMessage(method, args);
-                        ChatMessage userMessage = prepareUserMessage(method, args);
-
-                        if (context.retriever != null) { // TODO extract method/class
-                            List<TextSegment> relevant = context.retriever.findRelevant(userMessage.text());
-
-                            if (relevant == null || relevant.isEmpty()) {
-                                log.debug("No relevant information was found");
-                            } else {
-                                String relevantConcatenated = relevant.stream()
-                                        .map(TextSegment::text)
-                                        .collect(joining("\n\n"));
-
-                                log.debug("Retrieved relevant information:\n" + relevantConcatenated + "\n");
-
-                                userMessage = userMessage(userMessage.text()
-                                        + "\n\nHere is some information that might be useful for answering:\n\n"
-                                        + relevantConcatenated);
-                            }
-                        }
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(method, args);
+                        UserMessage userMessage = prepareUserMessage(method, args);
 
                         Object memoryId = memoryId(method, args).orElse(DEFAULT);
+
+                        if (context.retrievalAugmentor != null) {
+                            List<ChatMessage> chatMemory = context.hasChatMemory()
+                                    ? context.chatMemory(memoryId).messages()
+                                    : null;
+                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
+                            userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
+                        }
+
+                        // TODO give user ability to provide custom OutputParser
+                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
+                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -193,12 +182,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
-    private Optional<ChatMessage> prepareSystemMessage(Method method, Object[] args) {
+    private Optional<SystemMessage> prepareSystemMessage(Method method, Object[] args) {
 
         Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
-        SystemMessage annotation = method.getAnnotation(SystemMessage.class);
+        dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
 
             String systemMessageTemplate = String.join(annotation.delimiter(), annotation.value());
@@ -213,17 +202,15 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-    private static ChatMessage prepareUserMessage(Method method, Object[] args) {
+    private static UserMessage prepareUserMessage(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
-        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-
         String userName = getUserName(parameters, args);
 
-        UserMessage annotation = method.getAnnotation(UserMessage.class);
+        dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
         if (annotation != null) {
-            String userMessageTemplate = String.join(annotation.delimiter(), annotation.value()) + outputFormatInstructions;
+            String userMessageTemplate = String.join(annotation.delimiter(), annotation.value());
 
             if (userMessageTemplate.contains("{{it}}")) {
                 if (parameters.length != 1) {
@@ -243,8 +230,8 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(UserMessage.class)) {
-                String text = toString(args[i]) + outputFormatInstructions;
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                String text = toString(args[i]);
                 if (userName != null) {
                     return userMessage(userName, text);
                 } else {
@@ -258,7 +245,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         if (args.length == 1) {
-            String text = toString(args[0]) + outputFormatInstructions;
+            String text = toString(args[0]);
             if (userName != null) {
                 return userMessage(userName, text);
             } else {
@@ -268,7 +255,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
     }
-
 
     private Optional<Object> memoryId(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
@@ -308,7 +294,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         return variables;
     }
 
-    private static Object toString(Object arg) {
+    private static String toString(Object arg) {
         if (arg.getClass().isArray()) {
             return arrayToString(arg);
         } else if (arg.getClass().isAnnotationPresent(StructuredPrompt.class)) {
