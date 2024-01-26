@@ -295,7 +295,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         List<IndexingResult> indexingResults = searchClient.uploadDocuments(searchDocuments).getResults();
         for (IndexingResult indexingResult : indexingResults) {
             if (!indexingResult.isSucceeded()) {
-                log.error("Failed to add embedding: {}", indexingResult.getErrorMessage());
+                throw new AzureAiSearchRuntimeException("Failed to add embedding: " + indexingResult.getErrorMessage());
             } else {
                 log.debug("Added embedding: {}", indexingResult.getKey());
             }
