@@ -30,7 +30,7 @@ import static org.awaitility.Awaitility.await;
 class OpenSearchEmbeddingStoreAwsIT extends EmbeddingStoreIT {
 
     @Container
-    private static final LocalStackContainer localstack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:latest"));
+    private static final LocalStackContainer localstack = new LocalStackContainer(DockerImageName.parse("localstack/localstack:3.1.0"));
 
     EmbeddingStore<TextSegment> embeddingStore = OpenSearchEmbeddingStore.builder()
             .serverUrl(String.format("testcontainers-domain.%s.opensearch.localhost.localstack.cloud:%s", localstack.getRegion(), localstack.getMappedPort(4566)))
