@@ -37,6 +37,7 @@ public class QwenStreamingResponseBuilder {
         FinishReason finishReason = finishReasonFrom(partialResponse);
         if (finishReason != null) {
             this.finishReason = finishReason;
+            return null;
         }
 
         String partialContent = answerFrom(partialResponse);
@@ -59,6 +60,7 @@ public class QwenStreamingResponseBuilder {
         FinishReason finishReason = finishReasonFrom(partialResponse);
         if (finishReason != null) {
             this.finishReason = finishReason;
+            return null;
         }
 
         String partialContent = answerFrom(partialResponse);
