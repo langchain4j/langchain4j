@@ -297,7 +297,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             if (!indexingResult.isSucceeded()) {
                 log.error("Failed to add embedding: {}", indexingResult.getErrorMessage());
             } else {
-                log.info("Added embedding: {}", indexingResult.getKey());
+                log.debug("Added embedding: {}", indexingResult.getKey());
             }
         }
     }
