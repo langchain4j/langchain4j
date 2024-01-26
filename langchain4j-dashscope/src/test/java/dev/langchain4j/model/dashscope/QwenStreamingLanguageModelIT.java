@@ -1,52 +1,28 @@
 package dev.langchain4j.model.dashscope;
 
-import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.concurrent.CompletableFuture;
-
-import static java.util.concurrent.TimeUnit.SECONDS;
+import static dev.langchain4j.model.dashscope.QwenTestHelper.apiKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
 public class QwenStreamingLanguageModelIT {
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#languageModelNameProvider")
-    public void should_send_messages_and_receive_response(String modelName) throws Exception {
-        String apiKey = QwenTestHelper.apiKey();
-        if (Utils.isNullOrBlank(apiKey)) {
-            return;
-        }
-
+    public void should_send_messages_and_receive_response(String modelName) {
         StreamingLanguageModel model = QwenStreamingLanguageModel.builder()
-                .apiKey(apiKey)
+                .apiKey(apiKey())
                 .modelName(modelName)
                 .build();
-
-        CompletableFuture<Response<String>> future = new CompletableFuture<>();
-        model.generate("Please say 'hello' to me", new StreamingResponseHandler<String>() {
-            @Override
-            public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
-            }
-
-            @Override
-            public void onComplete(Response<String> response) {
-                future.complete(response);
-                System.out.println("onComplete: '" + response.content() + "'");
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                future.completeExceptionally(error);
-            }
-        });
-
-        Response<String> response = future.get(30, SECONDS);
+        TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
+        model.generate("Please say 'hello' to me", handler);
+        Response<String> response = handler.get();
         System.out.println(response);
 
         assertThat(response.content()).containsIgnoringCase("hello");
