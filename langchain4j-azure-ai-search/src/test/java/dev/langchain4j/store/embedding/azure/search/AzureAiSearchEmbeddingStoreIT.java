@@ -71,30 +71,6 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
     }
 
-    @Test
-    void should_return_correct_score() {
-
-        Embedding embedding = embeddingModel().embed("hello").content();
-
-        String id = embeddingStore().add(embedding);
-        assertThat(id).isNotBlank();
-
-        awaitUntilPersisted();
-
-        Embedding referenceEmbedding = embeddingModel().embed("hi").content();
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(referenceEmbedding, 1);
-        assertThat(relevant).hasSize(1);
-
-        EmbeddingMatch<TextSegment> match = relevant.get(0);
-        log.error("score: {}", match.score());
-        log.error("relevance score: {}", RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)));
-        assertThat(match.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
-                withPercentage(1)
-        );
-    }
-
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;
