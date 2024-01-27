@@ -30,22 +30,22 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * vearch router client
      */
     private final VearchClient vearchClient;
-    private final String dbName;
-    private final String spaceName;
-    private final String vectorFieldName;
-    private final String textSegmentFieldName;
+    private final String database;
+    private final String space;
+    private final String vectorField;
+    private final String textField;
     private final String _id = "_id";
     private final String feature = "feature";
 
     private static final Gson GSON = new Gson();
 
     @Builder
-    public VearchEmbeddingStore(String routerUrl, String dbName, String spaceName, String vectorFieldName, String textSegmentFieldName, Duration timeout) {
-        vearchClient = new VearchClient(routerUrl, timeout);
-        this.dbName = dbName;
-        this.spaceName = spaceName;
-        this.vectorFieldName = vectorFieldName;
-        this.textSegmentFieldName = textSegmentFieldName;
+    public VearchEmbeddingStore(String routerUrl, String database, String space, String vectorField, String textField, Duration timeout) {
+        this.vearchClient = new VearchClient(routerUrl, timeout);
+        this.database = database;
+        this.space = space;
+        this.vectorField = vectorField;
+        this.textField = textField;
     }
 
     /**
@@ -128,7 +128,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         DocumentSearchRequest.Vector vector = new DocumentSearchRequest.Vector();
-        vector.setField(this.vectorFieldName);
+        vector.setField(this.vectorField);
         vector.setFeature(referenceEmbedding.vectorAsList());
         vector.setMinScore(minScore);
 
@@ -140,8 +140,8 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         DocumentSearchRequest searchRequest = new DocumentSearchRequest();
         searchRequest.setVectorValue(Boolean.TRUE);
-        searchRequest.setDbName(this.dbName);
-        searchRequest.setSpaceName(this.spaceName);
+        searchRequest.setDbName(this.database);
+        searchRequest.setSpaceName(this.space);
         searchRequest.setQuery(query);
         searchRequest.setSize(maxResults);
 
@@ -161,13 +161,13 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
                             }
 
                             TextSegment textSegment = null;
-                            Object textObj = sourceMap.get(this.textSegmentFieldName);
+                            Object textObj = sourceMap.get(this.textField);
                             if (textObj != null && Utils.isNotNullOrBlank(String.valueOf(textObj))) {
                                 textSegment = TextSegment.from(String.valueOf(textObj));
                             }
 
                             Embedding embedding = new Embedding(new float[0]);
-                            Object vectorObj = sourceMap.get(this.vectorFieldName);
+                            Object vectorObj = sourceMap.get(this.vectorField);
                             if (vectorObj != null) {
                                 JsonElement jsonElement = GSON.toJsonTree(vectorObj);
                                 JsonObject jsonObject = jsonElement.getAsJsonObject();
@@ -206,19 +206,19 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             Embedding embedding = embeddings.get(i);
             Map<String, List<Float>> vectorMap = new HashMap<>();
             vectorMap.put(this.feature, embedding.vectorAsList());
-            fieldMap.put(this.vectorFieldName, vectorMap);
+            fieldMap.put(this.vectorField, vectorMap);
 
             if (textSegments != null && textSegments.get(i) != null) {
                 TextSegment textSegment = textSegments.get(i);
-                fieldMap.put(this.textSegmentFieldName, textSegment.text());
+                fieldMap.put(this.textField, textSegment.text());
             }
 
             documentList.add(fieldMap);
         }
 
         DocumentUpsertRequest documentUpsertRequest = new DocumentUpsertRequest();
-        documentUpsertRequest.setSpaceName(this.spaceName);
-        documentUpsertRequest.setDbName(this.dbName);
+        documentUpsertRequest.setSpaceName(this.space);
+        documentUpsertRequest.setDbName(this.database);
         documentUpsertRequest.setDocuments(documentList);
         vearchClient.documentUpsert(documentUpsertRequest);
     }
