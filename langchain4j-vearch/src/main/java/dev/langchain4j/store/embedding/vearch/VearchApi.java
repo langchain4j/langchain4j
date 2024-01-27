@@ -38,4 +38,7 @@ public interface VearchApi {
     Call<SearchResponse> search(@Path("db") String db,
                                 @Path("space") String space,
                                 @Body SearchRequest request);
+
+    @DELETE("/space/{db}/{space}")
+    Call<Void> deleteSpace(@Path("db") String dbName, @Path("space") String spaceName);
 }

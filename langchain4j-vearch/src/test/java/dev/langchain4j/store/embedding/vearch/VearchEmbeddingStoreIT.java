@@ -34,8 +34,6 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
      */
     VearchClient vearchClient;
 
-    TestVearchClient testVearchClient;
-
     String databaseName;
 
     String spaceName;
@@ -94,11 +92,6 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .baseUrl(baseUrl)
                 .timeout(Duration.ofSeconds(60))
                 .build();
-
-        testVearchClient = TestVearchClient.builder()
-                .baseUrl(baseUrl)
-                .timeout(Duration.ofSeconds(60))
-                .build();
     }
 
     @BeforeAll
@@ -124,7 +117,7 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        testVearchClient.deleteSpace(databaseName, spaceName);
+        vearchClient.deleteSpace(databaseName, spaceName);
 
         vearchClient.createSpace(databaseName, CreateSpaceRequest.builder()
                 .name(spaceName)

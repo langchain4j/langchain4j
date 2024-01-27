@@ -170,6 +170,18 @@ class VearchClient {
         }
     }
 
+    public void deleteSpace(String databaseName, String spaceName) {
+        try {
+            Response<Void> response = vearchApi.deleteSpace(databaseName, spaceName).execute();
+
+            if (!response.isSuccessful()) {
+                throw toException(response);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private RuntimeException toException(Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();

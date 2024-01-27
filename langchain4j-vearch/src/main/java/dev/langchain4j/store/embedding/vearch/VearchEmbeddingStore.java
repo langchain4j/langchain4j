@@ -21,16 +21,19 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final VearchConfig vearchConfig;
     private final VearchClient vearchClient;
-    private final boolean normalizeEmbedding;
+    /**
+     * whether to normalize embedding when add to embedding store
+     */
+    private final boolean normalizeEmbeddings;
 
     public VearchEmbeddingStore(String baseUrl,
                                 Duration timeout,
                                 VearchConfig vearchConfig,
-                                Boolean normalizeEmbedding) {
+                                Boolean normalizeEmbeddings) {
         // Step 0: initialize some attribute
         baseUrl = ensureNotNull(baseUrl, "baseUrl");
         this.vearchConfig = getOrDefault(vearchConfig, VearchConfig.getDefaultConfig());
-        this.normalizeEmbedding = getOrDefault(normalizeEmbedding, false);
+        this.normalizeEmbeddings = getOrDefault(normalizeEmbeddings, false);
 
         vearchClient = VearchClient.builder()
                 .baseUrl(baseUrl)
@@ -57,7 +60,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         private VearchConfig vearchConfig;
         private String baseUrl;
         private Duration timeout;
-        private Boolean normalizeEmbedding;
+        private Boolean normalizeEmbeddings;
 
         public Builder vearchConfig(VearchConfig vearchConfig) {
             this.vearchConfig = vearchConfig;
@@ -74,13 +77,19 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder normalizeEmbedding(Boolean normalizeEmbedding) {
-            this.normalizeEmbedding = normalizeEmbedding;
+        /**
+         * Set whether to normalize embedding when add to embedding store
+         *
+         * @param normalizeEmbeddings whether to normalize embedding when add to embedding store
+         * @return builder
+         */
+        public Builder normalizeEmbeddings(Boolean normalizeEmbeddings) {
+            this.normalizeEmbeddings = normalizeEmbeddings;
             return this;
         }
 
         public VearchEmbeddingStore build() {
-            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbedding);
+            return new VearchEmbeddingStore(baseUrl, timeout, vearchConfig, normalizeEmbeddings);
         }
     }
 
@@ -158,7 +167,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             document.put("_id", ids.get(i));
             Map<String, List<Float>> embeddingValue = new HashMap<>(1);
             Embedding embedding = embeddings.get(i);
-            if (normalizeEmbedding) {
+            if (normalizeEmbeddings) {
                 embedding.normalize();
             }
             embeddingValue.put("feature", embedding.vectorAsList());
