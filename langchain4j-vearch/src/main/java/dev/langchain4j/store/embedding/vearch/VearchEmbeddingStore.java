@@ -151,6 +151,10 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         return toEmbeddingMatch(response.getHits());
     }
 
+    public void deleteSpace() {
+        vearchClient.deleteSpace(vearchConfig.getDatabaseName(), vearchConfig.getSpaceName());
+    }
+
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
         addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
     }
