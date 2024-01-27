@@ -38,13 +38,17 @@ class FileSystemDocumentLoaderTest {
         }
 
         List<Document> documents = loadDocuments(resourceDirectory, new TextDocumentParser());
-        assertThat(documents).hasSize(3);
+        assertThat(documents).hasSize(4);
 
         Set<String> fileNames = documents.stream()
                 .map(document -> document.metadata("file_name"))
                 .collect(toSet());
         assertThat(fileNames).containsExactlyInAnyOrder(
-                "test-file.banana", "test-file-iso-8859-1.txt", "test-file-utf8.txt");
+                "miles-of-smiles-terms-of-use.txt",
+                "test-file.banana",
+                "test-file-iso-8859-1.txt",
+                "test-file-utf8.txt"
+        );
     }
 
     private Path toPath(String fileName) {

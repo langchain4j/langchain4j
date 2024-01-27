@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.singletonMap;
 
@@ -29,6 +30,7 @@ public class PromptTemplate {
     static final String CURRENT_TIME = "current_time";
     static final String CURRENT_DATE_TIME = "current_date_time";
 
+    private final String templateString;
     private final PromptTemplateFactory.Template template;
     private final Clock clock;
 
@@ -49,8 +51,16 @@ public class PromptTemplate {
      * @param clock the clock to use for the special variables.
      */
     PromptTemplate(String template, Clock clock) {
+        this.templateString = ensureNotBlank(template, "template");
         this.template = FACTORY.create(() -> template);
         this.clock = ensureNotNull(clock, "clock");
+    }
+
+    /**
+     * @return A prompt template string.
+     */
+    public String template() {
+        return templateString;
     }
 
     /**

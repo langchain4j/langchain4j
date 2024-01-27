@@ -15,7 +15,7 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     @Container
-    static GenericContainer<?> weaviate = new GenericContainer<>("semitechnologies/weaviate:1.22.4")
+    static GenericContainer<?> weaviate = new GenericContainer<>("semitechnologies/weaviate:latest")
             .withEnv("AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED", "true")
             .withEnv("PERSISTENCE_DATA_PATH", "/var/lib/weaviate")
             .withEnv("QUERY_DEFAULTS_LIMIT", "25")
@@ -25,7 +25,8 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
             .scheme("http")
-            .host(String.format("%s:%d", weaviate.getHost(), weaviate.getMappedPort(8080)))
+            .host(weaviate.getHost())
+            .port(weaviate.getFirstMappedPort())
             .objectClass("Test" + randomUUID().replace("-", ""))
             .build();
 
