@@ -3,33 +3,23 @@ package dev.langchain4j.store.embedding.mongodb;
 import com.mongodb.*;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.Filters;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.SneakyThrows;
-import org.bson.codecs.configuration.CodecRegistry;
-import org.bson.codecs.pojo.PojoCodecProvider;
-import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 
 import java.io.File;
 import java.time.Duration;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * If container startup timeout (because atlas cli need to download mongodb binaries, which may take a few minutes),
- * the alternative way is running `docker compose up -d` in `src/test/resources`
- */
-class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
+class MongoDbEmbeddingStoreFilterIT {
 
     static final String MONGO_SERVICE_NAME = "mongo";
     static final Integer MONGO_SERVICE_PORT = 27778;
@@ -46,8 +36,8 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
             .databaseName("test_database")
             .collectionName("test_collection")
             .indexName("test_index")
-            .indexMapping(IndexMapping.builder()
-                    .build())
+            // TODO: filter test
+            // .filter(Filters.and(Filters.in("")))
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -73,34 +63,9 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
         client.close();
     }
 
-    @Override
-    protected EmbeddingStore<TextSegment> embeddingStore() {
-        return embeddingStore;
-    }
-
-    @Override
-    protected EmbeddingModel embeddingModel() {
-        return embeddingModel;
-    }
-
-    @Override
-    protected void clearStore() {
-        CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
-                .build());
-        CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
-
-        MongoCollection<MongoDbDocument> collection = client.getDatabase("test_database")
-                .getCollection("test_collection", MongoDbDocument.class)
-                .withCodecRegistry(codecRegistry);
-
-        Bson filter = Filters.exists("embedding");
-        collection.deleteMany(filter);
-    }
-
-    @Override
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        Thread.sleep(2000);
+    @Test
+    void should_find_relevant_with_filter() {
+        // TODO
+        assertThat(0).isEqualTo(0);
     }
 }

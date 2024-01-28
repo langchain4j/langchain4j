@@ -2,7 +2,10 @@ package dev.langchain4j.store.embedding.mongodb;
 
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
-import com.mongodb.client.*;
+import com.mongodb.client.AggregateIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.CreateCollectionOptions;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.search.VectorSearchOptions;
@@ -63,10 +66,11 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                                  Long maxResultRatio,
                                  CreateCollectionOptions createCollectionOptions,
                                  Bson filter,
-                                 IndexMapping indexMapping) {
-        ensureNotNull(mongoClient, "mongoClient");
+                                 IndexMapping indexMapping,
+                                 Boolean prod) {
         databaseName = ensureNotNull(databaseName, "databaseName");
         collectionName = ensureNotNull(collectionName, "collectionName");
+        prod = getOrDefault(prod, false);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.maxResultRatio = getOrDefault(maxResultRatio, 10L);
 
@@ -85,7 +89,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.vectorSearchOptions = filter == null ? vectorSearchOptions() : vectorSearchOptions().filter(filter);
 
         // create index if not exist
-        if (!isIndexExist(this.indexName)) {
+        if (Boolean.FALSE.equals(prod) && !isIndexExist(this.indexName)) {
             createIndex(this.indexName, getOrDefault(indexMapping, defaultIndexMapping()));
         }
     }
@@ -104,14 +108,19 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         private CreateCollectionOptions createCollectionOptions;
         private Bson filter;
         private IndexMapping indexMapping;
+        /**
+         * Whether MongoDB Atlas is deployed in cloud
+         *
+         * <p>if true, you need to create index in <a href="https://cloud.mongodb.com/">MongoDB Atlas</a></p>
+         * <p>if false, {@link MongoDbEmbeddingStore} will create collection and index automatically</p>
+         */
+        private Boolean prod;
 
+        /**
+         * Build Mongo Client, Please close the client to release resources after usage
+         */
         public Builder fromClient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
-            return this;
-        }
-
-        public Builder fromConnectionString(String connectionString) {
-            this.mongoClient = MongoClients.create(connectionString);
             return this;
         }
 
@@ -145,13 +154,32 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * set MongoDB search index fields mapping
+         *
+         * <p>if {@link Builder#prod} is true, then indexMapping not work</p>
+         *
+         * @param indexMapping MongoDB search index fields mapping
+         * @return builder
+         */
         public Builder indexMapping(IndexMapping indexMapping) {
             this.indexMapping = indexMapping;
             return this;
         }
 
+        /**
+         * Set whether in production mode, production mode will not create index automatically
+         *
+         * @param prod whether in production mode
+         * @return builder
+         */
+        public Builder prod(Boolean prod) {
+            this.prod = prod;
+            return this;
+        }
+
         public MongoDbEmbeddingStore build() {
-            return new MongoDbEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping);
+            return new MongoDbEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping, prod);
         }
     }
 

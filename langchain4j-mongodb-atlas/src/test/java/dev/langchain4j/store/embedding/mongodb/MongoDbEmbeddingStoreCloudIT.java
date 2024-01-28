@@ -11,6 +11,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.SneakyThrows;
+import org.apache.commons.compress.utils.Sets;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
@@ -22,7 +23,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @Disabled("Need Cloud Mongo Atlas Credential")
-public class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
+class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
@@ -31,13 +32,14 @@ public class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
             .databaseName("test_database")
             .collectionName("test_collection")
             .indexName("test_index")
+            .prod(true)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     static void beforeAll() {
-        client = MongoClients.create("mongodb+srv://<username>:<password>@<host>/?retryWrites=true&w=majority");
+        client = MongoClients.create("mongodb+srv://zhengyi:Zzzyi123456@cluster0.eo9fifu.mongodb.net/?retryWrites=true&w=majority");
     }
 
     @AfterAll
