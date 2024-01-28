@@ -39,7 +39,7 @@ class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
 
     @BeforeAll
     static void beforeAll() {
-        client = MongoClients.create("mongodb+srv://zhengyi:Zzzyi123456@cluster0.eo9fifu.mongodb.net/?retryWrites=true&w=majority");
+        client = MongoClients.create("mongodb+srv://<username>:<password>@<host>/?retryWrites=true&w=majority");
     }
 
     @AfterAll

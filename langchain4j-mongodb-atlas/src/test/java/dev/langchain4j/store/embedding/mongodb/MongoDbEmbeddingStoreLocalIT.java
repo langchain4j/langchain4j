@@ -18,6 +18,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.testcontainers.containers.DockerComposeContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.shaded.com.google.common.collect.Sets;
 
 import java.io.File;
 import java.time.Duration;
@@ -41,13 +42,17 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
     static MongoClient client;
 
+    IndexMapping indexMapping = IndexMapping.builder()
+            .dimension(384)
+            .metadataFieldNames(Sets.newHashSet("type"))
+            .build();
+
     EmbeddingStore<TextSegment> embeddingStore = MongoDbEmbeddingStore.builder()
             .fromClient(client)
             .databaseName("test_database")
             .collectionName("test_collection")
             .indexName("test_index")
-            .indexMapping(IndexMapping.builder()
-                    .build())
+            .indexMapping(indexMapping)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
