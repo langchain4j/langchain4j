@@ -1,4 +1,4 @@
-name: release
+name: release_core_and_parent
 
 on:
   workflow_dispatch:

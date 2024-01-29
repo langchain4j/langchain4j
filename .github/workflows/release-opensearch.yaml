@@ -1,4 +1,4 @@
-name: release
+name: release_opensearch
 
 on:
   workflow_dispatch:

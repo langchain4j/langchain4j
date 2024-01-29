@@ -1,4 +1,4 @@
-name: release
+name: release_main_module
 
 on:
   workflow_dispatch:

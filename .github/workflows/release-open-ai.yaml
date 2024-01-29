@@ -1,4 +1,4 @@
-name: release
+name: release_open_ai
 
 on:
   workflow_dispatch:

@@ -1,4 +1,4 @@
-name: release
+name: release_rest
 
 on:
   workflow_dispatch:

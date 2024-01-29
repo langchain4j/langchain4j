@@ -1,4 +1,4 @@
-name: release
+name: release_neo4j
 
 on:
   workflow_dispatch:
