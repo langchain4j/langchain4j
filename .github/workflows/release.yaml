@@ -28,7 +28,7 @@ jobs:
           gpg-passphrase: GPG_PASSPHRASE
 
       - name: release_core
-        run: mvn -B -U --fail-at-end -Psign -pl langchain4j-core clean deploy
+        run: mvn -B -U --fail-at-end -Psign -pl langchain4j-core,langchain4j-parent clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
