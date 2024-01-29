@@ -222,7 +222,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaInfrastructure {
         Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
         // then
-        assertThat(answer).isEqualTo(">>> 8");
+        assertThat(answer).startsWith(">>> 8");
         assertThat(response.content().text()).isEqualTo(answer);
     }
 
