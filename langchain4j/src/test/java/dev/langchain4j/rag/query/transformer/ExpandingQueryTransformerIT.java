@@ -47,6 +47,7 @@ class ExpandingQueryTransformerIT {
                                 .logResponses(true)
                                 .build()
                 )
+                // TODO add more models
         );
     }
 }
