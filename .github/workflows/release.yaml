@@ -10,14 +10,12 @@ on:
 jobs:
 
   release_java_8_modules:
-
     permissions:
       contents: 'read'
       id-token: 'write'
-
     runs-on: ubuntu-latest
-
     steps:
+
       - uses: actions/checkout@v4
 
       - name: Set up JDK 8
@@ -66,10 +64,10 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
   release_java_11_modules:
-
+    needs: release_java_8_modules
     runs-on: ubuntu-latest
-
     steps:
+
       - uses: actions/checkout@v4
 
       - name: Set up JDK 11
@@ -97,10 +95,10 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
   release_java_17_modules:
-
+    needs: release_java_8_modules
     runs-on: ubuntu-latest
-
     steps:
+
       - uses: actions/checkout@v4
 
       - name: Set up JDK 17
