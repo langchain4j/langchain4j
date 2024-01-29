@@ -51,7 +51,7 @@
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
         <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
-        <module>document-loaders/langchain4j-document-loader-github</module>  
+        <module>document-loaders/langchain4j-document-loader-github</module>
         <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
 
         <!-- document parsers -->
@@ -65,6 +65,13 @@
 
     <build>
         <plugins>
+            <plugin>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <configuration>
+                    <!-- do not deploy langchain4j-aggregator's pom.xml (this file) -->
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
