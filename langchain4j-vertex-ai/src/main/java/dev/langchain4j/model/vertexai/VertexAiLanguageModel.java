@@ -9,6 +9,8 @@ import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.vertexai.spi.VertexAiLanguageModelBuilderFactory;
+import dev.langchain4j.spi.ServiceHelper;
 
 import java.io.IOException;
 import java.util.List;
@@ -109,7 +111,10 @@ public class VertexAiLanguageModel implements LanguageModel {
     }
 
     public static Builder builder() {
-        return new Builder();
+        return ServiceHelper.loadFactoryService(
+                VertexAiLanguageModelBuilderFactory.class,
+                Builder::new
+        );
     }
 
     public static class Builder {

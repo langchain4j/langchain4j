@@ -29,7 +29,7 @@
         <dependency>
             <groupId>io.weaviate</groupId>
             <artifactId>client</artifactId>
-            <version>4.3.0</version>
+            <version>4.5.1</version>
             <exclusions>
                 <!-- due to Cxeb68d52e-5509 vulnerability -->
                 <exclusion>

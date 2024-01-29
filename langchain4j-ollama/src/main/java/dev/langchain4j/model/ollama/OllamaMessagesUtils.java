@@ -7,9 +7,16 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.data.message.ContentType.IMAGE;
+import static dev.langchain4j.data.message.ContentType.TEXT;
+
 class OllamaMessagesUtils {
-    private final static Predicate<ChatMessage> isUserMessage = chatMessage -> chatMessage instanceof UserMessage;
-    private final static Predicate<UserMessage> hasImages = userMessage -> userMessage.contents().stream().anyMatch(content -> ContentType.IMAGE.equals(content.type()));
+
+    private final static Predicate<ChatMessage> isUserMessage =
+            chatMessage -> chatMessage instanceof UserMessage;
+    private final static Predicate<UserMessage> hasImages =
+            userMessage -> userMessage.contents().stream()
+                    .anyMatch(content -> IMAGE.equals(content.type()));
 
     static List<Message> toOllamaMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -23,13 +30,13 @@ class OllamaMessagesUtils {
         Map<ContentType, List<Content>> groupedContents = userMessage.contents().stream()
                 .collect(Collectors.groupingBy(Content::type));
 
-        if (groupedContents.get(ContentType.TEXT).size() != 1) {
+        if (groupedContents.get(TEXT).size() != 1) {
             throw new RuntimeException("Expecting single text content, but got: " + userMessage.contents());
         }
 
-        String text = ((TextContent) groupedContents.get(ContentType.TEXT).get(0)).text();
+        String text = ((TextContent) groupedContents.get(TEXT).get(0)).text();
 
-        List<ImageContent> imageContents = groupedContents.get(ContentType.IMAGE).stream()
+        List<ImageContent> imageContents = groupedContents.get(IMAGE).stream()
                 .map(content -> (ImageContent) content)
                 .collect(Collectors.toList());
 
@@ -59,5 +66,4 @@ class OllamaMessagesUtils {
                 throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
         }
     }
-
 }
