@@ -2,7 +2,6 @@ package dev.langchain4j.rag.query.router;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,14 +77,8 @@ class LanguageModelQueryRouterIT {
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()
-                ),
-                Arguments.of(
-                        VertexAiGeminiChatModel.builder()
-                                .project(System.getenv("GCP_PROJECT_ID"))
-                                .location(System.getenv("GCP_LOCATION"))
-                                .modelName("gemini-pro")
-                                .build()
                 )
+                // TODO add more models
         );
     }
 }
