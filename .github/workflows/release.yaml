@@ -2,6 +2,10 @@ name: release
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+# TODO remove pull_request
 
 jobs:
   release_java_8:
