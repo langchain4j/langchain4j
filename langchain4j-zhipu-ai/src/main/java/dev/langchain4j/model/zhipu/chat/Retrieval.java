@@ -6,9 +6,9 @@ import java.util.Objects;
 
 public final class Retrieval {
     @SerializedName("knowledge_id")
-    private String knowledgeId;
+    private final String knowledgeId;
     @SerializedName("prompt_template")
-    private String promptTemplate;
+    private final String promptTemplate;
 
     Retrieval(RetrievalBuilder builder) {
         this.knowledgeId = builder.knowledgeId;

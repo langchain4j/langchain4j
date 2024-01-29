@@ -5,9 +5,9 @@ import com.google.gson.annotations.SerializedName;
 import java.util.Objects;
 
 public final class WebSearch {
-    private Boolean enable;
+    private final Boolean enable;
     @SerializedName("search_query")
-    private String searchQuery;
+    private final String searchQuery;
 
     public WebSearch(WebSearchBuilder builder) {
         this.enable = builder.enable;

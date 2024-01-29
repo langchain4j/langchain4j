@@ -29,6 +29,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
+import static dev.langchain4j.model.zhipu.Json.GSON;
 
 public class ZhipuAiClient {
 
@@ -62,7 +63,7 @@ public class ZhipuAiClient {
         Retrofit retrofit = (new Retrofit.Builder())
                 .baseUrl(formattedUrlForRetrofit(this.baseUrl))
                 .client(this.okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(Json.GSON))
+                .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
         this.zhipuAiApi = retrofit.create(ZhipuAiApi.class);
     }

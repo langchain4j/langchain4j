@@ -1,11 +1,14 @@
 package dev.langchain4j.model.zhipu.chat;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
 public final class Delta {
     private final String content;
+    @SerializedName("tool_calls")
     private final List<ToolCall> toolCalls;
 
     private Delta(Builder builder) {

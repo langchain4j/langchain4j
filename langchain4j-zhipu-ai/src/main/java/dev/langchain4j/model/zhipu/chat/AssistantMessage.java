@@ -1,5 +1,7 @@
 package dev.langchain4j.model.zhipu.chat;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -12,6 +14,7 @@ public final class AssistantMessage implements Message {
     private final Role role = ASSISTANT;
     private final String content;
     private final String name;
+    @SerializedName("tool_calls")
     private final List<ToolCall> toolCalls;
 
     private AssistantMessage(Builder builder) {
