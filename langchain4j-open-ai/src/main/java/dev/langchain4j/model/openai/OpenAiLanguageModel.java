@@ -103,9 +103,20 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     }
 
     public static class OpenAiLanguageModelBuilder {
+
         public OpenAiLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

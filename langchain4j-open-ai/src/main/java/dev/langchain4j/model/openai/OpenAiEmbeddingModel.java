@@ -124,9 +124,20 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
     }
 
     public static class OpenAiEmbeddingModelBuilder {
+
         public OpenAiEmbeddingModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiEmbeddingModelBuilder modelName(OpenAiEmbeddingModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

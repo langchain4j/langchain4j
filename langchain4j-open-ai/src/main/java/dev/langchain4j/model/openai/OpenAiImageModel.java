@@ -135,6 +135,16 @@ public class OpenAiImageModel implements ImageModel {
             // By default with Lombok it becomes package private
         }
 
+        public OpenAiImageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder modelName(OpenAiImageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
+
         public OpenAiImageModelBuilder withPersisting() {
             return withPersisting(true);
         }

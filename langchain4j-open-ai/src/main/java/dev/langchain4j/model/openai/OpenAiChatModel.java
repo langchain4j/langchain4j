@@ -171,9 +171,20 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     public static class OpenAiChatModelBuilder {
+
         public OpenAiChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder modelName(OpenAiChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

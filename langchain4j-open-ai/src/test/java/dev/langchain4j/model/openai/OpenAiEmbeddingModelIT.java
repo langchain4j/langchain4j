@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static dev.langchain4j.model.openai.OpenAiEmbeddingModelName.TEXT_EMBEDDING_3_SMALL;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -91,6 +92,35 @@ class OpenAiEmbeddingModelIT {
 
         // then
         assertThat(response.content().dimension()).isEqualTo(dimensions);
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
+        assertThat(tokenUsage.outputTokenCount()).isNull();
+        assertThat(tokenUsage.totalTokenCount()).isEqualTo(2);
+
+        assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_use_enum_as_model_name() {
+
+        // given
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(TEXT_EMBEDDING_3_SMALL)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String text = "hello world";
+
+        // when
+        Response<Embedding> response = model.embed(text);
+        System.out.println(response);
+
+        // then
+        assertThat(response.content().vector()).hasSize(1536);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);
