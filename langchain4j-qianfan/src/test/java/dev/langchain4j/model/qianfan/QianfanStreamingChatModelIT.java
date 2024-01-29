@@ -10,6 +10,8 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+
 import java.util.List;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -20,12 +22,13 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-
+@EnabledIfEnvironmentVariable(named = "QIANFAN_API_KEY", matches = ".+")
 class QianfanStreamingChatModelIT {
 
     //see your api key and secret key here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application
-    private String apiKey ="your api key";
-    private String secretKey ="your secret key";
+    private String apiKey = System.getenv("QIANFAN_API_KEY");
+    private String secretKey = System.getenv("QIANFAN_SECRET_KEY");
+
     QianfanStreamingChatModel model = QianfanStreamingChatModel.builder().modelName("ERNIE-Bot 4.0").temperature(0.7).topP(1.0)
             .apiKey(apiKey)
             .secretKey(secretKey)

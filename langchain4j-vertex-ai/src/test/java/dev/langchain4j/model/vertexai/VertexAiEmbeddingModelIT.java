@@ -5,8 +5,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -14,14 +14,14 @@ import java.util.List;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("To run this test, you must provide your own endpoint, project and location")
+@EnabledIfEnvironmentVariable(named = "VERTEXAI_ENDPOINT", matches = ".+")
 class VertexAiEmbeddingModelIT {
 
     @Test
     void testEmbeddingModel() {
 
         EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
-                .endpoint("us-central1-aiplatform.googleapis.com:443")
+                .endpoint(System.getenv("VERTEXAI_ENDPOINT"))
                 .project("langchain4j")
                 .location("us-central1")
                 .publisher("google")
