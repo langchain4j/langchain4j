@@ -8,19 +8,18 @@ interface MistralAiApi {
 
     @POST("chat/completions")
     @Headers({"Content-Type: application/json"})
-    Call<MistralChatCompletionResponse> chatCompletion(@Body MistralChatCompletionRequest request);
+    Call<MistralAiChatCompletionResponse> chatCompletion(@Body MistralAiChatCompletionRequest request);
 
     @POST("chat/completions")
     @Headers({"Content-Type: application/json"})
     @Streaming
-    Call<ResponseBody> streamingChatCompletion(@Body MistralChatCompletionRequest request);
+    Call<ResponseBody> streamingChatCompletion(@Body MistralAiChatCompletionRequest request);
 
     @POST("embeddings")
     @Headers({"Content-Type: application/json"})
-    Call<MistralEmbeddingResponse> embedding(@Body MistralEmbeddingRequest request);
+    Call<MistralAiEmbeddingResponse> embedding(@Body MistralAiEmbeddingRequest request);
 
     @GET("models")
     @Headers({"Content-Type: application/json"})
-    Call<MistralModelResponse> models();
-
+    Call<MistralAiModelResponse> models();
 }

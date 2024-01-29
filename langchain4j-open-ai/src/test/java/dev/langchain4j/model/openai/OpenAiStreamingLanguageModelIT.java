@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.model.openai.OpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,5 +66,28 @@ class OpenAiStreamingLanguageModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_use_enum_as_model_name() {
+
+        // given
+        StreamingLanguageModel model = OpenAiStreamingLanguageModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_3_5_TURBO_INSTRUCT)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String question = "What is the capital of Germany?";
+
+        // when
+        TestStreamingResponseHandler<String> handler = new TestStreamingResponseHandler<>();
+        model.generate(question, handler);
+        Response<String> response = handler.get();
+
+        // then
+        assertThat(response.content()).containsIgnoringCase("Berlin");
     }
 }

@@ -1,7 +1,6 @@
 package dev.langchain4j.classification;
 
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -171,7 +170,6 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    @Disabled
     void should_return_one_category_by_default() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
@@ -185,7 +183,6 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    @Disabled
     void should_return_multiple_categories() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
@@ -202,7 +199,6 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    @Disabled
     void should_classify_respecting_minScore() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
@@ -219,7 +215,6 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    @Disabled
     void should_classify_respecting_meanToMaxScoreRatio_1() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(
@@ -236,7 +231,6 @@ class EmbeddingModelTextClassifierTest {
     }
 
     @Test
-    @Disabled
     void should_classify_respecting_meanToMaxScoreRatio_0() {
 
         TextClassifier<CustomerServiceCategory> classifier = new EmbeddingModelTextClassifier<>(

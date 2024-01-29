@@ -12,7 +12,7 @@ public enum MistralAiEmbeddingModelName {
 
     private final String value;
 
-    private MistralAiEmbeddingModelName(String value) {
+    MistralAiEmbeddingModelName(String value) {
         this.value = value;
     }
 

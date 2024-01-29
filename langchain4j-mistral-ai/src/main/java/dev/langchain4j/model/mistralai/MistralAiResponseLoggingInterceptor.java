@@ -3,8 +3,6 @@ package dev.langchain4j.model.mistralai;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
-import okio.Buffer;
-import okio.BufferedSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,21 +23,21 @@ class MistralAiResponseLoggingInterceptor implements Interceptor {
     }
 
     private void log(Response response) {
-        String message = "Response:\n- status code: {}\n- headers: {}\n- body: {}";
         try {
-            if (LOGGER.isDebugEnabled()) {
-                LOGGER.debug(message, new Object[]{response.code(), getHeaders(response.headers()), this.getBody(response)});
-            }
+            LOGGER.debug("Response:\n- status code: {}\n- headers: {}\n- body: {}",
+                    response.code(), getHeaders(response.headers()), this.getBody(response));
         } catch (Exception e) {
             LOGGER.warn("Error while logging response: {}", e.getMessage());
         }
     }
 
     private String getBody(Response response) throws IOException {
-        return isEventStream(response) ? "[skipping response body due to streaming]" : response.peekBody(Long.MAX_VALUE).string();
+        return isEventStream(response)
+                ? "[skipping response body due to streaming]"
+                : response.peekBody(Long.MAX_VALUE).string();
     }
 
-    private static boolean isEventStream(Response response){
+    private static boolean isEventStream(Response response) {
         String contentType = response.header("Content-Type");
         return contentType != null && contentType.contains("event-stream");
     }

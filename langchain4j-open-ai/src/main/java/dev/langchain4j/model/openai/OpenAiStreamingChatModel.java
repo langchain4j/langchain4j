@@ -192,9 +192,20 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     public static class OpenAiStreamingChatModelBuilder {
+
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiStreamingChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder modelName(OpenAiChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

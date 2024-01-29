@@ -20,5 +20,4 @@ public class MistralAiModelCard {
     private String root;
     private String parent;
     private List<MistralAiModelPermission> permission;
-
 }

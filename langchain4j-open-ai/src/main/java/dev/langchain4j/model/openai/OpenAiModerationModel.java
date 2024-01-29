@@ -114,9 +114,20 @@ public class OpenAiModerationModel implements ModerationModel {
     }
 
     public static class OpenAiModerationModelBuilder {
+
         public OpenAiModerationModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiModerationModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder modelName(OpenAiModerationModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }
