@@ -42,7 +42,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: release
-        run: mvn -B --fail-at-end clean deploy -Psign -pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
+        run: mvn -B --fail-at-end clean deploy -Psign -pl langchain4j-ollama #TODO
         env:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
