@@ -62,7 +62,7 @@ class CompressingQueryTransformerIT {
                 ),
                 Arguments.of(
                         VertexAiGeminiChatModel.builder()
-                                .project(System.getenv("GCP_PROJECT"))
+                                .project(System.getenv("GCP_PROJECT_ID"))
                                 .location(System.getenv("GCP_LOCATION"))
                                 .modelName("gemini-pro")
                                 .build()

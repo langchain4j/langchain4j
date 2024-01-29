@@ -9,7 +9,6 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.IOException;
 import java.util.Base64;
@@ -19,20 +18,19 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@EnabledIfEnvironmentVariable(named = "GCP_PROJECT", matches = ".+")
 class VertexAiGeminiChatModelIT {
 
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     ChatLanguageModel model = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-pro")
             .build();
 
     ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-pro-vision")
             .build();
