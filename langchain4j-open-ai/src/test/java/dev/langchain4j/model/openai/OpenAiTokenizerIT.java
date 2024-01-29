@@ -14,7 +14,9 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentest4j.AssertionFailedError;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static dev.ai4j.openai4j.chat.ChatCompletionModel.*;
@@ -33,6 +35,28 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 // TODO use exact model for Tokenizer (the one returned by LLM)
 @Disabled("this test is very long and expensive, we will need to set a schedule for it to run maybe 1 time per month")
 class OpenAiTokenizerIT {
+
+    // my API key does not have access to these models
+    private static final Set<ChatCompletionModel> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
+            GPT_3_5_TURBO_0125,
+            GPT_4_32K,
+            GPT_4_32K_0314,
+            GPT_4_32K_0613
+    ));
+
+    private static final Set<ChatCompletionModel> MODELS_WITHOUT_TOOL_SUPPORT = new HashSet<>(asList(
+            GPT_4_0314,
+            GPT_4_VISION_PREVIEW
+    ));
+
+    private static final Set<ChatCompletionModel> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
+            // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
+            GPT_3_5_TURBO_1106,
+            GPT_3_5_TURBO_0125,
+            GPT_4_TURBO_PREVIEW,
+            GPT_4_1106_PREVIEW,
+            GPT_4_0125_PREVIEW
+    ));
 
     @ParameterizedTest
     @MethodSource
@@ -60,8 +84,7 @@ class OpenAiTokenizerIT {
 
     static Stream<Arguments> should_count_tokens_in_messages() {
         return stream(ChatCompletionModel.values())
-                // I don't have access to these models
-                .filter(model -> model != GPT_4_32K && model != GPT_4_32K_0314 && model != GPT_4_32K_0613)
+                .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
                         arguments(singletonList(systemMessage("Be friendly.")), model),
                         arguments(singletonList(systemMessage("You are a helpful assistant, help the user!")), model),
@@ -125,11 +148,8 @@ class OpenAiTokenizerIT {
 
     static Stream<Arguments> should_count_tokens_in_messages_with_single_tool() {
         return stream(ChatCompletionModel.values())
-                // I don't have access to these models
-                .filter(model -> model != GPT_4_32K && model != GPT_4_32K_0314 && model != GPT_4_32K_0613
-                        && model != GPT_4_0314 // does not support tools
-                        && model != GPT_4_VISION_PREVIEW // does not support tools (yet)
-                )
+                .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
+                .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
 
                         // various tool "name" lengths
@@ -344,8 +364,8 @@ class OpenAiTokenizerIT {
 
     static Stream<Arguments> should_count_tokens_in_messages_with_multiple_tools() {
         return stream(ChatCompletionModel.values())
-                // only these models support parallel tool calling
-                .filter(model -> model == GPT_3_5_TURBO_1106 || model == GPT_4_1106_PREVIEW)
+                .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
+                .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(
 
                         // various tool "name" lengths
@@ -773,10 +793,8 @@ class OpenAiTokenizerIT {
 
     static Stream<Arguments> should_count_tokens_in_tool_specifications() {
         return stream(ChatCompletionModel.values())
-                // I don't have access to these models
-                .filter(model -> model != GPT_4_32K && model != GPT_4_32K_0314 && model != GPT_4_32K_0613
-                        && model != GPT_4_0314 // does not support tools
-                        && model != GPT_4_VISION_PREVIEW) // does not support tools (yet)
+                .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
+                .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
 
                         // "name" of various lengths
@@ -1121,10 +1139,8 @@ class OpenAiTokenizerIT {
 
     static Stream<Arguments> should_count_tokens_in_tool_execution_request() {
         return stream(ChatCompletionModel.values())
-                // I don't have access to these models
-                .filter(model -> model != GPT_4_32K && model != GPT_4_32K_0314 && model != GPT_4_32K_0613
-                        && model != GPT_4_0314 // does not support tools
-                        && model != GPT_4_VISION_PREVIEW) // does not support tools (yet)
+                .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
+                .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
 
                         // no arguments, different lengths of "name"
@@ -1339,8 +1355,8 @@ class OpenAiTokenizerIT {
 
     static Stream<Arguments> should_count_tokens_in_multiple_tool_execution_requests() {
         return stream(ChatCompletionModel.values())
-                // only these models support parallel tool calling
-                .filter(model -> model == GPT_3_5_TURBO_1106 || model == GPT_4_1106_PREVIEW)
+                .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
+                .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(
 
                         // no arguments, different lengths of "name"
