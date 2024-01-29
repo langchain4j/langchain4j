@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class VertexAiImageModelIT {
 
     private static final String ENDPOINT = System.getenv("GCP_VERTEXAI_ENDPOINT");
-    private static final String LOCATION = "us-central1";
-    private static final String PROJECT = "langchain4j";
+    private static final String LOCATION = System.getenv("GCP_LOCATION");
+    private static final String PROJECT = System.getenv("GCP_PROJECT_ID");
     private static final String PUBLISHER = "google";
 
     private static Image fromPath(Path path) {

@@ -160,7 +160,7 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_allow_custom_generativeModel_and_generationConfig() throws Exception {
 
         // given
-        VertexAI vertexAi = new VertexAI("langchain4j", "us-central1");
+        VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
         GenerativeModel generativeModel = new GenerativeModel("gemini-pro", vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
