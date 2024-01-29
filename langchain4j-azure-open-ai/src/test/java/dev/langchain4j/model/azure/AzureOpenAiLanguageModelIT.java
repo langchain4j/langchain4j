@@ -22,6 +22,7 @@ class AzureOpenAiLanguageModelIT {
                 .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName("davinci-002")
+                .temperature(0.0)
                 .maxTokens(10)
                 .logRequestsAndResponses(true)
                 .build();
