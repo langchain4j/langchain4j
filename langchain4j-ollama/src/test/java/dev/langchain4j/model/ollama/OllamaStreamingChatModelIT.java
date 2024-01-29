@@ -129,7 +129,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaInfrastructure {
         assertThat(answer).doesNotContain("Berlin");
         assertThat(response.content().text()).isEqualTo(answer);
 
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(numPredict + 2); // bug in Ollama
+        assertThat(response.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
 
 

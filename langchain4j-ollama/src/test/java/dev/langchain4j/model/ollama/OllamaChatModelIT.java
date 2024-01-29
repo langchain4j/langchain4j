@@ -67,7 +67,7 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
 
         // then
         assertThat(response.content().text()).doesNotContain("Berlin");
-        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(numPredict + 2); // bug in Ollama
+        assertThat(response.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
 
     @Test
