@@ -44,6 +44,8 @@ jobs:
       - name: release
         run: mvn -B --fail-at-end clean deploy -Psign -pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
         env:
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
           COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}

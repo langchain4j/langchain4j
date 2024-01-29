@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
@@ -25,7 +24,6 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_ENDPOINT", matches = ".+")
 public class AzureOpenAiChatModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModelIT.class);
@@ -226,8 +224,11 @@ public class AzureOpenAiChatModelIT {
 
     // WeatherLocation is used for this sample. This describes the parameter of the function you want to use.
     private static class WeatherLocation {
-        @JsonProperty(value = "unit") String unit;
-        @JsonProperty(value = "location") String location;
+        @JsonProperty(value = "unit")
+        String unit;
+        @JsonProperty(value = "location")
+        String location;
+
         @JsonCreator
         WeatherLocation(@JsonProperty(value = "unit") String unit, @JsonProperty(value = "location") String location) {
             this.unit = unit;
