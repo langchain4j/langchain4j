@@ -173,5 +173,7 @@ jobs:
       - name: release_java_21_modules
         run: mvn -B -U --fail-at-end -Psign clean deploy -pl code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
