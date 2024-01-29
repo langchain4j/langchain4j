@@ -32,6 +32,12 @@ jobs:
         with:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
+
       - name: release
         run: mvn -B --fail-at-end clean deploy -Psign -pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
         env:
