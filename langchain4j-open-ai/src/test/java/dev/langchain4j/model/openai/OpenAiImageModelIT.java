@@ -1,31 +1,30 @@
 package dev.langchain4j.model.openai;
 
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_QUALITY_HD;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_RESPONSE_FORMAT_B64_JSON;
-import static dev.ai4j.openai4j.image.ImageModel.DALL_E_SIZE_256_x_256;
-import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
-import java.io.File;
-import java.net.URI;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.net.URI;
+import java.util.List;
+
+import static dev.ai4j.openai4j.image.ImageModel.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiImageModelIT {
 
     Logger log = LoggerFactory.getLogger(OpenAiImageModelIT.class);
 
     OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
-        .builder()
-        .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(DALL_E_2) // so that you pay not much :)
-        .size(DALL_E_SIZE_256_x_256)
-        .logRequests(true)
-        .logResponses(true);
+            .builder()
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(OpenAiModelName.DALL_E_2) // so that you pay not much :)
+            .size(DALL_E_SIZE_256_x_256)
+            .logRequests(true)
+            .logResponses(true);
 
     @Test
     void simple_image_generation_works() {
@@ -71,15 +70,16 @@ class OpenAiImageModelIT {
     @Test
     void image_generation_with_dalle3_works() {
         OpenAiImageModel model = OpenAiImageModel
-            .builder()
-            .apiKey(System.getenv("OPENAI_API_KEY"))
-            .quality(DALL_E_QUALITY_HD)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
+                .builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .quality(DALL_E_QUALITY_HD)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         Response<Image> response = model.generate(
-            "Beautiful house on country side, cowboy plays guitar, dog sitting at the door"
+                "Beautiful house on country side, cowboy plays guitar, dog sitting at the door"
         );
 
         URI remoteImage = response.content().url();
@@ -89,5 +89,29 @@ class OpenAiImageModelIT {
         String revisedPrompt = response.content().revisedPrompt();
         log.info("Your revised prompt: {}", revisedPrompt);
         assertThat(revisedPrompt).hasSizeGreaterThan(50);
+    }
+
+    @Test
+    void should_use_enum_as_model_name() {
+
+        // given
+        OpenAiImageModel model = OpenAiImageModel.builder()
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(OpenAiImageModelName.DALL_E_2)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        String prompt = "Beautiful house on country side";
+
+        // when
+        Response<Image> response = model.generate(prompt);
+        System.out.println(response);
+
+        // then
+        URI remoteImage = response.content().url();
+        log.info("Your remote image is here: {}", remoteImage);
+        assertThat(remoteImage).isNotNull();
     }
 }

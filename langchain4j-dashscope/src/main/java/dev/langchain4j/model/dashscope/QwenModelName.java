@@ -15,5 +15,6 @@ public class QwenModelName {
     public static final String QWEN_VL_MAX = "qwen-vl-max";  // Qwen multi-modal model, offers optimal performance on a wider range of complex tasks.
 
     // Use with QwenEmbeddingModel
-    public static final String TEXT_EMBEDDING_V1 = "text-embedding-v1";
+    public static final String TEXT_EMBEDDING_V1 = "text-embedding-v1";  // Support: en, zh, es, fr, pt, id
+    public static final String TEXT_EMBEDDING_V2 = "text-embedding-v2";  // Support: en, zh, es, fr, pt, id, ja, ko, de, ru
 }

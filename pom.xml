@@ -34,6 +34,7 @@
         <module>langchain4j-zhipu-ai</module>
 
         <!-- embedding stores -->
+        <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
@@ -46,6 +47,7 @@
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
         <module>langchain4j-neo4j</module>
+        <module>langchain4j-vearch</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>

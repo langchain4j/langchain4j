@@ -44,7 +44,8 @@ public class QwenTestHelper {
 
     public static Stream<Arguments> embeddingModelNameProvider() {
         return Stream.of(
-                Arguments.of(QwenModelName.TEXT_EMBEDDING_V1)
+                Arguments.of(QwenModelName.TEXT_EMBEDDING_V1),
+                Arguments.of(QwenModelName.TEXT_EMBEDDING_V2)
         );
     }
 
