@@ -72,6 +72,7 @@ class LanguageModelQueryRouterIT {
         return Stream.of(
                 Arguments.of(
                         OpenAiChatModel.builder()
+                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                                 .logRequests(true)
