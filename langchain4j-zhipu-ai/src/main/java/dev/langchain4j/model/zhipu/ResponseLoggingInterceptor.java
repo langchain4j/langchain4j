@@ -1,16 +1,18 @@
 package dev.langchain4j.model.zhipu;
 
-import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 import static dev.langchain4j.model.zhipu.RequestLoggingInterceptor.inOneLine;
 
-@Slf4j
 class ResponseLoggingInterceptor implements Interceptor {
+
+    private static final Logger log = LoggerFactory.getLogger(ResponseLoggingInterceptor.class);
 
     public Response intercept(Interceptor.Chain chain) throws IOException {
         Request request = chain.request();

@@ -6,9 +6,11 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
+import dev.langchain4j.model.zhipu.chat.ToolChoiceMode;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.spi.ServiceHelper;
-import lombok.Builder;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,17 +26,16 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     private final String baseUrl;
     private final Double temperature;
     private final Double topP;
-    private final ZhipuAiChatModelEnum model;
+    private final String model;
     private final Integer maxToken;
     private final ZhipuAiClient client;
 
-    @Builder
     public ZhipuAiStreamingChatModel(
             String baseUrl,
             String apiKey,
             Double temperature,
             Double topP,
-            ZhipuAiChatModelEnum model,
+            String model,
             Integer maxToken,
             Boolean logRequests,
             Boolean logResponses
@@ -42,7 +43,7 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
         this.baseUrl = getOrDefault(baseUrl, "https://open.bigmodel.cn/");
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
-        this.model = getOrDefault(model, ZhipuAiChatModelEnum.GLM_4);
+        this.model = getOrDefault(model, ChatCompletionModel.GLM_4.toString());
         this.maxToken = getOrDefault(maxToken, 512);
         this.client = ZhipuAiClient.builder()
                 .baseUrl(this.baseUrl)
@@ -73,20 +74,20 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
-        ZhipuAiChatCompletionRequest.ZhipuAiChatCompletionRequestBuilder requestBuilder = ZhipuAiChatCompletionRequest.builder()
+        ChatCompletionRequest.Builder builder = ChatCompletionRequest.builder()
                 .model(this.model)
                 .maxTokens(maxToken)
                 .stream(true)
                 .topP(topP)
                 .temperature(temperature)
-                .toolChoice("auto")
+                .toolChoice(ToolChoiceMode.AUTO)
                 .messages(toZhipuAiMessages(messages));
 
         if (!isNullOrEmpty(toolSpecifications)) {
-            requestBuilder.tools(toTools(toolSpecifications));
+            builder.tools(toTools(toolSpecifications));
         }
 
-        client.streamingChatCompletion(requestBuilder.build(), handler);
+        client.streamingChatCompletion(builder.build(), handler);
     }
 
     @Override
@@ -95,9 +96,60 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static class ZhipuAiStreamingChatModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private Double temperature;
+        private Double topP;
+        private String model;
+        private Integer maxToken;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
         public ZhipuAiStreamingChatModelBuilder() {
-            // This is public so it can be extended
-            // By default with Lombok it becomes package private
+        }
+
+        public ZhipuAiStreamingChatModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder temperature(Double temperature) {
+            this.temperature = temperature;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder topP(Double topP) {
+            this.topP = topP;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder maxToken(Integer maxToken) {
+            this.maxToken = maxToken;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModel build() {
+            return new ZhipuAiStreamingChatModel(this.baseUrl, this.apiKey, this.temperature, this.topP, this.model, this.maxToken, this.logRequests, this.logResponses);
         }
     }
 }

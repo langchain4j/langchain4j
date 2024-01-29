@@ -1,5 +1,9 @@
 package dev.langchain4j.model.zhipu;
 
+import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
+import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
+import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -11,14 +15,14 @@ interface ZhipuAiApi {
 
     @POST("api/paas/v4/chat/completions")
     @Headers({"Content-Type: application/json"})
-    Call<ZhipuAiChatCompletionResponse> chatCompletion(@Body ZhipuAiChatCompletionRequest request);
+    Call<ChatCompletionResponse> chatCompletion(@Body ChatCompletionRequest request);
 
     @Streaming
     @POST("api/paas/v4/chat/completions")
     @Headers({"Content-Type: application/json"})
-    Call<ResponseBody> streamingChatCompletion(@Body ZhipuAiChatCompletionRequest request);
+    Call<ResponseBody> streamingChatCompletion(@Body ChatCompletionRequest request);
 
     @POST("api/paas/v4/embeddings")
     @Headers({"Content-Type: application/json"})
-    Call<ZhipuAiEmbeddingResponse> embeddings(@Body ZhipuAiEmbeddingRequest request);
+    Call<EmbeddingResponse> embeddings(@Body EmbeddingRequest request);
 }

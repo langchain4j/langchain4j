@@ -4,9 +4,10 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
+import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.spi.ServiceHelper;
-import lombok.Builder;
 
 import java.util.List;
 
@@ -14,24 +15,26 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 
+/**
+ * Represents an ZhipuAI embedding model, such as embedding-2.
+ */
 public class ZhipuAiEmbeddingModel implements EmbeddingModel {
 
     private final String baseUrl;
     private final Integer maxRetries;
-    private final ZhipuAiEmbeddingModelEnum model;
+    private final String model;
     private final ZhipuAiClient client;
 
-    @Builder
     public ZhipuAiEmbeddingModel(
             String baseUrl,
             String apiKey,
-            ZhipuAiEmbeddingModelEnum model,
+            String model,
             Integer maxRetries,
             Boolean logRequests,
             Boolean logResponses
     ) {
         this.baseUrl = getOrDefault(baseUrl, "https://open.bigmodel.cn/");
-        this.model = getOrDefault(model, ZhipuAiEmbeddingModelEnum.EMBEDDING_2);
+        this.model = getOrDefault(model, dev.langchain4j.model.zhipu.embedding.EmbeddingModel.EMBEDDING_2.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.client = ZhipuAiClient.builder()
                 .baseUrl(this.baseUrl)
@@ -51,12 +54,12 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        ZhipuAiEmbeddingRequest request = ZhipuAiEmbeddingRequest.builder()
+        EmbeddingRequest request = EmbeddingRequest.builder()
                 .model(this.model)
                 .input(toEmbedTexts(textSegments))
                 .build();
 
-        ZhipuAiEmbeddingResponse response = withRetry(() -> client.embedAll(request), maxRetries);
+        EmbeddingResponse response = withRetry(() -> client.embedAll(request), maxRetries);
 
         return Response.from(
                 toEmbed(response),
@@ -65,9 +68,55 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static class ZhipuAiEmbeddingModelBuilder {
+        private String baseUrl;
+        private String apiKey;
+        private String model;
+        private Integer maxRetries;
+        private Boolean logRequests;
+        private Boolean logResponses;
+
         public ZhipuAiEmbeddingModelBuilder() {
-            // This is public so it can be extended
-            // By default with Lombok it becomes package private
+        }
+
+        public ZhipuAiEmbeddingModelBuilder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public ZhipuAiEmbeddingModelBuilder apiKey(String apiKey) {
+            this.apiKey = apiKey;
+            return this;
+        }
+
+        public ZhipuAiEmbeddingModelBuilder model(String model) {
+            this.model = model;
+            return this;
+        }
+
+        public ZhipuAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
+        public ZhipuAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public ZhipuAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public ZhipuAiEmbeddingModel build() {
+            return new ZhipuAiEmbeddingModel(
+                    this.baseUrl,
+                    this.apiKey,
+                    this.model,
+                    this.maxRetries,
+                    this.logRequests,
+                    this.logResponses
+            );
         }
     }
 }

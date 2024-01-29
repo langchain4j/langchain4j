@@ -9,9 +9,7 @@ class Json {
     public static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
-//                .registerTypeAdapterFactory(MessageTypeAdapter.MESSAGE_TYPE_ADAPTER_FACTORY)
             .create();
-    ;
 
     static String toJson(Object o) {
         return GSON.toJson(o);

@@ -6,12 +6,20 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.extern.slf4j.Slf4j;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionChoice;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
+import dev.langchain4j.model.zhipu.chat.ToolCall;
+import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
+import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
+import dev.langchain4j.model.zhipu.shared.Usage;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -22,8 +30,10 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 
-@Slf4j
 public class ZhipuAiClient {
+
+    private static final Logger log = LoggerFactory.getLogger(ZhipuAiClient.class);
+
     private final String baseUrl;
     private final ZhipuAiApi zhipuAiApi;
     private final OkHttpClient okHttpClient;
@@ -66,9 +76,9 @@ public class ZhipuAiClient {
         return new Builder();
     }
 
-    public ZhipuAiChatCompletionResponse chatCompletion(ZhipuAiChatCompletionRequest request) {
+    public ChatCompletionResponse chatCompletion(ChatCompletionRequest request) {
         try {
-            retrofit2.Response<ZhipuAiChatCompletionResponse> retrofitResponse
+            retrofit2.Response<ChatCompletionResponse> retrofitResponse
                     = zhipuAiApi.chatCompletion(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
@@ -80,9 +90,9 @@ public class ZhipuAiClient {
         }
     }
 
-    public ZhipuAiEmbeddingResponse embedAll(ZhipuAiEmbeddingRequest request) {
+    public EmbeddingResponse embedAll(EmbeddingRequest request) {
         try {
-            retrofit2.Response<ZhipuAiEmbeddingResponse> responseResponse = zhipuAiApi.embeddings(request).execute();
+            retrofit2.Response<EmbeddingResponse> responseResponse = zhipuAiApi.embeddings(request).execute();
             if (responseResponse.isSuccessful()) {
                 return responseResponse.body();
             } else {
@@ -93,7 +103,7 @@ public class ZhipuAiClient {
         }
     }
 
-    void streamingChatCompletion(ZhipuAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
+    void streamingChatCompletion(ChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
             final StringBuffer contentBuilder = new StringBuffer();
             List<ToolExecutionRequest> specifications;
@@ -127,22 +137,22 @@ public class ZhipuAiClient {
                     handler.onComplete(response);
                 } else {
                     try {
-                        ZhipuAiChatCompletionResponse zhipuAiChatCompletionResponse = Json.fromJson(data, ZhipuAiChatCompletionResponse.class);
-                        ZhipuAiChatCompletionChoice zhipuChoice = zhipuAiChatCompletionResponse.getChoices().get(0);
-                        String chunk = zhipuChoice.getDelta().getContent();
+                        ChatCompletionResponse chatCompletionResponse = Json.fromJson(data, ChatCompletionResponse.class);
+                        ChatCompletionChoice zhipuChatCompletionChoice = chatCompletionResponse.getChoices().get(0);
+                        String chunk = zhipuChatCompletionChoice.getDelta().getContent();
                         contentBuilder.append(chunk);
                         handler.onNext(chunk);
-                        ZhipuAiUsage zhipuUsageInfo = zhipuAiChatCompletionResponse.getUsage();
+                        Usage zhipuUsageInfo = chatCompletionResponse.getUsage();
                         if (zhipuUsageInfo != null) {
                             this.tokenUsage = tokenUsageFrom(zhipuUsageInfo);
                         }
 
-                        String finishReasonString = zhipuChoice.getFinishReason();
+                        String finishReasonString = zhipuChatCompletionChoice.getFinishReason();
                         if (finishReasonString != null) {
                             this.finishReason = finishReasonFrom(finishReasonString);
                         }
 
-                        List<ZhipuAiChatCompletionToolCall> toolCalls = zhipuChoice.getDelta().getToolCalls();
+                        List<ToolCall> toolCalls = zhipuChatCompletionChoice.getDelta().getToolCalls();
                         if (!isNullOrEmpty(toolCalls)) {
                             this.specifications = specificationsFrom(toolCalls);
                         }
