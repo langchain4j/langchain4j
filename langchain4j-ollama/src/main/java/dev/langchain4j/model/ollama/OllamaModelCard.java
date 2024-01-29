@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class OllamaModelCard {
+
     private String modelfile;
     private String parameters;
     private String template;

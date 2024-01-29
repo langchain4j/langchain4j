@@ -12,6 +12,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class OllamaModelDetails {
+
     private String format;
     private String family;
     private List<String> families;

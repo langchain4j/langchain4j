@@ -10,6 +10,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 public class OllamaModels {
+
     private final OllamaClient client;
     private final Integer maxRetries;
 

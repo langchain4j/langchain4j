@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class OllamaModel {
+
     private String name;
     private long size;
     private String digest;

@@ -10,5 +10,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 class ShowModelInformationRequest {
+
     private String name;
 }

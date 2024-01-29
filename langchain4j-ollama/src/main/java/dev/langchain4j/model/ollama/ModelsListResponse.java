@@ -12,5 +12,6 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 class ModelsListResponse {
+
     private List<OllamaModel> models;
 }
