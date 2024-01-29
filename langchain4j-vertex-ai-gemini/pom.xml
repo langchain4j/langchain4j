@@ -16,6 +16,10 @@
 
     <name>LangChain4j integration with Google Vertex AI Gemini</name>
 
+    <properties>
+        <disableVertexAiGeminiITs>false</disableVertexAiGeminiITs>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -73,6 +77,18 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${disableVertexAiGeminiITs}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <licenses>
         <license>
