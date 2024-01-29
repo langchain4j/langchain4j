@@ -7,7 +7,9 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -91,5 +93,30 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
     public static OpenAiLanguageModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static OpenAiLanguageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OpenAiLanguageModelBuilderFactory.class,
+                OpenAiLanguageModelBuilder::new
+        );
+    }
+
+    public static class OpenAiLanguageModelBuilder {
+
+        public OpenAiLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+
+        public OpenAiLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
     }
 }
