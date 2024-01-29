@@ -9,7 +9,33 @@ on:
 
 jobs:
 
+  release_core:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 8
+        uses: actions/setup-java@v4
+        with:
+          java-version: '8'
+          distribution: 'temurin'
+          cache: maven
+          server-id: ossrh
+          server-username: OSSRH_USERNAME
+          server-password: OSSRH_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: release_core
+        run: mvn -B -U --fail-at-end -Psign -pl langchain4j-core clean deploy
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+
   release_java_8_modules:
+    needs: release_core
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -42,7 +68,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: release_java_8_modules
-        run: mvn -B --fail-at-end clean deploy -Psign -DdisableOllamaITs=true -DdisableVearchITs=true -DdisableVertexAiGeminiITs=true -pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
+        run: mvn -B -U --fail-at-end -Psign clean deploy -DdisableOllamaITs=true -DdisableVearchITs=true -DdisableVertexAiGeminiITs=true -pl !code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
         env:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
@@ -64,7 +90,7 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
   release_java_11_modules:
-    needs: release_java_8_modules
+    needs: release_core
     runs-on: ubuntu-latest
     steps:
 
@@ -88,14 +114,14 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: release_java_11_modules
-        run: mvn -B --fail-at-end clean deploy -Psign -pl langchain4j-opensearch
+        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-opensearch
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
   release_java_17_modules:
-    needs: release_java_8_modules
+    needs: release_core
     runs-on: ubuntu-latest
     steps:
 
@@ -119,14 +145,14 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: release_java_17_modules
-        run: mvn -B --fail-at-end clean deploy -Psign -pl langchain4j-neo4j
+        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-neo4j
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
   release_java_21_modules:
-    needs: release_java_8_modules
+    needs: release_core
     runs-on: ubuntu-latest
     steps:
 
@@ -145,7 +171,7 @@ jobs:
           gpg-passphrase: GPG_PASSPHRASE
 
       - name: release_java_21_modules
-        run: mvn -B --fail-at-end clean deploy -Psign -pl code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot
+        run: mvn -B -U --fail-at-end -Psign clean deploy -pl code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
