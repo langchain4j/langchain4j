@@ -321,7 +321,7 @@
                 <artifactId>json-path</artifactId>
                 <version>${jsonpath.version}</version>
             </dependency>
-          
+
             <dependency>
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>
@@ -516,6 +516,25 @@
                                     <url>https://github.com/tencentyun/cos-java-sdk-v5</url>
                                 </license>
                             </acceptableLicenses>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>skip-some-integration-tests</id>
+            <modules>
+                <module>../langchain4j-ollama</module>
+                <module>../langchain4j-vearch</module>
+            </modules>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>3.1.2</version>
+                        <configuration>
+                            <skipTests>true</skipTests>
                         </configuration>
                     </plugin>
                 </plugins>
