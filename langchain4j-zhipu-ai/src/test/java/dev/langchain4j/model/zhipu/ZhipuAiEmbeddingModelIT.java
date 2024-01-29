@@ -17,7 +17,7 @@ public class ZhipuAiEmbeddingModelIT {
     private static final String apiKey = System.getenv("ZHIPU_API_KEY");
 
     ZhipuAiEmbeddingModel model = ZhipuAiEmbeddingModel.builder()
-            .apiKey("d2368b1bbcd369c147b44cb8e9e97df6.nInLj4QGlGAAI5eT")
+            .apiKey(apiKey)
             .logRequests(true)
             .logResponses(true)
             .maxRetries(1)

@@ -28,7 +28,7 @@ public class ZhipuAiStreamingChatModelIT {
     private static final String apiKey = System.getenv("ZHIPU_API_KEY");
 
     private ZhipuAiStreamingChatModel model = ZhipuAiStreamingChatModel.builder()
-            .apiKey("d2368b1bbcd369c147b44cb8e9e97df6.nInLj4QGlGAAI5eT")
+            .apiKey(apiKey)
             .logRequests(true)
             .logResponses(true)
             .build();
