@@ -1,15 +1,11 @@
-name: release_open_ai
+name: 3_release_main_module
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-# TODO remove pull_request
 
 jobs:
 
-  release_open_ai:
+  release_main_module:
     runs-on: ubuntu-latest
     steps:
 
@@ -27,8 +23,8 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: release_open_ai
-        run: mvn -B -U --fail-at-end -Psign -pl langchain4j-open-ai clean deploy
+      - name: release_main_module
+        run: mvn -B -U --fail-at-end -Psign -pl langchain4j clean deploy
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}

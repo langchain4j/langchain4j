@@ -1,11 +1,7 @@
-name: release_rest
+name: 4_release_rest
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-# TODO remove pull_request
 
 jobs:
 
@@ -37,7 +33,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: release_rest
-        run: mvn -B -U --fail-at-end -Psign clean deploy -DdisableOllamaITs=true -DdisableVearchITs=true -DdisableVertexAiGeminiITs=true -pl !langchain4j-core,!langchain4j-parent,!langchain4j-open-ai,!langchain4j,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
+        run: mvn -B -U --fail-at-end -Psign clean deploy -DdisableOllamaITs=true -DdisableVearchITs=true -DdisableVertexAiGeminiITs=true -pl !langchain4j-core,!langchain4j-parent,!langchain4j-open-ai,!langchain4j,!langchain4j-local-ai,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j,!langchain4j-opensearch
         env:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
