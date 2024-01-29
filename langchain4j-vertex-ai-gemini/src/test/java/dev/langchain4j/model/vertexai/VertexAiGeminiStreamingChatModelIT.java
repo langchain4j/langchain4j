@@ -105,8 +105,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
-                .project("langchain4j")
-                .location("us-central1")
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
                 .modelName("gemini-pro")
                 .maxOutputTokens(1)
                 .build();
