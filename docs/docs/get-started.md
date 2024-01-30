@@ -20,7 +20,7 @@ java --version
 :::
 ![Java](https://img.shields.io/badge/Java-8_+-blue.svg?style=for-the-badge&labelColor=gray)
 
-Latest version of LangChain4j: 0.26.1
+Latest version of LangChain4j:
 
 ![Maven Central](https://img.shields.io/maven-central/v/dev.langchain4j/langchain4j?style=for-the-badge&labelColor=gray)
 
