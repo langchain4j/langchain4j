@@ -13,7 +13,7 @@
     <artifactId>langchain4j-bedrock</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Amazon Bedrock</name>
+    <name>LangChain4j :: Integration :: Amazon Bedrock</name>
 
     <dependencies>
         <dependency>

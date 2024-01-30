@@ -14,7 +14,7 @@
     <artifactId>langchain4j-local-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with LocalAI</name>
+    <name>LangChain4j :: Integration :: LocalAI</name>
 
     <dependencies>
 

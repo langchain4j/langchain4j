@@ -13,7 +13,7 @@
     <artifactId>langchain4j-cohere</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Cohere</name>
+    <name>LangChain4j :: Integration :: Cohere</name>
 
     <dependencies>
         <dependency>

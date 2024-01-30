@@ -14,7 +14,7 @@
     <artifactId>langchain4j-redis</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Redis</name>
+    <name>LangChain4j :: Integration :: Redis</name>
 
     <dependencies>
 
