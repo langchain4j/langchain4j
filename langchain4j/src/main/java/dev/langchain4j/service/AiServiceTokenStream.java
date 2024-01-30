@@ -75,18 +75,20 @@ public class AiServiceTokenStream implements TokenStream {
         @Override
         public void start() {
 
-            context.streamingChatModel.generate(
-                    messagesToSend,
-                    context.toolSpecifications,
-                    new AiServiceStreamingResponseHandler(
-                            context,
-                            memoryId,
-                            tokenHandler,
-                            completionHandler,
-                            errorHandler,
-                            new TokenUsage()
-                    )
+            AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
+                    context,
+                    memoryId,
+                    tokenHandler,
+                    completionHandler,
+                    errorHandler,
+                    new TokenUsage()
             );
+
+            if (context.toolSpecifications != null) {
+                context.streamingChatModel.generate(messagesToSend, context.toolSpecifications, handler);
+            } else {
+                context.streamingChatModel.generate(messagesToSend, handler);
+            }
         }
     }
 }
