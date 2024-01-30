@@ -21,19 +21,31 @@ This can be achieved thanks to:
     - **Chains** to reduce the need for extensive boilerplate code in common use-cases.
     - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
 
-## Code examples
+## Code Examples
 
-Please see examples of how LangChain4j can be used in `langchain4j-examples` repo:
+Please see examples of how LangChain4j can be used in [langchain4j-examples](https://github.com/langchain4j/langchain4j-examples) repo:
 
 - [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
+- [Examples with Quarkus](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples) (uses [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency)
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
-
-Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency which builds on this project) can be found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
 
 ## Documentation
 Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 
 ## News
+
+30 January:
+ - Support for [Advanced RAG](https://github.com/langchain4j/langchain4j/pull/538).
+Examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
+ - Support for image inputs.
+Currently supported by [OpenAI](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiChatModelExamples.java), Vertex AI Gemini, Ollama and Qwen.
+ - Mistral AI integration by [@czelabueno](https://github.com/czelabueno)
+ - Azure AI Search integration by [@jdubois](https://github.com/jdubois)
+ - Qdrant integration by [@Anush008](https://github.com/Anush008)
+- [And much more](https://github.com/langchain4j/langchain4j/releases/tag/0.26.1)
+
+<details>
+  <summary>Previous News</summary>
 
 22 December:
 - Azure OpenAI:
@@ -136,10 +148,11 @@ Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 1 July:
 
 - [Added "Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java) (support for OpenAI functions)
+</details>
 
 ## Highlights
 
-You can declaratively define concise "AI Services" that are powered by LLMs:
+You can define declarative "AI Services" that are powered by LLMs:
 
 ```java
 interface Assistant {
@@ -206,7 +219,7 @@ Person person = extractor.extractPersonFrom(text);
 // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
 ```
 
-You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
+You can provide tools that LLMs can use! It can be anything: retrieve information from DB, call APIs, etc.
 See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java).
 
 ## Compatibility
@@ -234,8 +247,8 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     ```java
     String apiKey = System.getenv("OPENAI_API_KEY");
     ```
-    You can use the API key "demo" to test OpenAI, which we provide for free.
-    [How to gen an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
+    You can also use the API key `demo` to test OpenAI, which we provide for free.
+    [How to get an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
 
 
 3. Create an instance of a model and start interacting:
@@ -256,14 +269,14 @@ Please note that the library is in active development and:
   now. We hope for your understanding.
 - We need your input! Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need and your concerns about the current implementation.
 
-## Current capabilities:
+## Current features (this list is outdated, we have much more):
 
 - AI Services:
     - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/SimpleServiceExample.java)
     - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
     - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
     - [With Streaming](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
-    - [With Retriever](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
+    - [With RAG](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
     - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
     - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - Integration with [OpenAI](https://platform.openai.com/docs/introduction) and [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) for:
