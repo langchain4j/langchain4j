@@ -2,15 +2,21 @@ package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.ChatRequestMessage;
+import com.azure.ai.openai.models.ChatRequestUserMessage;
+import com.azure.ai.openai.models.CompletionsFinishReason;
+import com.azure.ai.openai.models.FunctionDefinition;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 

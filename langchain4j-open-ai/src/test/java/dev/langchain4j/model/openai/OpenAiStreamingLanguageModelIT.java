@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenAiStreamingLanguageModelIT {
 
     StreamingLanguageModel model = OpenAiStreamingLanguageModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .logRequests(true)
@@ -73,6 +74,7 @@ class OpenAiStreamingLanguageModelIT {
 
         // given
         StreamingLanguageModel model = OpenAiStreamingLanguageModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_INSTRUCT)
