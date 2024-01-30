@@ -64,6 +64,7 @@ class OpenAiTokenizerIT {
 
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .maxTokens(1) // we don't need outputs, let's not waste tokens
@@ -128,6 +129,7 @@ class OpenAiTokenizerIT {
 
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .maxTokens(1) // we don't need outputs, let's not waste tokens
@@ -344,6 +346,7 @@ class OpenAiTokenizerIT {
                                                              ChatCompletionModel modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .maxTokens(1) // we don't need outputs, let's not waste tokens
@@ -770,6 +773,7 @@ class OpenAiTokenizerIT {
                                                     ChatCompletionModel modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .maxTokens(2) // we don't need outputs, let's not waste tokens
@@ -1050,6 +1054,7 @@ class OpenAiTokenizerIT {
                                                        ChatCompletionModel modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .logRequests(true)
@@ -1100,6 +1105,7 @@ class OpenAiTokenizerIT {
                                                                                   ChatCompletionModel modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .logRequests(true)
@@ -1323,6 +1329,7 @@ class OpenAiTokenizerIT {
                                                                  ChatCompletionModel modelName) {
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .modelName(modelName.toString())
                 .logRequests(true)
