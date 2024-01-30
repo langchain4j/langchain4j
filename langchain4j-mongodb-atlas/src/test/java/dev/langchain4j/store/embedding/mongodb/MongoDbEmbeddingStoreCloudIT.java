@@ -11,7 +11,6 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.SneakyThrows;
-import org.apache.commons.compress.utils.Sets;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
@@ -32,7 +31,6 @@ class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
             .databaseName("test_database")
             .collectionName("test_collection")
             .indexName("test_index")
-            .prod(true)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();

@@ -67,10 +67,10 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                                  CreateCollectionOptions createCollectionOptions,
                                  Bson filter,
                                  IndexMapping indexMapping,
-                                 Boolean prod) {
+                                 Boolean createIndex) {
         databaseName = ensureNotNull(databaseName, "databaseName");
         collectionName = ensureNotNull(collectionName, "collectionName");
-        prod = getOrDefault(prod, false);
+        createIndex = getOrDefault(createIndex, false);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.maxResultRatio = getOrDefault(maxResultRatio, 10L);
 
@@ -89,7 +89,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.vectorSearchOptions = filter == null ? vectorSearchOptions() : vectorSearchOptions().filter(filter);
 
         // create index if not exist
-        if (Boolean.FALSE.equals(prod) && !isIndexExist(this.indexName)) {
+        if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
             createIndex(this.indexName, getOrDefault(indexMapping, defaultIndexMapping()));
         }
     }
@@ -114,7 +114,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
          * <p>if true, you need to create index in <a href="https://cloud.mongodb.com/">MongoDB Atlas</a></p>
          * <p>if false, {@link MongoDbEmbeddingStore} will create collection and index automatically</p>
          */
-        private Boolean prod;
+        private Boolean createIndex;
 
         /**
          * Build Mongo Client, Please close the client to release resources after usage
@@ -149,6 +149,19 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * Document query filter, all fields included in filter must be contained in {@link IndexMapping#getMetadataFieldNames()}
+         *
+         * <p>For example:</p>
+         *
+         * <ul>
+         *     <li>AND filter: Filters.and(Filters.in("type", asList("TXT", "md")), Filters.eqFull("test-key", "test-value"))</li>
+         *     <li>OR filter: Filters.or(Filters.in("type", asList("TXT", "md")), Filters.eqFull("test-key", "test-value"))</li>
+         * </ul>
+         *
+         * @param filter document query filter
+         * @return builder
+         */
         public Builder filter(Bson filter) {
             this.filter = filter;
             return this;
@@ -157,7 +170,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * set MongoDB search index fields mapping
          *
-         * <p>if {@link Builder#prod} is true, then indexMapping not work</p>
+         * <p>if {@link Builder#createIndex} is true, then indexMapping not work</p>
          *
          * @param indexMapping MongoDB search index fields mapping
          * @return builder
@@ -170,16 +183,18 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * Set whether in production mode, production mode will not create index automatically
          *
-         * @param prod whether in production mode
+         * <p>default value is false</p>
+         *
+         * @param createIndex whether in production mode
          * @return builder
          */
-        public Builder prod(Boolean prod) {
-            this.prod = prod;
+        public Builder createIndex(Boolean createIndex) {
+            this.createIndex = createIndex;
             return this;
         }
 
         public MongoDbEmbeddingStore build() {
-            return new MongoDbEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping, prod);
+            return new MongoDbEmbeddingStore(mongoClient, databaseName, collectionName, indexName, maxResultRatio, createCollectionOptions, filter, indexMapping, createIndex);
         }
     }
 

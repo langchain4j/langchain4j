@@ -35,12 +35,11 @@ class MappingUtils {
         mapping.append("dynamic", false);
 
         Document fields = new Document();
-        writeText(fields);
         writeEmbedding(indexMapping.getDimension(), fields);
 
         Set<String> metadataFields = indexMapping.getMetadataFieldNames();
         if (metadataFields != null && !metadataFields.isEmpty()) {
-            writeMetadata(fields);
+            writeMetadata(metadataFields, fields);
         }
 
         mapping.append("fields", fields);
@@ -48,27 +47,30 @@ class MappingUtils {
         return new Document("mappings", mapping);
     }
 
-    private static void writeText(Document fields) {
-        Document text = new Document();
-        text.append("dynamic", false);
-        text.append("type", "filter");
-
-        fields.append("text", text);
-    }
-
-    private static void writeMetadata(Document fields) {
+    private static void writeMetadata(Set<String> metadataFields, Document fields) {
         Document metadata = new Document();
         metadata.append("dynamic", false);
-        metadata.append("type", "filter");
+        metadata.append("type", "document");
+
+        Document metadataFieldDoc = new Document();
+        metadataFields.forEach(field -> writeMetadataField(metadataFieldDoc, field));
+
+        metadata.append("fields", metadataFieldDoc);
 
         fields.append("metadata", metadata);
     }
 
+    private static void writeMetadataField(Document metadataFieldDoc, String fieldName) {
+        Document field = new Document();
+        field.append("type", "token");
+        metadataFieldDoc.append(fieldName, field);
+    }
+
     private static void writeEmbedding(int dimensions, Document fields) {
         Document embedding = new Document();
-        embedding.append("numDimensions", dimensions);
+        embedding.append("dimensions", dimensions);
         embedding.append("similarity", "cosine");
-        embedding.append("type", "vector");
+        embedding.append("type", "knnVector");
 
         fields.append("embedding", embedding);
     }
