@@ -13,7 +13,7 @@
     <artifactId>langchain4j-chatglm</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with ChatGLM</name>
+    <name>LangChain4j :: Integration :: ChatGLM</name>
 
     <dependencies>
         <dependency>

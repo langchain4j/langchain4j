@@ -14,7 +14,7 @@
     <artifactId>langchain4j-azure-open-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Azure OpenAI</name>
+    <name>LangChain4j :: Integration :: Azure OpenAI</name>
 
     <dependencies>
 

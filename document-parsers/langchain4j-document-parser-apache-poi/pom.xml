@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-parser-apache-poi</artifactId>
-    <name>LangChain4j Apache POI document parser</name>
+    <name>LangChain4j :: Document parser :: Apache POI</name>
     <packaging>jar</packaging>
 
     <properties>

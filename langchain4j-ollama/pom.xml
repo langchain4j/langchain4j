@@ -13,7 +13,7 @@
     <artifactId>langchain4j-ollama</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Ollama</name>
+    <name>LangChain4j :: Integration :: Ollama</name>
 
     <properties>
         <skipOllamaITs>false</skipOllamaITs>

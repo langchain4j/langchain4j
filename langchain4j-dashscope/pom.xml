@@ -14,7 +14,7 @@
     <artifactId>langchain4j-dashscope</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with DashScope</name>
+    <name>LangChain4j :: Integration :: DashScope</name>
 
     <dependencies>
 

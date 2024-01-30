@@ -8,6 +8,7 @@
     <artifactId>langchain4j-aggregator</artifactId>
     <version>0.27.0-SNAPSHOT</version>
     <packaging>pom</packaging>
+    <name>LangChain4j :: Aggregator</name>
 
     <modules>
 
