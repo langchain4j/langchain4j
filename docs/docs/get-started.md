@@ -20,7 +20,7 @@ java --version
 :::
 ![Java](https://img.shields.io/badge/Java-8_+-blue.svg?style=for-the-badge&labelColor=gray)
 
-Latest version of LangChain4j: 0.25.0
+Latest version of LangChain4j:
 
 ![Maven Central](https://img.shields.io/maven-central/v/dev.langchain4j/langchain4j?style=for-the-badge&labelColor=gray)
 
@@ -76,9 +76,9 @@ public class HelloWorldExample {
                 .withApiKey(ApiKeys.OPENAI_API_KEY);
 
         // Start interacting
-        AiMessage answer = model.sendUserMessage("Hello world!");
+        String answer = model.generate("Hello world!");
 
-        System.out.println(answer.text()); // Hello! How can I assist you today?
+        System.out.println(answer); // Hello! How can I assist you today?
     }
 }
 ```

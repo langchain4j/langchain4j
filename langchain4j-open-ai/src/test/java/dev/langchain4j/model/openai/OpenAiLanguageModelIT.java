@@ -5,12 +5,14 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
+import static dev.langchain4j.model.openai.OpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenAiLanguageModelIT {
 
     LanguageModel model = OpenAiLanguageModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .logRequests(true)
@@ -34,5 +36,25 @@ class OpenAiLanguageModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_use_enum_as_model_name() {
+
+        // given
+        LanguageModel model = OpenAiLanguageModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_3_5_TURBO_INSTRUCT)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        String response = model.generate("What is the capital of Germany?").content();
+
+        // then
+        assertThat(response).containsIgnoringCase("Berlin");
     }
 }

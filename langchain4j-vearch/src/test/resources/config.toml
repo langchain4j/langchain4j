@@ -1,0 +1,86 @@
+[global]
+    # the name will validate join cluster by same name
+    name = "cbdb"
+    # specify which resources to use to create space
+    resource_name = "default"
+    # you data save to disk path ,If you are in a production environment, You'd better set absolute paths
+    data = ["datas/","datas1/"]
+    # log path , If you are in a production environment, You'd better set absolute paths
+    log = "logs/"
+    # default log type for any model
+    level = "debug"
+    # master <-> ps <-> router will use this key to send or receive data
+    signkey = "secret"
+    # skip auth for master and router
+    skip_auth = true
+    # tell Vearch whether it should manage it's own instance of etcd or not
+    self_manage_etcd = false
+    # automatically remove the failed node and recover when new nodes join
+    auto_recover_ps = false
+    # support access etcd basic auth,depend on self_manage_etcd = true
+    support_etcd_auth = false
+    # ensure leader-follow raft data synchronization is consistent
+    raft_consistent = false
+
+# self_manage_etcd = true,means manage etcd by yourself,need provide additional configuration
+[etcd]
+    #etcd server ip or domain
+    address = ["127.0.0.1"]
+    # advertise_client_urls AND listen_client_urls
+    etcd_client_port = 2379
+    # provider username and password,if you turn on auth
+    user_name = "root"
+    password = ""
+
+# if you are master you'd better set all config for router and ps and router and ps use default config it so cool
+[[masters]]
+    #name machine name for cluster
+    name = "m1"
+    #ip or domain
+    address = "127.0.0.1"
+    # api port for http server
+    api_port = 8817
+    # port for etcd server
+    etcd_port = 2378
+    # listen_peer_urls List of comma separated URLs to listen on for peer traffic.
+    # advertise_peer_urls List of this member's peer URLs to advertise to the rest of the cluster. The URLs needed to be a comma-separated list.
+    etcd_peer_port = 2390
+    # List of this member's client URLs to advertise to the public.
+    # The URLs needed to be a comma-separated list.
+    # advertise_client_urls AND listen_client_urls
+    etcd_client_port = 2370
+    # init cluster state
+    cluster_state = "new"
+    pprof_port = 6062
+    # monitor
+    monitor_port = 8818
+
+[router]
+    # port for server
+    port = 9001
+    # rpc_port = 9002
+    pprof_port = 6061
+    plugin_path = "plugin"
+
+[ps]
+    # port for server
+    rpc_port = 8081
+    ps_heartbeat_timeout = 5 #seconds
+    #raft config begin
+    raft_heartbeat_port = 8898
+    raft_replicate_port = 8899
+    heartbeat-interval = 200 #ms
+    raft_retain_logs = 20000000
+    raft_replica_concurrency = 1
+    raft_snap_concurrency = 1
+    raft_truncate_count = 500000
+    #when behind leader this value,will stop the server for search
+    raft_diff_count = 10000
+    # engine config
+    engine_dwpt_num = 8
+    pprof_port = 6060
+    # if set true , this ps only use in db meta config
+    private = false
+    # seconds
+    flush_time_interval = 600
+    flush_count_threshold = 200000

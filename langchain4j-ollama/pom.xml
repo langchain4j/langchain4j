@@ -6,14 +6,18 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-ollama</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Ollama</name>
+    <name>LangChain4j :: Integration :: Ollama</name>
+
+    <properties>
+        <skipOllamaITs>false</skipOllamaITs>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -78,5 +82,17 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipOllamaITs}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

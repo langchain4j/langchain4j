@@ -15,6 +15,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.model.output.FinishReason.*;
@@ -35,6 +36,7 @@ class OpenAiChatModelIT {
             .build();
 
     ChatLanguageModel model = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
@@ -43,6 +45,7 @@ class OpenAiChatModelIT {
             .build();
 
     ChatLanguageModel visionModel = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_VISION_PREVIEW)
@@ -77,6 +80,7 @@ class OpenAiChatModelIT {
 
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .maxTokens(3)
@@ -201,6 +205,7 @@ class OpenAiChatModelIT {
 
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports parallel function calling
@@ -269,6 +274,7 @@ class OpenAiChatModelIT {
         assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
 
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
@@ -375,5 +381,25 @@ class OpenAiChatModelIT {
                 .containsIgnoringCase("dice");
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(189);
+    }
+
+    @Test
+    void should_use_enum_as_model_name() {
+
+        // given
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_3_5_TURBO)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        // when
+        String response = model.generate("What is the capital of Germany?");
+
+        // then
+        assertThat(response).containsIgnoringCase("Berlin");
     }
 }

@@ -3,19 +3,17 @@ package dev.langchain4j.model.vertexai;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@EnabledIfEnvironmentVariable(named = "VERTEXAI_ENDPOINT", matches = ".+")
 class VertexAiLanguageModelIT {
 
     @Test
     void testLanguageModel() {
         VertexAiLanguageModel vertexAiLanguageModel = VertexAiLanguageModel.builder()
-                .endpoint(System.getenv("VERTEXAI_ENDPOINT"))
-                .project("langchain4j")
-                .location("us-central1")
+                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
                 .publisher("google")
                 .modelName("text-bison@001")
                 .temperature(0.2)

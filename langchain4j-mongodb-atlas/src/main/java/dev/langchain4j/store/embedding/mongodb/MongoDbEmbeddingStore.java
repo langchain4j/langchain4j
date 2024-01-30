@@ -150,7 +150,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * Document query filter, all fields included in filter must be contained in {@link IndexMapping#getMetadataFieldNames()}
+         * Document query filter, all fields included in filter must be contained in {@link IndexMapping#metadataFieldNames}
          *
          * <p>For example:</p>
          *

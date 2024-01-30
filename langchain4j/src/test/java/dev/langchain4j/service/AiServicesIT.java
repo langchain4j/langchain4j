@@ -55,6 +55,7 @@ public class AiServicesIT {
 
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
@@ -67,6 +68,7 @@ public class AiServicesIT {
 
     @Spy
     ModerationModel moderationModel = OpenAiModerationModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .build();
@@ -240,6 +242,7 @@ public class AiServicesIT {
     void should_extract_custom_POJO_with_explicit_json_response_format() {
 
         ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
@@ -882,6 +885,7 @@ public class AiServicesIT {
         Calculator calculator = spy(new Calculator());
 
         ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106)

@@ -117,7 +117,7 @@ class QwenHelper {
                     // or do so upon system reboot.
                     imageContent = saveImageAsTemporaryFile(image.base64Data(), image.mimeType());
 
-                    // In this case, the dashscope sdk requires a writable map.
+                    // In this case, the dashscope sdk requires a mutable map.
                     HashMap<String, Object> contentMap = new HashMap<>(1);
                     contentMap.put("image", imageContent);
                     return contentMap;
