@@ -1,11 +1,11 @@
-name: 8_release_graalvm
+name: release_8_graalvm
 
 on:
   workflow_dispatch:
 
 jobs:
 
-  release_graalvm:
+  release_8_graalvm:
     runs-on: ubuntu-latest
     steps:
 
@@ -23,7 +23,7 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: release_graalvm
+      - name: release_8_graalvm
         run: mvn -B -U --fail-at-end -Psign clean deploy -pl code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

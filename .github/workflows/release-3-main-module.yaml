@@ -1,11 +1,11 @@
-name: 3_release_main_module
+name: release_3_main_module
 
 on:
   workflow_dispatch:
 
 jobs:
 
-  release_main_module:
+  release_3_main_module:
     runs-on: ubuntu-latest
     steps:
 
@@ -23,7 +23,7 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: release_main_module
+      - name: release_3_main_module
         run: mvn -B -U --fail-at-end -Psign -pl langchain4j clean deploy
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

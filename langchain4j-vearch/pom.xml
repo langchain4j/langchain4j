@@ -16,7 +16,7 @@
     <name>LangChain4j integration with Vearch</name>
 
     <properties>
-        <disableVearchITs>false</disableVearchITs>
+        <skipVearchITs>false</skipVearchITs>
     </properties>
 
     <dependencies>
@@ -108,7 +108,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration>
-                    <skipTests>${disableVearchITs}</skipTests>
+                    <skipTests>${skipVearchITs}</skipTests>
                 </configuration>
             </plugin>
         </plugins>

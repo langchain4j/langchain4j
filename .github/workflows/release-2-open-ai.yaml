@@ -1,11 +1,11 @@
-name: 4_release_local_ai
+name: release_2_open_ai
 
 on:
   workflow_dispatch:
 
 jobs:
 
-  release_local_ai:
+  release_2_open_ai:
     runs-on: ubuntu-latest
     steps:
 
@@ -23,14 +23,11 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: Setup Testcontainers Cloud Client
-        uses: atomicjar/testcontainers-cloud-setup-action@v1
-        with:
-          token: ${{ secrets.TC_CLOUD_TOKEN }}
-
-      - name: release_local_ai
-        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-local-ai
+      - name: release_2_open_ai
+        run: mvn -B -U --fail-at-end -Psign -pl langchain4j-open-ai clean deploy
         env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
