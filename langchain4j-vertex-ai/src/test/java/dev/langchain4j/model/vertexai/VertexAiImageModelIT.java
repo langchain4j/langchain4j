@@ -3,7 +3,6 @@ package dev.langchain4j.model.vertexai;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,12 +19,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@EnabledIfEnvironmentVariable(named = "VERTEXAI_ENDPOINT", matches = ".+")
 public class VertexAiImageModelIT {
 
-    private static final String ENDPOINT = System.getenv("VERTEXAI_ENDPOINT");
-    private static final String LOCATION = "us-central1";
-    private static final String PROJECT = "langchain4j";
+    private static final String ENDPOINT = System.getenv("GCP_VERTEXAI_ENDPOINT");
+    private static final String LOCATION = System.getenv("GCP_LOCATION");
+    private static final String PROJECT = System.getenv("GCP_PROJECT_ID");
     private static final String PUBLISHER = "google";
 
     private static Image fromPath(Path path) {

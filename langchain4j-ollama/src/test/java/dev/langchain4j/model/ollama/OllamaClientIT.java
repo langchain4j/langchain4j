@@ -6,7 +6,7 @@ import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaClientTest extends AbstractOllamaInfrastructure {
+class OllamaClientIT extends AbstractOllamaInfrastructure {
 
     @Test
     void should_respond_with_models_list() {

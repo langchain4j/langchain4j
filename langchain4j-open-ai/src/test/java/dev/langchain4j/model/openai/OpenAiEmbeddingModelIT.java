@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenAiEmbeddingModelIT {
 
     EmbeddingModel model = OpenAiEmbeddingModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .logRequests(true)
@@ -76,6 +77,7 @@ class OpenAiEmbeddingModelIT {
         int dimensions = 42;
 
         EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("text-embedding-3-small")
@@ -106,6 +108,7 @@ class OpenAiEmbeddingModelIT {
 
         // given
         EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(TEXT_EMBEDDING_3_SMALL)
