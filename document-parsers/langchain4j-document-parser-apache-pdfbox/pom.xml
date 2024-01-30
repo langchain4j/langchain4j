@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
-    <name>LangChain4j Apache PDFBox document parser</name>
+    <name>LangChain4j :: Document parser :: Apache PDFBox</name>
     <packaging>jar</packaging>
 
     <dependencies>

@@ -14,7 +14,7 @@
     <artifactId>langchain4j-weaviate</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Weaviate</name>
+    <name>LangChain4j :: Integration :: Weaviate</name>
     <description>Uses io.weaviate.client library which has a BSD 3-Clause license:
         https://github.com/weaviate/java-client/blob/main/LICENSE
     </description>

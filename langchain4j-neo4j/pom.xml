@@ -14,7 +14,7 @@
     <artifactId>langchain4j-neo4j</artifactId>
     
     <packaging>jar</packaging>
-    <name>LangChain4j integration with Neo4j Vector Index</name>
+    <name>LangChain4j :: Integration :: Neo4j Vector Index</name>
 
     <description>Requires Java 17</description>
 

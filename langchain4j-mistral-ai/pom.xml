@@ -12,7 +12,7 @@
     <artifactId>langchain4j-mistral-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with MistralAI</name>
+    <name>LangChain4j :: Integration :: MistralAI</name>
 
     <dependencies>
 
