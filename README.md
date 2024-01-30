@@ -32,6 +32,9 @@ Please see examples of how LangChain4j can be used in [langchain4j-examples](htt
 ## Documentation
 Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 
+## Tutorials
+Tutorials can be found [here](https://langchain4j.github.io/langchain4j/docs/tutorials).
+
 ## News
 
 30 January:
@@ -39,9 +42,9 @@ Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 Examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
  - Support for image inputs.
 Currently supported by [OpenAI](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiChatModelExamples.java), Vertex AI Gemini, Ollama and Qwen.
- - Mistral AI integration by [@czelabueno](https://github.com/czelabueno)
- - Azure AI Search integration by [@jdubois](https://github.com/jdubois)
- - Qdrant integration by [@Anush008](https://github.com/Anush008)
+ - [Mistral AI](https://mistral.ai/) [integration](https://github.com/langchain4j/langchain4j-examples/blob/main/mistral-ai-examples/src/main/java/MistralAiChatModelExamples.java) by [@czelabueno](https://github.com/czelabueno)
+ - [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) integration by [@jdubois](https://github.com/jdubois)
+ - [Qdrant](https://qdrant.tech/) integration by [@Anush008](https://github.com/Anush008)
 - [And much more](https://github.com/langchain4j/langchain4j/releases/tag/0.26.1)
 
 <details>
