@@ -14,7 +14,7 @@
     <artifactId>langchain4j-vespa</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Vespa</name>
+    <name>LangChain4j :: Integration :: Vespa</name>
     <description>
         Vespa is a fully featured search engine and vector database.
         Integration with LangChain4j uses:

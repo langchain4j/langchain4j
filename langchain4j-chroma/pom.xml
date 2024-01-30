@@ -14,7 +14,7 @@
     <artifactId>langchain4j-chroma</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Chroma</name>
+    <name>LangChain4j :: Integration :: Chroma</name>
 
     <dependencies>
 

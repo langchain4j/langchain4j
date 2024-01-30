@@ -9,7 +9,7 @@
     <version>0.27.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>langchain4j parent POM</name>
+    <name>LangChain4j :: Parent POM</name>
     <description>Parent POM for langchain4j submodules</description>
     <url>https://github.com/langchain4j/langchain4j</url>
 

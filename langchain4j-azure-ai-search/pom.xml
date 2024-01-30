@@ -14,7 +14,7 @@
     <artifactId>langchain4j-azure-ai-search</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Azure AI Search</name>
+    <name>LangChain4j :: Integration :: Azure AI Search</name>
 
     <dependencies>
 

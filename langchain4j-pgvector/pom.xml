@@ -20,7 +20,7 @@
     <artifactId>langchain4j-pgvector</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with PGVector</name>
+    <name>LangChain4j :: Integration :: PGVector</name>
     <description>It uses the pgvector-java library</description>
 
     <dependencies>

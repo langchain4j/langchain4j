@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-pinecone</artifactId>
-    <name>LangChain4j integration with Pinecone</name>
+    <name>LangChain4j :: Integration :: Pinecone</name>
     <packaging>jar</packaging>
 
     <dependencies>

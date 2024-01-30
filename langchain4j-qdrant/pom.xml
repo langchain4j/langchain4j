@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-qdrant</artifactId>
-    <name>LangChain4j integration with Qdrant</name>
+    <name>LangChain4j :: Integration :: Qdrant</name>
     <packaging>jar</packaging>
 
     <dependencies>
