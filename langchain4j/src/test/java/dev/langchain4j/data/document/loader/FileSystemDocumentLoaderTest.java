@@ -71,7 +71,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                 "test-file-utf8.txt"
         );
 
-        assertThat(loadDocuments(resourceDirectory.toString(), new TextDocumentParser())).isEqualTo(documents);
+        assertThat(loadDocuments(resourceDirectory.toString(), new TextDocumentParser()))
+                .isEqualTo(documents);
 
         // Silently skips documents that fail to load.
         DocumentParser failFirstParser = new DocumentParser() {
@@ -87,7 +88,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
             }
         };
 
-        assertThat(loadDocuments(resourceDirectory, failFirstParser)).hasSize(2);
+        assertThat(loadDocuments(resourceDirectory, failFirstParser))
+                .hasSize(documents.size() - 1);
     }
 
     private Path toPath(String fileName) {
