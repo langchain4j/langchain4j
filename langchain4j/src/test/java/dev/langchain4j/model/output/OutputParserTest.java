@@ -189,8 +189,8 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo(parser.parse("12:34:56"))
                 .isEqualTo(LocalTime.of(12, 34, 56));
 
-        assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> parser.parse("12:34:56.789"));
+        assertThat(parser.parse("12:34:56.789"))
+                .isEqualTo(LocalTime.of(12, 34, 56, 789_000_000));
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> parser.parse("red"));
