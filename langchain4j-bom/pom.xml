@@ -6,14 +6,14 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-bom</artifactId>
     <packaging>pom</packaging>
 
-    <name>LangChain4j BOM</name>
+    <name>LangChain4j :: BOM</name>
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <dependencyManagement>
@@ -77,6 +77,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-qianfan</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -90,6 +96,18 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-chatglm</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-mistral-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+          
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-cohere</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -139,6 +157,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-qdrant</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-redis</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -158,6 +182,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-neo4j</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-vearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -183,6 +213,18 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-loader-github</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-loader-azure-storage-blob</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- document parsers -->
 
             <dependency>
@@ -196,6 +238,7 @@
                 <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
 
         </dependencies>
     </dependencyManagement>

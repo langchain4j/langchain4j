@@ -108,6 +108,7 @@ public class OllamaStreamingChatExample {
       .withExposedPorts(PORT);
 
   public static void main(String[] args) {
+    ollama.start();
     StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
         .baseUrl(String.format("http://%s:%d", ollama.getHost(), ollama.getMappedPort(PORT)))
         .modelName(MODEL_NAME)
@@ -136,6 +137,7 @@ public class OllamaStreamingChatExample {
     });
 
     futureResponse.join();
+    ollama.stop();
   }
 }
 ```

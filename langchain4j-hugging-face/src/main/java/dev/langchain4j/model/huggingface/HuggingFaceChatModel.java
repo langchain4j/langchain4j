@@ -3,13 +3,11 @@ package dev.langchain4j.model.huggingface;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
-import dev.langchain4j.model.huggingface.client.Options;
-import dev.langchain4j.model.huggingface.client.Parameters;
-import dev.langchain4j.model.huggingface.client.TextGenerationRequest;
-import dev.langchain4j.model.huggingface.client.TextGenerationResponse;
+import dev.langchain4j.model.huggingface.client.*;
+import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.List;
@@ -89,7 +87,10 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     public static Builder builder() {
-        return new Builder();
+        return ServiceHelper.loadFactoryService(
+                HuggingFaceChatModelBuilderFactory.class,
+                Builder::new
+        );
     }
 
     public static final class Builder {

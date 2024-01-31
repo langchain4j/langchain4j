@@ -5,15 +5,14 @@ import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.dashscope.spi.QwenEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.DOCUMENT;
@@ -35,7 +34,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
         if (Utils.isNullOrBlank(apiKey)) {
             throw new IllegalArgumentException("DashScope api key must be defined. It can be generated here: https://dashscope.console.aliyun.com/apiKey");
         }
-        this.modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.TEXT_EMBEDDING_V1 : modelName;
+        this.modelName = Utils.isNullOrBlank(modelName) ? QwenModelName.TEXT_EMBEDDING_V2 : modelName;
         this.apiKey = apiKey;
         this.embedding = new TextEmbedding();
     }
@@ -44,16 +43,14 @@ public class QwenEmbeddingModel implements EmbeddingModel {
         return textSegments.stream()
                 .map(TextSegment::metadata)
                 .map(metadata -> metadata.get(TYPE_KEY))
-                .filter(TYPE_DOCUMENT::equalsIgnoreCase)
-                .anyMatch(Utils::isNullOrBlank);
+                .anyMatch(TYPE_DOCUMENT::equalsIgnoreCase);
     }
 
     private boolean containsQueries(List<TextSegment> textSegments) {
         return textSegments.stream()
                 .map(TextSegment::metadata)
                 .map(metadata -> metadata.get(TYPE_KEY))
-                .filter(TYPE_QUERY::equalsIgnoreCase)
-                .anyMatch(Utils::isNullOrBlank);
+                .anyMatch(TYPE_QUERY::equalsIgnoreCase);
     }
 
     private Response<List<Embedding>> embedTexts(List<TextSegment> textSegments, TextEmbeddingParam.TextType textType) {
@@ -74,6 +71,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                     .map(TextEmbeddingOutput::getEmbeddings)
                     .orElse(Collections.emptyList())
                     .stream()
+                    .sorted(Comparator.comparing(TextEmbeddingResultItem::getTextIndex))
                     .map(TextEmbeddingResultItem::getEmbedding)
                     .map(doubleList -> doubleList.stream().map(Double::floatValue).collect(Collectors.toList()))
                     .map(Embedding::from)
@@ -118,6 +116,20 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 }
                 return Response.from(embeddings, new TokenUsage(tokens));
             }
+        }
+    }
+
+    public static QwenEmbeddingModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                QwenEmbeddingModelBuilderFactory.class,
+                QwenEmbeddingModelBuilder::new
+        );
+    }
+
+    public static class QwenEmbeddingModelBuilder {
+        public QwenEmbeddingModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }

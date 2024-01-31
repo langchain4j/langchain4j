@@ -1,7 +1,7 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -14,18 +14,26 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
+import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
-import java.lang.reflect.*;
-import java.util.*;
-import java.util.concurrent.*;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static java.util.stream.Collectors.joining;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -38,7 +46,7 @@ import static java.util.stream.Collectors.toList;
  * - Prompt templates for user and system messages using {@link UserMessage} and {@link SystemMessage}
  * - Structured prompts as method arguments (see {@link StructuredPrompt})
  * - Shared or per-user (see {@link MemoryId}) chat memory
- * - Retrievers
+ * - RAG (see {@link RetrievalAugmentor})
  * - Tools (see {@link Tool})
  * - Various return types (output parsers), see below
  * - Streaming (use {@link TokenStream} as a return type)
@@ -153,12 +161,10 @@ public abstract class AiServices<T> {
      */
     public static <T> AiServices<T> builder(Class<T> aiService) {
         AiServiceContext context = new AiServiceContext(aiService);
-        Collection<AiServicesFactory> aiServicesFactories = ServiceHelper.loadFactories(AiServicesFactory.class);
-        for (AiServicesFactory factory : aiServicesFactories) {
-            return factory.create(context);
-        }
-        // fallback to default
-        return new DefaultAiServices<>(context);
+        return ServiceHelper.loadFactoryService(
+                AiServicesFactory.class,
+                f -> f.create(context),
+                () -> new DefaultAiServices<>(context));
     }
 
     /**
@@ -292,11 +298,10 @@ public abstract class AiServices<T> {
         return this;
     }
 
-    // TODO separate retriever per user
-    // TODO way to configure custom prompt with original message and context
-    // TODO callback to transform/filter retrieved segments
-
     /**
+     * Deprecated. Use {@link #contentRetriever(ContentRetriever)}
+     * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
+     * <br>
      * Configures a retriever that will be invoked on every method call to fetch relevant information
      * related to the current user message from an underlying source (e.g., embedding store).
      * This relevant information is automatically injected into the message sent to the LLM.
@@ -304,8 +309,42 @@ public abstract class AiServices<T> {
      * @param retriever The retriever to be used by the AI Service.
      * @return builder
      */
+    @Deprecated
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
-        context.retriever = retriever;
+        if (retriever != null) {
+            return contentRetriever(retriever.toContentRetriever());
+        }
+        return this;
+    }
+
+    /**
+     * Configures a content retriever to be invoked on every method call for retrieving relevant content
+     * related to the user's message from an underlying data source
+     * (e.g., an embedding store in the case of an {@link EmbeddingStoreContentRetriever}).
+     * The retrieved relevant content is then automatically incorporated into the message sent to the LLM.
+     * <br>
+     * This method provides a straightforward approach for those who do not require
+     * a customized {@link RetrievalAugmentor}.
+     * It configures a {@link DefaultRetrievalAugmentor} with the provided {@link ContentRetriever}.
+     *
+     * @param contentRetriever The content retriever to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
+        context.retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .contentRetriever(ensureNotNull(contentRetriever, "contentRetriever"))
+                .build();
+        return this;
+    }
+
+    /**
+     * Configures a retrieval augmentor to be invoked on every method call.
+     *
+     * @param retrievalAugmentor The retrieval augmentor to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
+        context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
         return this;
     }
 
