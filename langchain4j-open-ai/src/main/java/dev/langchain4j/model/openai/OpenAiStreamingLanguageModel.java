@@ -113,9 +113,20 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     public static class OpenAiStreamingLanguageModelBuilder {
+
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiStreamingLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

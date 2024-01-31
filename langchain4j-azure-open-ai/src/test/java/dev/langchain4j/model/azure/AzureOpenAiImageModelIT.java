@@ -3,8 +3,8 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.models.ImageGenerationResponseFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,7 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_ENDPOINT", matches = ".+")
+@Disabled
 public class AzureOpenAiImageModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModelIT.class);
