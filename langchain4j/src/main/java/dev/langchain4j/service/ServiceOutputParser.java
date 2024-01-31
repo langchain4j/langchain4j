@@ -186,7 +186,7 @@ public class ServiceOutputParser {
             case "java.time.LocalDateTime":
                 return "date-time string (2023-12-31T23:59:59)";
             default:
-                return type.getTypeName();
+                return jsonStructure((Class<?>) type);
         }
     }
 }
