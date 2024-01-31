@@ -76,13 +76,9 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo(parser.parse("2020-01-12"))
                 .isEqualTo(new Date(120, Calendar.JANUARY, 12));
 
-        // TODO: this is a bug; we silently miss-parses alternate formats.
-        assertThat(parser.parse("01-12-2020"))
-                .isInstanceOf(Date.class)
-                .hasYear(7);
-
         assertThatExceptionOfType(RuntimeException.class)
-                .isThrownBy(() -> parser.parse("red"));
+                .isThrownBy(() -> parser.parse("01-12-2020"))
+                .withMessage("Invalid date format: 01-12-2020");
     }
 
     @Test
@@ -109,16 +105,18 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("one of [A, B, C]");
 
         assertThat(parser.parse("A"))
+                .isEqualTo(parser.parse("a"))
                 .isEqualTo(Enum.A);
         assertThat(parser.parse("B"))
+                .isEqualTo(parser.parse("b"))
                 .isEqualTo(Enum.B);
         assertThat(parser.parse("C"))
+                .isEqualTo(parser.parse("c"))
                 .isEqualTo(Enum.C);
 
-        // TODO: potential bugs?
-        assertThat(parser.parse("D"))
-                .isEqualTo(parser.parse("a"))
-                .isNull();
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> parser.parse("D"))
+                .withMessage("Unknown enum value: D");
     }
 
     @Test
