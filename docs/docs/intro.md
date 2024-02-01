@@ -43,7 +43,7 @@ For easier integration, LangChain4j also includes integration with
 Quarkus ([extension](https://quarkus.io/extensions/io.quarkiverse.langchain4j/quarkus-langchain4j-core))
 and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
 
-### LangChain4j Structure
+### Library Structure
 LangChain4j features a modular design, comprising:
 - The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like `ChatMemory`, `OutputParser` as well as a high-level features like `AiServices`.
