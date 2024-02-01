@@ -3,23 +3,41 @@
 [![](https://img.shields.io/twitter/follow/langchain4j)](https://twitter.com/intent/follow?screen_name=langchain4j)
 [![](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?compact=true&style=flat)](https://discord.gg/JzTFvyjG6R)
 
-## Project goals
+## Introduction
 
-The goal of this project is to simplify the integration of AI/LLM capabilities into your Java application.
+Welcome!
 
-This can be achieved thanks to:
+The goal of LangChain4j is to simplify integrating AI/LLM capabilities into Java applications.
 
-- **A simple and coherent layer of abstractions**, designed to ensure that your code does not depend on concrete implementations such as LLM providers, embedding store providers, etc. This allows for easy swapping of components.
-- **Numerous implementations of the above-mentioned abstractions**, providing you with a variety of LLMs and embedding stores to choose from.
-- **Range of in-demand features on top of LLMs, such as:**
-    - The capability to **ingest your own data** (documentation, codebase, etc.), allowing the LLM to act and respond based on your data.
-    - **Autonomous agents** for delegating tasks (defined on the fly) to the LLM, which will strive to complete them.
-    - **Prompt templates** to help you achieve the highest possible quality of LLM responses.
-    - **Memory** to provide context to the LLM for your current and past conversations.
-    - **Structured outputs** for receiving responses from the LLM with a desired structure as Java POJOs.
-    - **"AI Services"** for declaratively defining complex AI behavior behind a simple API.
-    - **Chains** to reduce the need for extensive boilerplate code in common use-cases.
-    - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
+Here's how:
+1. **Unified APIs:**
+   LLM providers (like OpenAI, Google Vertex AI) and Vector Stores (such as Pinecone, Vespa)
+   use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each. To experiment with a different LLM or Vector Store, you can easily switch between them without the need to rewrite your code. LangChain4j currently supports over 10 popular LLM providers and more than 15 embedding stores.
+   Think of it as a Hibernate, but for LLMs and Vector Stores.
+2. **Comprehensive Toolbox:**
+   In the past year, the community has created numerous LLM-powered applications,
+   identifying common patterns and techniques. LangChain4j has refined these into practical code.
+   Our toolbox includes tools ranging from low-level prompt templating, memory management, and output parsing
+   to high-level patterns like Agents and RAGs.
+   For each pattern, we provide an interface along with multiple ready-to-use implementations based on proven techniques.
+   Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
+   LangChain4j offers a wide variety of options.
+3. **Numerous Examples:**
+   These [examples](https://github.com/langchain4j/langchain4j-examples) showcase how to begin creating various LLM-powered applications,
+   providing inspiration and enabling you to start building quickly.
+
+LangChain4j began development in early 2023 amid the ChatGPT hype.
+We noticed a lack of Java counterparts to the numerous Python and JavaScript LLM libraries and frameworks.
+Although "LangChain" is in our name, the project is a fusion of ideas and concepts from LangChain, Haystack,
+LlamaIndex, and the broader community, spiced up with a touch of our own innovation.
+
+We actively monitor community developments, aiming to quickly incorporate new techniques and integrations, ensuring you stay up-to-date.
+The library is under active development. While some features from the Python version of LangChain
+are still being worked on, the core functionality is in place, allowing you to start building LLM-powered apps now!
+
+For easier integration, LangChain4j also includes compatibility with
+Quarkus ([extension](https://quarkus.io/extensions/io.quarkiverse.langchain4j/quarkus-langchain4j-core))
+and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
 
 ## Code Examples
 
@@ -34,6 +52,14 @@ Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 
 ## Tutorials
 Tutorials can be found [here](https://langchain4j.github.io/langchain4j/docs/tutorials).
+
+## Library Structure
+LangChain4j features a modular design, comprising:
+- The `langchain4j-core` module, which defines core building blocks and their interfaces.
+- The `langchain4j` module, containing common functionalities and implementations of high-level abstractions like AI Services.
+- A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and Vector Stores into LangChain4j.
+  You can use the `langchain4j-xyz` modules independently. For additional features, simply import the `langchain4j` dependency.
+
 
 ## News
 
