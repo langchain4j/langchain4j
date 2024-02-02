@@ -13,7 +13,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class NomicEmbeddingModelTest {
+class NomicEmbeddingModelIT {
 
     @Test
     void should_embed_single_text() {
