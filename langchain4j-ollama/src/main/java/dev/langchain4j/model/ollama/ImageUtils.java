@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 class ImageUtils {
+
     private static final List<String> SUPPORTED_URL_SCHEMES = Arrays.asList("http", "https", "file");
 
     static List<String> base64EncodeImageList(List<ImageContent> contentList) {

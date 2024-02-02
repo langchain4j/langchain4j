@@ -4,7 +4,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chatglm.spi.ChatGlmChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -80,5 +82,19 @@ public class ChatGlmChatModel implements ChatLanguageModel {
 
     private boolean containsSystemMessage(List<ChatMessage> messages) {
         return messages.stream().anyMatch(message -> message.type() == ChatMessageType.SYSTEM);
+    }
+
+    public static ChatGlmChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                ChatGlmChatModelBuilderFactory.class,
+                ChatGlmChatModelBuilder::new
+        );
+    }
+
+    public static class ChatGlmChatModelBuilder {
+        public ChatGlmChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

@@ -5,7 +5,9 @@ import dev.ai4j.openai4j.image.GenerateImagesRequest;
 import dev.ai4j.openai4j.image.GenerateImagesResponse;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import lombok.NonNull;
 
@@ -120,7 +122,28 @@ public class OpenAiImageModel implements ImageModel {
         );
     }
 
+    public static OpenAiImageModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OpenAiImageModelBuilderFactory.class,
+                OpenAiImageModelBuilder::new
+        );
+    }
+
     public static class OpenAiImageModelBuilder {
+        public OpenAiImageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+
+        public OpenAiImageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder modelName(OpenAiImageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
 
         public OpenAiImageModelBuilder withPersisting() {
             return withPersisting(true);

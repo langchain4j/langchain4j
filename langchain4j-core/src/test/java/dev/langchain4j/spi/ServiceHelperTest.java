@@ -52,4 +52,13 @@ class ServiceHelperTest implements WithAssertions {
 
         assertThat(ServiceHelper.loadFactories(ServiceWithNoProviders.class)).isEmpty();
     }
+
+    @Test
+    void test_supplierServices() {
+        assertThat(ServiceHelper.loadFactoryService(SupplierService.class, () -> "Not found"))
+                .isEqualTo("Hello world!");
+
+        assertThat(ServiceHelper.loadFactoryService(SupplierServiceNotFound.class, () -> "Not found"))
+                .isEqualTo("Not found");
+    }
 }

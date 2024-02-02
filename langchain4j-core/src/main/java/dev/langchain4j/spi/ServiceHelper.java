@@ -48,6 +48,23 @@ public class ServiceHelper {
     }
 
     /**
+     * Load a service provided by a service factory where the factory is itself a {@link Supplier}.
+     *
+     * @param factoryClass The type of service factory.
+     * @param defaultBuilder if no factory is found, build the service.
+     * @return the service.
+     * @param <T> the type of service.
+     * @param <F> the type of service factory
+     */
+    public static <T, F extends Supplier<T>> T loadFactoryService(Class<F> factoryClass, Supplier<T> defaultBuilder) {
+        for (F factory : loadFactories(factoryClass)) {
+            return factory.get();
+        }
+
+        return defaultBuilder.get();
+    }
+
+    /**
      * Load all the services of a given type.
      *
      * @param clazz the type of service

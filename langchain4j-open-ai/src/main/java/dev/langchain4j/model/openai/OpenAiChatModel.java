@@ -9,7 +9,9 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -159,5 +161,30 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     public static OpenAiChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static OpenAiChatModelBuilder builder() {
+        return ServiceHelper.loadFactoryService(
+                OpenAiChatModelBuilderFactory.class,
+                OpenAiChatModelBuilder::new
+        );
+    }
+
+    public static class OpenAiChatModelBuilder {
+
+        public OpenAiChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+
+        public OpenAiChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder modelName(OpenAiChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
     }
 }
