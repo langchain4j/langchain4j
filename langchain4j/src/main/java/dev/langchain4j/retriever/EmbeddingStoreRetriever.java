@@ -1,12 +1,10 @@
 package dev.langchain4j.retriever;
 
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
 
 import java.util.List;
 import java.util.Objects;
@@ -14,10 +12,9 @@ import java.util.Objects;
 import static java.util.stream.Collectors.toList;
 
 /**
- * A {@link Retriever<TextSegment>} that uses an {@link EmbeddingStore} to find relevant items.
+ * A Retriever which wraps an {@link EmbeddingStore} to find relevant items.
  */
-@Getter
-@EqualsAndHashCode
+@SuppressWarnings("deprecation")
 public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
     private final EmbeddingStore<TextSegment> embeddingStore;
@@ -27,10 +24,12 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
     /**
      * Creates a new instance of {@link EmbeddingStoreRetriever}.
+     *
      * @param embeddingStore The store to be used for retrieving relevant items.
      * @param embeddingModel The model to be used for embedding the text.
      * @param maxResults The maximum number of results to be returned.
-     * @param minScore The minimum score for the results to be returned, or null to default to 0.
+     * @param minScore The minimum score for the results to be returned, or null to default
+     *         to 0.
      */
     public EmbeddingStoreRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                    EmbeddingModel embeddingModel,
@@ -88,6 +87,7 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
 
     /**
      * Creates a new instance of {@link EmbeddingStoreRetriever}.
+     *
      * @param embeddingStore The store to be used for retrieving relevant items.
      * @param embeddingModel The model to be used for embedding the text.
      * @param maxResults The maximum number of results to be returned.
@@ -100,5 +100,37 @@ public class EmbeddingStoreRetriever implements Retriever<TextSegment> {
             int maxResults,
             Double minScore) {
         return new EmbeddingStoreRetriever(embeddingStore, embeddingModel, maxResults, minScore);
+    }
+
+    public EmbeddingStore<TextSegment> getEmbeddingStore() {
+        return this.embeddingStore;
+    }
+
+    public EmbeddingModel getEmbeddingModel() {
+        return this.embeddingModel;
+    }
+
+    public int getMaxResults() {
+        return this.maxResults;
+    }
+
+    public double getMinScore() {
+        return this.minScore;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (o == this) return true;
+        if (!(o instanceof EmbeddingStoreRetriever)) return false;
+        final EmbeddingStoreRetriever other = (EmbeddingStoreRetriever) o;
+        return Objects.equals(embeddingStore, other.embeddingStore)
+                && Objects.equals(embeddingModel, other.embeddingModel)
+               && (maxResults == other.maxResults)
+               && (Double.compare(minScore, other.minScore) == 0);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(embeddingStore, embeddingModel, minScore, maxResults);
     }
 }
