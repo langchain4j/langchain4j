@@ -220,7 +220,7 @@ class LanguageModelQueryRouterTest {
 
         // given
         Query query = Query.from("Hey what's up?");
-        ChatModelMock model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage();
+        ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
         FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
