@@ -41,8 +41,9 @@ class CohereScoringModelIT {
         ScoringModel model = CohereScoringModel.builder()
                 .baseUrl("https://api.cohere.ai/v1/")
                 .apiKey(System.getenv("COHERE_API_KEY"))
-                .timeout(Duration.ofSeconds(30))
                 .modelName("rerank-multilingual-v2.0")
+                .timeout(Duration.ofSeconds(30))
+                .maxRetries(2)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
