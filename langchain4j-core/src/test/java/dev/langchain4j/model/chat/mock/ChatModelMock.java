@@ -20,15 +20,27 @@ import static java.util.Collections.synchronizedList;
 public class ChatModelMock implements ChatLanguageModel {
 
     private final String staticResponse;
+    private final RuntimeException exception;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = staticResponse;
+        this.exception = null;
+    }
+
+    public ChatModelMock(RuntimeException exception) {
+        this.staticResponse = null;
+        this.exception = exception;
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         requests.add(new ArrayList<>(messages));
+
+        if (exception != null) {
+            throw exception;
+        }
+
         return Response.from(AiMessage.from(staticResponse));
     }
 
@@ -50,7 +62,11 @@ public class ChatModelMock implements ChatLanguageModel {
         return message.text();
     }
 
-    public static ChatModelMock withStaticResponse(String response) {
+    public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
+    }
+
+    public static ChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
+        return new ChatModelMock(new RuntimeException(message));
     }
 }
