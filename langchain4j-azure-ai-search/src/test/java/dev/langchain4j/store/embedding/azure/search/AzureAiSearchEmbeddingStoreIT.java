@@ -221,8 +221,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        log.info("Clearing store");
-        AzureAiSearchEmbeddingStore azureAiSearchEmbeddingStore = (AzureAiSearchEmbeddingStore) embeddingStoreWithSimilarity;
+        AzureAiSearchEmbeddingStore azureAiSearchEmbeddingStore = (AzureAiSearchEmbeddingStore) embeddingStore;
         azureAiSearchEmbeddingStore.deleteIndex();
         azureAiSearchEmbeddingStore.createOrUpdateIndex(dimensions);
     }
