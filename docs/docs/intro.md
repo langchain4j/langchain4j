@@ -50,6 +50,16 @@ LangChain4j features a modular design, comprising:
 - A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
   You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
 
+### 2 levels of abstraction
+LangChain4j operates on two levels of abstraction:
+- Low level. At this level, you have the most freedom and access to all the low-level components such as
+`ChatLanguageModel`, `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
+These are the "primitives" of your LLM-powered application.
+You have complete control over how to combine them, but you will need to write more code in the imperative style.
+- High level. At this level, you interact with LLMs using high-level APIs like `AiServices` and `Chain`s,
+which hides all the complexity and boilerplate from you.
+You still have the flexibility to adjust and fine-tune the behavior, but it is done more in a declarative manner.
+
 [![](/img/langchain4j-components.png)](/docs/intro)
 
 ### Tutorials (User Guide)
