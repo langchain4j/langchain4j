@@ -175,7 +175,7 @@ class LanguageModelQueryRouterTest {
         // given
         Query query = Query.from("Hey what's up?");
 
-        ChatModelMock model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Something went wrong");
+        ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
 
         Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");

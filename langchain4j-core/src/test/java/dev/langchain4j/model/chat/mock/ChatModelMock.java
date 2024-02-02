@@ -66,6 +66,10 @@ public class ChatModelMock implements ChatLanguageModel {
         return new ChatModelMock(response);
     }
 
+    public static ChatModelMock thatAlwaysThrowsException() {
+        return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
+    }
+
     public static ChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
         return new ChatModelMock(new RuntimeException(message));
     }
