@@ -24,6 +24,8 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     private EmbeddingStore<TextSegment> embeddingStoreWithSimilarity;
 
+    private AzureAiSearchEmbeddingStore embeddingStoreWithFullText;
+
     private AzureAiSearchEmbeddingStore embeddingStoreWithHybrid;
 
     private AzureAiSearchEmbeddingStore embeddingStoreWithSemantic;
@@ -39,6 +41,13 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .dimensions(dimensions)
+                .build();
+
+        embeddingStoreWithFullText =  AzureAiSearchEmbeddingStore.builder()
+                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+                .dimensions(dimensions)
+                .queryType(QueryType.FULL_TEXT)
                 .build();
 
         embeddingStoreWithHybrid =  AzureAiSearchEmbeddingStore.builder()
@@ -86,6 +95,48 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         assertThat(relevant.get(2).embedding()).isNotNull();
         assertThat(relevant.get(2).embedded().text()).isIn(content1, content3, content5);
         log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
+    }
+
+    @Test
+    void testAllTypesOfSearch() {
+        String content1 = "This book is about politics";
+        String content2 = "Cats sleeps a lot.";
+        String content3 = "Sandwiches taste good.";
+        String content4 = "The house is open";
+        List<String> contents = asList(content1, content2, content3, content4);
+
+        for (String content : contents) {
+            TextSegment textSegment = TextSegment.from(content);
+            Embedding embedding = embeddingModel.embed(content).content();
+            embeddingStoreWithSimilarity.add(embedding, textSegment);
+        }
+
+        awaitUntilPersisted();
+
+        String content = "house";
+        Embedding relevantEmbedding = embeddingModel.embed(content).content();
+
+        log.info("Testing Vector Search");
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithSimilarity.findRelevant(relevantEmbedding, 1, 0);
+        assertThat(relevant).hasSize(1);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+
+        log.info("Testing Full Text Search");
+        relevant = embeddingStoreWithFullText.findRelevantWithFullText(content, 1, 0);
+        assertThat(relevant).hasSize(1);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+
+        log.info("Testing Hybrid Search");
+        relevant = embeddingStoreWithHybrid.findRelevant(relevantEmbedding, content, 1, 0);
+        assertThat(relevant).hasSize(1);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+
+        log.info("Testing Semantic Search");
+        relevant = embeddingStoreWithSemantic.findRelevant(relevantEmbedding, content, 1, 0);
+        assertThat(relevant).hasSize(1);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+
+        log.info("Test complete");
     }
 
     @Test

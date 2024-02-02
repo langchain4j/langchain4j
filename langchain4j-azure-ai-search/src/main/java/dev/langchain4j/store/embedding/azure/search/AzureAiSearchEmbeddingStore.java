@@ -2,6 +2,8 @@ package dev.langchain4j.store.embedding.azure.search;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.http.policy.HttpLogDetailLevel;
+import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.util.Context;
 import com.azure.search.documents.SearchClient;
 import com.azure.search.documents.SearchClientBuilder;
@@ -96,6 +98,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     .endpoint(endpoint)
                     .credential(keyCredential)
                     .indexName(INDEX_NAME)
+                    .httpLogOptions(new HttpLogOptions().setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS))
                     .buildClient();
         } else {
             searchIndexClient = new SearchIndexClientBuilder()
@@ -235,6 +238,8 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
         if (queryType == QueryType.SIMILARITY) {
             return findRelevantWithSimilarity(referenceEmbedding, maxResults, minScore);
+        } else if (queryType == QueryType.FULL_TEXT) {
+            return findRelevantWithFullText(content, maxResults, minScore);
         } else if (queryType == QueryType.SIMILARITY_HYBRID) {
             return findRelevantWithSimilarityHybrid(referenceEmbedding, content, maxResults, minScore);
         } else if (queryType == QueryType.SEMANTIC_HYBRID) {
@@ -259,6 +264,16 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         return mapResultsToEmbeddingMatches(searchResults, minScore);
     }
 
+    List<EmbeddingMatch<TextSegment>> findRelevantWithFullText(String content, int maxResults, double minScore) {
+        SearchPagedIterable searchResults =
+                searchClient.search(content,
+                        new SearchOptions()
+                                .setTop(maxResults),
+                        Context.NONE);
+
+        return mapResultsToEmbeddingMatches(searchResults, minScore);
+    }
+
     List<EmbeddingMatch<TextSegment>> findRelevantWithSimilarityHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
         List<Float> vector = referenceEmbedding.vectorAsList();
 
@@ -269,11 +284,11 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         SearchPagedIterable searchResults =
                 searchClient.search(content,
                         new SearchOptions()
-                                /*.setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))*/
+                                .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
                                 .setTop(maxResults),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, minScore);
+                return mapResultsToEmbeddingMatches(searchResults, minScore);
     }
 
     List<EmbeddingMatch<TextSegment>> findRelevantWithSemanticHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
@@ -286,7 +301,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         SearchPagedIterable searchResults =
                 searchClient.search(content,
                         new SearchOptions()
-                                //.setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
+                                .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
                                 .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
                                 .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
                                 .setTop(maxResults),
