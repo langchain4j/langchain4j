@@ -24,15 +24,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v3
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
 
       - name: Generate Javadoc
-        run: mvn javadoc:aggregate -DskipTests -pl '!langchain4j-opensearch,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j'
+        run: mvn javadoc:aggregate -DskipTests
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
