@@ -86,7 +86,11 @@ const config = {
                     },
                     {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
-                    {to: '/apidocs/index.html', label: 'Javadoc', position: 'left'},
+                    {
+                        href: '/apidocs/index.html',
+                        label: 'Javadoc',
+                        position: 'left'
+                    },
                     {to: '/blog', label: 'Blog', position: 'left'},
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
@@ -119,8 +123,8 @@ const config = {
                                 href: 'https://discord.com/invite/JzTFvyjG6R',
                             },
                             {
-                                 label: 'Stack Overflow',
-                                 href: 'https://stackoverflow.com/questions/tagged/langchain4j',
+                                label: 'Stack Overflow',
+                                href: 'https://stackoverflow.com/questions/tagged/langchain4j',
                             },
                         ],
                     },
