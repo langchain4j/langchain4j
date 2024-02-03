@@ -18,8 +18,14 @@ import java.util.*;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.joining;
 
 public class ServiceOutputParser {
+
+    /**
+     * A coverage instrumentation field name.
+     */
+    private static final String COVERAGE_FIELD_NAME = "__$hits$__";
 
     private static final Map<Class<?>, OutputParser<?>> OUTPUT_PARSERS = new HashMap<>();
 
@@ -115,22 +121,34 @@ public class ServiceOutputParser {
             return "\nYou must put every item on a separate line.";
         }
 
-        return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType);
+        return "\nYou must answer in plain text, with valid JSON, in strictly the following format: " + jsonStructure(returnType);
     }
 
     private static String jsonStructure(Class<?> structured) {
-        StringBuilder jsonSchema = new StringBuilder();
-        jsonSchema.append("{\n");
-        for (Field field : structured.getDeclaredFields()) {
-            String name = field.getName();
-            if (name.equals("__$hits$__")) {
-                // Skip coverage instrumentation field.
-                continue;
-            }
-            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field)));
-        }
-        jsonSchema.append("}");
-        return jsonSchema.toString();
+
+        // Build a list of field descriptors.
+
+        final String fields = Arrays
+           .stream(structured.getDeclaredFields())
+           .filter(field -> isNotFromCoverageInstrumentation(field))
+           .map(field -> format("\"%s\": (%s)", field.getName(), descriptionFor(field)))
+           .collect(joining(",\n")); 
+
+        return new StringBuilder()
+            .append("{\n")
+            .append(fields)
+            .append("\n}")
+            .toString();
+    }
+
+    /**
+     * Is field not created by coverage instrumentation.
+     *
+     * @param field - the field to test
+     * @return True if not from coverage instrumentation, false otherwise
+     */
+    private static boolean isNotFromCoverageInstrumentation(Field field) {
+        return !COVERAGE_FIELD_NAME.equals(field.getName());
     }
 
     private static String descriptionFor(Field field) {
