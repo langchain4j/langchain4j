@@ -83,6 +83,9 @@ Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.c
 dependency which builds on this project) can be
 found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
 
+### Useful Materials
+- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
+- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
 
 ### Disclaimer
 
