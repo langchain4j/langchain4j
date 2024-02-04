@@ -46,18 +46,20 @@ import static java.util.stream.Collectors.toList;
  */
 public class VertexAiEmbeddingModel implements EmbeddingModel {
 
-    private static final int BATCH_SIZE = 250; // Vertex AI has a limit of up to 250 input texts per request
-
     private final PredictionServiceSettings settings;
     private final EndpointName endpointName;
     private final Integer maxRetries;
+    // Vertex AI has a limit of up to 250 input texts per request
+    // but also a limit of maximum 20k tokens for all the inputs per request
+    private final Integer maxBatchSize;
 
     public VertexAiEmbeddingModel(String endpoint,
                                   String project,
                                   String location,
                                   String publisher,
                                   String modelName,
-                                  Integer maxRetries) {
+                                  Integer maxRetries,
+                                  Integer maxBatchSize) {
         try {
             this.settings = PredictionServiceSettings.newBuilder()
                     .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
@@ -72,6 +74,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 ensureNotBlank(modelName, "modelName")
         );
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.maxBatchSize = getOrDefault(maxBatchSize, 50);
     }
 
     @Override
@@ -82,9 +85,9 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             List<Embedding> embeddings = new ArrayList<>();
             int inputTokenCount = 0;
 
-            for (int i = 0; i < segments.size(); i += BATCH_SIZE) {
+            for (int i = 0; i < segments.size(); i += maxBatchSize) {
 
-                List<TextSegment> batch = segments.subList(i, Math.min(i + BATCH_SIZE, segments.size()));
+                List<TextSegment> batch = segments.subList(i, Math.min(i + maxBatchSize, segments.size()));
 
                 List<Value> instances = new ArrayList<>();
                 for (TextSegment segment : batch) {
@@ -157,6 +160,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         private String publisher;
         private String modelName;
         private Integer maxRetries;
+        private Integer maxBatchSize;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -188,6 +192,11 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             return this;
         }
 
+        public Builder maxBatchSize(Integer maxBatchSize) {
+            this.maxBatchSize = maxBatchSize;
+            return this;
+        }
+
         public VertexAiEmbeddingModel build() {
             return new VertexAiEmbeddingModel(
                     endpoint,
@@ -195,7 +204,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                     location,
                     publisher,
                     modelName,
-                    maxRetries);
+                    maxRetries,
+                    maxBatchSize);
         }
     }
 }
