@@ -123,7 +123,9 @@ public class ServiceOutputParser {
         jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if (name.equals("__$hits$__")) {
+            if (name.equals("__$hits$__")
+                    || java.lang.reflect.Modifier.isStatic(field.getModifiers())
+                    || java.lang.reflect.Modifier.isFinal(field.getModifiers())) {
                 // Skip coverage instrumentation field.
                 continue;
             }
@@ -186,7 +188,10 @@ public class ServiceOutputParser {
             case "java.time.LocalDateTime":
                 return "date-time string (2023-12-31T23:59:59)";
             default:
-                return jsonStructure((Class<?>) type);
+                if (type.getClass().getPackage() == null || type.getClass().getPackage().getName().startsWith("java."))
+                    return type.getTypeName();
+                else
+                    return jsonStructure((Class<?>) type);
         }
     }
 }

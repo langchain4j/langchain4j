@@ -201,7 +201,6 @@ public class AiServicesIT {
 
     @ToString
     static class Address  {
-
         private Integer streetNumber;
         private String street;
         private String city;
@@ -209,7 +208,6 @@ public class AiServicesIT {
 
     @ToString
     static class Person {
-
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
