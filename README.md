@@ -57,6 +57,10 @@ Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 ## Tutorials
 Tutorials can be found [here](https://langchain4j.github.io/langchain4j/docs/tutorials).
 
+## Useful Materials
+- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
+- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
+
 ## Library Structure
 LangChain4j features a modular design, comprising:
 - The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
