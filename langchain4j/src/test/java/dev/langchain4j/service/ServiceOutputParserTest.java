@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import lombok.ToString;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
@@ -64,4 +65,36 @@ class ServiceOutputParserTest {
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "}");
     }
+
+
+    @ToString
+    static class Address  {
+        private Integer streetNumber;
+        private String street;
+        private String city;
+    }
+    @ToString
+    static class PersonAndAddress {
+        private String firstName;
+        private String lastName;
+        private LocalDate birthDate;
+        private Address address;
+    }
+    @Test
+    void outputFormatInstructions_PersonWithNestedObject() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddress.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string),\n" +
+                        "}),\n" +
+                        "}");
+    }
+
 }

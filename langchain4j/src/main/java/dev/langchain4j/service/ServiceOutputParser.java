@@ -161,7 +161,10 @@ public class ServiceOutputParser {
             return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
         }
 
-        return simpleTypeName(type);
+        if (field.getType().getPackage() == null || field.getType().getPackage().getName().startsWith("java."))
+            return simpleTypeName(type);
+        else
+            return jsonStructure(field.getType());
     }
 
     private static String simpleTypeName(Type type) {
@@ -188,10 +191,7 @@ public class ServiceOutputParser {
             case "java.time.LocalDateTime":
                 return "date-time string (2023-12-31T23:59:59)";
             default:
-                if (type.getClass().getPackage() == null || type.getClass().getPackage().getName().startsWith("java."))
-                    return type.getTypeName();
-                else
-                    return jsonStructure((Class<?>) type);
+                return type.getTypeName();
         }
     }
 }
