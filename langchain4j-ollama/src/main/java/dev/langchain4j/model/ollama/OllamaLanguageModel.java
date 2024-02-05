@@ -4,7 +4,6 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -13,6 +12,7 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -79,10 +79,10 @@ public class OllamaLanguageModel implements LanguageModel {
     }
 
     public static OllamaLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OllamaLanguageModelBuilderFactory.class,
-                OllamaLanguageModelBuilder::new
-        );
+        for (OllamaLanguageModelBuilderFactory factory : loadFactories(OllamaLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaLanguageModelBuilder();
     }
 
     public static class OllamaLanguageModelBuilder {

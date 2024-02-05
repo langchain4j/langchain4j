@@ -36,6 +36,7 @@ class OpenAiChatModelIT {
             .build();
 
     ChatLanguageModel model = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
@@ -44,6 +45,7 @@ class OpenAiChatModelIT {
             .build();
 
     ChatLanguageModel visionModel = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(GPT_4_VISION_PREVIEW)
@@ -78,6 +80,7 @@ class OpenAiChatModelIT {
 
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .maxTokens(3)
@@ -202,6 +205,7 @@ class OpenAiChatModelIT {
 
         // given
         ChatLanguageModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports parallel function calling
@@ -270,6 +274,7 @@ class OpenAiChatModelIT {
         assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
 
         ChatLanguageModel modelGeneratingJson = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
@@ -383,6 +388,7 @@ class OpenAiChatModelIT {
 
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO)

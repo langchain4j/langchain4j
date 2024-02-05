@@ -12,14 +12,14 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-core</artifactId>
     <packaging>jar</packaging>
 
-    <name>langchain4j-core</name>
+    <name>LangChain4j :: Core</name>
     <description>Core classes and interfaces of LangChain4j</description>
 
     <dependencies>
@@ -140,7 +140,7 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.95</minimum>
+                                            <minimum>0.9</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

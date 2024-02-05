@@ -6,14 +6,14 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-bom</artifactId>
     <packaging>pom</packaging>
 
-    <name>LangChain4j BOM</name>
+    <name>LangChain4j :: BOM</name>
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <dependencyManagement>
@@ -108,6 +108,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-cohere</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-nomic</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

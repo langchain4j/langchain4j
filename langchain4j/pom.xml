@@ -7,14 +7,14 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j</artifactId>
     <packaging>jar</packaging>
 
-    <name>langchain4j</name>
+    <name>LangChain4j</name>
     <description>Java implementation of LangChain: Integrate your Java application with countless AI tools and services
         smoothly
     </description>
@@ -60,13 +60,6 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-vertex-ai-gemini</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>

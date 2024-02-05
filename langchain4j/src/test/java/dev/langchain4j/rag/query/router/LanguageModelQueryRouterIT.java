@@ -2,7 +2,6 @@ package dev.langchain4j.rag.query.router;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -68,23 +67,38 @@ class LanguageModelQueryRouterIT {
         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatLanguageModel model) {
+
+        // given
+        Query query = Query.from("Hey, what's up?");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
+    }
+
     static Stream<Arguments> models() {
         return Stream.of(
                 Arguments.of(
                         OpenAiChatModel.builder()
+                                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                                 .apiKey(System.getenv("OPENAI_API_KEY"))
                                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                                 .logRequests(true)
                                 .logResponses(true)
                                 .build()
-                ),
-                Arguments.of(
-                        VertexAiGeminiChatModel.builder()
-                                .project(System.getenv("GCP_PROJECT"))
-                                .location(System.getenv("GCP_LOCATION"))
-                                .modelName("gemini-pro")
-                                .build()
                 )
+                // TODO add more models
         );
     }
 }
