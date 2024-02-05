@@ -9,7 +9,6 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -19,6 +18,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -96,10 +96,10 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
     }
 
     public static OpenAiLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OpenAiLanguageModelBuilderFactory.class,
-                OpenAiLanguageModelBuilder::new
-        );
+        for (OpenAiLanguageModelBuilderFactory factory : loadFactories(OpenAiLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiLanguageModelBuilder();
     }
 
     public static class OpenAiLanguageModelBuilder {

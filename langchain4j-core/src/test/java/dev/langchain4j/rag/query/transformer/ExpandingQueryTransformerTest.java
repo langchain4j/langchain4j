@@ -23,7 +23,7 @@ class ExpandingQueryTransformerTest {
         // given
         Query query = Query.from("query");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse(queriesString);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model);
 
@@ -53,7 +53,7 @@ class ExpandingQueryTransformerTest {
         // given
         int n = 5;
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, n);
 
@@ -72,7 +72,7 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate 7 variations of {{query}}");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = new ExpandingQueryTransformer(model, promptTemplate);
 
@@ -91,7 +91,7 @@ class ExpandingQueryTransformerTest {
         // given
         PromptTemplate promptTemplate = PromptTemplate.from("Generate {{n}} variations of {{query}}");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("does not matter");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
 
         QueryTransformer transformer = ExpandingQueryTransformer.builder()
                 .chatLanguageModel(model)

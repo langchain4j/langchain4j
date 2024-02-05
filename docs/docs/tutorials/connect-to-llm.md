@@ -2,20 +2,23 @@
 sidebar_position: 3
 ---
 
-# 1. Connect to an LLM
+# 1. Language and Chat Models
 
-In this example we will connect to OpenAI's GPT-3.5 model using langchain4j, ask it questions and log the response.
+LLMs are currently available in two API types:
+- `LanguageModel`s. Their API is very simple - they accept a `String` as input and return a `String` as output. 
+Initially, they were trained for text completion, and later for following instructions.
+Now, they are becoming obsolete in favor of chat models.
+- `ChatLanguageModel`s. These accept either a single or multiple `ChatMessage`s as input
+and return an `AiMessage` as output. Some of them also support accepting both `String`s and `Image`s as user input.
+They are trained for a variety of tasks and are much more versatile.
+Examples of such chat models include OpenAI's `gpt-3.5-turbo` and Google's `gemini-pro`.
 
-First, set up you basic project with Java8+ and the desired langchain4j version as described in [Get Started](/docs/get-started).
+Support for `LanguageModel`s will no longer be expanded in LangChain4j,
+so in all new features, we will use a `ChatLanguageModel` API.
 
-### LLM Key
-For this example we will connect to OpenAI API. To expose your key, create a class ```ApiKays.java``` with the following code
+Now, let's take a closer look at the ChatLanguageModel API.
 
-```java
-public class ApiKeys {
-    public static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
-}
-```
+TODO
 
 ### 'Hello World' Code
 
