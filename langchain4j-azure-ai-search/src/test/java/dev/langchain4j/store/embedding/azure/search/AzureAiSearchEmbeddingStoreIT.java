@@ -229,7 +229,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void awaitUntilPersisted() {
         try {
-            Thread.sleep(1_000);
+            Thread.sleep(5_000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
