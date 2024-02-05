@@ -69,7 +69,7 @@ class LanguageModelQueryRouterIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatLanguageModel model) { // TODO
+    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatLanguageModel model) {
 
         // given
         Query query = Query.from("Hey, what's up?");

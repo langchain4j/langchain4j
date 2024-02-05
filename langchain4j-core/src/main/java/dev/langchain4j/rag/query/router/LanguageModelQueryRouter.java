@@ -101,20 +101,21 @@ public class LanguageModelQueryRouter implements QueryRouter {
             return parse(response);
         } catch (Exception e) {
             log.warn("Failed to route query '{}'", query.text(), e);
-            return fallback(e);
+            return fallback(query, e);
         }
     }
 
-    private Collection<ContentRetriever> fallback(Exception e) {
+    private Collection<ContentRetriever> fallback(Query query, Exception e) {
         switch (fallbackStrategy) {
             case DO_NOT_ROUTE:
+                log.debug("Fallback: query '{}' will not be routed", query.text());
                 return emptyList();
             case ROUTE_TO_ALL:
+                log.debug("Fallback: query '{}' will be routed to all available content retrievers", query.text());
                 return new ArrayList<>(idToRetriever.values());
             case FAIL:
             default:
                 throw new RuntimeException(e);
-
         }
     }
 

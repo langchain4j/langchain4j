@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.synchronizedList;
 
 /**
@@ -24,13 +26,13 @@ public class ChatModelMock implements ChatLanguageModel {
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
     public ChatModelMock(String staticResponse) {
-        this.staticResponse = staticResponse;
+        this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
         this.exception = null;
     }
 
     public ChatModelMock(RuntimeException exception) {
         this.staticResponse = null;
-        this.exception = exception;
+        this.exception = ensureNotNull(exception, "exception");
     }
 
     @Override
