@@ -9,12 +9,12 @@ import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
 import dev.langchain4j.model.qianfan.spi.QianfanEmbeddingModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 /**
  *
@@ -103,10 +103,10 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
     }
 
     public static QianfanEmbeddingModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QianfanEmbeddingModelBuilderFactory.class,
-                QianfanEmbeddingModelBuilder::new
-        );
+        for (QianfanEmbeddingModelBuilderFactory factory : loadFactories(QianfanEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QianfanEmbeddingModelBuilder();
     }
 
     public static class QianfanEmbeddingModelBuilder {

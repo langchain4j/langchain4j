@@ -9,7 +9,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -18,6 +17,7 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
@@ -110,10 +110,10 @@ public class LocalAiChatModel implements ChatLanguageModel {
     }
 
     public static LocalAiChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                LocalAiChatModelBuilderFactory.class,
-                LocalAiChatModelBuilder::new
-        );
+        for (LocalAiChatModelBuilderFactory factory : loadFactories(LocalAiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiChatModelBuilder();
     }
 
     public static class LocalAiChatModelBuilder {
