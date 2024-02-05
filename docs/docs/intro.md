@@ -43,6 +43,40 @@ For easier integration, LangChain4j also includes integration with
 Quarkus ([extension](https://quarkus.io/extensions/io.quarkiverse.langchain4j/quarkus-langchain4j-core))
 and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
 
+### Features
+- Integration with more than 10 managed and self-hosted language models (LLMs) for chat and completion
+- Prompt templates
+- Support for texts and images as inputs (multimodality)
+- Streaming of responses from language models
+- Tools for tokenization and estimation of token counts
+- Output parsers for common Java types (e.g., `List`, `LocalDate`, etc.) and custom POJOs
+- Integration with over three managed and self-hosted image generation models
+- Integration with more than 10 managed and self-hosted embedding models
+- Integration with more than 15 managed and self-hosted Vector Stores
+- Integration with one moderation model: OpenAI
+- Integration with one scoring (re-ranking) model: Cohere (with more expected to come)
+- Tools (function calling)
+- Dynamic Tools (execution of dynamically generated LLM code)
+- "Lite" agents (OpenAI functions)
+- AI Services
+- Chains
+- Implementation of persistent and in-memory chat memory algorithms: message window and token window
+- Text classification
+- RAG (Retrieval-Augmented-Generation):
+  - Ingestion:
+    - Importing various types of documents (TXT, PDFs, DOC, PPT, XLS etc.) from multiple sources (file system, URL, GitHub, Azure Blob Storage, Amazon S3, etc.)
+    - Splitting documents into smaller segments using multiple splitting algorithms
+    - Post-processing of documents and segments
+    - Embedding segments using embedding models
+    - Storing embeddings in Vector Store
+  - Retrieval (simple and advanced):
+    - Transformation of queries (expansion, compression)
+    - Routing of queries
+    - Retrieving from Vector Store and/or any custom sources
+    - Re-ranking
+    - Reciprocal Rank Fusion
+    - Customization of each step in the RAG flow
+
 ### Library Structure
 LangChain4j features a modular design, comprising:
 - The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
