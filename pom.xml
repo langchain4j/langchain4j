@@ -27,11 +27,12 @@
         <module>langchain4j-qianfan</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-local-ai</module>
+        <module>langchain4j-mistral-ai</module>
+        <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
-        <module>langchain4j-mistral-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
