@@ -6,7 +6,6 @@ import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -14,6 +13,7 @@ import java.time.Duration;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -81,10 +81,10 @@ public class LocalAiLanguageModel implements LanguageModel {
     }
 
     public static LocalAiLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                LocalAiLanguageModelBuilderFactory.class,
-                LocalAiLanguageModelBuilder::new
-        );
+        for (LocalAiLanguageModelBuilderFactory factory : loadFactories(LocalAiLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiLanguageModelBuilder();
     }
 
     public static class LocalAiLanguageModelBuilder {

@@ -4,6 +4,7 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -14,7 +15,10 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
 class LanguageModelQueryRouterTest {
@@ -36,7 +40,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -67,7 +71,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("2");
 
         QueryRouter router = LanguageModelQueryRouter.builder()
                 .chatLanguageModel(model)
@@ -100,7 +104,7 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("1, 2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 2");
 
         QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
 
@@ -127,9 +131,9 @@ class LanguageModelQueryRouterTest {
         retrieverToDescription.put(catArticlesRetriever, "articles about cats");
         retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
 
-        ChatModelMock model = ChatModelMock.withStaticResponse("1, 2");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("1, 2");
 
-        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription, promptTemplate);
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription, promptTemplate, FAIL);
 
         // when
         Collection<ContentRetriever> retrievers = router.route(query);
@@ -142,5 +146,145 @@ class LanguageModelQueryRouterTest {
                 "Options: " +
                 "1: articles about cats\n" +
                 "2: articles about dogs'");
+    }
+
+    @Test
+    void should_not_route_by_default_when_LLM_returns_invalid_response() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
+    }
+
+    @Test
+    void should_not_route_by_default_when_LLM_call_fails() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+
+        ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).isEmpty();
+    }
+
+    @Test
+    void should_route_to_all_retrievers_when_LLM_returns_invalid_response() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
+        FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
+    }
+
+    @Test
+    void should_route_to_all_retrievers_when_LLM_call_fails() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+        ChatModelMock model = ChatModelMock.thatAlwaysThrowsException();
+        FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
+    }
+
+    @Test
+    void should_fail_when_LLM_returns_invalid_response() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("Sorry, I don't know");
+        FallbackStrategy fallbackStrategy = FAIL;
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> router.route(query))
+                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
+    }
+
+    @Test
+    void should_fail_when_LLM_call_fails() {
+
+        // given
+        Query query = Query.from("Hey what's up?");
+        ChatModelMock model = ChatModelMock.thatAlwaysThrowsExceptionWithMessage("Something went wrong");
+        FallbackStrategy fallbackStrategy = FAIL;
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> router.route(query))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageContaining("Something went wrong");
     }
 }

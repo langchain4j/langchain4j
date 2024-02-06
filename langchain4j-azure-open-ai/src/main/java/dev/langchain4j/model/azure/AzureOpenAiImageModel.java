@@ -9,13 +9,13 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.imageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents an OpenAI image model, hosted on Azure, such as dall-e-3.
@@ -155,10 +155,10 @@ public class AzureOpenAiImageModel implements ImageModel {
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                AzureOpenAiImageModelBuilderFactory.class,
-                Builder::new
-        );
+        for (AzureOpenAiImageModelBuilderFactory factory : loadFactories(AzureOpenAiImageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {

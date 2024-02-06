@@ -11,9 +11,9 @@ import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.SyncOrAsyncOrStreaming;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanStreamingLanguageModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  *
@@ -120,10 +120,10 @@ public class QianfanStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static QianfanStreamingLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QianfanStreamingLanguageModelBuilderFactory.class,
-                QianfanStreamingLanguageModelBuilder::new
-        );
+        for (QianfanStreamingLanguageModelBuilderFactory factory : loadFactories(QianfanStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QianfanStreamingLanguageModelBuilder();
     }
 
     public static class QianfanStreamingLanguageModelBuilder {

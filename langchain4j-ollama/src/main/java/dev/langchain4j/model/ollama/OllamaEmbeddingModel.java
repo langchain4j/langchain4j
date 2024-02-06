@@ -5,7 +5,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -15,6 +14,7 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -58,10 +58,10 @@ public class OllamaEmbeddingModel implements EmbeddingModel {
     }
 
     public static OllamaEmbeddingModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OllamaEmbeddingModelBuilderFactory.class,
-                OllamaEmbeddingModelBuilder::new
-        );
+        for (OllamaEmbeddingModelBuilderFactory factory : loadFactories(OllamaEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaEmbeddingModelBuilder();
     }
 
     public static class OllamaEmbeddingModelBuilder {
