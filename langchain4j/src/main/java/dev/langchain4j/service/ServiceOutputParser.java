@@ -153,10 +153,16 @@ public class ServiceOutputParser {
 
             if (parameterizedType.getRawType().equals(List.class)
                     || parameterizedType.getRawType().equals(Set.class)) {
-                return format("array of %s", simpleTypeName(typeArguments[0]));
+                if (((Class<?>) typeArguments[0]).getPackage() == null || ((Class<?>) typeArguments[0]).getPackage().getName().startsWith("java."))
+                    return format("array of %s", simpleTypeName(typeArguments[0]));
+                else
+                    return format("array of %s", jsonStructure((Class<?>) typeArguments[0]));
             }
         } else if (field.getType().isArray()) {
-            return format("array of %s", simpleTypeName(field.getType().getComponentType()));
+            if (field.getType().getComponentType().getPackage() == null || field.getType().getComponentType().getPackage().getName().startsWith("java."))
+                return format("array of %s", simpleTypeName(field.getType().getComponentType()));
+            else
+                return format("array of %s", jsonStructure(field.getType().getComponentType()));
         } else if (((Class<?>) type).isEnum()) {
             return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
         }

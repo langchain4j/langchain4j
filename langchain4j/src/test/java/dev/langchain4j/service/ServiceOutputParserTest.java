@@ -1,11 +1,11 @@
 package dev.langchain4j.service;
 
-import lombok.ToString;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.util.Calendar;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,6 +24,42 @@ class ServiceOutputParserTest {
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "}");
+    }
+
+    static class PersonWithFirstNameList {
+        private List<String> firstName;
+        private String lastName;
+        private LocalDate birthDate;
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithFirstNameList() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithFirstNameList.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: array of string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "}");
+    }
+
+    static class PersonWithFirstNameArray {
+        private String[] firstName;
+        private String lastName;
+        private LocalDate birthDate;
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithFirstNameArray() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithFirstNameArray.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: array of string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "}");
@@ -66,20 +102,19 @@ class ServiceOutputParserTest {
                         "}");
     }
 
-
-    @ToString
-    static class Address  {
+    static class Address {
         private Integer streetNumber;
         private String street;
         private String city;
     }
-    @ToString
+
     static class PersonAndAddress {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
         private Address address;
     }
+
     @Test
     void outputFormatInstructions_PersonWithNestedObject() {
         String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddress.class);
@@ -97,4 +132,51 @@ class ServiceOutputParserTest {
                         "}");
     }
 
+    static class PersonAndAddressList {
+        private String firstName;
+        private String lastName;
+        private LocalDate birthDate;
+        private List<Address> address;
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithNestedObjectList() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddressList.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: array of {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string),\n" +
+                        "}),\n" +
+                        "}");
+    }
+
+    static class PersonAndAddressArray {
+        private String firstName;
+        private String lastName;
+        private LocalDate birthDate;
+        private List<Address> address;
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithNestedObjectArray() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddressList.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: array of {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string),\n" +
+                        "}),\n" +
+                        "}");
+    }
 }
