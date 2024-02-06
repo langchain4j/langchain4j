@@ -8,4 +8,4 @@ Creating images: example in https://github.com/langchain4j/langchain4j-examples/
 
 Interpreting images: coming very soon
 
-More elaborated content coming soon - or help us by adding it <3
+More elaborated content coming soon - or help us by adding it 🥰

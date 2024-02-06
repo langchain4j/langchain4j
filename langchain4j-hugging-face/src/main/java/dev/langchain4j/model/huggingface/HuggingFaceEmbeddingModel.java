@@ -8,13 +8,13 @@ import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 public class HuggingFaceEmbeddingModel implements EmbeddingModel {
@@ -76,10 +76,10 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
     }
 
     public static HuggingFaceEmbeddingModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                HuggingFaceEmbeddingModelBuilderFactory.class,
-                HuggingFaceEmbeddingModelBuilder::new
-        );
+        for (HuggingFaceEmbeddingModelBuilderFactory factory : loadFactories(HuggingFaceEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new HuggingFaceEmbeddingModelBuilder();
     }
 
     public static class HuggingFaceEmbeddingModelBuilder {

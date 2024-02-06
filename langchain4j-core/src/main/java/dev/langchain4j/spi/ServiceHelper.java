@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Utility wrapper around {@code ServiceLoader.load()}.
@@ -15,53 +13,6 @@ public class ServiceHelper {
      * Utility class, no public constructor.
      */
     private ServiceHelper() {
-    }
-
-    /**
-     * Load a service.
-     *
-     * @param factoryClass the type of factory.
-     * @param defaultBuilder if no factory is found, build the service.
-     * @return the factory.
-     * @param <F> the type of factory.
-     */
-    public static <F> F loadService(Class<F> factoryClass, Supplier<F> defaultBuilder) {
-        return loadFactoryService(factoryClass, f -> f, defaultBuilder);
-    }
-
-    /**
-     * Load a service provided by a service factory.
-     *
-     * @param factoryClass the type of service factory.
-     * @param factoryBuilder given a factory, build the service.
-     * @param defaultBuilder if no factory is found, build the service.
-     * @return the service.
-     * @param <F> the type of service factory.
-     * @param <T> the type of service.
-     */
-    public static <F, T> T loadFactoryService(
-            Class<F> factoryClass, Function<F, T> factoryBuilder, Supplier<T> defaultBuilder) {
-        for (F factory : loadFactories(factoryClass)) {
-            return factoryBuilder.apply(factory);
-        }
-        return defaultBuilder.get();
-    }
-
-    /**
-     * Load a service provided by a service factory where the factory is itself a {@link Supplier}.
-     *
-     * @param factoryClass The type of service factory.
-     * @param defaultBuilder if no factory is found, build the service.
-     * @return the service.
-     * @param <T> the type of service.
-     * @param <F> the type of service factory
-     */
-    public static <T, F extends Supplier<T>> T loadFactoryService(Class<F> factoryClass, Supplier<T> defaultBuilder) {
-        for (F factory : loadFactories(factoryClass)) {
-            return factory.get();
-        }
-
-        return defaultBuilder.get();
     }
 
     /**

@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -15,6 +14,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ollama.OllamaMessagesUtils.toOllamaMessages;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -74,10 +74,10 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static OllamaStreamingChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OllamaStreamingChatModelBuilderFactory.class,
-                OllamaStreamingChatModelBuilder::new
-        );
+        for (OllamaStreamingChatModelBuilderFactory factory : loadFactories(OllamaStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaStreamingChatModelBuilder();
     }
 
     public static class OllamaStreamingChatModelBuilder {
