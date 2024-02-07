@@ -63,9 +63,9 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
 
-        Embedding embeddedText = embeddingModel.embed(query.text()).content();
+        Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embeddedText, maxResults, minScore);
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embeddedQuery, maxResults, minScore);
 
         return relevant.stream()
                 .map(EmbeddingMatch::embedded)

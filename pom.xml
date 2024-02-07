@@ -62,6 +62,9 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
 
+        <!-- metadata filter parsers -->
+        <module>metadata-filter-parsers/langchain4j-metadata-filter-parser-sql</module>
+
     </modules>
 
     <build>

@@ -6,7 +6,10 @@ import org.junit.jupiter.api.Test;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.util.Collections.singletonMap;
+
 class MetadataTest implements WithAssertions {
+
     @Test
     public void test_add_get_put() {
         Metadata m = new Metadata();
@@ -109,4 +112,42 @@ class MetadataTest implements WithAssertions {
         assertThat(m1.remove("foo")).isSameAs(m1);
         assertThat(m1).isEqualTo(new Metadata().add("baz", "qux"));
     }
+
+    @Test
+    void test_asMap() {
+        Metadata metadata = Metadata.from("key", "value");
+
+        Map<String, String> map = metadata.asMap();
+
+        assertThat(map).containsKey("key").containsValue("value");
+    }
+
+    @Test
+    void test_create_from_map() {
+
+        Map<String, String> map = singletonMap("key", "value");
+
+        Metadata metadata = Metadata.from(map);
+
+        assertThat(metadata.get("key")).isEqualTo("value");
+    }
+
+    @Test
+    void test_get() {
+
+        Metadata metadata = new Metadata()
+                .add("string", "s")
+                .add("integer", 1)
+                .add("double", 1.0)
+                .add("boolean", true);
+        // TODO more types
+
+        assertThat(metadata.getString("string")).isEqualTo("s");
+        assertThat(metadata.getInteger("integer")).isEqualTo(1);
+        assertThat(metadata.getDouble("double")).isEqualTo(1.0);
+        assertThat(metadata.getBoolean("boolean")).isEqualTo(true);
+        // TODO more types
+    }
+
+    // TODO more tests
 }

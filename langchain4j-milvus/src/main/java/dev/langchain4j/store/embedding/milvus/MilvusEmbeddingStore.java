@@ -17,6 +17,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.SearchRequest;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
@@ -36,6 +37,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   static final String ID_FIELD_NAME = "id";
   static final String TEXT_FIELD_NAME = "text";
+  static final String METADATA_FIELD_NAME = "metadata";
   static final String VECTOR_FIELD_NAME = "vector";
 
   private final MilvusServiceClient milvusClient;
@@ -111,17 +113,20 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     return ids;
   }
 
-  public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+  @Override
+  public List<EmbeddingMatch<TextSegment>> search(SearchRequest searchRequest) {
     loadCollectionInMemory(milvusClient, collectionName);
 
-    SearchParam searchRequest = buildSearchRequest(
+    SearchParam searchParam = buildSearchRequest(
       collectionName,
-      referenceEmbedding.vectorAsList(),
-      maxResults,
+            searchRequest.queryEmbedding().vectorAsList(),
+            searchRequest.metadataFilter(),
+            searchRequest.maxResults(),
       metricType,
       consistencyLevel
     );
-    SearchResultsWrapper resultsWrapper = search(milvusClient, searchRequest);
+
+    SearchResultsWrapper resultsWrapper = CollectionOperationsExecutor.search(milvusClient, searchParam);
 
     List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(
       milvusClient,
@@ -132,7 +137,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     );
 
     return matches.stream()
-            .filter(match -> match.score() >= minScore)
+            .filter(match -> match.score() >= searchRequest.minScore())
             .collect(toList());
   }
 
@@ -148,6 +153,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     List<InsertParam.Field> fields = new ArrayList<>();
     fields.add(new InsertParam.Field(ID_FIELD_NAME, ids));
     fields.add(new InsertParam.Field(TEXT_FIELD_NAME, toScalars(textSegments, ids.size())));
+    fields.add(new InsertParam.Field(METADATA_FIELD_NAME, toMetadataJsons(textSegments, ids.size())));
     fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
     insert(milvusClient, collectionName, fields);

@@ -18,6 +18,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     @Test
     void should_add_embedding_with_segment_with_metadata() {
 
+        // TODO add more metadata value types
         TextSegment segment = TextSegment.from("hello", Metadata.from("test-key", "test-value"));
         Embedding embedding = embeddingModel().embed(segment.text()).content();
 

@@ -35,19 +35,18 @@ class EmbeddingStoreTest implements WithAssertions {
         }
 
         @Override
-        public List<EmbeddingMatch<String>> findRelevant(
-                Embedding referenceEmbedding, int maxResults, double minScore) {
+        public List<EmbeddingMatch<String>> search(SearchRequest searchRequest) {
             return Collections.singletonList(
                     new EmbeddingMatch<>(
                             0.5,
                             "id",
-                            referenceEmbedding,
+                            searchRequest.queryEmbedding(),
                             String.format(
                                     Locale.US,
                                     "%s, %d, %.2f",
-                                    referenceEmbedding.vectorAsList(),
-                                    maxResults,
-                                    minScore)));
+                                    searchRequest.queryEmbedding().vectorAsList(),
+                                    searchRequest.maxResults(),
+                                    searchRequest.minScore())));
         }
     }
 

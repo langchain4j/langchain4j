@@ -10,7 +10,6 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.JsonData;
@@ -26,6 +25,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.SearchRequest;
+import dev.langchain4j.store.embedding.filter.MetadataFilter;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -240,15 +241,19 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> search(SearchRequest searchRequest) {
         try {
             // Use Script Score and cosineSimilarity to calculate
             // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
-            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
+            ScriptScoreQuery scriptScoreQuery = buildScriptScoreQuery(
+                    searchRequest.queryEmbedding().vector(),
+                    (float) searchRequest.minScore(),
+                    searchRequest.metadataFilter()
+            );
             SearchResponse<Document> response = client.search(
-                    SearchRequest.of(s -> s.index(indexName)
-                            .query(n -> n.scriptScore(scriptScoreQuery))
-                            .size(maxResults)),
+                    co.elastic.clients.elasticsearch.core.SearchRequest.of(s -> s.index(indexName)
+                            .query(q -> q.scriptScore(scriptScoreQuery))
+                            .size(searchRequest.maxResults())),
                     Document.class
             );
 
@@ -256,6 +261,38 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         } catch (IOException e) {
             log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
+        }
+    }
+
+    private ScriptScoreQuery buildScriptScoreQuery(float[] vector,
+                                                   float minScore,
+                                                   MetadataFilter metadataFilter
+    ) throws JsonProcessingException {
+
+        Query query;
+        if (metadataFilter == null) {
+            query = Query.of(q -> q.matchAll(m -> m));
+        } else {
+            query = ElasticsearchMetadataFilterMapper.map(metadataFilter);
+        }
+
+        return ScriptScoreQuery.of(q -> q.
+                minScore(minScore)
+                .query(query)
+                .script(s -> s.inline(InlineScript.of(i -> i
+                        // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
+                        // divided by 2 to keep score in the range [0, 1]
+                        .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
+                        .params("query_vector", toJsonData(vector))))
+                )
+        );
+    }
+
+    private <T> JsonData toJsonData(T rawData) {
+        try {
+            return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -307,9 +344,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             Document document = Document.builder()
                     .vector(embeddings.get(i).vector())
                     .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : Optional.ofNullable(embedded.get(i).metadata())
-                            .map(Metadata::asMap)
-                            .orElse(null))
+                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
                     .build();
             bulkBuilder.operations(op -> op.index(idx -> idx
                     .index(indexName)
@@ -325,22 +360,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                 }
             }
         }
-    }
-
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
-        JsonData queryVector = toJsonData(vector);
-        return ScriptScoreQuery.of(q -> q
-                .minScore(minScore)
-                .query(Query.of(qu -> qu.matchAll(m -> m)))
-                .script(s -> s.inline(InlineScript.of(i -> i
-                        // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
-                        // divided by 2 to keep score in the range [0, 1]
-                        .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
-                        .params("query_vector", queryVector)))));
-    }
-
-    private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
-        return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
     }
 
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {

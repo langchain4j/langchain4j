@@ -239,6 +239,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- metadata filter parsers -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-metadata-filter-parser-sql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>

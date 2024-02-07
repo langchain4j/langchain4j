@@ -6,7 +6,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithMetadataFilteringIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -17,7 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-class InMemoryEmbeddingStoreTest extends EmbeddingStoreIT {
+class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithMetadataFilteringIT {
 
     @TempDir
     Path temporaryDirectory;
@@ -63,7 +63,7 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreIT {
 
             assertThat(deserializedEmbeddingStore.entries)
                     .isEqualTo(originalEmbeddingStore.entries)
-                            .hasSameHashCodeAs(originalEmbeddingStore.entries);
+                    .hasSameHashCodeAs(originalEmbeddingStore.entries);
             assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
         }
         {

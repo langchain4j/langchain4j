@@ -124,6 +124,12 @@
             </dependency>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-metadata-filter-parser-sql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>retrofit</artifactId>
                 <version>${retrofit.version}</version>

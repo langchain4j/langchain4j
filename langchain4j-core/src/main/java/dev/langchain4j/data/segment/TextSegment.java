@@ -50,6 +50,7 @@ public class TextSegment {
      * @param key the key.
      * @return the metadata value, or null if not found.
      */
+    @Deprecated // TODO
     public String metadata(String key) {
         return metadata.get(key);
     }

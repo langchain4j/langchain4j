@@ -1,13 +1,11 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
-import dev.langchain4j.store.embedding.CosineSimilarity;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -97,17 +95,24 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<Embedded>> search(SearchRequest searchRequest) {
 
         Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
         for (Entry<Embedded> entry : entries) {
-            double cosineSimilarity = CosineSimilarity.between(entry.embedding, referenceEmbedding);
+            if (searchRequest.metadataFilter() != null && entry.embedded instanceof TextSegment) {
+                Metadata metadata = ((TextSegment) entry.embedded).metadata();
+                if (!searchRequest.metadataFilter().test(metadata)) {
+                    continue;
+                }
+            }
+
+            double cosineSimilarity = CosineSimilarity.between(entry.embedding, searchRequest.queryEmbedding());
             double score = RelevanceScore.fromCosineSimilarity(cosineSimilarity);
-            if (score >= minScore) {
+            if (score >= searchRequest.minScore()) {
                 matches.add(new EmbeddingMatch<>(score, entry.id, entry.embedding, entry.embedded));
-                if (matches.size() > maxResults) {
+                if (matches.size() > searchRequest.maxResults()) {
                     matches.poll();
                 }
             }
