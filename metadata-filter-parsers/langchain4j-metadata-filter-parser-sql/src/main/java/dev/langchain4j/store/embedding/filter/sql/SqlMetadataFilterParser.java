@@ -6,7 +6,6 @@ import dev.langchain4j.store.embedding.filter.comparison.Equal;
 import dev.langchain4j.store.embedding.filter.comparison.GreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.LessThan;
 import dev.langchain4j.store.embedding.filter.logical.And;
-import dev.langchain4j.store.embedding.filter.logical.Group;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import net.sf.jsqlparser.JSQLParserException;
@@ -50,9 +49,9 @@ public class SqlMetadataFilterParser implements MetadataFilterParser {
         if (expression instanceof BinaryExpression) {
             return map((BinaryExpression) expression);
         } else if (expression instanceof NotExpression) {
-            return map((NotExpression) expression);
+            return new Not(map(((NotExpression) expression).getExpression()));
         } else if (expression instanceof Parenthesis) {
-            return map((Parenthesis) expression);
+            return map(((Parenthesis) expression).getExpression());
         }
         // TODO more cases
         throw new UnsupportedOperationException("TODO " + expression.getClass());
@@ -110,13 +109,5 @@ public class SqlMetadataFilterParser implements MetadataFilterParser {
         } else {
             throw new IllegalArgumentException("TODO");
         }
-    }
-
-    private MetadataFilter map(NotExpression notExpression) {
-        return new Not(map(notExpression.getExpression()));
-    }
-
-    private MetadataFilter map(Parenthesis parenthesis) {
-        return new Group(map(parenthesis.getExpression())); // TODO unwrap here?
     }
 }

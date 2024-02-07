@@ -11,10 +11,10 @@ import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensu
 
 @ToString
 @EqualsAndHashCode
-public class Equal implements MetadataFilter {
+public class Equal implements MetadataFilter { // TODO make these classes package-private?
 
     private final String key;
-    private final Object comparisonValue;
+    private final Object comparisonValue; // TODO validate type?
 
     public Equal(String key, Object comparisonValue) {
         this.key = ensureNotBlank(key, "key");

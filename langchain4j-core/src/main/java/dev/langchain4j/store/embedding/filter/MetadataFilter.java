@@ -4,7 +4,6 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
-import dev.langchain4j.store.embedding.filter.logical.Group;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 
@@ -44,10 +43,6 @@ public interface MetadataFilter extends Predicate<Metadata> { // TODO extends Pr
 
     static MetadataFilter not(MetadataFilter expression) {
         return new Not(expression);
-    }
-
-    static MetadataFilter group(MetadataFilter expression) {
-        return new Group(expression);
     }
 
     class MetadataKey {

@@ -23,8 +23,6 @@ class MilvusMetadataFilterMapper {
 //            return mapIn((In) metadataFilter);
 //        } else if (metadataFilter instanceof And) {
 //            return mapAnd((And) metadataFilter);
-//        } else if (metadataFilter instanceof Group) {
-//            return map(((Group) metadataFilter).metadataFilter());
 //        } else if (metadataFilter instanceof Not) {
 //            return mapNot((Not) metadataFilter);
 //        } else if (metadataFilter instanceof Or) {

@@ -12,7 +12,6 @@ import dev.langchain4j.store.embedding.filter.comparison.GreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.In;
 import dev.langchain4j.store.embedding.filter.comparison.LessThan;
 import dev.langchain4j.store.embedding.filter.logical.And;
-import dev.langchain4j.store.embedding.filter.logical.Group;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 
@@ -33,8 +32,6 @@ class ElasticsearchMetadataFilterMapper {
             return mapIn((In) metadataFilter);
         } else if (metadataFilter instanceof And) {
             return mapAnd((And) metadataFilter);
-        } else if (metadataFilter instanceof Group) {
-            return map(((Group) metadataFilter).expression());
         } else if (metadataFilter instanceof Not) {
             return mapNot((Not) metadataFilter);
         } else if (metadataFilter instanceof Or) {

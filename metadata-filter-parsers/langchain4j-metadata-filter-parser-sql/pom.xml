@@ -11,7 +11,7 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-milvus</artifactId>
+    <artifactId>langchain4j-metadata-filter-parser-sql</artifactId>
     <name>LangChain4j :: Metadata Filter Parser :: SQL</name>
 
     <dependencies>

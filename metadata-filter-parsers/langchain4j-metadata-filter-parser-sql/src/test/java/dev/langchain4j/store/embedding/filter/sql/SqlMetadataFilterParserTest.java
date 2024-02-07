@@ -92,7 +92,7 @@ class SqlMetadataFilterParserTest {
                 ))
                 .add(of(
                         "NOT (name = 'Klaus')",
-                        not(group(key("name").eq("Klaus")))
+                        not(key("name").eq("Klaus"))
                 ))
 
                 .add(of(
@@ -109,11 +109,9 @@ class SqlMetadataFilterParserTest {
                 .add(of(
                         "(color = 'white' OR color = 'black') OR color = 'red'",
                         or(
-                                group(
-                                        or(
-                                                key("color").eq("white"),
-                                                key("color").eq("black")
-                                        )
+                                or(
+                                        key("color").eq("white"),
+                                        key("color").eq("black")
                                 ),
                                 key("color").eq("red")
                         )
@@ -123,11 +121,9 @@ class SqlMetadataFilterParserTest {
                         "color = 'white' OR (color = 'black' OR color = 'red')",
                         or(
                                 key("color").eq("white"),
-                                group(
-                                        or(
-                                                key("color").eq("black"),
-                                                key("color").eq("red")
-                                        )
+                                or(
+                                        key("color").eq("black"),
+                                        key("color").eq("red")
                                 )
                         )
                 ))
@@ -168,11 +164,9 @@ class SqlMetadataFilterParserTest {
                 .add(of(
                         "(color = 'white' OR color = 'black') AND form = 'circle'",
                         and(
-                                group(
-                                        or(
-                                                key("color").eq("white"),
-                                                key("color").eq("black")
-                                        )
+                                or(
+                                        key("color").eq("white"),
+                                        key("color").eq("black")
                                 ),
                                 key("form").eq("circle")
                         )
