@@ -99,4 +99,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             // By default with Lombok it becomes package private
         }
     }
+
+    @Override
+    public void shutdown() {
+        // no-op – No close/shutdown methods exposed and the wrapped
+    }
 }

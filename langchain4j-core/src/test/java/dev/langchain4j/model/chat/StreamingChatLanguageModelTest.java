@@ -21,6 +21,10 @@ class StreamingChatLanguageModelTest implements WithAssertions {
             Response<AiMessage> response = new Response<>(new AiMessage(lastMessage.text().toUpperCase(Locale.ROOT)));
             handler.onComplete(response);
         }
+
+        public void shutdown() {
+            // no-op
+        }
     }
 
     public static final class CollectorResponseHandler<T> implements StreamingResponseHandler<T> {
@@ -88,4 +92,6 @@ class StreamingChatLanguageModelTest implements WithAssertions {
             assertThat(response.finishReason()).isNull();
         }
     }
+
+
 }

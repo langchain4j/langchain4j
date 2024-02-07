@@ -208,4 +208,9 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
             return this;
         }
     }
+
+    @Override
+    public void shutdown() {
+        client.shutdown();
+    }
 }

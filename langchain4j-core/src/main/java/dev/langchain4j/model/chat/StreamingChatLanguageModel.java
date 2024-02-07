@@ -60,4 +60,10 @@ public interface StreamingChatLanguageModel {
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }
+
+    /**
+     * Releases resources that were acquired or created by the implementation,
+     * such as request executors or connections to remote services.
+     */
+    void shutdown();
 }

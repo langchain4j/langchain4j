@@ -189,4 +189,10 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
             // By default with Lombok it becomes package private
         }
     }
+
+    @Override
+    public void shutdown() {
+        // no-op: unclear if resources in this class can be closed?
+    }
+
 }

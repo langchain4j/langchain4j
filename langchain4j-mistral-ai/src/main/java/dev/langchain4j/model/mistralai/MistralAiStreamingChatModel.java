@@ -106,4 +106,9 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
 
         client.streamingChatCompletion(request, handler);
     }
+
+    @Override
+    public void shutdown() {
+        client.shutdown();
+    }
 }

@@ -143,4 +143,9 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
             // By default with Lombok it becomes package private
         }
     }
+
+    @Override
+    public void shutdown() {
+        client.shutdown();
+    }
 }

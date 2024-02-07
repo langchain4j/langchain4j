@@ -9,6 +9,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
@@ -212,5 +213,19 @@ class MistralAiClient {
             }
         }
         return new RuntimeException(retrofitResponse.message());
+    }
+
+    public void shutdown() {
+        okHttpClient.dispatcher().executorService().shutdown();
+        okHttpClient.connectionPool().evictAll();
+        Cache cache = okHttpClient.cache();
+
+        if (cache != null) {
+            try {
+                cache.close();
+            } catch (IOException e) {
+                LOGGER.error("Failed to close cache", e);
+            }
+        }
     }
 }

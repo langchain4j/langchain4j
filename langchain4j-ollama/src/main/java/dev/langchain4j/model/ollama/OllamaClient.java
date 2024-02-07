@@ -7,8 +7,11 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
@@ -23,16 +26,21 @@ import static java.lang.Boolean.TRUE;
 
 class OllamaClient {
 
+    private static final Logger LOGG = LoggerFactory.getLogger(OllamaClient.class);
+
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
             .create();
 
     private final OllamaApi ollamaApi;
 
+    // Keep a reference on the client to be able to shut it down
+    private final OkHttpClient okHttpClient;
+
     @Builder
     public OllamaClient(String baseUrl, Duration timeout) {
 
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+        this.okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
@@ -204,5 +212,20 @@ class OllamaClient {
 
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    public void shutdown() {
+        okHttpClient.dispatcher().executorService().shutdown();
+
+        okHttpClient.connectionPool().evictAll();
+
+        Cache cache = okHttpClient.cache();
+        if (cache != null) {
+            try {
+                cache.close();
+            } catch (IOException e) {
+                LOGG.error("Failed to close cache", e);
+            }
+        }
     }
 }

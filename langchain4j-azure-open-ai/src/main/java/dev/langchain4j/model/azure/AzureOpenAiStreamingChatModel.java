@@ -596,4 +596,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             }
         }
     }
+
+    @Override
+    public void shutdown() {
+        // no-op (this implementation's client has no shutdown method).
+    }
 }
