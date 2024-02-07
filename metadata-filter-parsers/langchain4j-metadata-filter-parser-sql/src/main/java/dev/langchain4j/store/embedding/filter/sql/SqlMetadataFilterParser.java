@@ -33,8 +33,8 @@ public class SqlMetadataFilterParser implements MetadataFilterParser {
     @Override
     public MetadataFilter parse(String sql) {
 
-        if (!sql.toUpperCase().contains("SELECT")) {
-            sql = "SELECT * FROM fake_table WHERE " + sql; // TODO WHERE
+        if (!sql.toUpperCase().startsWith("SELECT")) {
+            sql = "SELECT * FROM fake_table WHERE " + sql; // TODO
         }
 
         try {
