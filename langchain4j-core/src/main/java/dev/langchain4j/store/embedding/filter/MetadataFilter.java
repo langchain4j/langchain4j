@@ -8,7 +8,6 @@ import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 
 import java.util.Collection;
-import java.util.function.Predicate;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.util.Arrays.asList;
@@ -23,7 +22,7 @@ import static java.util.Arrays.asList;
  * into it's native filter expression.
  * TODO
  */
-public interface MetadataFilter extends Predicate<Metadata> { // TODO extends Predicate<Metadata> ?
+public interface MetadataFilter { // TODO extends Predicate<Metadata> ?
 
     /**
      * Tests if a given {@link Metadata} satisfies this {@link MetadataFilter}.
