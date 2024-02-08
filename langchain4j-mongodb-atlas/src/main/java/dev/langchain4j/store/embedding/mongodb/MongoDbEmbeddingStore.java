@@ -45,9 +45,41 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 /**
  * Represents a <a href="https://www.mongodb.com/">MongoDB</a> index as an embedding store.
  * <p>
- * More <a href="https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector/">info</a> to set up MongoDb as vectorDatabase
+ * More <a href="https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector/">info</a>
+ * to set up MongoDb as vectorDatabase.
  * <p>
- * <a href="https://www.mongodb.com/developer/products/atlas/semantic-search-mongodb-atlas-vector-search/">tutorial</a> how to use a knn-vector in MongoDB Atlas (great startingpoint)
+ * <a href="https://www.mongodb.com/developer/products/atlas/semantic-search-mongodb-atlas-vector-search/">tutorial</a>
+ * how to use a knn-vector in MongoDB Atlas (great starting point).
+ * <p>
+ * If you are using a free tier, {@code #createIndex = true} might not be supported,
+ * so you will need to create an index manually.
+ * In your Atlas web console go to: DEPLOYMENT -> Database -> {your cluster} -> Atlas Search -> Create Index Search
+ * -> "JSON Editor" under "Atlas Search" -> Next -> Select your database in the left pane
+ * -> Insert the following JSON into the right pane (set "dimensions" and "metadata"->"fields" to desired values)
+ * <pre>
+ * {
+ *   "mappings": {
+ *     "dynamic": false,
+ *     "fields": {
+ *       "embedding": {
+ *         "dimensions": 384,
+ *         "similarity": "cosine",
+ *         "type": "knnVector"
+ *       },
+ *       "metadata": {
+ *         "dynamic": false,
+ *         "fields": {
+ *           "test-key": {
+ *             "type": "token"
+ *           }
+ *         },
+ *         "type": "document"
+ *       }
+ *     }
+ *   }
+ * }
+ * </pre>
+ * -> Next -> Create Search Index
  */
 public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 

@@ -16,28 +16,37 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import static java.lang.String.format;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
-@Disabled("Need Cloud Mongo Atlas Credential")
+@EnabledIfEnvironmentVariable(named = "MONGODB_ATLAS_USERNAME", matches = ".+")
 class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
+
+    private static final String DATABASE_NAME = "test_database";
+    private static final String COLLECTION_NAME = "test_collection";
+    private static final String INDEX_NAME = "default";
 
     static MongoClient client;
 
     MongoDbEmbeddingStore embeddingStore = MongoDbEmbeddingStore.builder()
             .fromClient(client)
-            .databaseName("test_database")
-            .collectionName("test_collection")
-            .indexName("test_index")
+            .databaseName(DATABASE_NAME)
+            .collectionName(COLLECTION_NAME)
+            .indexName(INDEX_NAME)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     static void beforeAll() {
-        client = MongoClients.create("mongodb+srv://<username>:<password>@<host>/?retryWrites=true&w=majority");
+        String username = System.getenv("MONGODB_ATLAS_USERNAME");
+        String password = System.getenv("MONGODB_ATLAS_PASSWORD");
+        String host = System.getenv("MONGODB_ATLAS_HOST");
+        String connectionString = format("mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority", username, password, host);
+        client = MongoClients.create(connectionString);
     }
 
     @AfterAll
@@ -62,8 +71,8 @@ class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
-        MongoCollection<MongoDbDocument> collection = client.getDatabase("test_database")
-                .getCollection("test_collection", MongoDbDocument.class)
+        MongoCollection<MongoDbDocument> collection = client.getDatabase(DATABASE_NAME)
+                .getCollection(COLLECTION_NAME, MongoDbDocument.class)
                 .withCodecRegistry(codecRegistry);
 
         Bson filter = Filters.exists("embedding");
