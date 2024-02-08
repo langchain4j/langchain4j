@@ -2,11 +2,18 @@ package dev.langchain4j.data.document.loader;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
+import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
+class UrlDocumentLoaderTest implements WithAssertions {
+    @Test
+    void test_bad_url() {
+        String url = "bad_url";
 
-class UrlDocumentLoaderTest {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+            .isThrownBy(() -> UrlDocumentLoader.load(url, new TextDocumentParser()))
+            .withMessageContaining("no protocol");
+    }
 
     @Test
     void should_load_text_document() {
