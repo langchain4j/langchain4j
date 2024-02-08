@@ -22,7 +22,7 @@ public class AzureOpenAiEmbeddingModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+            .deploymentName("text-embedding-ada-002")
             .logRequestsAndResponses(true)
             .build();
 
