@@ -1,5 +1,7 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -193,6 +195,33 @@ public class AzureOpenAiChatModelIT {
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
+    }
+
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_use_json_format(String deploymentName, String gptVersion) {
+        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .responseFormat(new ChatCompletionsJsonResponseFormat())
+                .logRequestsAndResponses(true)
+                .build();
+
+        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
+        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
+
+        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+
+        logger.info(response.toString());
+
+        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     private static ToolParameters getToolParameters() {
