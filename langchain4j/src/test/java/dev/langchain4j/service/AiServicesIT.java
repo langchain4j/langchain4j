@@ -133,7 +133,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31")));
+                        "You must answer strictly in the following format: yyyy-MM-dd")));
     }
 
     @Test
@@ -150,7 +150,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
-                        "You must answer strictly in the following format: 23:59:59")));
+                        "You must answer strictly in the following format: HH:mm:ss")));
     }
 
     @Test
@@ -167,7 +167,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31T23:59:59")));
+                        "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
     }
 
 
