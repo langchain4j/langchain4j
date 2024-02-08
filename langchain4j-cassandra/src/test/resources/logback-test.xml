@@ -1,0 +1,32 @@
+<configuration scan="true">
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+       		<pattern>%d{HH:mm:ss.SSS} %magenta(%-5level) %cyan(%-20logger) : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+   <logger name="com.datastax.astra.sdk" level="INFO" additivity="false">
+       <appender-ref ref="STDOUT" />
+   </logger>
+    -->
+
+   <logger name="com.dtsx.astra.sdk" level="DEBUG" additivity="false">
+       <appender-ref ref="STDOUT" />
+   </logger>
+
+    <logger name="io.stargate.sdk.data" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
+    
+    <logger name="org.springframework" level="ERROR" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+    
+    <root level="ERROR">
+        <appender-ref ref="STDOUT" />
+    </root>
+    
+</configuration>
