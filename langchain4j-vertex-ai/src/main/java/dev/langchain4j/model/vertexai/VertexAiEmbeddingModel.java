@@ -12,7 +12,6 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -23,6 +22,7 @@ import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -46,7 +46,7 @@ import static java.util.stream.Collectors.toList;
  */
 public class VertexAiEmbeddingModel implements EmbeddingModel {
 
-    private static final int BATCH_SIZE = 5; // Vertex AI has a limit of up to 5 input texts per request
+    private static final int BATCH_SIZE = 250; // Vertex AI has a limit of up to 250 input texts per request
 
     private final PredictionServiceSettings settings;
     private final EndpointName endpointName;
@@ -143,10 +143,10 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                VertexAiEmbeddingModelBuilderFactory.class,
-                Builder::new
-        );
+        for (VertexAiEmbeddingModelBuilderFactory factory : loadFactories(VertexAiEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {

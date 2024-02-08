@@ -6,8 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 
@@ -48,7 +47,7 @@ class ValidationUtilsTest implements WithAssertions {
     }
 
     @Test
-    public void test_ensureNotEmpty() {
+    public void test_ensureNotEmpty_collection() {
         {
             List<Object> list = new ArrayList<>();
             list.add(new Object());
@@ -65,7 +64,30 @@ class ValidationUtilsTest implements WithAssertions {
 
         {
             assertThatExceptionOfType(IllegalArgumentException.class)
-                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(null, "test"))
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((Collection<?>) null, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+    }
+
+    @Test
+    public void test_ensureNotEmpty_map() {
+        {
+            Map<Object, Object> map = new HashMap<>();
+            map.put(new Object(), new Object());
+            assertThat(ValidationUtils.ensureNotEmpty(map, "test"))
+                    .isSameAs(map);
+        }
+
+        {
+            Map<Object, Object> map = new HashMap<>();
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty(map, "test"))
+                    .withMessageContaining("test cannot be null or empty");
+        }
+
+        {
+            assertThatExceptionOfType(IllegalArgumentException.class)
+                    .isThrownBy(() -> ValidationUtils.ensureNotEmpty((Map<?, ?>) null, "test"))
                     .withMessageContaining("test cannot be null or empty");
         }
     }

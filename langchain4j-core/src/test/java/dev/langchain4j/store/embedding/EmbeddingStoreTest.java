@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 class EmbeddingStoreTest implements WithAssertions {
     public static class MinimalEmbeddingStore implements EmbeddingStore<String> {
@@ -38,14 +39,15 @@ class EmbeddingStoreTest implements WithAssertions {
                 Embedding referenceEmbedding, int maxResults, double minScore) {
             return Collections.singletonList(
                     new EmbeddingMatch<>(
-                        0.5,
-                        "id",
-                        referenceEmbedding,
-                        String.format(
-                                "%s, %d, %.2f",
-                                referenceEmbedding.vectorAsList(),
-                                maxResults,
-                                minScore)));
+                            0.5,
+                            "id",
+                            referenceEmbedding,
+                            String.format(
+                                    Locale.US,
+                                    "%s, %d, %.2f",
+                                    referenceEmbedding.vectorAsList(),
+                                    maxResults,
+                                    minScore)));
         }
     }
 
@@ -55,15 +57,16 @@ class EmbeddingStoreTest implements WithAssertions {
                 Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore) {
             return Collections.singletonList(
                     new EmbeddingMatch<>(
-                        0.5,
-                        "id",
-                        referenceEmbedding,
-                        String.format(
-                                "%s, %s, %d, %.2f",
-                                memoryId,
-                                referenceEmbedding.vectorAsList(),
-                                maxResults,
-                                minScore)));
+                            0.5,
+                            "id",
+                            referenceEmbedding,
+                            String.format(
+                                    Locale.US,
+                                    "%s, %s, %d, %.2f",
+                                    memoryId,
+                                    referenceEmbedding.vectorAsList(),
+                                    maxResults,
+                                    minScore)));
         }
     }
 
@@ -76,10 +79,10 @@ class EmbeddingStoreTest implements WithAssertions {
         assertThat(store.findRelevant(referenceEmbedding, 12))
                 .contains(
                         new EmbeddingMatch<>(
-                            0.5,
-                            "id",
-                            referenceEmbedding,
-                            "[0.5, 1.5], 12, 0.00"));
+                                0.5,
+                                "id",
+                                referenceEmbedding,
+                                "[0.5, 1.5], 12, 0.00"));
 
         assertThatExceptionOfType(RuntimeException.class)
                 .isThrownBy(() -> store.findRelevant("MemoryId", referenceEmbedding, 12))
@@ -95,9 +98,9 @@ class EmbeddingStoreTest implements WithAssertions {
         assertThat(store.findRelevant("abc", referenceEmbedding, 12))
                 .contains(
                         new EmbeddingMatch<>(
-                            0.5,
-                            "id",
-                            referenceEmbedding,
-                            "abc, [0.5, 1.5], 12, 0.00"));
+                                0.5,
+                                "id",
+                                referenceEmbedding,
+                                "abc, [0.5, 1.5], 12, 0.00"));
     }
 }

@@ -20,7 +20,7 @@ java --version
 :::
 ![Java](https://img.shields.io/badge/Java-8_+-blue.svg?style=for-the-badge&labelColor=gray)
 
-Latest version of LangChain4j: 0.25.0
+Latest version of LangChain4j:
 
 ![Maven Central](https://img.shields.io/maven-central/v/dev.langchain4j/langchain4j?style=for-the-badge&labelColor=gray)
 
@@ -33,66 +33,42 @@ To add langchain4j to your java project, add the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>{your-version}</version> <!-- Specify your version here -->
+    <version>0.26.1</version>
 </dependency>
 ```
 
 - For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:{your-version}'
+implementation 'dev.langchain4j:langchain4j:0.26.1'
 ```
 
 
 
 ## Write a Hello World program
 
-The easiest way to get started is with the OpenAI API integration. 
+The easiest way to get started is with the OpenAI integration. 
 
-Next to your java classes, create a class ```ApiKeys``` where you expose you OpenAI API key:
+First, import your OpenAI API key.
+It's recommended to store your API keys in environment variables to reduce the risk of exposing them publicly.
 ```java
-public class ApiKeys {
-    public static final String OPENAI_API_KEY = System.getenv("your key goes here");
-}
+String apiKey = System.getenv("OPENAI_API_KEY");
 ```
-
 :::note
-If you don't have a key for OpenAI API, you can temporarily use "demo" as a key to try out langchain4j
+If you don't have your own OpenAI API key, don't worry.
+You can temporarily use `demo` key, which we provide for free for demonstration purposes:
+```java
+String apiKey = "demo";
+```
 :::
-
-Once you've set the key up, create this Java class and run it:
-
+Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
 ```java
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiChatModel;
-
-public class HelloWorldExample {
-
-    public static void main(String[] args) {
-
-        // Create an instance of a model
-        ChatLanguageModel model = OpenAiChatModel
-                .withApiKey(ApiKeys.OPENAI_API_KEY);
-
-        // Start interacting
-        AiMessage answer = model.sendUserMessage("Hello world!");
-
-        System.out.println(answer.text()); // Hello! How can I assist you today?
-    }
-}
+OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
 ```
-
-Alternatively, specify your OpenAI API key as the environment variable `OPENAI_API_KEY`.
-
-```shell
-export OPENAI_API_KEY=sk-<the-rest-of-your-key>
-```
-
-and load it into your java class as follows
-
+Now, it is time to chat!
 ```java
-String key = System.getenv("OPENAI_API_KEY");
+String answer = model.generate("Say 'Hello World'");
+System.out.println(answer); // Hello World
 ```
 
 Find step-by-step tutorials with more complex examples [here](/docs/category/tutorials).

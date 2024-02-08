@@ -9,7 +9,6 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -18,6 +17,7 @@ import java.time.Duration;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -106,16 +106,27 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
     }
 
     public static OpenAiStreamingLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OpenAiStreamingLanguageModelBuilderFactory.class,
-                OpenAiStreamingLanguageModelBuilder::new
-        );
+        for (OpenAiStreamingLanguageModelBuilderFactory factory : loadFactories(OpenAiStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiStreamingLanguageModelBuilder();
     }
 
     public static class OpenAiStreamingLanguageModelBuilder {
+
         public OpenAiStreamingLanguageModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiStreamingLanguageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiStreamingLanguageModelBuilder modelName(OpenAiLanguageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

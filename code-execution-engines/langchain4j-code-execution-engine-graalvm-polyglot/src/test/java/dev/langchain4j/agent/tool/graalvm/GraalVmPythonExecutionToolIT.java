@@ -10,6 +10,12 @@ import static org.mockito.Mockito.*;
 
 class GraalVmPythonExecutionToolIT {
 
+    OpenAiChatModel model = OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .build();
+
     interface Assistant {
 
         String chat(String userMessage);
@@ -21,7 +27,7 @@ class GraalVmPythonExecutionToolIT {
         GraalVmPythonExecutionTool tool = spy(new GraalVmPythonExecutionTool());
 
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(OpenAiChatModel.withApiKey(System.getenv("OPENAI_API_KEY")))
+                .chatLanguageModel(model)
                 .tools(tool)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();

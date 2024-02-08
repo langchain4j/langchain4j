@@ -11,7 +11,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -23,6 +22,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
@@ -164,16 +164,27 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     }
 
     public static OpenAiChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OpenAiChatModelBuilderFactory.class,
-                OpenAiChatModelBuilder::new
-        );
+        for (OpenAiChatModelBuilderFactory factory : loadFactories(OpenAiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiChatModelBuilder();
     }
 
     public static class OpenAiChatModelBuilder {
+
         public OpenAiChatModelBuilder() {
             // This is public so it can be extended
             // By default with Lombok it becomes package private
+        }
+
+        public OpenAiChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiChatModelBuilder modelName(OpenAiChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }

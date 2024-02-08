@@ -11,7 +11,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.io.IOException;
@@ -21,6 +20,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a chat completion interface, such as gemini-pro.
@@ -114,10 +114,10 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
     }
 
     public static VertexAiGeminiChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                VertexAiGeminiChatModelBuilderFactory.class,
-                VertexAiGeminiChatModelBuilder::new
-        );
+        for (VertexAiGeminiChatModelBuilderFactory factory : loadFactories(VertexAiGeminiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new VertexAiGeminiChatModelBuilder();
     }
 
     public static class VertexAiGeminiChatModelBuilder {

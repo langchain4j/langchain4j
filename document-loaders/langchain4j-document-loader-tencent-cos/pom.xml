@@ -6,12 +6,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-document-loader-tencent-cos</artifactId>
-    <name>LangChain4j Tencent COS document loader</name>
+    <name>LangChain4j :: Document loader :: Tencent COS</name>
     <packaging>jar</packaging>
 
     <dependencies>
