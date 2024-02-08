@@ -20,6 +20,7 @@ import static java.nio.file.Files.isDirectory;
 import static java.nio.file.Files.isRegularFile;
 
 public class FileSystemDocumentLoader {
+    private FileSystemDocumentLoader() {}
 
     private static final Logger log = LoggerFactory.getLogger(FileSystemDocumentLoader.class);
 

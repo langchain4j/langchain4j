@@ -82,11 +82,15 @@ const config = {
                         type: 'docSidebar',
                         sidebarId: 'tutorialSidebar',
                         position: 'left',
-                        label: 'Get Started',
+                        label: 'Introduction',
                     },
                     {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
-                    {to: 'https://lizeraes.github.io/langchain4j/apidocs/', label: 'Javadoc', position: 'left'},
+                    {
+                        href: 'https://langchain4j.github.io/langchain4j/apidocs/index.html',
+                        label: 'Javadoc',
+                        position: 'left'
+                    },
                     {to: '/blog', label: 'Blog', position: 'left'},
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
@@ -102,7 +106,7 @@ const config = {
                         title: 'Docs',
                         items: [
                             {
-                                label: 'Tutorial',
+                                label: 'Tutorials',
                                 to: '/docs/tutorials',
                             },
                         ],
@@ -119,8 +123,8 @@ const config = {
                                 href: 'https://discord.com/invite/JzTFvyjG6R',
                             },
                             {
-                                 label: 'Stack Overflow',
-                                 href: 'https://stackoverflow.com/questions/tagged/langchain4j',
+                                label: 'Stack Overflow',
+                                href: 'https://stackoverflow.com/questions/tagged/langchain4j',
                             },
                         ],
                     },

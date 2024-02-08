@@ -3,7 +3,6 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.models.ImageGenerationResponseFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +15,6 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-@Disabled
 public class AzureOpenAiImageModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModelIT.class);
@@ -26,8 +24,8 @@ public class AzureOpenAiImageModelIT {
 
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName("dall-e-3")
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -50,7 +48,7 @@ public class AzureOpenAiImageModelIT {
     void should_generate_image_in_base64() throws IOException {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+                .deploymentName("dall-e-3")
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .logRequestsAndResponses(false) // The image is big, so we don't want to log it by default
                 .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
