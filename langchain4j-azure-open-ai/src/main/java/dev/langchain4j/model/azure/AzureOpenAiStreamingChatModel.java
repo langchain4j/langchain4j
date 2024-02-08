@@ -61,16 +61,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private final Integer maxTokens;
     private final Double temperature;
     private final Double topP;
-    private Map<String, Integer> logitBias;
-    private String user;
-    private Integer n;
+    private final Map<String, Integer> logitBias;
+    private final String user;
+    private final Integer n;
     private final List<String> stop;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private List<AzureChatExtensionConfiguration> dataSources;
-    private AzureChatEnhancementConfiguration enhancements;
-    private Long seed;
-    private ChatCompletionsResponseFormat responseFormat;
+    private final List<AzureChatExtensionConfiguration> dataSources;
+    private final AzureChatEnhancementConfiguration enhancements;
+    private final Long seed;
+    private final ChatCompletionsResponseFormat responseFormat;
 
     public AzureOpenAiStreamingChatModel(OpenAIClient client,
                                          String deploymentName,
