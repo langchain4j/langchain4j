@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-document-loader-amazon-s3</artifactId>
-    <name>LangChain4j Amazon S3 document loader</name>
+    <name>LangChain4j :: Document loader :: Amazon S3</name>
     <packaging>jar</packaging>
 
     <dependencies>

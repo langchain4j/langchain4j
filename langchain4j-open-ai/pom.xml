@@ -14,7 +14,7 @@
     <artifactId>langchain4j-open-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with OpenAI</name>
+    <name>LangChain4j :: Integration :: OpenAI</name>
 
     <dependencies>
 

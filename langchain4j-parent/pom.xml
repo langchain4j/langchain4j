@@ -9,7 +9,7 @@
     <version>0.27.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>langchain4j parent POM</name>
+    <name>LangChain4j :: Parent POM</name>
     <description>Parent POM for langchain4j submodules</description>
     <url>https://github.com/langchain4j/langchain4j</url>
 
@@ -50,6 +50,7 @@
         <netty.version>4.1.104.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
+        <infinispan.version>15.0.0.Dev07</infinispan.version>
     </properties>
 
     <dependencyManagement>
@@ -328,6 +329,13 @@
                 <version>${github-api.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-bom</artifactId>
+                <version>${infinispan.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
 
     </dependencyManagement>

@@ -3,37 +3,85 @@
 [![](https://img.shields.io/twitter/follow/langchain4j)](https://twitter.com/intent/follow?screen_name=langchain4j)
 [![](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?compact=true&style=flat)](https://discord.gg/JzTFvyjG6R)
 
-## Project goals
+## Introduction
 
-The goal of this project is to simplify the integration of AI/LLM capabilities into your Java application.
+Welcome!
 
-This can be achieved thanks to:
+The goal of LangChain4j is to simplify integrating AI/LLM capabilities into Java applications.
 
-- **A simple and coherent layer of abstractions**, designed to ensure that your code does not depend on concrete implementations such as LLM providers, embedding store providers, etc. This allows for easy swapping of components.
-- **Numerous implementations of the above-mentioned abstractions**, providing you with a variety of LLMs and embedding stores to choose from.
-- **Range of in-demand features on top of LLMs, such as:**
-    - The capability to **ingest your own data** (documentation, codebase, etc.), allowing the LLM to act and respond based on your data.
-    - **Autonomous agents** for delegating tasks (defined on the fly) to the LLM, which will strive to complete them.
-    - **Prompt templates** to help you achieve the highest possible quality of LLM responses.
-    - **Memory** to provide context to the LLM for your current and past conversations.
-    - **Structured outputs** for receiving responses from the LLM with a desired structure as Java POJOs.
-    - **"AI Services"** for declaratively defining complex AI behavior behind a simple API.
-    - **Chains** to reduce the need for extensive boilerplate code in common use-cases.
-    - **Auto-moderation** to ensure that all inputs and outputs to/from the LLM are not harmful.
+Here's how:
+1. **Unified APIs:**
+   LLM providers (like OpenAI or Google Vertex AI) and embedding (vector) stores (such as Pinecone or Vespa)
+   use proprietary APIs. LangChain4j offers a unified API to avoid the need for learning and implementing specific APIs for each of them.
+   To experiment with a different LLM or embedding store, you can easily switch between them without the need to rewrite your code.
+   LangChain4j currently supports over 10 popular LLM providers and more than 15 embedding stores.
+   Think of it as a Hibernate, but for LLMs and embedding stores.
+2. **Comprehensive Toolbox:**
+   During the past year, the community has been building numerous LLM-powered applications,
+   identifying common patterns, abstractions, and techniques. LangChain4j has refined these into practical code.
+   Our toolbox includes tools ranging from low-level prompt templating, memory management, and output parsing
+   to high-level patterns like Agents and RAGs.
+   For each pattern and abstraction, we provide an interface along with multiple ready-to-use implementations based on proven techniques.
+   Whether you're building a chatbot or developing a RAG with a complete pipeline from data ingestion to retrieval,
+   LangChain4j offers a wide variety of options.
+3. **Numerous Examples:**
+   These [examples](https://github.com/langchain4j/langchain4j-examples) showcase how to begin creating various LLM-powered applications,
+   providing inspiration and enabling you to start building quickly.
 
-## Code examples
+LangChain4j began development in early 2023 amid the ChatGPT hype.
+We noticed a lack of Java counterparts to the numerous Python and JavaScript LLM libraries and frameworks,
+and we had to fix that!
+Although "LangChain" is in our name, the project is a fusion of ideas and concepts from LangChain, Haystack,
+LlamaIndex, and the broader community, spiced up with a touch of our own innovation.
 
-Please see examples of how LangChain4j can be used in `langchain4j-examples` repo:
+We actively monitor community developments, aiming to quickly incorporate new techniques and integrations,
+ensuring you stay up-to-date.
+The library is under active development. While some features from the Python version of LangChain
+are still being worked on, the core functionality is in place, allowing you to start building LLM-powered apps now!
+
+For easier integration, LangChain4j also includes integration with
+Quarkus ([extension](https://quarkus.io/extensions/io.quarkiverse.langchain4j/quarkus-langchain4j-core))
+and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
+
+## Code Examples
+
+Please see examples of how LangChain4j can be used in [langchain4j-examples](https://github.com/langchain4j/langchain4j-examples) repo:
 
 - [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
+- [Examples with Quarkus](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples) (uses [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency)
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
-
-Quarkus specific examples (leveraging the [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency which builds on this project) can be found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
 
 ## Documentation
 Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 
+## Tutorials
+Tutorials can be found [here](https://langchain4j.github.io/langchain4j/docs/tutorials).
+
+## Useful Materials
+- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
+- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
+
+## Library Structure
+LangChain4j features a modular design, comprising:
+- The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
+- The main `langchain4j` module, containing useful tools like `ChatMemory`, `OutputParser` as well as a high-level features like `AiServices`.
+- A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
+  You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
+
 ## News
+
+30 January:
+ - Support for [Advanced RAG](https://github.com/langchain4j/langchain4j/pull/538).
+Examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
+ - Support for image inputs.
+Currently supported by [OpenAI](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiChatModelExamples.java), Vertex AI Gemini, Ollama and Qwen.
+ - [Mistral AI](https://mistral.ai/) [integration](https://github.com/langchain4j/langchain4j-examples/blob/main/mistral-ai-examples/src/main/java/MistralAiChatModelExamples.java) by [@czelabueno](https://github.com/czelabueno)
+ - [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) integration by [@jdubois](https://github.com/jdubois)
+ - [Qdrant](https://qdrant.tech/) integration by [@Anush008](https://github.com/Anush008)
+- [And much more](https://github.com/langchain4j/langchain4j/releases/tag/0.26.1)
+
+<details>
+  <summary>Previous News</summary>
 
 22 December:
 - Azure OpenAI:
@@ -136,10 +184,11 @@ Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
 1 July:
 
 - [Added "Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java) (support for OpenAI functions)
+</details>
 
 ## Highlights
 
-You can declaratively define concise "AI Services" that are powered by LLMs:
+You can define declarative "AI Services" that are powered by LLMs:
 
 ```java
 interface Assistant {
@@ -206,7 +255,7 @@ Person person = extractor.extractPersonFrom(text);
 // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
 ```
 
-You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
+You can provide tools that LLMs can use! It can be anything: retrieve information from DB, call APIs, etc.
 See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java).
 
 ## Compatibility
@@ -218,24 +267,24 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 1. Add LangChain4j OpenAI dependency to your project:
     - Maven:
-      ```
+      ```xml
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.26.0</version>
+          <version>0.26.1</version>
       </dependency>
       ```
     - Gradle:
-      ```
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.26.0'
+      ```groovy
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.26.1'
       ```
 
 2. Import your OpenAI API key:
     ```java
     String apiKey = System.getenv("OPENAI_API_KEY");
     ```
-    You can use the API key "demo" to test OpenAI, which we provide for free.
-    [How to gen an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
+    You can also use the API key `demo` to test OpenAI, which we provide for free.
+    [How to get an API key?](https://github.com/langchain4j/langchain4j#how-to-get-an-api-key)
 
 
 3. Create an instance of a model and start interacting:
@@ -246,24 +295,41 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     
     System.out.println(answer); // Hello! How can I assist you today?
     ```
+## Supported LLM Integrations ([Docs](https://langchain4j.github.io/langchain4j/docs/category/integrations))
+| Provider                                                                                                           | Native Image     | [Completion](https://langchain4j.github.io/langchain4j/docs/category/language-models) | [Streaming](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/response-streaming)  | [Async Completion](https://langchain4j.github.io/langchain4j/docs/category/language-models) | [Async Streaming](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/response-streaming) | [Embedding](https://langchain4j.github.io/langchain4j/docs/category/embedding-models) | [Image Generation](https://langchain4j.github.io/langchain4j/docs/category/image-models) | [ReRanking](https://langchain4j.github.io/langchain4j/docs/category/reranking-models) 
+|--------------------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
+| [OpenAI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/openai)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
+| [Azure OpenAI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/azure-openai)           |  | ✅ | ✅ |  |   | ✅ | ✅ | 
+| [Hugging Face](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/huggingface)            |  | ✅ |  | ✅ |  | ✅ |  |  |
+| [Amazon Bedrock](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/amazon-bedrock)        |  | ✅ |  |  |  | ✅ |
+| [Google Vertex AI Gemini](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
+| [Google Vertex AI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/google-palm)        | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
+| [Mistral AI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/mistralai)                |  | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DashScope](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/dashscope)                 |  | ✅ | ✅ |  | ✅ | ✅ |
+| [LocalAI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/localai)                     |  | ✅ | ✅ | ✅ |  | ✅ |  |
+| [Ollama](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/ollama)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [Cohere](https://langchain4j.github.io/langchain4j/docs/integrations/reranking-models/cohere)                      |  |  |  |  |  |  |  | ✅ |
+| [Qianfan](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/huggingface)                 |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [ChatGLM](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/chatglm)                     |  | ✅ |  |  |  |  |
+| [Nomic](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/nomic)                         |  |  |  |  |  | ✅ |  |
 
 ## Disclaimer
 
 Please note that the library is in active development and:
 
-- Many features are still missing. We are working hard on implementing them ASAP.
+- Some features are still missing. We are working hard on implementing them ASAP.
 - API might change at any moment. At this point, we prioritize good design in the future over backward compatibility
   now. We hope for your understanding.
 - We need your input! Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need and your concerns about the current implementation.
 
-## Current capabilities:
+## Current features (this list is outdated, we have much more):
 
 - AI Services:
     - [Simple](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/SimpleServiceExample.java)
     - [With Memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
     - [With Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
     - [With Streaming](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
-    - [With Retriever](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
+    - [With RAG](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
     - [With Auto-Moderation](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
     - [With Structured Outputs, Structured Prompts, etc](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 - Integration with [OpenAI](https://platform.openai.com/docs/introduction) and [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) for:

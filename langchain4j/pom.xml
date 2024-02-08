@@ -14,7 +14,7 @@
     <artifactId>langchain4j</artifactId>
     <packaging>jar</packaging>
 
-    <name>langchain4j</name>
+    <name>LangChain4j</name>
     <description>Java implementation of LangChain: Integrate your Java application with countless AI tools and services
         smoothly
     </description>

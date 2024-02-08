@@ -16,7 +16,6 @@ import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -25,6 +24,7 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -200,10 +200,10 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                AzureOpenAiStreamingLanguageModelBuilderFactory.class,
-                Builder::new
-        );
+        for (AzureOpenAiStreamingLanguageModelBuilderFactory factory : loadFactories(AzureOpenAiStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {

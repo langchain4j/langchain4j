@@ -12,7 +12,7 @@
     </parent>
 
     <artifactId>langchain4j-milvus</artifactId>
-    <name>LangChain4j integration with Milvus</name>
+    <name>LangChain4j :: Integration :: Milvus</name>
 
     <dependencies>
 

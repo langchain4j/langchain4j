@@ -7,13 +7,13 @@ import dev.langchain4j.model.huggingface.client.*;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.joining;
 
 public class HuggingFaceChatModel implements ChatLanguageModel {
@@ -87,10 +87,10 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                HuggingFaceChatModelBuilderFactory.class,
-                Builder::new
-        );
+        for (HuggingFaceChatModelBuilderFactory factory : loadFactories(HuggingFaceChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static final class Builder {

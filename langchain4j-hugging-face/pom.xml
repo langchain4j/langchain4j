@@ -14,7 +14,7 @@
     <artifactId>langchain4j-hugging-face</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Hugging Face</name>
+    <name>LangChain4j :: Integration :: Hugging Face</name>
 
     <dependencies>
 
