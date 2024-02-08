@@ -53,9 +53,9 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  * <p>
  * If you are using a free tier, {@code #createIndex = true} might not be supported,
  * so you will need to create an index manually.
- * In your Atlas web console go to: DEPLOYMENT -> Database -> {your cluster} -> Atlas Search -> Create Index Search
- * -> "JSON Editor" under "Atlas Search" -> Next -> Select your database in the left pane
- * -> Insert the following JSON into the right pane (set "dimensions" and "metadata"->"fields" to desired values)
+ * In your Atlas web console go to: DEPLOYMENT -&gt; Database -&gt; {your cluster} -&gt; Atlas Search -&gt; Create Index Search
+ * -&gt; "JSON Editor" under "Atlas Search" -&gt; Next -&gt; Select your database in the left pane
+ * -&gt; Insert the following JSON into the right pane (set "dimensions" and "metadata"-&gt;"fields" to desired values)
  * <pre>
  * {
  *   "mappings": {
@@ -79,7 +79,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  *   }
  * }
  * </pre>
- * -> Next -> Create Search Index
+ * -&gt; Next -&gt; Create Search Index
  */
 public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
@@ -252,7 +252,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
+                .map(ignored -&gt; randomUUID())
                 .collect(toList());
         addAllInternal(ids, embeddings, null);
         return ids;
@@ -261,7 +261,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream()
-                .map(ignored -> randomUUID())
+                .map(ignored -&gt; randomUUID())
                 .collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
@@ -344,7 +344,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private boolean isIndexExist(String indexName) {
         return StreamSupport.stream(collection.listSearchIndexes().spliterator(), false)
-                .anyMatch(index -> indexName.equals(index.getString("name")));
+                .anyMatch(index -&gt; indexName.equals(index.getString("name")));
     }
 
     private void createIndex(String indexName, IndexMapping indexMapping) {
