@@ -1,4 +1,4 @@
-name: release_7_neo4j
+name: release_7_java_17_modules
 
 on:
   workflow_dispatch:

@@ -1,11 +1,11 @@
-name: release_6_opensearch
+name: release_6_java_11_modules
 
 on:
   workflow_dispatch:
 
 jobs:
 
-  release_6_opensearch:
+  release_6_java_11_modules:
     runs-on: ubuntu-latest
     steps:
 
@@ -23,8 +23,8 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: release_6_opensearch
-        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-opensearch
+      - name: release_6_java_11_modules
+        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-cassandra,langchain4j-opensearch
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
