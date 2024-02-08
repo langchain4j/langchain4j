@@ -13,7 +13,6 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -22,6 +21,7 @@ import java.util.List;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
@@ -131,10 +131,10 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static LocalAiStreamingChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                LocalAiStreamingChatModelBuilderFactory.class,
-                LocalAiStreamingChatModelBuilder::new
-        );
+        for (LocalAiStreamingChatModelBuilderFactory factory : loadFactories(LocalAiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiStreamingChatModelBuilder();
     }
 
     public static class LocalAiStreamingChatModelBuilder {

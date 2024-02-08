@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chatglm.spi.ChatGlmChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -16,6 +15,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Support <a href="https://github.com/THUDM/ChatGLM-6B">ChatGLM</a>,
@@ -85,10 +85,10 @@ public class ChatGlmChatModel implements ChatLanguageModel {
     }
 
     public static ChatGlmChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                ChatGlmChatModelBuilderFactory.class,
-                ChatGlmChatModelBuilder::new
-        );
+        for (ChatGlmChatModelBuilderFactory factory : loadFactories(ChatGlmChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new ChatGlmChatModelBuilder();
     }
 
     public static class ChatGlmChatModelBuilder {

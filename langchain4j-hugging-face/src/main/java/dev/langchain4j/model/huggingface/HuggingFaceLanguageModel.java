@@ -5,11 +5,11 @@ import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.TII_UAE_FALCON_7B_INSTRUCT;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class HuggingFaceLanguageModel implements LanguageModel {
 
@@ -81,10 +81,10 @@ public class HuggingFaceLanguageModel implements LanguageModel {
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                HuggingFaceLanguageModelBuilderFactory.class,
-                Builder::new
-        );
+        for (HuggingFaceLanguageModelBuilderFactory factory : loadFactories(HuggingFaceLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static final class Builder {

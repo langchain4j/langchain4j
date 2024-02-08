@@ -14,7 +14,6 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -26,6 +25,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
@@ -185,10 +185,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     }
 
     public static OpenAiStreamingChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OpenAiStreamingChatModelBuilderFactory.class,
-                OpenAiStreamingChatModelBuilder::new
-        );
+        for (OpenAiStreamingChatModelBuilderFactory factory : loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiStreamingChatModelBuilder();
     }
 
     public static class OpenAiStreamingChatModelBuilder {

@@ -52,7 +52,7 @@ and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
 - Output parsers for common Java types (e.g., `List`, `LocalDate`, etc.) and custom POJOs
 - Integration with over three managed and self-hosted image generation models
 - Integration with more than 10 managed and self-hosted embedding models
-- Integration with more than 15 managed and self-hosted Vector Stores
+- Integration with more than 15 managed and self-hosted embedding stores
 - Integration with one moderation model: OpenAI
 - Integration with one scoring (re-ranking) model: Cohere (with more expected to come)
 - Tools (function calling)
@@ -68,14 +68,26 @@ and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
     - Splitting documents into smaller segments using multiple splitting algorithms
     - Post-processing of documents and segments
     - Embedding segments using embedding models
-    - Storing embeddings in Vector Store
+    - Storing embeddings in embedding (vector) store
   - Retrieval (simple and advanced):
     - Transformation of queries (expansion, compression)
     - Routing of queries
-    - Retrieving from Vector Store and/or any custom sources
+    - Retrieving from vector store and/or any custom sources
     - Re-ranking
     - Reciprocal Rank Fusion
     - Customization of each step in the RAG flow
+
+### 2 levels of abstraction
+LangChain4j operates on two levels of abstraction:
+- Low level. At this level, you have the most freedom and access to all the low-level components such as
+`ChatLanguageModel`, `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
+These are the "primitives" of your LLM-powered application.
+You have complete control over how to combine them, but you will need to write more glue code.
+- High level. At this level, you interact with LLMs using high-level APIs like `AiServices` and `Chain`s,
+which hides all the complexity and boilerplate from you.
+You still have the flexibility to adjust and fine-tune the behavior, but it is done in a declarative manner.
+
+[![](/img/langchain4j-components.png)](/docs/intro)
 
 ### Library Structure
 LangChain4j features a modular design, comprising:
@@ -83,18 +95,6 @@ LangChain4j features a modular design, comprising:
 - The main `langchain4j` module, containing useful tools like `ChatMemory`, `OutputParser` as well as a high-level features like `AiServices`.
 - A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
   You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
-
-### 2 levels of abstraction
-LangChain4j operates on two levels of abstraction:
-- Low level. At this level, you have the most freedom and access to all the low-level components such as
-`ChatLanguageModel`, `UserMessage`, `AiMessage`, `EmbeddingStore`, `Embedding`, etc.
-These are the "primitives" of your LLM-powered application.
-You have complete control over how to combine them, but you will need to write more code in the imperative style.
-- High level. At this level, you interact with LLMs using high-level APIs like `AiServices` and `Chain`s,
-which hides all the complexity and boilerplate from you.
-You still have the flexibility to adjust and fine-tune the behavior, but it is done more in a declarative manner.
-
-[![](/img/langchain4j-components.png)](/docs/intro)
 
 ### Tutorials (User Guide)
 Discover inspiring [use cases](/docs/tutorials#need-inspiration) or follow our step-by-step introduction to LangChain4j features under [Tutorials](/docs/category/tutorials).
@@ -125,7 +125,7 @@ found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/sample
 
 Please note that the library is in active development and:
 
-- Many features are still missing. We are working hard on implementing them ASAP.
+- Some features are still missing. We are working hard on implementing them ASAP.
 - API might change at any moment. At this point, we prioritize good design in the future over backward compatibility
   now. We hope for your understanding.
 - We need your input! Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features

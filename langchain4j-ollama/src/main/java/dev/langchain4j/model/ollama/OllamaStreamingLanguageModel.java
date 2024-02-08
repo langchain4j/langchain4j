@@ -3,7 +3,6 @@ package dev.langchain4j.model.ollama;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingLanguageModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -11,6 +10,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -68,10 +68,10 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static OllamaStreamingLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                OllamaStreamingLanguageModelBuilderFactory.class,
-                OllamaStreamingLanguageModelBuilder::new
-        );
+        for (OllamaStreamingLanguageModelBuilderFactory factory : loadFactories(OllamaStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaStreamingLanguageModelBuilder();
     }
 
     public static class OllamaStreamingLanguageModelBuilder {

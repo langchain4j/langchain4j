@@ -14,11 +14,11 @@ import dev.langchain4j.model.qianfan.client.SyncOrAsyncOrStreaming;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanStreamingChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
 import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  *
@@ -145,10 +145,10 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
     }
 
     public static QianfanStreamingChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QianfanStreamingChatModelBuilderFactory.class,
-                QianfanStreamingChatModelBuilder::new
-        );
+        for (QianfanStreamingChatModelBuilderFactory factory : loadFactories(QianfanStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QianfanStreamingChatModelBuilder();
     }
 
     public static class QianfanStreamingChatModelBuilder {

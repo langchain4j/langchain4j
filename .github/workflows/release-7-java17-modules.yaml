@@ -5,7 +5,7 @@ on:
 
 jobs:
 
-  release_7_neo4j:
+  release_7_java_17_modules:
     runs-on: ubuntu-latest
     steps:
 
@@ -23,8 +23,8 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: release_7_neo4j
-        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-neo4j
+      - name: release_7_java_17_modules
+        run: mvn -B -U --fail-at-end -Psign clean deploy -pl langchain4j-infinispan,langchain4j-neo4j
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}

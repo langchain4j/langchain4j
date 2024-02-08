@@ -29,4 +29,4 @@ jobs:
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         # Notes:
         #  - tests already run in a separate action
-        run: mvn --batch-mode deploy -DskipTests
+        run: mvn -B -U --fail-at-end deploy -DskipTests -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs

@@ -30,10 +30,20 @@ public class UrlDocumentLoader {
      * @throws RuntimeException If specified URL is malformed.
      */
     public static Document load(String url, DocumentParser documentParser) {
+        return load(createUrl(url), documentParser);
+    }
+
+    /**
+     * Creates a URL from the specified string.
+     * @param url The URL string.
+     * @return the URL
+     * @throws IllegalArgumentException If specified URL is malformed.
+     */
+    static URL createUrl(String url) {
         try {
-            return load(new URL(url), documentParser);
+            return new URL(url);
         } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
+            throw new IllegalArgumentException(e);
         }
     }
 }
