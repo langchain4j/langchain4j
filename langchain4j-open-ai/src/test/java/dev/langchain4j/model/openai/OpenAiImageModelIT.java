@@ -17,8 +17,8 @@ class OpenAiImageModelIT {
 
     Logger log = LoggerFactory.getLogger(OpenAiImageModelIT.class);
 
-    OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel
-            .builder()
+    OpenAiImageModel.OpenAiImageModelBuilder modelBuilder = OpenAiImageModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .modelName(OpenAiModelName.DALL_E_2) // so that you pay not much :)
@@ -69,8 +69,8 @@ class OpenAiImageModelIT {
 
     @Test
     void image_generation_with_dalle3_works() {
-        OpenAiImageModel model = OpenAiImageModel
-                .builder()
+        OpenAiImageModel model = OpenAiImageModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .quality(DALL_E_QUALITY_HD)
@@ -96,6 +96,7 @@ class OpenAiImageModelIT {
 
         // given
         OpenAiImageModel model = OpenAiImageModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(OpenAiImageModelName.DALL_E_2)

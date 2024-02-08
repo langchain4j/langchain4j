@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OpenAiModerationModelIT {
 
     ModerationModel model = OpenAiModerationModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .build();
@@ -33,6 +34,7 @@ class OpenAiModerationModelIT {
 
         // given
         ModerationModel model = OpenAiModerationModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(TEXT_MODERATION_LATEST)

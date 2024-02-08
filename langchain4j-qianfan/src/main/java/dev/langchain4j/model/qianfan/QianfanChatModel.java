@@ -9,12 +9,13 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 
 /**
@@ -135,10 +136,10 @@ public class QianfanChatModel implements ChatLanguageModel {
 
 
     public static QianfanChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QianfanChatModelBuilderFactory.class,
-                QianfanChatModelBuilder::new
-        );
+        for (QianfanChatModelBuilderFactory factory : loadFactories(QianfanChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QianfanChatModelBuilder();
     }
 
     public static class QianfanChatModelBuilder {

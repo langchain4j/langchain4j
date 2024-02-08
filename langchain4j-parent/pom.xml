@@ -6,10 +6,10 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.26.0-SNAPSHOT</version>
+    <version>0.27.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>langchain4j parent POM</name>
+    <name>LangChain4j :: Parent POM</name>
     <description>Parent POM for langchain4j submodules</description>
     <url>https://github.com/langchain4j/langchain4j</url>
 
@@ -322,7 +322,7 @@
                 <artifactId>json-path</artifactId>
                 <version>${jsonpath.version}</version>
             </dependency>
-          
+
             <dependency>
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>

@@ -7,7 +7,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaModelsTest extends AbstractOllamaInfrastructure {
+class OllamaModelsIT extends AbstractOllamaInfrastructure {
 
     OllamaModels ollamaModels = OllamaModels.builder()
             .baseUrl(getBaseUrl())

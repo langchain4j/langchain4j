@@ -1,0 +1,42 @@
+---
+title: Overview
+hide_title: false
+sidebar_position: 1
+---
+
+Here you will find a quick view of available ready-to-use integration capabilities and all our supported integrations and models for every LLM provider supported on LangChain4j so far.
+
+We are making a great effort to have most of the functions enabled according to the progress and updates of the LLM providers and java features.
+
+## Capabilities
+1. **Native image:** You can use this LLM integration for AOT compilation using GraalVM CE or GraalVM Oracle for [native image](https://www.graalvm.org/latest/reference-manual/native-image/) generation.
+2. **Completion:** Supports the implementation of `text-completion` and `chat-completion` models in a synchronous way. This is most common usage. View examples [here](/docs/tutorials/connect-to-llm)
+3. **Streaming:** Supports `streaming` the model response back for `text-completion` or `chat-completion` models handling each event in `StreamingResponseHandler<AiMessage>` class. View examples [here](/docs/tutorials/response-streaming)
+4. **Async Completion:** Provide an [asynchronous](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html) version of the completion feature.
+5. **Async Streaming:** Provide an [asynchronous](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html) version of the streaming feature.
+6. **Embeddings:** Supports the implementation of `text-embedding` models. Embeddings make it easy to add custom data without fine-tuning. Generally used with Retrieval-Augmented Generation (`RAG`) tools, `Vector Stores` and `Search`. View examples [here](/docs/tutorials/embedding-store)
+7. **Image Generation:** Supports the implementation of `text-to-image` models to create realistic and coherent images from scratch. View examples [here](/docs/tutorials/image-models)
+8. **ReRanking:** Understands the implementation of re-ranking models to improve created models by re-organizing their results based on certain parameters. View examples [here](/docs/tutorials/reranking-models)
+
+:::note
+of course some LLM providers offer large multimodal model (accepting text or image inputs) and it would cover more than one capability.
+:::
+
+## Supported LLM Integrations
+| Provider                                                                  | [Native Image](/docs/category/code-execution-engines)     | [Completion](/docs/tutorials/connect-to-llm) | [Streaming](/docs/tutorials/response-streaming)  | [Async Completion](/docs/tutorials/connect-to-llm) | [Async Streaming](/docs/tutorials/response-streaming) | [Embeddings](/docs/category/embedding-models) | [Image Generation](/docs/category/image-models) | [ReRanking](/docs/category/reranking-models)
+|---------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |----------------------------------------------------------------------------------------------|---------------|
+| [OpenAI](/docs/integrations/language-models/openai)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [Azure OpenAI](/docs/integrations/language-models/azure-openai)           |  | ✅ | ✅ |  |   | ✅ | ✅ |
+| [Hugging Face](/docs/integrations/language-models/huggingface)            |  | ✅ |  | ✅ |  | ✅ |  |  |
+| [Amazon Bedrock](/docs/integrations/language-models/amazon-bedrock)        |  | ✅ |  |  |  | ✅ |
+| [Google Vertex AI Gemini](/docs/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
+| [Google Vertex AI](/docs/integrations/language-models/google-palm)        | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
+| [Mistral AI](/docs/integrations/language-models/mistralai)                |  | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DashScope](/docs/integrations/language-models/dashscope)                 |  | ✅ | ✅ |  | ✅ | ✅ |
+| [LocalAI](/docs/integrations/language-models/localai)                     |  | ✅ | ✅ | ✅ |  | ✅ |  |
+| [Ollama](/docs/integrations/language-models/ollama)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [Cohere](/docs/integrations/reranking-models/cohere)                      |  |  |  |  |  |  |  | ✅ |
+| [Qianfan](/docs/integrations/language-models/qianfan)                 |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [ChatGLM](/docs/integrations/language-models/chatglm)                     |  | ✅ |  |  |  |  |
+| [Nomic](/docs/integrations/language-models/nomic)                         |  |  |  |  |  | ✅ |  |
+

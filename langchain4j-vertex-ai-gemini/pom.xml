@@ -7,14 +7,18 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.27.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-vertex-ai-gemini</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Google Vertex AI Gemini</name>
+    <name>LangChain4j :: Integration :: Google Vertex AI Gemini</name>
+
+    <properties>
+        <skipVertexAiGeminiITs>false</skipVertexAiGeminiITs>
+    </properties>
 
     <dependencies>
 
@@ -73,6 +77,18 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipVertexAiGeminiITs}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <licenses>
         <license>
