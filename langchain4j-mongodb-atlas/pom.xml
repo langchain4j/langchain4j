@@ -15,6 +15,10 @@
 
     <name>LangChain4j :: Integration :: MongoDB Atlas</name>
 
+    <properties>
+        <skipMongoDbAtlasITs>false</skipMongoDbAtlasITs>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
@@ -88,5 +92,17 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipMongoDbAtlasITs}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
