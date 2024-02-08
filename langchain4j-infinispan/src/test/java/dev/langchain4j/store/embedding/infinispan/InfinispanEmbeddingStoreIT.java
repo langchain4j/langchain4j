@@ -15,6 +15,7 @@ import static org.infinispan.server.test.core.InfinispanContainer.DEFAULT_PASSWO
 import static org.infinispan.server.test.core.InfinispanContainer.DEFAULT_USERNAME;
 
 class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
+
     static InfinispanContainer infinispan = new InfinispanContainer();
     EmbeddingStore<TextSegment> embeddingStore;
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
@@ -33,19 +34,19 @@ class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
     protected void clearStore() {
         ConfigurationBuilder builder = new ConfigurationBuilder();
         builder.addServer().host(infinispan.getHost())
-              .port(infinispan.getFirstMappedPort())
-       .security()
-              .authentication()
-              .username(DEFAULT_USERNAME)
-              .password(DEFAULT_PASSWORD);
+                .port(infinispan.getFirstMappedPort())
+                .security()
+                .authentication()
+                .username(DEFAULT_USERNAME)
+                .password(DEFAULT_PASSWORD);
         // jut to avoid docker 4 mac issues, don't use in production
         builder.clientIntelligence(ClientIntelligence.BASIC);
 
         InfinispanEmbeddingStore embeddingStoreInf = InfinispanEmbeddingStore.builder()
-              .cacheName("my-cache")
-              .dimension(384)
-              .infinispanConfigBuilder(builder)
-              .build();
+                .cacheName("my-cache")
+                .dimension(384)
+                .infinispanConfigBuilder(builder)
+                .build();
         embeddingStoreInf.clearCache();
         embeddingStore = embeddingStoreInf;
     }
@@ -58,5 +59,5 @@ class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected EmbeddingModel embeddingModel() {
         return embeddingModel;
-        }
+    }
 }

@@ -16,19 +16,12 @@ import org.infinispan.query.remote.client.ProtobufMetadataManagerConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -39,34 +32,31 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(InfinispanEmbeddingStore.class);
 
-    private final RemoteCache<String, LangchainInfinispanItem> remoteCache;
+    private final RemoteCache<String, LangChainInfinispanItem> remoteCache;
 
-    public RemoteCache<String, LangchainInfinispanItem> getRemoteCache() {
-        return remoteCache;
-    }
-    private final LanchainItemMarshaller itemMarshaller;
+    private final LangChainItemMarshaller itemMarshaller;
 
     private static final String DEFAULT_CACHE_CONFIG =
-          "<distributed-cache name=\"CACHE_NAME\">\n"
-          +     "<indexing storage=\"local-heap\">\n"
-          +     "<indexed-entities>\n"
-          +     "<indexed-entity>LANCHAINITEM</indexed-entity>\n"
-          +     "</indexed-entities>\n"
-          +     "</indexing>\n"
-          + "</distributed-cache>";
+            "<distributed-cache name=\"CACHE_NAME\">\n"
+                    + "<indexing storage=\"local-heap\">\n"
+                    + "<indexed-entities>\n"
+                    + "<indexed-entity>LANGCHAINITEM</indexed-entity>\n"
+                    + "</indexed-entities>\n"
+                    + "</indexing>\n"
+                    + "</distributed-cache>";
 
     private static final String PROTO = "syntax = \"proto2\";\n" + "\n" + "/**\n" + " * @Indexed\n" + " */\n"
-          + "message LanchainItemDIMENSION {\n" + "   \n" + "   /**\n" + "    * @Keyword\n" + "    */\n"
-          + "   optional string id = 1;\n" + "   \n" + "   /**\n" + "    * @Vector(dimension=DIMENSION, similarity=COSINE)\n"
-          + "    */\n" + "   repeated float floatVector = 2;\n" + "   \n" + "   optional string text = 3;\n" + "   \n"
-          + "   repeated string metadataKeys = 4;\n" + "   \n" + "   repeated string metadataValues = 5;\n" + "}\n";
+            + "message LangChainItemDIMENSION {\n" + "   \n" + "   /**\n" + "    * @Keyword\n" + "    */\n"
+            + "   optional string id = 1;\n" + "   \n" + "   /**\n" + "    * @Vector(dimension=DIMENSION, similarity=COSINE)\n"
+            + "    */\n" + "   repeated float embedding = 2;\n" + "   \n" + "   optional string text = 3;\n" + "   \n"
+            + "   repeated string metadataKeys = 4;\n" + "   \n" + "   repeated string metadataValues = 5;\n" + "}\n";
 
     /**
      * Creates an instance of InfinispanEmbeddingStore
      *
-     * @param builder            Infinispan Configuration Builder
-     * @param name               The name of the store
-     * @param dimension          The dimension of the store
+     * @param builder   Infinispan Configuration Builder
+     * @param name      The name of the store
+     * @param dimension The dimension of the store
      */
     public InfinispanEmbeddingStore(ConfigurationBuilder builder,
                                     String name,
@@ -74,16 +64,16 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotNull(builder, "builder");
         ensureNotBlank(name, "name");
         ensureNotNull(dimension, "dimension");
-        itemMarshaller = new LanchainItemMarshaller(dimension);
+        itemMarshaller = new LangChainItemMarshaller(dimension);
         builder.remoteCache(name)
-              .configuration(DEFAULT_CACHE_CONFIG.replace("CACHE_NAME", name)
-                    .replace("LANCHAINITEM", itemMarshaller.getTypeName()));
+                .configuration(DEFAULT_CACHE_CONFIG.replace("CACHE_NAME", name)
+                        .replace("LANGCHAINITEM", itemMarshaller.getTypeName()));
 
         // Registers the schema on the client
         ProtoStreamMarshaller marshaller = new ProtoStreamMarshaller();
         SerializationContext serializationContext = marshaller.getSerializationContext();
         FileDescriptorSource fileDescriptorSource = new FileDescriptorSource();
-        String fileName = "lanchain_dimension_" + dimension + ".proto";
+        String fileName = "langchain_dimension_" + dimension + ".proto";
         String fileContent = PROTO.replace("DIMENSION", dimension.toString());
         fileDescriptorSource.addProtoFile(fileName, fileContent);
         serializationContext.registerProtoFiles(fileDescriptorSource);
@@ -92,7 +82,7 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Uploads the schema to the server
         RemoteCacheManager rmc = new RemoteCacheManager(builder.build());
         RemoteCache<String, String> metadataCache = rmc
-              .getCache(ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME);
+                .getCache(ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME);
         metadataCache.put(fileName, fileContent);
 
         this.remoteCache = rmc.getCache(name);
@@ -137,13 +127,13 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        Query<Object[]> query = remoteCache.query("select i, score(i) from " + itemMarshaller.getTypeName() + " i where i.floatVector <-> "+ Arrays.toString(referenceEmbedding.vector()) +"~3");
+        Query<Object[]> query = remoteCache.query("select i, score(i) from " + itemMarshaller.getTypeName() + " i where i.embedding <-> " + Arrays.toString(referenceEmbedding.vector()) + "~3");
         List<Object[]> hits = query.maxResults(maxResults).list();
 
         return hits.stream().map(obj -> {
-            LangchainInfinispanItem item = (LangchainInfinispanItem) obj[0];
+            LangChainInfinispanItem item = (LangChainInfinispanItem) obj[0];
             Float score = (Float) obj[1];
-            if (score.doubleValue() < minScore)  {
+            if (score.doubleValue() < minScore) {
                 return null;
             }
             TextSegment embedded = null;
@@ -151,12 +141,12 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
                 Map<String, String> map = new HashMap<>();
                 List<String> metadataKeys = item.getMetadataKeys();
                 List<String> metadataValues = item.getMetadataValues();
-                for (int i = 0; i < metadataKeys.size() ; i ++) {
+                for (int i = 0; i < metadataKeys.size(); i++) {
                     map.put(metadataKeys.get(i), metadataValues.get(i));
                 }
-                embedded =  new TextSegment(item.getText(), new Metadata(map));
+                embedded = new TextSegment(item.getText(), new Metadata(map));
             }
-            Embedding embedding = new Embedding(item.getFloatVector());
+            Embedding embedding = new Embedding(item.getEmbedding());
             return new EmbeddingMatch<>(score.doubleValue(), item.getId(), embedding, embedded);
         }).filter(Objects::nonNull).collect(Collectors.toList());
     }
@@ -174,7 +164,7 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         int size = ids.size();
-        Map<String, LangchainInfinispanItem> elements = new HashMap<>(size);
+        Map<String, LangChainInfinispanItem> elements = new HashMap<>(size);
         for (int i = 0; i < size; i++) {
             String id = ids.get(i);
             Embedding embedding = embeddings.get(i);
@@ -187,9 +177,9 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
                     metadataKeys.add(e.getKey());
                     metadataValues.add(e.getValue());
                 });
-                elements.put(id, new LangchainInfinispanItem(id, embedding.vector(), textSegment.text(), metadataKeys, metadataValues));
+                elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), textSegment.text(), metadataKeys, metadataValues));
             } else {
-                elements.put(id, new LangchainInfinispanItem(id, embedding.vector(), null, null, null));
+                elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), null, null, null));
             }
         }
         // blocking call
@@ -198,6 +188,10 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public static Builder builder() {
         return new Builder();
+    }
+
+    public RemoteCache<String, LangChainInfinispanItem> remoteCache() {
+        return remoteCache;
     }
 
     public void clearCache() {
