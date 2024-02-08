@@ -1,18 +1,76 @@
 package dev.langchain4j.memory.chat;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
+import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.TestUtils.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
-import static org.assertj.core.api.Assertions.assertThat;
+import static java.util.Collections.singletonList;
 
-class TokenWindowChatMemoryTest {
+class TokenWindowChatMemoryTest implements WithAssertions {
+    @Test
+    void test_id() {
+        OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
+        {
+            ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                    .maxTokens(2, tokenizer)
+                    .build();
+            assertThat(chatMemory.id()).isEqualTo("default");
+        }
+        {
+            ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                    .id("abc")
+                    .maxTokens(2, tokenizer)
+                    .build();
+            assertThat(chatMemory.id()).isEqualTo("abc");
+        }
+    }
+
+    @Test
+    void test_store_and_clear() {
+        OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
+
+        ChatMessage m1 = userMessage("hello");
+        ChatMessage m2 = userMessage("world");
+        ChatMessage m3 = userMessage("banana");
+
+        int m1tokens = tokenizer.estimateTokenCountInMessage(m1);
+        int m2tokens = tokenizer.estimateTokenCountInMessage(m2);
+
+        int overhead = tokenizer.estimateTokenCountInMessages(new ArrayList<>());
+        assertThat(tokenizer.estimateTokenCountInMessages(singletonList(m1))).isEqualTo(m1tokens + 3);
+
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(overhead + m1tokens + m2tokens, tokenizer)
+                .build();
+
+        chatMemory.add(m1);
+        chatMemory.add(m2);
+
+        assertThat(chatMemory.messages())
+                .containsExactly(m1, m2);
+
+        chatMemory.add(m3);
+
+        assertThat(chatMemory.messages())
+                .containsExactly(m2, m3);
+
+        chatMemory.clear();
+        // idempotent
+        chatMemory.clear();
+
+        assertThat(chatMemory.messages()).isEmpty();
+    }
 
     @Test
     void should_keep_specified_number_of_tokens_in_chat_memory() {

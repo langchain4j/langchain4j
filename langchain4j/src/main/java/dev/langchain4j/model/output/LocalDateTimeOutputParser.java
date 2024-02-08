@@ -13,6 +13,6 @@ public class LocalDateTimeOutputParser implements OutputParser<LocalDateTime> {
 
     @Override
     public String formatInstructions() {
-        return "2023-12-31T23:59:59";
+        return "yyyy-MM-ddTHH:mm:ss";
     }
 }

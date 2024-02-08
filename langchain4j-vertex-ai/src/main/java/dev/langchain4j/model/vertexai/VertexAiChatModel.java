@@ -12,7 +12,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.io.IOException;
 import java.util.List;
@@ -22,6 +21,7 @@ import static dev.langchain4j.data.message.ChatMessageType.*;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -152,10 +152,10 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                VertexAiChatModelBuilderFactory.class,
-                Builder::new
-        );
+        for (VertexAiChatModelBuilderFactory factory : loadFactories(VertexAiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {

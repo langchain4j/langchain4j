@@ -16,13 +16,13 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.dashscope.spi.QwenChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class QwenChatModel implements ChatLanguageModel {
     private final String apiKey;
@@ -137,10 +137,10 @@ public class QwenChatModel implements ChatLanguageModel {
     }
 
     public static QwenChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QwenChatModelBuilderFactory.class,
-                QwenChatModelBuilder::new
-        );
+        for (QwenChatModelBuilderFactory factory : loadFactories(QwenChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QwenChatModelBuilder();
     }
 
     public static class QwenChatModelBuilder {

@@ -15,7 +15,6 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.List;
@@ -26,6 +25,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
 /**
@@ -295,10 +295,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                AzureOpenAiStreamingChatModelBuilderFactory.class,
-                Builder::new
-        );
+        for (AzureOpenAiStreamingChatModelBuilderFactory factory : loadFactories(AzureOpenAiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {

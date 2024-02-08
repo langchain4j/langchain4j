@@ -13,6 +13,6 @@ public class LocalTimeOutputParser implements OutputParser<LocalTime> {
 
     @Override
     public String formatInstructions() {
-        return "23:59:59";
+        return "HH:mm:ss";
     }
 }
