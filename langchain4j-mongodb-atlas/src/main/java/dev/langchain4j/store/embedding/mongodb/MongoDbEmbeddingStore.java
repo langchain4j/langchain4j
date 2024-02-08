@@ -252,7 +252,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream()
-                .map(ignored -&gt; randomUUID())
+                .map(ignored -> randomUUID())
                 .collect(toList());
         addAllInternal(ids, embeddings, null);
         return ids;
@@ -261,7 +261,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream()
-                .map(ignored -&gt; randomUUID())
+                .map(ignored -> randomUUID())
                 .collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
@@ -344,7 +344,7 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private boolean isIndexExist(String indexName) {
         return StreamSupport.stream(collection.listSearchIndexes().spliterator(), false)
-                .anyMatch(index -&gt; indexName.equals(index.getString("name")));
+                .anyMatch(index -> indexName.equals(index.getString("name")));
     }
 
     private void createIndex(String indexName, IndexMapping indexMapping) {
