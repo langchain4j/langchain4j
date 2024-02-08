@@ -9,7 +9,6 @@ import dev.langchain4j.model.dashscope.spi.QwenEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.*;
@@ -17,6 +16,7 @@ import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.DOCUMENT;
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.QUERY;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
 public class QwenEmbeddingModel implements EmbeddingModel {
@@ -120,10 +120,10 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     }
 
     public static QwenEmbeddingModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QwenEmbeddingModelBuilderFactory.class,
-                QwenEmbeddingModelBuilder::new
-        );
+        for (QwenEmbeddingModelBuilderFactory factory : loadFactories(QwenEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QwenEmbeddingModelBuilder();
     }
 
     public static class QwenEmbeddingModelBuilder {

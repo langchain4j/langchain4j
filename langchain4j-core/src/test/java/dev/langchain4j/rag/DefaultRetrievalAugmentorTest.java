@@ -23,6 +23,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,7 +32,7 @@ import static org.mockito.Mockito.*;
 class DefaultRetrievalAugmentorTest {
 
     @ParameterizedTest
-    @MethodSource
+    @MethodSource("executors")
     void should_augment_user_message(Executor executor) {
 
         // given
@@ -117,7 +118,34 @@ class DefaultRetrievalAugmentorTest {
         verifyNoMoreInteractions(contentInjector);
     }
 
-    static Stream<Arguments> should_augment_user_message() {
+    @ParameterizedTest
+    @MethodSource("executors")
+    void should_not_augment_when_router_does_not_return_retrievers(Executor executor) {
+
+        // given
+        List<ContentRetriever> retrievers = emptyList();
+        QueryRouter queryRouter = spy(new TestQueryRouter(retrievers));
+
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(queryRouter)
+                .executor(executor)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("query");
+
+        Metadata metadata = Metadata.from(userMessage, null, null);
+
+        // when
+        UserMessage augmentedUserMessage = retrievalAugmentor.augment(userMessage, metadata);
+
+        // then
+        assertThat(augmentedUserMessage).isEqualTo(userMessage);
+
+        verify(queryRouter).route(Query.from("query", metadata));
+        verifyNoMoreInteractions(queryRouter);
+    }
+
+    static Stream<Arguments> executors() {
         return Stream.<Arguments>builder()
                 .add(Arguments.of(Executors.newCachedThreadPool()))
                 .add(Arguments.of(Executors.newFixedThreadPool(1)))
@@ -138,6 +166,20 @@ class DefaultRetrievalAugmentorTest {
         @Override
         public Collection<Query> transform(Query query) {
             return queries;
+        }
+    }
+
+    static class TestQueryRouter implements QueryRouter {
+
+        private final Collection<ContentRetriever> retrievers;
+
+        TestQueryRouter(Collection<ContentRetriever> retrievers) {
+            this.retrievers = retrievers;
+        }
+
+        @Override
+        public Collection<ContentRetriever> route(Query query) {
+            return retrievers;
         }
     }
 

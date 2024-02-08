@@ -111,6 +111,12 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-nomic</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- embedding stores -->
 
             <dependency>
@@ -188,6 +194,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-vearch</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-mongodb-atlas</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

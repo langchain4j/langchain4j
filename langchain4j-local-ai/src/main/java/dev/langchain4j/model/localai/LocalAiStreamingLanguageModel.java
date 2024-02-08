@@ -8,12 +8,12 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -90,10 +90,10 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static LocalAiStreamingLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                LocalAiStreamingLanguageModelBuilderFactory.class,
-                LocalAiStreamingLanguageModelBuilder::new
-        );
+        for (LocalAiStreamingLanguageModelBuilderFactory factory : loadFactories(LocalAiStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiStreamingLanguageModelBuilder();
     }
 
     public static class LocalAiStreamingLanguageModelBuilder {

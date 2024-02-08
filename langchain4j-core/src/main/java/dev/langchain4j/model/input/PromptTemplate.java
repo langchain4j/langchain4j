@@ -1,6 +1,5 @@
 package dev.langchain4j.model.input;
 
-import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 
 import java.time.Clock;
@@ -12,6 +11,7 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonMap;
 
 /**
@@ -23,8 +23,14 @@ import static java.util.Collections.singletonMap;
  */
 public class PromptTemplate {
 
-    private static final PromptTemplateFactory FACTORY = ServiceHelper.loadService(
-            PromptTemplateFactory.class, DefaultPromptTemplateFactory::new);
+    private static final PromptTemplateFactory FACTORY = factory();
+
+    private static PromptTemplateFactory factory() {
+        for (PromptTemplateFactory factory : loadFactories(PromptTemplateFactory.class)) {
+            return factory;
+        }
+        return new DefaultPromptTemplateFactory();
+    }
 
     static final String CURRENT_DATE = "current_date";
     static final String CURRENT_TIME = "current_time";
@@ -47,12 +53,24 @@ public class PromptTemplate {
 
     /**
      * Create a new PromptTemplate.
+     *
      * @param template the template string of the prompt.
-     * @param clock the clock to use for the special variables.
+     * @param clock    the clock to use for the special variables.
      */
     PromptTemplate(String template, Clock clock) {
         this.templateString = ensureNotBlank(template, "template");
-        this.template = FACTORY.create(() -> template);
+        this.template = FACTORY.create(new PromptTemplateFactory.Input() {
+
+            @Override
+            public String getTemplate() {
+                return template;
+            }
+
+            @Override
+            public String getName() {
+                return "template";
+            }
+        });
         this.clock = ensureNotNull(clock, "clock");
     }
 
@@ -86,6 +104,7 @@ public class PromptTemplate {
 
     /**
      * Injects the special variables {{current_date}}, {{current_time}}, and {{current_date_time}} into the given map.
+     *
      * @param variables the map to inject the variables into.
      * @return a copy of the map with the variables injected.
      */
@@ -99,6 +118,7 @@ public class PromptTemplate {
 
     /**
      * Create a new PromptTemplate.
+     *
      * @param template the template string of the prompt.
      * @return the PromptTemplate.
      */
