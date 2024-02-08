@@ -14,7 +14,12 @@
     <artifactId>langchain4j-infinispan</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Infinispan</name>
+    <name>LangChain4j :: Integration :: Infinispan</name>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+    </properties>
 
     <dependencies>
 
