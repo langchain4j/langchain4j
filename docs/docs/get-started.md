@@ -33,14 +33,14 @@ To add langchain4j to your java project, add the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.26.1</version>
+    <version>0.27.0</version>
 </dependency>
 ```
 
 - For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.26.1'
+implementation 'dev.langchain4j:langchain4j:0.27.0'
 ```
 
 
