@@ -6,9 +6,9 @@ sidebar_position: 6
 
 So far, we have been covering low-level components like `ChatLanguageModel`, `ChatMessage`, `ChatMemory`, etc.
 Working at this level is very flexible and gives you total freedom, but it also forces you to write a lot of boilerplate code.
-Since LLM-powered applications usually require not just a single component, but multiple components working together
-(e.g., prompt templates, chat memory, LLMs, output parsing, RAG components: embedding models and stores),
-orchestrating them all becomes even more cumbersome.
+Since LLM-powered applications usually require not just a single component but multiple components working together
+(e.g., prompt templates, chat memory, LLMs, output parsers, RAG components: embedding models and stores)
+and often involve multiple interactions, orchestrating them all becomes even more cumbersome.
 
 We want you to focus on business logic, not on low-level implementation details.
 Thus, there are currently two high-level concepts in LangChain4j that can help with that: AI Services and Chains.
@@ -96,9 +96,9 @@ interface Bro {
     String chat(String userMessage);
 }
 
-Bro bro = AiServices.create(Bro.class, model);
+    Bro bro = AiServices.create(Bro.class, model);
 
-String answer = bro.chat("Hello"); // Hey! What's up?
+    String answer = bro.chat("Hello"); // Hey! What's up?
 ```
 In this example, we have added the `@SystemMessage` annotation with a prompt we want to use.
 This will be converted into a `SystemMessage` behind the scenes and sent to the LLM along with the `UserMessage`.
@@ -115,9 +115,9 @@ interface Bro {
     String chat(String userMessage);
 }
 
-Bro bro = AiServices.create(Bro.class, model);
+    Bro bro = AiServices.create(Bro.class, model);
 
-String answer = bro.chat("Hello"); // Hey! What's shakin'?
+    String answer = bro.chat("Hello"); // Hey! What's shakin'?
 ```
 We have replaced the `@SystemMessage` annotation with `@UserMessage`
 and specified a prompt template with the variable `it` to refer to the only method argument.
