@@ -271,12 +271,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.27.0</version>
+          <version>0.27.1</version>
       </dependency>
       ```
     - Gradle:
       ```groovy
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.27.0'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.27.1'
       ```
 
 2. Import your OpenAI API key:
