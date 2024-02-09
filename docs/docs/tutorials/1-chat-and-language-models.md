@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# 1. Chat and Language Models
+# Chat and Language Models
 
 LLMs are currently available in two API types:
 - `LanguageModel`s. Their API is very simple - they accept a `String` as input and return a `String` as output.

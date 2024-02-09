@@ -2,7 +2,7 @@
 sidebar_position: 5
 ---
 
-# 4. Response Streaming
+# Response Streaming
 
 LLMs generate text one token at a time, so many LLM providers offer a way to stream the response
 token-by-token instead of waiting for the entire text to be generated.
