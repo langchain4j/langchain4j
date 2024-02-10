@@ -12,8 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class AzureOpenAiImageModelIT {
 
@@ -34,13 +33,13 @@ public class AzureOpenAiImageModelIT {
         logger.info(response.toString());
 
         Image image = response.content();
-        assertNotNull(image);
-        assertNotNull(image.url());
+        assertThat(image).isNotNull();
+        assertThat(image.url()).isNotNull();
         logger.info("The remote image is here: {}", image.url());
 
-        assertNull(image.base64Data());
+        assertThat(image.base64Data()).isNull();
 
-        assertNotNull(image.revisedPrompt());
+        assertThat(image.revisedPrompt()).isNotNull();
         logger.info("The revised prompt is: {}", image.revisedPrompt());
     }
 
@@ -57,9 +56,9 @@ public class AzureOpenAiImageModelIT {
         Response<Image> response = model.generate("A croissant in Paris, France");
 
         Image image = response.content();
-        assertNotNull(image);
-        assertNull(image.url());
-        assertNotNull(image.base64Data());
+        assertThat(image).isNotNull();
+        assertThat(image.url()).isNull();
+        assertThat(image.base64Data()).isNotNull();
         logger.info("The image data is: {} characters", image.base64Data().length());
 
         if (logger.isDebugEnabled()) {
@@ -69,7 +68,7 @@ public class AzureOpenAiImageModelIT {
             logger.debug("The image is here: {}", temp.toAbsolutePath());
         }
 
-        assertNotNull(image.revisedPrompt());
+        assertThat(image.revisedPrompt()).isNotNull();
         logger.info("The revised prompt is: {}", image.revisedPrompt());
     }
 }
