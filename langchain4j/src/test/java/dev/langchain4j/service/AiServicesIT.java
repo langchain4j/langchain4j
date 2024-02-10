@@ -133,7 +133,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31")));
+                        "You must answer strictly in the following format: yyyy-MM-dd")));
     }
 
     @Test
@@ -150,7 +150,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
-                        "You must answer strictly in the following format: 23:59:59")));
+                        "You must answer strictly in the following format: HH:mm:ss")));
     }
 
     @Test
@@ -167,7 +167,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31T23:59:59")));
+                        "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
     }
 
 
@@ -200,11 +200,18 @@ public class AiServicesIT {
 
 
     @ToString
-    static class Person {
+    static class Address  {
+        private Integer streetNumber;
+        private String street;
+        private String city;
+    }
 
+    @ToString
+    static class Person {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
+        private Address address;
     }
 
     interface PersonExtractor {
@@ -220,7 +227,10 @@ public class AiServicesIT {
 
         String text = "In 1968, amidst the fading echoes of Independence Day, "
                 + "a child named John arrived under the calm evening sky. "
-                + "This newborn, bearing the surname Doe, marked the start of a new journey.";
+                + "This newborn, bearing the surname Doe, marked the start of a new journey."
+                + "He was welcomed into the world at 345 Whispering Pines Avenue,"
+                + "a quaint street nestled in the heart of Springfield,"
+                + "an abode that echoed with the gentle hum of suburban dreams and aspirations.";
 
         Person person = personExtractor.extractPersonFrom(text);
         System.out.println(person);
@@ -228,6 +238,9 @@ public class AiServicesIT {
         assertThat(person.firstName).isEqualTo("John");
         assertThat(person.lastName).isEqualTo("Doe");
         assertThat(person.birthDate).isEqualTo(LocalDate.of(1968, JULY, 4));
+        assertThat(person.address.streetNumber).isEqualTo(345);
+        assertThat(person.address.street).isEqualTo("Whispering Pines Avenue");
+        assertThat(person.address.city).isEqualTo("Springfield");
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract information about a person from " + text + "\n" +
@@ -235,6 +248,11 @@ public class AiServicesIT {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: {\n" +
+                            "\"streetNumber\": (type: integer),\n" +
+                            "\"street\": (type: string),\n" +
+                            "\"city\": (type: string),\n" +
+                        "}),\n" +
                         "}")));
     }
 
@@ -256,7 +274,10 @@ public class AiServicesIT {
 
         String text = "In 1968, amidst the fading echoes of Independence Day, "
                 + "a child named John arrived under the calm evening sky. "
-                + "This newborn, bearing the surname Doe, marked the start of a new journey.";
+                + "This newborn, bearing the surname Doe, marked the start of a new journey."
+                + "He was welcomed into the world at 345 Whispering Pines Avenue,"
+                + "a quaint street nestled in the heart of Springfield,"
+                + "an abode that echoed with the gentle hum of suburban dreams and aspirations.";
 
         Person person = personExtractor.extractPersonFrom(text);
         System.out.println(person);
@@ -264,6 +285,9 @@ public class AiServicesIT {
         assertThat(person.firstName).isEqualTo("John");
         assertThat(person.lastName).isEqualTo("Doe");
         assertThat(person.birthDate).isEqualTo(LocalDate.of(1968, JULY, 4));
+        assertThat(person.address.streetNumber).isEqualTo(345);
+        assertThat(person.address.street).isEqualTo("Whispering Pines Avenue");
+        assertThat(person.address.city).isEqualTo("Springfield");
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract information about a person from " + text + "\n" +
@@ -271,6 +295,11 @@ public class AiServicesIT {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"address\": (type: {\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string),\n" +
+                        "}),\n" +
                         "}")));
     }
 

@@ -1,0 +1,112 @@
+package dev.langchain4j.store.embedding.mongodb;
+
+import com.mongodb.*;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.model.Filters;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import lombok.SneakyThrows;
+import org.bson.codecs.configuration.CodecRegistry;
+import org.bson.codecs.pojo.PojoCodecProvider;
+import org.bson.conversions.Bson;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.testcontainers.containers.DockerComposeContainer;
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.shaded.com.google.common.collect.Sets;
+
+import java.io.File;
+import java.time.Duration;
+
+import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
+import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+
+/**
+ * If container startup timeout (because atlas cli need to download mongodb binaries, which may take a few minutes),
+ * the alternative way is running `docker compose up -d` in `src/test/resources`
+ */
+class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
+
+    static final String MONGO_SERVICE_NAME = "mongo";
+    static final Integer MONGO_SERVICE_PORT = 27778;
+    static DockerComposeContainer<?> mongodb = new DockerComposeContainer<>(new File("src/test/resources/docker-compose.yml"))
+            .withExposedService(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT, new LogMessageWaitStrategy()
+                    .withRegEx(".*Deployment created!.*\\n")
+                    .withTimes(1)
+                    .withStartupTimeout(Duration.ofMinutes(30)));
+
+    static MongoClient client;
+
+    IndexMapping indexMapping = IndexMapping.builder()
+            .dimension(384)
+            .metadataFieldNames(Sets.newHashSet("test-key"))
+            .build();
+
+    EmbeddingStore<TextSegment> embeddingStore = MongoDbEmbeddingStore.builder()
+            .fromClient(client)
+            .databaseName("test_database")
+            .collectionName("test_collection")
+            .indexName("test_index")
+            .indexMapping(indexMapping)
+            .createIndex(true)
+            .build();
+
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
+    @BeforeAll
+    @SneakyThrows
+    static void start() {
+        mongodb.start();
+
+        MongoCredential credential = MongoCredential.createCredential("root", "admin", "root".toCharArray());
+        client = MongoClients.create(
+                MongoClientSettings.builder()
+                        .credential(credential)
+                        .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
+                        .applyConnectionString(new ConnectionString(String.format("mongodb://%s:%s/?directConnection=true",
+                                mongodb.getServiceHost(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT), mongodb.getServicePort(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT))))
+                        .build());
+    }
+
+    @AfterAll
+    static void stop() {
+        mongodb.stop();
+        client.close();
+    }
+
+    @Override
+    protected EmbeddingStore<TextSegment> embeddingStore() {
+        return embeddingStore;
+    }
+
+    @Override
+    protected EmbeddingModel embeddingModel() {
+        return embeddingModel;
+    }
+
+    @Override
+    protected void clearStore() {
+        CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
+                .register(MongoDbDocument.class, MongoDbMatchedDocument.class)
+                .build());
+        CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
+
+        MongoCollection<MongoDbDocument> collection = client.getDatabase("test_database")
+                .getCollection("test_collection", MongoDbDocument.class)
+                .withCodecRegistry(codecRegistry);
+
+        Bson filter = Filters.exists("embedding");
+        collection.deleteMany(filter);
+    }
+
+    @Override
+    @SneakyThrows
+    protected void awaitUntilPersisted() {
+        Thread.sleep(2000);
+    }
+}

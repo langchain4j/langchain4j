@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.27.0-SNAPSHOT</version>
+    <version>0.28.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -23,7 +23,7 @@
         <azure-ai-search.version>11.6.1</azure-ai-search.version>
         <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
         <azure.storage-common.version>12.24.1</azure.storage-common.version>
-        <azure.identity.version>1.11.1</azure.identity.version>
+        <azure.identity.version>1.11.2</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.10.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
@@ -50,6 +50,7 @@
         <netty.version>4.1.104.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
+        <infinispan.version>15.0.0.Dev07</infinispan.version>
     </properties>
 
     <dependencyManagement>
@@ -328,6 +329,13 @@
                 <version>${github-api.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.infinispan</groupId>
+                <artifactId>infinispan-bom</artifactId>
+                <version>${infinispan.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
 
     </dependencyManagement>
@@ -339,6 +347,36 @@
                     <groupId>org.honton.chas</groupId>
                     <artifactId>license-maven-plugin</artifactId>
                     <version>0.0.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <version>3.3.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-resources-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.12.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-install-plugin</artifactId>
+                    <version>3.1.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <version>3.1.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>3.3.2</version>
                 </plugin>
             </plugins>
         </pluginManagement>
