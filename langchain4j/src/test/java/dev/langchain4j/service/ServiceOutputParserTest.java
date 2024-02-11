@@ -124,7 +124,7 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: {\n" +
+                        "\"address\": (type: dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string),\n" +
@@ -148,7 +148,7 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of {\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string),\n" +
@@ -165,14 +165,14 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithNestedObjectArray() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddressList.class);
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddressArray.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of {\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string),\n" +
@@ -203,4 +203,27 @@ class ServiceOutputParserTest {
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "}");
     }
+
+    static class PersonWithParents {
+        private String firstName;
+        private String lastName;
+        private List<PersonWithParents> parents;
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithParents() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithParents.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents),\n" +
+                        "}),\n" +
+                        "}");
+    }
+
 }
