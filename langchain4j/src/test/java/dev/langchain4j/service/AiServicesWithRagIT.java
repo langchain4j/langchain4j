@@ -23,6 +23,7 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter;
+import dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy;
 import dev.langchain4j.rag.query.router.QueryRouter;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
 import dev.langchain4j.rag.query.transformer.QueryTransformer;
@@ -45,9 +46,12 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.loadDocument;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
+import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class AiServicesWithRagIT {
@@ -60,7 +64,7 @@ class AiServicesWithRagIT {
 
     @BeforeEach
     void beforeEach() {
-        ingest(embeddingStore, embeddingModel);
+        ingest("miles-of-smiles-terms-of-use.txt", embeddingStore, embeddingModel);
     }
 
     interface Assistant {
@@ -237,6 +241,114 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
+    void should_not_route_when_query_is_ambiguous(ChatLanguageModel model) {
+
+        // given
+        String query = "Hey what's up?";
+
+        ContentRetriever contentRetriever = mock(ContentRetriever.class);
+        Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
+        retrieverToDescription.put(contentRetriever, "articles about cats");
+
+        QueryRouter queryRouter = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryRouter(queryRouter)
+                        .build())
+                .build();
+
+        // when
+        String answer = assistant.answer(query);
+        System.out.println(answer);
+
+        // then
+        assertThat(answer).isNotBlank();
+
+        verifyNoInteractions(contentRetriever);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_route_to_all_retrievers_when_query_is_ambiguous(ChatLanguageModel model) {
+
+        // given
+        String query = "Hey what's up?";
+        FallbackStrategy fallbackStrategy = ROUTE_TO_ALL;
+
+        ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build());
+
+        Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
+        retrieverToDescription.put(contentRetriever, "car rental company terms of use");
+
+        QueryRouter queryRouter = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryRouter(queryRouter)
+                        .build())
+                .build();
+
+        // when
+        String answer = assistant.answer(query);
+        System.out.println(answer);
+
+        // then
+        assertThat(answer).isNotBlank();
+
+        verify(contentRetriever).retrieve(Query.from(query, Metadata.from(UserMessage.from(query), "default", null)));
+        verifyNoMoreInteractions(contentRetriever);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_fail_when_query_is_ambiguous(ChatLanguageModel model) {
+
+        // given
+        String query = "Hey what's up?";
+        FallbackStrategy fallbackStrategy = FAIL;
+
+        ContentRetriever contentRetriever = spy(EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build());
+
+        Map<ContentRetriever, String> retrieverToDescription = new HashMap<>();
+        retrieverToDescription.put(contentRetriever, "car rental company terms of use");
+
+        QueryRouter queryRouter = LanguageModelQueryRouter.builder()
+                .chatLanguageModel(model)
+                .retrieverToDescription(retrieverToDescription)
+                .fallbackStrategy(fallbackStrategy)
+                .build();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryRouter(queryRouter)
+                        .build())
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> assistant.answer(query))
+                .hasRootCauseExactlyInstanceOf(NumberFormatException.class);
+
+        verifyNoInteractions(contentRetriever);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
     void should_use_content_retriever_and_content_aggregator(ChatLanguageModel model) {
 
         // given
@@ -328,7 +440,7 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
-    private void ingest(EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
+    private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
         OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);
         DocumentSplitter splitter = DocumentSplitters.recursive(100, 0, tokenizer);
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
@@ -337,7 +449,7 @@ class AiServicesWithRagIT {
                 .embeddingStore(embeddingStore)
                 .build();
 
-        Document document = loadDocument(toPath("miles-of-smiles-terms-of-use.txt"), new TextDocumentParser());
+        Document document = loadDocument(toPath(documentPath), new TextDocumentParser());
         ingestor.ingest(document);
     }
 

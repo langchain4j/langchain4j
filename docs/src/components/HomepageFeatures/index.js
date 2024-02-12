@@ -22,7 +22,7 @@ const FeatureList = [
         ),
     },
     {
-        title: 'AI Services, RAG, Tols, Chains',
+        title: 'AI Services, RAG, Tools, Chains',
         Svg: require('@site/static/img/functionality-logos.svg').default,
         description: (
             <>

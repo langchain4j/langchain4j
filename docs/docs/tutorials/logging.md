@@ -2,12 +2,12 @@
 sidebar_position: 30
 ---
 
-# 15. Logging
+# Logging
 
 ### Model requests and responses
 Console output can be switched on and off by setting `.logRequests()` and `.logResponses()` on the model
 
-```
+```java
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .apiKey(ApiKeys.OPENAI_API_KEY)
                 .logRequests(true)

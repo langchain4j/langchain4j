@@ -12,7 +12,6 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -20,6 +19,7 @@ import java.util.Collections;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
@@ -167,10 +167,10 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                AzureOpenAiLanguageModelBuilderFactory.class,
-                Builder::new
-        );
+        for (AzureOpenAiLanguageModelBuilderFactory factory : loadFactories(AzureOpenAiLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {

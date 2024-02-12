@@ -9,11 +9,11 @@ import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanLanguageModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 
 /**
@@ -102,10 +102,10 @@ public class QianfanLanguageModel implements LanguageModel {
     }
 
     public static QianfanLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QianfanLanguageModelBuilderFactory.class,
-                QianfanLanguageModelBuilder::new
-        );
+        for (QianfanLanguageModelBuilderFactory factory : loadFactories(QianfanLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QianfanLanguageModelBuilder();
     }
 
     public static class QianfanLanguageModelBuilder {

@@ -33,14 +33,14 @@ To add langchain4j to your java project, add the following dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.26.1</version>
+    <version>0.27.1</version>
 </dependency>
 ```
 
 - For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.26.1'
+implementation 'dev.langchain4j:langchain4j:0.27.1'
 ```
 
 
@@ -65,10 +65,10 @@ Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
 ```java
 OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
 ```
-No, it is time to chat!
+Now, it is time to chat!
 ```java
 String answer = model.generate("Say 'Hello World'");
-System.out.println(answer);
+System.out.println(answer); // Hello World
 ```
 
 Find step-by-step tutorials with more complex examples [here](/docs/category/tutorials).
