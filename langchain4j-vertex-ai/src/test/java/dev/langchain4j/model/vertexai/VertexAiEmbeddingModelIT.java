@@ -20,9 +20,9 @@ class VertexAiEmbeddingModelIT {
     @Test
     void testEmbeddingModel() {
         EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
-            .endpoint("us-central1-aiplatform.googleapis.com:443")
-            .project("genai-java-demos")
-            .location("us-central1")
+            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .publisher("google")
             .modelName("textembedding-gecko@001")
             .maxRetries(3)
@@ -57,9 +57,9 @@ class VertexAiEmbeddingModelIT {
     @Test
     void testTokensCountCalculationAndBatching() {
         VertexAiEmbeddingModel model = VertexAiEmbeddingModel.builder()
-            .endpoint("us-central1-aiplatform.googleapis.com:443")
-            .project("genai-java-demos")
-            .location("us-central1")
+            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .publisher("google")
             .modelName("textembedding-gecko@001")
             .maxRetries(3)
@@ -108,9 +108,9 @@ class VertexAiEmbeddingModelIT {
     @Test
     void testBatchingEmbeddings() {
         VertexAiEmbeddingModel model = VertexAiEmbeddingModel.builder()
-            .endpoint("us-central1-aiplatform.googleapis.com:443")
-            .project("genai-java-demos")
-            .location("us-central1")
+            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .publisher("google")
             .modelName("textembedding-gecko@003")
             .maxRetries(3)
@@ -136,9 +136,9 @@ class VertexAiEmbeddingModelIT {
     @Test
     void testBatchingEmbeddingsWithMaxSet() {
         VertexAiEmbeddingModel model = VertexAiEmbeddingModel.builder()
-            .endpoint("us-central1-aiplatform.googleapis.com:443")
-            .project("genai-java-demos")
-            .location("us-central1")
+            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .publisher("google")
             .modelName("textembedding-gecko@003")
             .maxRetries(3)
