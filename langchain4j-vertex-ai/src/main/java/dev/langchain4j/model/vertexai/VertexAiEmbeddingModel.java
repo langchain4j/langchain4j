@@ -104,14 +104,9 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             int inputTokenCount = 0;
 
             List<Integer> tokensCounts = getTokensCounts(segments);
-            System.out.println("tokensCounts = " + tokensCounts);
-
             List<Integer> batchSizes = groupByBatches(tokensCounts);
-            System.out.println("batchSizes = " + batchSizes);
 
             for (int i = 0, j = 0; i < segments.size() && j < batchSizes.size(); i += batchSizes.get(j), j++) {
-                System.out.println("i = " + i + ", j = " + j + ", batchSize = " + batchSizes.get(j));
-
                 List<TextSegment> batch = segments.subList(i, i + batchSizes.get(j));
 
                 List<Value> instances = new ArrayList<>();
@@ -130,8 +125,6 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 for (Value prediction : response.getPredictionsList()) {
                     inputTokenCount += extractTokenCount(prediction);
                 }
-
-                System.out.println("inputTokenCount = " + inputTokenCount);
             }
 
             return Response.from(
