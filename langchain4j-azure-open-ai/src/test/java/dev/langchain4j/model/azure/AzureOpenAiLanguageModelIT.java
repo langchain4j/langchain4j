@@ -17,7 +17,6 @@ class AzureOpenAiLanguageModelIT {
 
     LanguageModel model = AzureOpenAiLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-35-turbo-instruct")
             .temperature(0.0)

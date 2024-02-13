@@ -28,7 +28,8 @@ import static java.util.Collections.singletonList;
 /**
  * Represents an OpenAI language model, hosted on Azure, that has a chat completion interface, such as gpt-3.5-turbo.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apikey (or an alternate authentication method, see below for more information) and deploymentName.
+ * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
+ * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are 3 authentication methods:
