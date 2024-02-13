@@ -20,21 +20,21 @@ class VertexAiEmbeddingModelIT {
     @Test
     void testEmbeddingModel() {
         EmbeddingModel embeddingModel = VertexAiEmbeddingModel.builder()
-            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .publisher("google")
-            .modelName("textembedding-gecko@001")
-            .maxRetries(3)
-            .build();
+                .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .publisher("google")
+                .modelName("textembedding-gecko@001")
+                .maxRetries(3)
+                .build();
 
         List<TextSegment> segments = asList(
-            TextSegment.from("one"),
-            TextSegment.from("two"),
-            TextSegment.from("three"),
-            TextSegment.from("four"),
-            TextSegment.from("five"),
-            TextSegment.from("six")
+                TextSegment.from("one"),
+                TextSegment.from("two"),
+                TextSegment.from("three"),
+                TextSegment.from("four"),
+                TextSegment.from("five"),
+                TextSegment.from("six")
         );
 
         Response<List<Embedding>> response = embeddingModel.embedAll(segments);
