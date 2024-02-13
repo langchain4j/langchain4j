@@ -49,6 +49,22 @@ implementation 'dev.langchain4j:langchain4j:0.27.1'
 
 The easiest way to get started is with the OpenAI integration. 
 
+Langchain4j has multiple integrations with LLMs. Depending on the integration/s, the artifact/s must be specified as a project dependency. In this case, we should also add the OpenAI dependency as that will be used in the following example.
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-open-ai</artifactId>
+    <version>0.27.1</version>
+</dependency>
+```
+
+- For Gradle project `build.gradle`
+
+```groovy
+implementation 'dev.langchain4j:langchain4j-open-ai:0.27.1'
+```
+
 First, import your OpenAI API key.
 It's recommended to store your API keys in environment variables to reduce the risk of exposing them publicly.
 ```java
