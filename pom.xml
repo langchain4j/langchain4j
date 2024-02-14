@@ -65,6 +65,9 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
 
+        <!-- web searchers -->
+        <module>web-searchers/langchain4j-web-search-google-customsearch</module>
+
     </modules>
 
     <build>
