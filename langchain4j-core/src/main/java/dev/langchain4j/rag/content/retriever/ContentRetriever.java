@@ -15,13 +15,14 @@ import java.util.List;
  * - Embedding (vector) store (see {@link EmbeddingStoreContentRetriever})
  * - Full-text search engine (e.g., Apache Lucene, Elasticsearch, Vespa)
  * - Hybrid of keyword and vector search
- * - The Web (e.g., Google, Bing)
+ * - The Web (e.g., Google, Bing) (see {@link WebSearchContentRetriever})
  * - Knowledge graph
  * - Relational database
  * - etc.
  * </pre>
  *
  * @see EmbeddingStoreContentRetriever
+ * @see WebSearchContentRetriever
  */
 public interface ContentRetriever {
 
