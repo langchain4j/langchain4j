@@ -47,6 +47,7 @@
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
         <netty.version>4.1.104.Final</netty.version>
+        <aleph-alpha-client.version>0.1.0</aleph-alpha-client.version>
     </properties>
 
     <dependencyManagement>
@@ -303,6 +304,12 @@
                         <artifactId>netty-handler</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>io.github.heezer</groupId>
+                <artifactId>aleph-alpha-client-java</artifactId>
+                <version>${aleph-alpha-client.version}</version>
             </dependency>
 
             <dependency>

@@ -18,6 +18,7 @@
         <module>langchain4j</module>
 
         <!-- model providers -->
+        <module>langchain4j-aleph-alpha</module>
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
         <module>langchain4j-chatglm</module>
