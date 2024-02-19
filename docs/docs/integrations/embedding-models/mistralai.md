@@ -48,7 +48,7 @@ SET MISTRAL_AI_API_KEY=your-api-key #For Windows OS
 More details on how to get your MistralAI API key can be found [here](https://docs.mistral.ai/#api-access)
 
 ## Embedding
-Embedding MistralAI model allow you to embed sentences, and use it into your application is simple. We provide a simple example to get you started with MistralAI Embeddings model integration.
+The MistralAI Embeddings model allows you to embed sentences, and using it in your application is simple. We provide a simple example to get you started with MistralAI Embeddings model integration.
 
 Create a class and add the following code.
 
