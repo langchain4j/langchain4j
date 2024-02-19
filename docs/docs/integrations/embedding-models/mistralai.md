@@ -95,7 +95,7 @@ File System, URL, Amazon S3, Azure Blob Storage, GitHub, Tencent COS.
 Additionally, LangChain4j supports parsing multiple document types:
 text, pdf, doc, xls, ppt.
 
-You can see that output below like this.
+The output will be similar to this:
 
 ```plaintext
 Question: What is your favourite sport?
