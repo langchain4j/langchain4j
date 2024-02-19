@@ -110,4 +110,4 @@ A lot of parameters are set behind the scenes, such as timeout, model type and m
 In [Set Model Parameters](/docs/tutorials/model-parameters) you will learn how to set these parameters explicitly.
 
 ### More examples
-if you want check more examples, you can find them in the [langchain4j-examples](https://github.com/langchain4j/langchain4j-examples) project.
+If you want to check more examples, you can find them in the [langchain4j-examples](https://github.com/langchain4j/langchain4j-examples) project.
