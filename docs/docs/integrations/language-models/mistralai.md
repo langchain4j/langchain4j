@@ -121,7 +121,7 @@ You can see that output below is streamed in real-time.
 
 Of course, you can combine MistralAI chat completion with other features like [Set Model Parameters](/docs/tutorials/model-parameters) and [Chat Memory](/docs/tutorials/chat-memory) to get more accurate responses.
 
-In [Chat Memory](/docs/tutorials/chat-memory) you will learn how to pass along your chat history, so the LLM knows what has been said before. If you don't pass the chat history, like in this simple example, the LLM will not be able to correctly answer the second question ('What did I just ask?').
+In [Chat Memory](/docs/tutorials/chat-memory) you will learn how to pass along your chat history, so the LLM knows what has been said before. If you don't pass the chat history, like in this simple example, the LLM will not know what has been said before, so it won't be able to correctly answer the second question ('What did I just ask?').
 
 A lot of parameters are set behind the scenes, such as timeout, model type and model parameters.
 In [Set Model Parameters](/docs/tutorials/model-parameters) you will learn how to set these parameters explicitly.
