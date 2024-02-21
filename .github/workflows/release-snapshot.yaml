@@ -6,8 +6,6 @@ on:
   push:
     branches:
       - main
-      - release_snapshot_fix
-# TODO remove
 
 jobs:
   release_snapshot:
