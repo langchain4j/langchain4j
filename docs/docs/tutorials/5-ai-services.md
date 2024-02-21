@@ -236,6 +236,34 @@ Person person = personExtractor.extractPersonFrom(text);
 System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
+When extracting custom POJOs (actually JSON, which is then parsed into the POJO),
+it is recommended to set a "json mode" in the model configuration.
+This way, the LLM will be forced to produce valid JSON.
+
+- For OpenAI:
+```java
+OpenAiChatModel.builder()
+        ...
+        .responseFormat("json_object")
+        .build();
+```
+- For Azure OpenAI:
+```java
+AzureOpenAiChatModel.builder()
+        ...
+        .responseFormat(new ChatCompletionsJsonResponseFormat())
+        .build();
+```
+- For Ollama:
+```java
+OllamaChatModel.builder()
+        ...
+        .format("json")
+        .build();
+```
+- For other model providers: if the underlying model provider does not support "json mode",
+try lowering the `temperature` and see if that helps.
+
 [More examples](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 
 ## Streaming
