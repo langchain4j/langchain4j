@@ -35,7 +35,7 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: release
-        run: mvn -B -U --fail-at-end -DskipLocalAiITs=true -DskipMongoDbAtlasITs=true -DskipOllamaITs=true -DskipVearchITs=true -DskipVertexAiGeminiITs=true -Psign clean deploy
+        run: mvn -B -U --fail-at-end -DskipLocalAiITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -Psign clean deploy
         env:
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
           AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
