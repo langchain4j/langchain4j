@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -22,10 +23,7 @@ import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -69,9 +67,9 @@ import static java.util.stream.Collectors.toList;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@code String} or an {@link AiMessage}, if you want to get the answer from the LLM as-is
- * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
- * - any {@code Enum} or a {@code boolean}, if you want to use the LLM for classification
+ * - a {@link String}, an {@link AiMessage} or a {@link Response<AiMessage>}, if you want to get the answer from the LLM as-is
+ * - a {@link List<String>} or {@link Set<String>}, if you want to receive the answer as a collection of items or bullet points
+ * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
  * - many default Java types: {@code Date}, {@code LocalDateTime}, {@code BigDecimal}, etc., if you want to use the LLM for data extraction
  * - any custom POJO, if you want to use the LLM for data extraction
