@@ -52,7 +52,11 @@ You can temporarily use `demo` key, which we provide for free for demonstration 
 ```java
 String apiKey = "demo";
 ```
+Be aware that when using the `demo` key, all requests to the OpenAI API go through our proxy,
+which injects the real key before forwarding your request to the OpenAI API.
+We do not collect or use your data in any way.
 :::
+
 Once you've set up the key, let's create an instance of an `OpenAiChatModel`:
 ```java
 OpenAiChatModel model = OpenAiChatModel.withApiKey(apiKey);
