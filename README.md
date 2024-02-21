@@ -52,10 +52,10 @@ Please see examples of how LangChain4j can be used in [langchain4j-examples](htt
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## Documentation
-Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
+Documentation can be found [here](https://docs.langchain4j.dev).
 
 ## Tutorials
-Tutorials can be found [here](https://langchain4j.github.io/langchain4j/docs/tutorials).
+Tutorials can be found [here](https://docs.langchain4j.dev/docs/tutorials).
 
 ## Useful Materials
 - [Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g) by [Andrej Karpathy](https://www.youtube.com/@AndrejKarpathy)
@@ -296,23 +296,23 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     
     System.out.println(answer); // Hello! How can I assist you today?
     ```
-## Supported LLM Integrations ([Docs](https://langchain4j.github.io/langchain4j/docs/category/integrations))
-| Provider                                                                                                           | Native Image     | [Completion](https://langchain4j.github.io/langchain4j/docs/category/language-models) | [Streaming](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/response-streaming)  | [Async Completion](https://langchain4j.github.io/langchain4j/docs/category/language-models) | [Async Streaming](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/response-streaming) | [Embedding](https://langchain4j.github.io/langchain4j/docs/category/embedding-models) | [Image Generation](https://langchain4j.github.io/langchain4j/docs/category/image-models) | [ReRanking](https://langchain4j.github.io/langchain4j/docs/category/reranking-models) 
-|--------------------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
-| [OpenAI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/openai)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
-| [Azure OpenAI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/azure-openai)           |  | ✅ | ✅ |  |   | ✅ | ✅ | 
-| [Hugging Face](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/huggingface)            |  | ✅ |  | ✅ |  | ✅ |  |  |
-| [Amazon Bedrock](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/amazon-bedrock)        |  | ✅ |  |  |  | ✅ |
-| [Google Vertex AI Gemini](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
-| [Google Vertex AI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/google-palm)        | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
-| [Mistral AI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/mistralai)                |  | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [DashScope](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/dashscope)                 |  | ✅ | ✅ |  | ✅ | ✅ |
-| [LocalAI](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/localai)                     |  | ✅ | ✅ | ✅ |  | ✅ |  |
-| [Ollama](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/ollama)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
-| [Cohere](https://langchain4j.github.io/langchain4j/docs/integrations/reranking-models/cohere)                      |  |  |  |  |  |  |  | ✅ |
-| [Qianfan](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/huggingface)                 |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
-| [ChatGLM](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/chatglm)                     |  | ✅ |  |  |  |  |
-| [Nomic](https://langchain4j.github.io/langchain4j/docs/integrations/language-models/nomic)                         |  |  |  |  |  | ✅ |  |
+## Supported LLM Integrations ([Docs](https://docs.langchain4j.dev/docs/category/integrations))
+| Provider                                                                                                | Native Image     | [Completion](https://docs.langchain4j.dev/docs/category/language-models) | [Streaming](https://docs.langchain4j.dev/docs/integrations/language-models/response-streaming)  | [Async Completion](https://docs.langchain4j.dev/docs/category/language-models) | [Async Streaming](https://docs.langchain4j.dev/docs/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/docs/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/docs/category/image-models) | [ReRanking](https://docs.langchain4j.dev/docs/category/reranking-models) 
+|---------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
+| [OpenAI](https://docs.langchain4j.dev/docs/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
+| [Azure OpenAI](https://docs.langchain4j.dev/docs/integrations/language-models/azure-openai)             |  | ✅ | ✅ |  |   | ✅ | ✅ | 
+| [Hugging Face](https://docs.langchain4j.dev/docs/integrations/language-models/huggingface)              |  | ✅ |  | ✅ |  | ✅ |  |  |
+| [Amazon Bedrock](https://docs.langchain4j.dev/docs/integrations/language-models/amazon-bedrock)         |  | ✅ |  |  |  | ✅ |
+| [Google Vertex AI Gemini](https://docs.langchain4j.dev/docs/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
+| [Google Vertex AI](https://docs.langchain4j.dev/docs/integrations/language-models/google-palm)          | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
+| [Mistral AI](https://docs.langchain4j.dev/docs/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DashScope](https://docs.langchain4j.dev/docs/integrations/language-models/dashscope)                   |  | ✅ | ✅ |  | ✅ | ✅ |
+| [LocalAI](https://docs.langchain4j.dev/docs/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | ✅ |  |
+| [Ollama](https://docs.langchain4j.dev/docs/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [Cohere](https://docs.langchain4j.dev/docs/integrations/reranking-models/cohere)                        |  |  |  |  |  |  |  | ✅ |
+| [Qianfan](https://docs.langchain4j.dev/docs/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [ChatGLM](https://docs.langchain4j.dev/docs/integrations/language-models/chatglm)                       |  | ✅ |  |  |  |  |
+| [Nomic](https://docs.langchain4j.dev/docs/integrations/language-models/nomic)                           |  |  |  |  |  | ✅ |  |
 
 ## Disclaimer
 

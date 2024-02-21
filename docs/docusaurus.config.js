@@ -87,7 +87,7 @@ const config = {
                     {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
                     {
-                        href: 'https://langchain4j.github.io/langchain4j/apidocs/index.html',
+                        href: 'https://docs.langchain4j.dev/apidocs/index.html',
                         label: 'Javadoc',
                         position: 'left'
                     },
