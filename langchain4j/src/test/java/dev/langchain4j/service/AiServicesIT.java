@@ -4,6 +4,7 @@ import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -319,10 +320,16 @@ public class AiServicesIT {
         @UserMessage("Create recipe using only {{it}}")
         Recipe createRecipeFrom(String... ingredients);
 
+        @UserMessage(fromResource = "chefs-prompt-based-on-ingredients.txt")
+        Recipe createRecipeFromUsingResource(String... ingredients);
+
         Recipe createRecipeFrom(CreateRecipePrompt prompt);
 
         @SystemMessage("You are very {{character}} chef")
         Recipe createRecipeFrom(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
+
+        @SystemMessage(fromResource = "chefs-prompt-system-message.txt")
+        Recipe createRecipeFromUsingResource(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
     }
 
     @Test
@@ -348,6 +355,57 @@ public class AiServicesIT {
                         "}")));
     }
 
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                "}")));
+    }
+
+    interface BadChef {
+        public static final String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
+        public static final String CHEFS_PROMPT_IS_EMPTY_TXT = "chefs-prompt-is-empty.txt";
+
+        @UserMessage(fromResource = CHEFS_PROMPT_DOES_NOT_EXIST_TXT)
+        Recipe createRecipeFromNonExistingResource(String... ingredients);
+
+        @UserMessage(fromResource = CHEFS_PROMPT_IS_EMPTY_TXT)
+        Recipe createRecipeFromEmptyResource(String... ingredients);
+    }
+
+    @Test
+    void test_call_model_with_missing_resource() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeFromNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class) //
+                .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
+    }
+
+    @Test
+    void test_call_model_with_empty_resource() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeFromEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class) //
+                .hasMessage("@UserMessage's template cannot be empty");
+    }
 
     @Builder
     @StructuredPrompt("Create a recipe of a {{dish}} that can be prepared using only {{ingredients}}")
@@ -414,6 +472,37 @@ public class AiServicesIT {
                         "\"preparationTimeMinutes\": (type: integer),\n" +
                         "}")
         ));
+    }
+
+    @Test
+    void test_create_recipe_using_structured_prompt_and_system_message_from_resource() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        CreateRecipePrompt prompt = CreateRecipePrompt
+                .builder()
+                .dish("salad")
+                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
+                .build();
+
+        Recipe recipe = chef.createRecipeFromUsingResource(prompt, "funny");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(asList(
+                systemMessage("You are very funny chef"),
+                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "}")
+                ));
     }
 
     interface ProfessionalChef {

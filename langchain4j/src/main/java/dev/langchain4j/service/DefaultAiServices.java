@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.io.InputStream;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -30,6 +31,7 @@ import static dev.langchain4j.service.ServiceOutputParser.parse;
 import static java.util.Collections.singletonMap;
 
 class DefaultAiServices<T> extends AiServices<T> {
+
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -190,10 +192,13 @@ class DefaultAiServices<T> extends AiServices<T> {
         dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
 
-            String systemMessageTemplate = String.join(annotation.delimiter(), annotation.value());
-            if (systemMessageTemplate.isEmpty()) {
-                throw illegalConfiguration("@SystemMessage's template cannot be empty");
-            }
+            String systemMessageTemplate = getPromptText(
+                    method,
+                    "System",
+                    annotation.fromResource(),
+                    annotation.value(),
+                    annotation.delimiter()
+            );
 
             Prompt prompt = PromptTemplate.from(systemMessageTemplate).apply(variables);
             return Optional.of(prompt.toSystemMessage());
@@ -206,11 +211,18 @@ class DefaultAiServices<T> extends AiServices<T> {
         Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
+
         String userName = getUserName(parameters, args);
 
         dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
         if (annotation != null) {
-            String userMessageTemplate = String.join(annotation.delimiter(), annotation.value());
+            String userMessageTemplate = getPromptText(
+                    method,
+                    "User",
+                    annotation.fromResource(),
+                    annotation.value(),
+                    annotation.delimiter()
+            );
 
             if (userMessageTemplate.contains("{{it}}")) {
                 if (parameters.length != 1) {
@@ -254,6 +266,36 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
+    }
+
+    private static String getPromptText(Method method, String type, String resource, String[] value, String delimiter) {
+        String messageTemplate;
+        if (!resource.trim().isEmpty()) {
+            messageTemplate = getResourceText(method.getDeclaringClass(), resource);
+            if (messageTemplate == null) {
+                throw illegalConfiguration("@%sMessage's resource '%s' not found", type, resource);
+            }
+        } else {
+            messageTemplate = String.join(delimiter, value);
+        }
+        if (messageTemplate.trim().isEmpty()) {
+            throw illegalConfiguration("@%sMessage's template cannot be empty", type);
+        }
+        return messageTemplate;
+    }
+
+    private static String getResourceText(Class<?> clazz, String name) {
+        return getText(clazz.getResourceAsStream(name));
+    }
+
+    private static String getText(InputStream inputStream) {
+        if (inputStream == null) {
+            return null;
+        }
+        try (Scanner scanner = new Scanner(inputStream); //
+                Scanner s = scanner.useDelimiter("\\A")) {
+            return s.hasNext() ? s.next() : "";
+        }
     }
 
     private Optional<Object> memoryId(Method method, Object[] args) {

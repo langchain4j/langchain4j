@@ -15,7 +15,17 @@ public @interface SystemMessage {
      * Prompt template can be defined in one line or multiple lines.
      * If the template is defined in multiple lines, the lines will be joined with a delimiter defined below.
      */
-    String[] value();
+    String[] value() default "";
 
     String delimiter() default "\n";
+
+	/**
+	 * The resource to read the prompt template from. If the resource is not found,
+	 * an IllegalConfigurationException is thrown. If no resource is specified we
+	 * will fall-back to the value of {@link #value()}.
+	 *
+	 * The resource will be read by calling {@code getResourceAsStream(resource)} on the class```
+	 * containing the method annotated with {@code @SystemMessage}.
+	 */
+    String fromResource() default "";
 }
