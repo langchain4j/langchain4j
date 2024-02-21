@@ -68,6 +68,8 @@ class VertexAiEmbeddingModelIT {
         List<Integer> tokenCounts = model.getTokensCounts(createRandomSegments(5000, 1000));
 
         assertThat(tokenCounts).hasSize(5000);
+        // 5000 segments of 1000 characters is about 5 million characters.
+        // With an estimate of 5 letters per token, we have at least 1 million tokens in total
         assertThat(tokenCounts.stream().mapToInt(i -> i).sum()).isGreaterThanOrEqualTo(1_000_000);
     }
 
@@ -142,7 +144,7 @@ class VertexAiEmbeddingModelIT {
             .publisher("google")
             .modelName("textembedding-gecko@003")
             .maxRetries(3)
-            .maxBatchSize(50)
+            .maxSegmentsPerBatch(50)
             .maxTokensPerBatch(1000)
             .build();
 

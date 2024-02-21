@@ -37,7 +37,7 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * This embedding model transparently handles call batching, however the underlying API has imposes
  * a maximum of 250 embeddings per call, with a max of 20,000 tokens per call.
- * You can tweak those two parameters with the <code>maxBatchSize()</code> and
+ * You can tweak those two parameters with the <code>maxSegmentsPerBatch()</code> and
  * <code>maxTokensPerBatch()</code> builder methods.
  * For example, if you hit the 20,000 error, set <code>maxTokensPerBatch(18_000)</code>.
  * <br>
@@ -60,13 +60,13 @@ import static java.util.stream.Collectors.toList;
 public class VertexAiEmbeddingModel implements EmbeddingModel {
 
     private static final int COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST = 2048;
-    private static final int EMBEDDING_MAX_INPUTS_PER_REQUEST = 250;
-    private static final int MAX_TOTAL_TOKENS_COUNT_PER_EMBEDDING_CALL = 20_000;
+    private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 250;
+    private static final int DEFAULT_MAX_TOKENS_PER_BATCH = 20_000;
     private final PredictionServiceSettings settings;
     private final LlmUtilityServiceSettings llmUtilitySettings;
     private final EndpointName endpointName;
     private final Integer maxRetries;
-    private final Integer maxBatchSize;
+    private final Integer maxSegmentsPerBatch;
     private final Integer maxTokensPerBatch;
 
     public VertexAiEmbeddingModel(String endpoint,
@@ -75,7 +75,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                                   String publisher,
                                   String modelName,
                                   Integer maxRetries,
-                                  Integer maxBatchSize,
+                                  Integer maxSegmentsPerBatch,
                                   Integer maxTokensPerBatch) {
 
         this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
@@ -99,8 +99,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
 
         this.maxRetries = getOrDefault(maxRetries, 3);
 
-        this.maxBatchSize = getOrDefault(maxBatchSize, EMBEDDING_MAX_INPUTS_PER_REQUEST);
-        this.maxTokensPerBatch = getOrDefault(maxTokensPerBatch, MAX_TOTAL_TOKENS_COUNT_PER_EMBEDDING_CALL);
+        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
+        this.maxTokensPerBatch = getOrDefault(maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH);
     }
 
     @Override
@@ -199,7 +199,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         int currentBatchSum = 0;
         for (Integer tokensCount : tokensCounts) {
             if (currentBatchSum + tokensCount <= maxTokensPerBatch &&
-                currentBatch.size() < maxBatchSize) {
+                currentBatch.size() < maxSegmentsPerBatch) {
                 currentBatch.add(tokensCount);
                 currentBatchSum += tokensCount;
             } else {
@@ -265,7 +265,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         private String publisher;
         private String modelName;
         private Integer maxRetries;
-        private Integer maxBatchSize;
+        private Integer maxSegmentsPerBatch;
         private Integer maxTokensPerBatch;
 
         public Builder endpoint(String endpoint) {
@@ -298,8 +298,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             return this;
         }
 
-        public Builder maxBatchSize(Integer maxBatchSize) {
-            this.maxBatchSize = maxBatchSize;
+        public Builder maxSegmentsPerBatch(Integer maxBatchSize) {
+            this.maxSegmentsPerBatch = maxBatchSize;
             return this;
         }
 
@@ -316,7 +316,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                     publisher,
                     modelName,
                     maxRetries,
-                    maxBatchSize,
+                    maxSegmentsPerBatch,
                     maxTokensPerBatch);
         }
     }
