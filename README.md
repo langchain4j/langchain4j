@@ -297,22 +297,22 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     System.out.println(answer); // Hello! How can I assist you today?
     ```
 ## Supported LLM Integrations ([Docs](https://docs.langchain4j.dev/docs/category/integrations))
-| Provider                                                                                                | Native Image     | [Completion](https://docs.langchain4j.dev/docs/category/language-models) | [Streaming](https://docs.langchain4j.dev/docs/integrations/language-models/response-streaming) | Tools | [Async Completion](https://docs.langchain4j.dev/docs/category/language-models) | [Async Streaming](https://docs.langchain4j.dev/docs/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/docs/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/docs/category/image-models) | [ReRanking](https://docs.langchain4j.dev/docs/category/reranking-models) 
+| Provider                                                                                                | Native Image     | [Completion](https://docs.langchain4j.dev/docs/category/language-models) | [Streaming](https://docs.langchain4j.dev/docs/integrations/language-models/response-streaming)  | [Async Completion](https://docs.langchain4j.dev/docs/category/language-models) | [Async Streaming](https://docs.langchain4j.dev/docs/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/docs/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/docs/category/image-models) | [ReRanking](https://docs.langchain4j.dev/docs/category/reranking-models) 
 |---------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
-| [OpenAI](https://docs.langchain4j.dev/docs/integrations/language-models/openai)                         | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
-| [Azure OpenAI](https://docs.langchain4j.dev/docs/integrations/language-models/azure-openai)             |    | ✅ | ✅ | ✅ |    |    | ✅ | ✅ | 
-| [Hugging Face](https://docs.langchain4j.dev/docs/integrations/language-models/huggingface)              |    | ✅ |    |    | ✅ |    | ✅ |    |
-| [Amazon Bedrock](https://docs.langchain4j.dev/docs/integrations/language-models/amazon-bedrock)         |    | ✅ |    |    |    |    | ✅ |    |
-| [Google Vertex AI Gemini](https://docs.langchain4j.dev/docs/integrations/language-models/google-gemini) |    | ✅ | ✅ |    | ✅ |    |    |    |
-| [Google Vertex AI](https://docs.langchain4j.dev/docs/integrations/language-models/google-palm)          | ✅ | ✅ |    |    | ✅ |    | ✅ | ✅ |
-| [Mistral AI](https://docs.langchain4j.dev/docs/integrations/language-models/mistralai)                  |    | ✅ | ✅ |    | ✅ | ✅ | ✅ |    |
-| [DashScope](https://docs.langchain4j.dev/docs/integrations/language-models/dashscope)                   |    | ✅ | ✅ |    |    | ✅ | ✅ |    |
-| [LocalAI](https://docs.langchain4j.dev/docs/integrations/language-models/localai)                       |    | ✅ | ✅ | ✅ | ✅ |    | ✅ |    |
-| [Ollama](https://docs.langchain4j.dev/docs/integrations/language-models/ollama)                         |    | ✅ | ✅ |    | ✅ | ✅ | ✅ |    |
-| [Cohere](https://docs.langchain4j.dev/docs/integrations/reranking-models/cohere)                        |    |    |    |     |    |    |    |    | ✅
-| [Qianfan](https://docs.langchain4j.dev/docs/integrations/language-models/qianfan)                       |    | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |    |
-| [ChatGLM](https://docs.langchain4j.dev/docs/integrations/language-models/chatglm)                       |    | ✅ |    |     |    |    |    |    |
-| [Nomic](https://docs.langchain4j.dev/docs/integrations/language-models/nomic)                           |    |     |    |    |    |    | ✅ |    |
+| [OpenAI](https://docs.langchain4j.dev/docs/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
+| [Azure OpenAI](https://docs.langchain4j.dev/docs/integrations/language-models/azure-openai)             |  | ✅ | ✅ |  |   | ✅ | ✅ | 
+| [Hugging Face](https://docs.langchain4j.dev/docs/integrations/language-models/huggingface)              |  | ✅ |  | ✅ |  | ✅ |  |  |
+| [Amazon Bedrock](https://docs.langchain4j.dev/docs/integrations/language-models/amazon-bedrock)         |  | ✅ |  |  |  | ✅ |
+| [Google Vertex AI Gemini](https://docs.langchain4j.dev/docs/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
+| [Google Vertex AI](https://docs.langchain4j.dev/docs/integrations/language-models/google-palm)          | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
+| [Mistral AI](https://docs.langchain4j.dev/docs/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DashScope](https://docs.langchain4j.dev/docs/integrations/language-models/dashscope)                   |  | ✅ | ✅ |  | ✅ | ✅ |
+| [LocalAI](https://docs.langchain4j.dev/docs/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | ✅ |  |
+| [Ollama](https://docs.langchain4j.dev/docs/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [Cohere](https://docs.langchain4j.dev/docs/integrations/reranking-models/cohere)                        |  |  |  |  |  |  |  | ✅ |
+| [Qianfan](https://docs.langchain4j.dev/docs/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [ChatGLM](https://docs.langchain4j.dev/docs/integrations/language-models/chatglm)                       |  | ✅ |  |  |  |  |
+| [Nomic](https://docs.langchain4j.dev/docs/integrations/language-models/nomic)                           |  |  |  |  |  | ✅ |  |
 
 ## Disclaimer
 
