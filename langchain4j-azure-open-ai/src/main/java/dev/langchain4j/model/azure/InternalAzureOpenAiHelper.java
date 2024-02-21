@@ -119,19 +119,32 @@ class InternalAzureOpenAiHelper {
     }
 
     public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
-        if (message instanceof AiMessage) {
-            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(message.text(), ""));
+        if (message.type().messageClass().equals(AiMessage.class)) {
+            AiMessage aiMessage = (AiMessage) message;
+            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
             return chatRequestAssistantMessage;
-        } else if (message instanceof ToolExecutionResultMessage) {
+        } else if (message.type().messageClass().equals(ToolExecutionResultMessage.class)) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
-        } else if (message instanceof SystemMessage) {
-            return new ChatRequestSystemMessage(message.text());
-        } else {
-            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(message.text());
+        } else if (message.type().messageClass().equals(SystemMessage.class)) {
+            SystemMessage systemMessage = (SystemMessage) message;
+            return new ChatRequestSystemMessage(systemMessage.text());
+        } else if (message.type().messageClass().equals(UserMessage.class)) {
+            UserMessage userMessage = (UserMessage) message;
+            ChatRequestUserMessage chatRequestUserMessage;
+            if (userMessage.hasSingleText()) {
+                chatRequestUserMessage = new ChatRequestUserMessage(((TextContent) userMessage.contents().get(0)).text());
+            } else {
+                chatRequestUserMessage = new ChatRequestUserMessage(userMessage.contents().stream()
+                        .map(content -> ((TextContent) content).text())
+                        .map(ChatMessageTextContentItem::new)
+                        .collect(toList()));
+            }
             chatRequestUserMessage.setName(nameFrom(message));
             return chatRequestUserMessage;
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + message.type());
         }
     }
 
