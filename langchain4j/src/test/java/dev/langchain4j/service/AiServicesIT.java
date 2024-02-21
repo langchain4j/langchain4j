@@ -201,7 +201,7 @@ public class AiServicesIT {
 
 
     @ToString
-    static class Address  {
+    static class Address {
         private Integer streetNumber;
         private String street;
         private String city;
@@ -250,9 +250,9 @@ public class AiServicesIT {
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "\"address\": (type: {\n" +
-                            "\"streetNumber\": (type: integer),\n" +
-                            "\"street\": (type: string),\n" +
-                            "\"city\": (type: string),\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string),\n" +
                         "}),\n" +
                         "}")));
     }
@@ -375,7 +375,7 @@ public class AiServicesIT {
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
-                "}")));
+                        "}")));
     }
 
     interface BadChef {
@@ -394,7 +394,7 @@ public class AiServicesIT {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
         assertThatThrownBy(() -> badChef.createRecipeFromNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
-                .isInstanceOf(IllegalConfigurationException.class) //
+                .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
     }
 
@@ -403,7 +403,7 @@ public class AiServicesIT {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
         assertThatThrownBy(() -> badChef.createRecipeFromEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
-                .isInstanceOf(IllegalConfigurationException.class) //
+                .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's template cannot be empty");
     }
 
@@ -502,7 +502,7 @@ public class AiServicesIT {
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
                         "\"preparationTimeMinutes\": (type: integer),\n" +
                         "}")
-                ));
+        ));
     }
 
     interface ProfessionalChef {

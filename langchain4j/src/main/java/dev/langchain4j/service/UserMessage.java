@@ -1,5 +1,7 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.exception.IllegalConfigurationException;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
@@ -19,13 +21,13 @@ public @interface UserMessage {
 
     String delimiter() default "\n";
 
-	/**
-	 * The resource to read the prompt template from. If the resource is not found,
-	 * an IllegalConfigurationException is thrown. If no resource is specified we
-	 * will fall-back to the value of {@link #value()}.
-	 *
-	 * The resource will be read by calling {@code getResourceAsStream(resource)} on the class```
-	 * containing the method annotated with {@code @UserMessage}.
-	 */
+    /**
+     * The resource from which to read the prompt template.
+     * If no resource is specified, the prompt template is taken from {@link #value()}.
+     * If the resource is not found, an {@link IllegalConfigurationException} is thrown.
+     * <p>
+     * The resource will be read by calling {@link Class#getResourceAsStream(String)}
+     * on the AI Service class (interface).
+     */
     String fromResource() default "";
 }

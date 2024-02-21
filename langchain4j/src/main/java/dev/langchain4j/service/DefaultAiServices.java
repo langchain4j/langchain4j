@@ -15,12 +15,12 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.query.Metadata;
 
+import java.io.InputStream;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.io.InputStream;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -292,8 +292,8 @@ class DefaultAiServices<T> extends AiServices<T> {
         if (inputStream == null) {
             return null;
         }
-        try (Scanner scanner = new Scanner(inputStream); //
-                Scanner s = scanner.useDelimiter("\\A")) {
+        try (Scanner scanner = new Scanner(inputStream);
+             Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }
