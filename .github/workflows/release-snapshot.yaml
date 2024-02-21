@@ -1,4 +1,4 @@
-name: Snapshot Releases
+name: release_snapshot
 
 # Only run on pushes to main:
 # Replace with 'on: [push]' if you need to run tests on your PR
@@ -8,7 +8,7 @@ on:
       - main
 
 jobs:
-  publish:
+  release_snapshot:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +23,10 @@ jobs:
           server-id: ossrh
           server-username: OSSRH_USERNAME
           server-password: OSSRH_PASSWORD
-      - name: Publish package
+      - name: release_snapshot
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         # Notes:
-        #  - tests already run in a separate action
-        run: mvn -B -U --fail-at-end deploy -DskipTests -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs
+        #  - tests already run in a separate action (main)
+        run: mvn -B -U --fail-at-end -DskipTests -DskipLocalAiITs=true -DskipMongoDbAtlasITs=true -DskipOllamaITs=true -DskipVearchITs=true -DskipVertexAiGeminiITs=true clean deploy
