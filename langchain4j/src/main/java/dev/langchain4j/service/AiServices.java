@@ -67,8 +67,8 @@ import static java.util.stream.Collectors.toList;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@link String}, an {@link AiMessage} or a {@link Response<AiMessage>}, if you want to get the answer from the LLM as-is
- * - a {@link List<String>} or {@link Set<String>}, if you want to receive the answer as a collection of items or bullet points
+ * - a {@link String}, an {@link AiMessage} or a {@code Response<AiMessage>}, if you want to get the answer from the LLM as-is
+ * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
  * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
  * - many default Java types: {@code Date}, {@code LocalDateTime}, {@code BigDecimal}, etc., if you want to use the LLM for data extraction
