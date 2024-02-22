@@ -5,9 +5,9 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.weaviate.WeaviateContainer;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
@@ -15,13 +15,10 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     @Container
-    static GenericContainer<?> weaviate = new GenericContainer<>("semitechnologies/weaviate:latest")
-            .withEnv("AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED", "true")
-            .withEnv("PERSISTENCE_DATA_PATH", "/var/lib/weaviate")
+    static WeaviateContainer weaviate = new WeaviateContainer("semitechnologies/weaviate:latest")
             .withEnv("QUERY_DEFAULTS_LIMIT", "25")
             .withEnv("DEFAULT_VECTORIZER_MODULE", "none")
-            .withEnv("CLUSTER_HOSTNAME", "node1")
-            .withExposedPorts(8080);
+            .withEnv("CLUSTER_HOSTNAME", "node1");
 
     EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
             .scheme("http")
