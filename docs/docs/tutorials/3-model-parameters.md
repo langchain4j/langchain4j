@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# 3. Model Parameters
+# Model Parameters
 
 Depending on the model and provider you choose, you can adjust numerous parameters that will define:
 - The model's output: the level of creativity or determinism in the generated content (text, images),

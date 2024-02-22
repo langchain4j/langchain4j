@@ -28,7 +28,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * However, it's recommended to use {@link AzureOpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apikey (or an alternate authentication method, see below for more information) and deploymentName.
+ * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
+ * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are 3 authentication methods:

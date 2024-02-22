@@ -2,6 +2,6 @@
 sidebar_position: 14
 ---
 
-# 8. Chains
+# Chains
 
 Coming soon

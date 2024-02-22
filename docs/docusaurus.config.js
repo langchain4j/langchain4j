@@ -20,7 +20,7 @@ const config = {
     url: 'https://langchain4j.github.io/',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: '/langchain4j/',
+    baseUrl: '/',
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
@@ -87,7 +87,7 @@ const config = {
                     {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
                     {
-                        href: 'https://langchain4j.github.io/langchain4j/apidocs/index.html',
+                        href: 'https://docs.langchain4j.dev/apidocs/index.html',
                         label: 'Javadoc',
                         position: 'left'
                     },
