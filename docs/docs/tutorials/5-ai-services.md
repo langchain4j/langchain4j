@@ -32,7 +32,7 @@ and LangChain4j provides an object (proxy) that implements this interface.
 You can think of AI Service as a component of the service layer in your application.
 It provides _AI_ services. Hence the name.
 
-AI services handle the most common operations:
+AI Services handle the most common operations:
 - Formatting inputs for the LLM
 - Parsing outputs from the LLM
 
@@ -41,7 +41,10 @@ They also support more advanced features:
 - Tools
 - RAG
 
-Let's take a look at the simplest possible AI Service. After that, we will explore more complicated examples.
+AI Services can be used to build stateful chatbots that facilitate back-and-forth interactions,
+as well as to automate processes where each call to the LLM is isolated.
+
+Let's take a look at the simplest possible AI Service. After that, we will explore more complex examples.
 
 ## Simplest AI Service
 
@@ -65,7 +68,7 @@ Assistant assistant = AiServices.create(Assistant.class, model);
 ```
 :::note
 In a Quarkus or Spring Boot application, this can be a bean that you can then inject into your code
-wherever you need AI services.
+wherever you need AI Services.
 :::
 
 Now we can use `Assistant`:
@@ -160,7 +163,7 @@ Currently, AI Services support the following return types:
 - Any custom POJO
 
 Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
-the AI service will automatically append instructions to the end of `UserMessage` indicating the format
+the AI Service will automatically append instructions to the end of `UserMessage` indicating the format
 in which the LLM should respond.
 Before the method returns, the AI Service will parse the output of the LLM into the desired type.
 
@@ -270,10 +273,14 @@ try lowering the `temperature` and see if that helps.
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
 
 ## Chat Memory
-[Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
+[Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
+[Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
+[Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
+[Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 
 ## Tools
-[Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+[Example with Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+[Example with dynamic Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java)
 
 ## RAG
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
@@ -282,16 +289,106 @@ try lowering the `temperature` and see if that helps.
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
 ## Chaining
-The more complicated the logic of your LLM-powered application becomes,
-the more important it is to decompose it into smaller parts, as we usually do in software development.
-More granular parts are easier to develop, test, maintain, and reason about.
+The more complex the logic of your LLM-powered application becomes,
+the more crucial it is to break it down into smaller parts, as is common practice in software development.
 
-You can decompose your flow into multiple AI Services and use them
-as you would with standard deterministic software components:
-- Calling one AI Service after another.
-- Using deterministic and LLM-powered (AI service can return `boolean`) `if`/`else` statements.
-- Using deterministic and LLM-powered (AI service can return `enum`) `switch` statements.
-- Using `for`/`while` loops.
+For instance, stuffing lots of instructions into the system prompt to account for all possible scenarios
+is prone to errors and inefficiency. If there are too many instructions, LLMs may overlook some.
+Additionally, the sequence in which instructions are presented matters, making the process even more challenging.
+
+This principle also applies to tools, RAG, and model parameters such as `temperature`, `maxTokens`, etc.
+
+Your chatbot likely doesn't need to be aware of every tool you have at all times.
+For example, when a user simply greets the chatbot or says goodbye,
+it's costly and sometimes risky to provide information on the dozens or hundreds of tools available
+(each tool included in the LLM call consumes a significant number of tokens)
+and might lead to unintended results (LLMs can hallucinate or be manipulated to invoke a tool with unintended inputs).
+
+Regarding RAG: similarly, there are times when it's necessary to provide some context to the LLM,
+but not always, as it incurs additional costs (more context = more tokens)
+and increases response times (more context = higher latency).
+
+Concerning model parameters: in certain situations, you may need LLM to be highly deterministic,
+so you would set a low `temperature`. In other cases, you might opt for a higher `temperature`, and so on.
+
+The point is that smaller, more specific components are easier and less expensive to develop, test, maintain, and understand.
+
+Another aspect to consider involves two extremes:
+- Do you prefer your application to be highly deterministic with minimal LLM input,
+where the application controls the flow and the LLM is just one of components?
+- Or do you want the LLM to have complete autonomy and drive your application?
+
+Or perhaps a mix of both, depending on the situation?
+All these options are possible when you decompose your app into smaller, more manageable parts.
+
+AI Services can be used as and combined with regular (deterministic) software components:
+- You can call one AI Service after another (aka chaining).
+- You can use deterministic and LLM-powered `if`/`else` statements (AI Services can return a `boolean`).
+- You can use deterministic and LLM-powered `switch` statements (AI Services can return an `enum`).
+- You can use deterministic and LLM-powered `for`/`while` loops (AI Services can return `int` and other numerical types).
+- You can mock an AI Service (since it is an interface) in your unit tests.
+- You can integration test each AI Service in isolation.
+- You can evaluate and find the optimal parameters for each AI Service separately.
 - etc
+
+Let's consider a simple example.
+I want to build a chatbot for my company.
+If a user greets the chatbot,
+I want it to respond with one of the approved greetings without relying on an LLM to generate the greeting.
+If a user asks a question, I want the LLM to generate the response using internal knowledge base of the company (aka RAG).
+
+Here is how this can be done with 2 AI Services:
+```java
+interface GreetingExpert {
+
+    @UserMessage("Is the following text a greeting? Text: {{it}}")
+    boolean isGreeting(String text);
+}
+
+interface ChatBot {
+
+    @SystemMessage("You are a polite chatbot of a company called Miles of Smiles.")
+    String reply(String userMessage);
+}
+
+class ChatBotService {
+
+    private static final List<String> GREETINGS_APPROVED_BY_MANAGEMENT = asList(
+            "Hello and welcome to Miles of Smiles! How can I assist you today?",
+            "Greetings from Miles of Smiles! How can I make your day better?"
+    );
+    
+    private final GreetingExpert greetingExpert;
+    private final ChatBot chatBot;
+    
+    ...
+    
+    public String handle(String userMessage) {
+        if (greetingExpert.isGreeting(userMessage)) {
+            return GREETINGS_APPROVED_BY_MANAGEMENT.get(RANDOM.nextInt(GREETINGS_APPROVED_BY_MANAGEMENT.size()));
+        } else {
+            return chatBot.reply(userMessage);
+        }
+    }
+}
+
+GreetingExpert greetingExpert = AiServices.create(GreetingExpert.class, llama2);
+
+ChatBot chatBot = AiServices.builder(ChatBot.class)
+    .chatLanguageModel(gpt4)
+    .contentRetriever(milesOfSmilesContentRetriever)
+    .build();
+
+ChatBotService chatBotService = new ChatBotService(greetingExpert, chatBot);
+
+String greeting = chatBotService.handle("Hello");
+System.out.println(greeting); // Greetings from Miles of Smiles! How can I make your day better?
+
+String answer = chatBotService.handle("Which services do you provide?");
+System.out.println(answer); // At Miles of Smiles, we provide a wide range of services ...
+```
+
+Notice how we used Llama2 for the simple task of identifying whether the text is a greeting or not,
+and GPT-4 for a more complicated task.
 
 TODO
