@@ -65,7 +65,7 @@ class VertexAiEmbeddingModelIT {
             .maxRetries(3)
             .build();
 
-        List<Integer> tokenCounts = model.getTokensCounts(createRandomSegments(5000, 1000));
+        List<Integer> tokenCounts = model.calculateTokensCounts(createRandomSegments(5000, 1000));
 
         assertThat(tokenCounts).hasSize(5000);
         // 5000 segments of 1000 characters is about 5 million characters.
@@ -123,7 +123,7 @@ class VertexAiEmbeddingModelIT {
         List<TextSegment> segments = Collections.nCopies(1234, TextSegment.from(
             "Once upon a time, in a haunted forrest, lived a gentle squirrel."));
 
-        List<Integer> tokenCounts = model.getTokensCounts(segments);
+        List<Integer> tokenCounts = model.calculateTokensCounts(segments);
 
         assertThat(tokenCounts).hasSize(1234);
         for (Integer tokenCount : tokenCounts) {
@@ -151,7 +151,7 @@ class VertexAiEmbeddingModelIT {
         List<TextSegment> segments = Collections.nCopies(1234, TextSegment.from(
             "Once upon a time, in a haunted forrest, lived a gentle squirrel."));
 
-        List<Integer> tokenCounts = model.getTokensCounts(segments);
+        List<Integer> tokenCounts = model.calculateTokensCounts(segments);
 
         assertThat(tokenCounts).hasSize(1234);
         for (Integer tokenCount : tokenCounts) {

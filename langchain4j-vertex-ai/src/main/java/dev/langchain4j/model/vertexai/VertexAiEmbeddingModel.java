@@ -26,6 +26,7 @@ import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -99,8 +100,10 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
 
         this.maxRetries = getOrDefault(maxRetries, 3);
 
-        this.maxSegmentsPerBatch = getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH);
-        this.maxTokensPerBatch = getOrDefault(maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH);
+        this.maxSegmentsPerBatch = ensureGreaterThanZero(
+            getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");
+        this.maxTokensPerBatch = ensureGreaterThanZero(
+            getOrDefault(maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH), "maxTokensPerBatch");
     }
 
     @Override
@@ -111,7 +114,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             List<Embedding> embeddings = new ArrayList<>();
             int inputTokenCount = 0;
 
-            List<Integer> tokensCounts = getTokensCounts(segments);
+            List<Integer> tokensCounts = this.calculateTokensCounts(segments);
             List<Integer> batchSizes = groupByBatches(tokensCounts);
 
             for (int i = 0, j = 0; i < segments.size() && j < batchSizes.size(); i += batchSizes.get(j), j++) {
@@ -151,7 +154,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
      *
      * @return a list of tokens counts for each segment
      */
-    public List<Integer> getTokensCounts(List<TextSegment> segments) {
+    public List<Integer> calculateTokensCounts(List<TextSegment> segments) {
         try (LlmUtilityServiceClient utilClient = LlmUtilityServiceClient.create(this.llmUtilitySettings)) {
             List<Integer> tokensCounts = new ArrayList<>();
 
