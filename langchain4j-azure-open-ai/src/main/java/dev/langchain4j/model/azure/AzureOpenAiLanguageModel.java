@@ -182,7 +182,6 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
         this.tokenizer = tokenizer;
         this.maxTokens = maxTokens;
-        this.tokenizer = tokenizer;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.logitBias = logitBias;
