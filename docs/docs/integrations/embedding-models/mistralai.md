@@ -104,10 +104,10 @@ Response: I like football.
 
 Of course, you can combine MistralAI Embeddings with RAG (Retrieval-Augmented Generation) techniques.
 
-In [RAG](/docs/tutorials/rag) you will learn how to use RAG techniques for ingestion, retrieval and Advanced Retrieval with LangChain4j.
+In [RAG](/tutorials/rag) you will learn how to use RAG techniques for ingestion, retrieval and Advanced Retrieval with LangChain4j.
 
 A lot of parameters are set behind the scenes, such as timeout, model type and model parameters.
-In [Set Model Parameters](/docs/tutorials/model-parameters) you will learn how to set these parameters explicitly.
+In [Set Model Parameters](/tutorials/model-parameters) you will learn how to set these parameters explicitly.
 
 ### More examples
 If you want to check more examples, you can find them in the [langchain4j-examples](https://github.com/langchain4j/langchain4j-examples) project.

@@ -68,7 +68,7 @@ String answer = model.generate("Say 'Hello World'");
 System.out.println(answer); // Hello World
 ```
 
-Find step-by-step tutorials with more complex examples [here](/docs/category/tutorials).
+Find step-by-step tutorials with more complex examples [here](/category/tutorials).
 
 ## Highlights
 
