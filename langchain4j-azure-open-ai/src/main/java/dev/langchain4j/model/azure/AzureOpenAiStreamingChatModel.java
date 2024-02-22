@@ -13,7 +13,6 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -22,7 +21,6 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -192,7 +190,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                           ChatCompletionsResponseFormat responseFormat) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO));
+        this.tokenizer = tokenizer;
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
