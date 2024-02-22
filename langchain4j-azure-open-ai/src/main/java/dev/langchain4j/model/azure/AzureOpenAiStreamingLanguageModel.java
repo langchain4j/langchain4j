@@ -65,7 +65,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
     private final List<String> stop;
     private final Double presencePenalty;
     private final Double frequencyPenalty;
-    private final Integer bestOf;
+
 
     public AzureOpenAiStreamingLanguageModel(OpenAIClient client,
                                              String deploymentName,
@@ -80,10 +80,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Boolean echo,
                                              List<String> stop,
                                              Double presencePenalty,
-                                             Double frequencyPenalty,
-                                             Integer bestOf) {
+                                             Double frequencyPenalty) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
         this.client = client;
     }
 
@@ -103,13 +102,12 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              List<String> stop,
                                              Double presencePenalty,
                                              Double frequencyPenalty,
-                                             Integer bestOf,
                                              Duration timeout,
                                              Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
         this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
@@ -129,13 +127,12 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              List<String> stop,
                                              Double presencePenalty,
                                              Double frequencyPenalty,
-                                             Integer bestOf,
                                              Duration timeout,
                                              Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
         this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
@@ -155,13 +152,12 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              List<String> stop,
                                              Double presencePenalty,
                                              Double frequencyPenalty,
-                                             Integer bestOf,
                                              Duration timeout,
                                              Integer maxRetries,
                                              ProxyOptions proxyOptions,
                                              boolean logRequestsAndResponses) {
 
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty);
         this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
@@ -177,8 +173,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                               Boolean echo,
                                               List<String> stop,
                                               Double presencePenalty,
-                                              Double frequencyPenalty,
-                                              Integer bestOf) {
+                                              Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
         this.tokenizer = tokenizer;
@@ -193,7 +188,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         this.stop = stop;
         this.presencePenalty = presencePenalty;
         this.frequencyPenalty = frequencyPenalty;
-        this.bestOf = bestOf;
     }
 
     @Override
@@ -211,8 +205,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                 .setEcho(echo)
                 .setStop(stop)
                 .setPresencePenalty(presencePenalty)
-                .setFrequencyPenalty(frequencyPenalty)
-                .setBestOf(bestOf);
+                .setFrequencyPenalty(frequencyPenalty);
 
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInText(prompt);
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
@@ -281,7 +274,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
         private List<String> stop;
         private Double presencePenalty;
         private Double frequencyPenalty;
-        private Integer bestOf;
         private Duration timeout;
         private Integer maxRetries;
         private ProxyOptions proxyOptions;
@@ -415,11 +407,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             return this;
         }
 
-        public Builder bestOf(Integer bestOf) {
-            this.bestOf = bestOf;
-            return this;
-        }
-
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -471,7 +458,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             stop,
                             presencePenalty,
                             frequencyPenalty,
-                            bestOf,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -495,7 +481,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                             stop,
                             presencePenalty,
                             frequencyPenalty,
-                            bestOf,
                             timeout,
                             maxRetries,
                             proxyOptions,
@@ -519,7 +504,6 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         stop,
                         presencePenalty,
                         frequencyPenalty,
-                        bestOf,
                         timeout,
                         maxRetries,
                         proxyOptions,
@@ -540,8 +524,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                         echo,
                         stop,
                         presencePenalty,
-                        frequencyPenalty,
-                        bestOf
+                        frequencyPenalty
                 );
             }
         }
