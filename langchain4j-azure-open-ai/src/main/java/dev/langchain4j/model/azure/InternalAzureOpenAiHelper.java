@@ -137,8 +137,18 @@ class InternalAzureOpenAiHelper {
                 chatRequestUserMessage = new ChatRequestUserMessage(((TextContent) userMessage.contents().get(0)).text());
             } else {
                 chatRequestUserMessage = new ChatRequestUserMessage(userMessage.contents().stream()
-                        .map(content -> ((TextContent) content).text())
-                        .map(ChatMessageTextContentItem::new)
+                        .map(content -> {
+                            if (content instanceof TextContent) {
+                                String text = ((TextContent) content).text();
+                                return new ChatMessageTextContentItem(text);
+                            } else if (content instanceof ImageContent) {
+                                ImageContent imageContent = (ImageContent) content;
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
+                                return new ChatMessageImageContentItem(imageUrl);
+                            } else {
+                                throw new IllegalArgumentException("Unsupported content type: " + content.type());
+                            }
+                        })
                         .collect(toList()));
             }
             chatRequestUserMessage.setName(nameFrom(message));
