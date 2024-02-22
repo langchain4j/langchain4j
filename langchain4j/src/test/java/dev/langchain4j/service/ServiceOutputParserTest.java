@@ -179,4 +179,28 @@ class ServiceOutputParserTest {
                         "}),\n" +
                         "}");
     }
+
+    static class PersonWithFinalFields {
+        private final String firstName;
+        private final String lastName;
+        private final LocalDate birthDate;
+
+        PersonWithFinalFields(String firstName, String lastName, LocalDate birthDate) {
+            this.firstName = firstName;
+            this.lastName = lastName;
+            this.birthDate = birthDate;
+        }
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithFinalFields() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithFinalFields.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "}");
+    }
 }

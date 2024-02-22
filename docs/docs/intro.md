@@ -87,7 +87,7 @@ You have complete control over how to combine them, but you will need to write m
 which hides all the complexity and boilerplate from you.
 You still have the flexibility to adjust and fine-tune the behavior, but it is done in a declarative manner.
 
-[![](/img/langchain4j-components.png)](/docs/intro)
+[![](/img/langchain4j-components.png)](/intro)
 
 ### Library Structure
 LangChain4j features a modular design, comprising:
@@ -97,14 +97,14 @@ LangChain4j features a modular design, comprising:
   You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
 
 ### Tutorials (User Guide)
-Discover inspiring [use cases](/docs/tutorials#need-inspiration) or follow our step-by-step introduction to LangChain4j features under [Tutorials](/docs/category/tutorials).
+Discover inspiring [use cases](/tutorials#need-inspiration) or follow our step-by-step introduction to LangChain4j features under [Tutorials](/category/tutorials).
 
 You will get a tour of all LangChain4j functionality in steps of increasing complexity. All steps are demonstrated with complete code examples and code explanation.
 
 ### Integrations and Models
 LangChain4j offers ready-to-use integrations with models of OpenAI, HuggingFace, Google, Azure, and many more. 
 It has document loaders for all common document types, and integrations with plenty of embedding models and embedding stores, to facilitate retrieval-augmented generation and AI-powered classification.
-All integrations are listed [here](/docs/category/integrations).
+All integrations are listed [here](/category/integrations).
 
 ### Code examples
 
@@ -118,6 +118,7 @@ dependency which builds on this project) can be
 found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
 
 ### Useful Materials
+- [Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g) by [Andrej Karpathy](https://www.youtube.com/@AndrejKarpathy)
 - [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
 - [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
 

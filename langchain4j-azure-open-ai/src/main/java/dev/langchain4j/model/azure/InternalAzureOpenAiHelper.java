@@ -16,6 +16,7 @@ import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.http.policy.RetryOptions;
 import com.azure.core.util.BinaryData;
+import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -38,6 +39,8 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 class InternalAzureOpenAiHelper {
+
+    public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
     public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, String apiKey, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
         OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
@@ -71,6 +74,9 @@ class InternalAzureOpenAiHelper {
         clientOptions.setReadTimeout(timeout);
         clientOptions.setWriteTimeout(timeout);
         clientOptions.setProxyOptions(proxyOptions);
+
+        Header header = new Header("User-Agent", DEFAULT_USER_AGENT);
+        clientOptions.setHeaders(Collections.singletonList(header));
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
         HttpLogOptions httpLogOptions = new HttpLogOptions();
@@ -87,6 +93,7 @@ class InternalAzureOpenAiHelper {
                 .endpoint(ensureNotBlank(endpoint, "endpoint"))
                 .serviceVersion(getOpenAIServiceVersion(serviceVersion))
                 .httpClient(httpClient)
+                .clientOptions(clientOptions)
                 .httpLogOptions(httpLogOptions)
                 .retryOptions(retryOptions);
     }

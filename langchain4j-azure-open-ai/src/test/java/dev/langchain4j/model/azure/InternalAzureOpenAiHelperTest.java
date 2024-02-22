@@ -43,6 +43,15 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
+    void getOpenAIServiceVersionShouldReturnLatestVersionIfIncorrect() {
+        String serviceVersion = "1901-01-01";
+
+        OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion(serviceVersion);
+
+        assertEquals(OpenAIServiceVersion.getLatest().getVersion(), version.getVersion());
+    }
+
+    @Test
     void toOpenAiMessagesShouldReturnCorrectMessages() {
         List<ChatMessage> messages = new ArrayList<>();
         messages.add(new UserMessage("test-user", "test-message"));

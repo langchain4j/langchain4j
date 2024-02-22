@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# 3. Model Parameters
+# Model Parameters
 
 Depending on the model and provider you choose, you can adjust numerous parameters that will define:
 - The model's output: the level of creativity or determinism in the generated content (text, images),
@@ -21,7 +21,7 @@ For example, OpenAI API's parameters can be found at https://platform.openai.com
 | `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.           | `Double`  |
 | `...`              | ...                                                                                                                                                                                                  | `...`     |
 
-For the full list of parameters in OpenAI LLMs, see the [OpenAI Language Model page](/docs/integrations/language-models/openai).
+For the full list of parameters in OpenAI LLMs, see the [OpenAI Language Model page](/integrations/language-models/openai).
 Full lists of parameters and default values per model can be found under the separate model pages
 (under Integration, Language Model and Image Model).
 
@@ -45,7 +45,7 @@ In this case of an OpenAI Chat Model for example, some of the defaults are
 | `logResponses` | false         |
 | `...`          | ...           |
 
-Defaults for all models can be found on the pages of the respective providers under [Integrations](/docs/integrations).
+Defaults for all models can be found on the pages of the respective providers under [Integrations](/integrations).
 
 ## Builder
 We can set every available parameter of the model using the builder pattern as follows:
@@ -75,7 +75,7 @@ and your changes are automatically ported to the code.
 The DEV UI can be accessed by running your Quarkus application with the command `quarkus dev`,
 then you can find it on localhost:8080/q/dev-ui (or wherever you deploy your application).
 
-[![](/img/quarkus-dev-ui-parameters.png)](/docs/tutorials/set-model-parameters)
+[![](/img/quarkus-dev-ui-parameters.png)](/tutorials/set-model-parameters)
 
 ## Setting Parameters in Spring Boot
 LangChain4j parameters in Spring Boot applications can be set in the `application.properties` file as follows:

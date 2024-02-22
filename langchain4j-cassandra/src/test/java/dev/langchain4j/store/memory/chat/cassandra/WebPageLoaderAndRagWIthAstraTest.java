@@ -1,11 +1,15 @@
-package dev.langchain4j.store.embedding.cassandra;
+package dev.langchain4j.store.memory.chat.cassandra;
 
-import com.dtsx.astra.sdk.utils.TestUtils;
+import com.dtsx.astra.sdk.AstraDBAdmin;
+import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
+import dev.langchain4j.data.document.loader.UrlDocumentLoader;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
+import dev.langchain4j.data.document.source.UrlSource;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
+import dev.langchain4j.data.document.transformer.HtmlTextExtractor;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -20,44 +24,62 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import dev.langchain4j.store.embedding.cassandra.CassandraEmbeddingStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
+import static com.dtsx.astra.sdk.utils.TestUtils.TEST_REGION;
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
-import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.joining;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class SampleDocumentLoaderAndRagWithAstraTest {
+public class WebPageLoaderAndRagWIthAstraTest {
 
+    public static final String DB_NAME = "langchain4j";
+
+    
     @Test
     @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
-    void shouldRagWithOpenAiAndAstra() {
-        // Initialization
-        String astraToken = getAstraToken();
-        String databaseId = setupDatabase("langchain4j", "langchain4j");
-        String openAIKey = System.getenv("OPENAI_API_KEY");
+    void shouldRagWithOpenAiAndAstra() throws IOException {
 
-        // Given
-        assertNotNull(openAIKey);
+        // Database Id
+        UUID databaseId = new AstraDBAdmin(getAstraToken()).createDatabase(DB_NAME);
         assertNotNull(databaseId);
-        assertNotNull(astraToken);
 
-        // --- Ingesting documents ---
+        // OpenAI Key
+        String openAIKey = System.getenv("OPENAI_API_KEY");
+        assertNotNull(openAIKey);
+
+        // --- Documents Ingestion ---
 
         // Parsing input file
-        Path path = new File(getClass().getResource("/story-about-happy-carrot.txt").getFile()).toPath();
-        Document document = FileSystemDocumentLoader.loadDocument(path, new TextDocumentParser());
+        //Path path = new File(getClass().getResource("/story-about-happy-carrot.txt").getFile()).toPath();
+        //Document document = FileSystemDocumentLoader.loadDocument(path, new TextDocumentParser());
+
+        //Document document = UrlDocumentLoader.load("https://beta.goodbards.ai", new HtmlDocumentParser());;
+
+        HtmlTextExtractor transformer = new HtmlTextExtractor();
+
+        UrlSource.from("https://beta.goodbards.ai").inputStream();
+
+        Document htmlDocument = Document.from("https://beta.goodbards.ai");
+        Document goodbardsBetaHomePage = transformer.transform(htmlDocument);
+
+        System.out.println(goodbardsBetaHomePage.text());
+
         DocumentSplitter splitter = DocumentSplitters
                 .recursive(100, 10, new OpenAiTokenizer(GPT_3_5_TURBO));
 
@@ -65,31 +87,32 @@ class SampleDocumentLoaderAndRagWithAstraTest {
         EmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
                 .apiKey(openAIKey)
                 .modelName(TEXT_EMBEDDING_ADA_002)
-                .timeout(ofSeconds(15))
-                .logRequests(true)
-                .logResponses(true)
                 .build();
 
         // Embed the document and it in the store
-        EmbeddingStore<TextSegment> embeddingStore = AstraDbEmbeddingStore.builder()
-                .token(astraToken)
-                .database(databaseId, TestUtils.TEST_REGION)
-                .table("langchain4j", "table_story")
-                .vectorDimension(1536)
+        CassandraEmbeddingStore embeddingStore = CassandraEmbeddingStore.builderAstra()
+                .token(getAstraToken())
+                .databaseId(databaseId)
+                .databaseRegion(TEST_REGION)
+                .keyspace("default_keyspace")
+                .table( "goodbards")
+                .dimension(1536) // openai model
+                .metric(CassandraSimilarityMetric.COSINE)
                 .build();
+        embeddingStore.clear();
 
-        // Ingest method 2
+        // Ingest method
         EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
                 .documentSplitter(splitter)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
                 .build();
-        ingestor.ingest(document);
+        ingestor.ingest(goodbardsBetaHomePage);
 
         // --------- RAG -------------
 
         // Specify the question you want to ask the model
-        String question = "Who is Charlie?";
+        String question = "What is goodbards ?";
 
         // Embed the question
         Response<Embedding> questionEmbedding = embeddingModel.embed(question);
@@ -111,7 +134,9 @@ class SampleDocumentLoaderAndRagWithAstraTest {
                         + "{{question}}\n"
                         + "\n"
                         + "Base your answer on the following information:\n"
-                        + "{{information}}");
+                        + "{{information}}\n"
+                        + "Put each sentence on a different line:\n"
+        );
 
         String information = relevantEmbeddings.stream()
                 .map(match -> match.embedded().text())
@@ -140,4 +165,6 @@ class SampleDocumentLoaderAndRagWithAstraTest {
         String answer = aiMessage.content().text();
         System.out.println(answer);
     }
+
+
 }

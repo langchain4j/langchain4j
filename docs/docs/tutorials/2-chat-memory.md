@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# 2. Chat Memory
+# Chat Memory
 
 Maintaining and managing `ChatMessage`s manually is cumbersome.
 Therefore, `ChatMemory` exists.
