@@ -52,7 +52,7 @@ class InternalAzureOpenAiHelperTest {
 
         OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion(serviceVersion);
 
-        assertThat(OpenAIServiceVersion.getLatest().getVersion()).isEqualTo(version.getVersion());
+        assertThat(version.getVersion()).isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
     }
 
     @Test
