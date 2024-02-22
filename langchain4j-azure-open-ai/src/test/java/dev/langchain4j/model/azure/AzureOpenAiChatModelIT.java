@@ -39,7 +39,6 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
@@ -70,7 +69,6 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
@@ -102,7 +100,6 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
@@ -169,7 +166,6 @@ public class AzureOpenAiChatModelIT {
     void should_call_function_with_no_argument(String deploymentName, String gptVersion) {
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
@@ -205,7 +201,6 @@ public class AzureOpenAiChatModelIT {
     void should_use_json_format(String deploymentName, String gptVersion) {
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
