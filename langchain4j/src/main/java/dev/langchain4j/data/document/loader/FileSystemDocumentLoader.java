@@ -96,7 +96,7 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only documents matching the criteria set by the provided {@link PathMatcher} will be loaded.
+     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
      *                       For example (remove "\" from glob pattern):
      *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>.
      * @param documentParser The parser to be used for parsing text from each file.
@@ -122,7 +122,7 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only documents matching the criteria set by the provided {@link PathMatcher} will be loaded.
+     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
      *                       For example (remove "\" from glob pattern):
      *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>
      * @param documentParser The parser to be used for parsing text from each file.
@@ -174,7 +174,7 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only documents matching the criteria set by the provided {@link PathMatcher} will be loaded.
+     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
      *                       For example (remove "\" from glob pattern):
      *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>
      * @param documentParser The parser to be used for parsing text from each file.
@@ -200,7 +200,7 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only documents matching the criteria set by the provided {@link PathMatcher} will be loaded.
+     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
      *                       For example (remove "\" from glob pattern):
      *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>
      * @param documentParser The parser to be used for parsing text from each file.
