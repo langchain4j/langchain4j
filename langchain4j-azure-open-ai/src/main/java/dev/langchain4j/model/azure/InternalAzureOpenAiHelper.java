@@ -119,18 +119,18 @@ class InternalAzureOpenAiHelper {
     }
 
     public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
-        if (message.type().messageClass().equals(AiMessage.class)) {
+        if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
             return chatRequestAssistantMessage;
-        } else if (message.type().messageClass().equals(ToolExecutionResultMessage.class)) {
+        } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
-        } else if (message.type().messageClass().equals(SystemMessage.class)) {
+        } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
-        } else if (message.type().messageClass().equals(UserMessage.class)) {
+        } else if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
             ChatRequestUserMessage chatRequestUserMessage;
             if (userMessage.hasSingleText()) {
