@@ -8,16 +8,16 @@ RAG can be split in 2 parst: ingestion and retrieval.
 
 ## Ingestion
 
-[![](/img/rag-ingestion.png)](/docs/tutorials/rag)
+[![](/img/rag-ingestion.png)](/tutorials/rag)
 
 ## Retrieval
 
-[![](/img/rag-retrieval.png)](/docs/tutorials/rag)
+[![](/img/rag-retrieval.png)](/tutorials/rag)
 
 ## Advanced Retrieval
 
 More [info here](https://github.com/langchain4j/langchain4j/pull/538).
-[![](/img/advanced-rag.png)](/docs/tutorials/rag)
+[![](/img/advanced-rag.png)](/tutorials/rag)
 
 ## Examples
 
