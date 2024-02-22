@@ -74,7 +74,7 @@ public class FileSystemDocumentLoader {
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
             return loadDocuments(pathStream, (path) -> true, documentParser);
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -113,7 +113,7 @@ public class FileSystemDocumentLoader {
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
             return loadDocuments(pathStream, pathMatcher, documentParser);
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -152,7 +152,7 @@ public class FileSystemDocumentLoader {
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
             return loadDocuments(pathStream, (path) -> true, documentParser);
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -191,7 +191,7 @@ public class FileSystemDocumentLoader {
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
             return loadDocuments(pathStream, pathMatcher, documentParser);
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw new RuntimeException(e);
         }
     }
 
