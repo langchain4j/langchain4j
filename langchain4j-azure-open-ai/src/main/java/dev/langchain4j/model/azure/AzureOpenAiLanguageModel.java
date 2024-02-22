@@ -10,7 +10,6 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -19,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -182,8 +180,9 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                      Integer bestOf) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT));
+        this.tokenizer = tokenizer;
         this.maxTokens = maxTokens;
+        this.tokenizer = tokenizer;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.logitBias = logitBias;

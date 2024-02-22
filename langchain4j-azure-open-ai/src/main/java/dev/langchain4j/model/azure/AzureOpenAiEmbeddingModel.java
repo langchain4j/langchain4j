@@ -13,7 +13,6 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -22,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -113,7 +111,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                       Tokenizer tokenizer) {
 
         this.deploymentName = getOrDefault(deploymentName, "text-embedding-ada-002");
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002));
+        this.tokenizer = tokenizer;
     }
 
     /**
