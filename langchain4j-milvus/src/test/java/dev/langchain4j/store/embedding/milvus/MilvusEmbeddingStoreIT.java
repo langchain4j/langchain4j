@@ -125,18 +125,18 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     @Test
     void should_use_partition_searching() {
         String partitionName = "partition_" + randomUUID().replace("-", "");
-        MilvusEmbeddingStoreExtend<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
+        MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
                 .host(milvus.getHost())
                 .port(milvus.getMappedPort(19530))
                 .collectionName("collection_" + randomUUID().replace("-", ""))
-                .partitionName(partitionName)
                 .dimension(384)
                 .retrieveEmbeddingsOnSearch(false)
                 .build();
+        embeddingStore.createPartition(partitionName);
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();
         Embedding secondEmbedding = embeddingModel.embed("hi").content();
-        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
+        embeddingStore.addAll(asList(firstEmbedding, secondEmbedding), null, partitionName);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10, 0);
         assertThat(relevant).hasSize(2);

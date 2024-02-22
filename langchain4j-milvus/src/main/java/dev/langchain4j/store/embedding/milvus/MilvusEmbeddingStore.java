@@ -35,7 +35,7 @@ import java.util.List;
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
  * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
  */
-public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegment> {
+public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   static final String ID_FIELD_NAME = "id";
   static final String TEXT_FIELD_NAME = "text";
@@ -43,7 +43,6 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
 
   private final MilvusServiceClient milvusClient;
   private final String collectionName;
-  private final String partitionName;
   private final MetricType metricType;
   private final ConsistencyLevelEnum consistencyLevel;
   private final boolean retrieveEmbeddingsOnSearch;
@@ -52,7 +51,6 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
     String host,
     Integer port,
     String collectionName,
-    String partitionName,
     Integer dimension,
     IndexType indexType,
     MetricType metricType,
@@ -78,7 +76,6 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
 
     this.milvusClient = new MilvusServiceClient(connectBuilder.build());
     this.collectionName = getOrDefault(collectionName, "default");
-    this.partitionName = partitionName;
     this.metricType = getOrDefault(metricType, COSINE);
     this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
     this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
@@ -87,11 +84,12 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
       createCollection(milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
       createIndex(milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
     }
+  }
 
-    if (StringUtils.isNotEmpty(partitionName) && !hasPartition(milvusClient, this.collectionName, this.partitionName)) {
-      createPartition(milvusClient, this.collectionName, this.partitionName);
+  public void createPartition(String partitionName) {
+    if (StringUtils.isNotEmpty(partitionName) && !hasPartition(this.milvusClient, this.collectionName, partitionName)) {
+      CollectionOperationsExecutor.createPartition(this.milvusClient, this.collectionName, partitionName);
     }
-
   }
 
   public String add(Embedding embedding) {
@@ -101,24 +99,36 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
   }
 
   public void add(String id, Embedding embedding) {
-    addInternal(id, embedding, null);
+    addInternal(id, embedding, null, null);
   }
 
   public String add(Embedding embedding, TextSegment textSegment) {
     String id = Utils.randomUUID();
-    addInternal(id, embedding, textSegment);
+    addInternal(id, embedding, textSegment, null);
+    return id;
+  }
+
+  public String add(Embedding embedding, TextSegment textSegment, String partitionName) {
+    String id = Utils.randomUUID();
+    addInternal(id, embedding, textSegment, partitionName);
     return id;
   }
 
   public List<String> addAll(List<Embedding> embeddings) {
     List<String> ids = generateRandomIds(embeddings.size());
-    addAllInternal(ids, embeddings, null);
+    addAllInternal(ids, embeddings, null, null);
     return ids;
   }
 
   public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
     List<String> ids = generateRandomIds(embeddings.size());
-    addAllInternal(ids, embeddings, embedded);
+    addAllInternal(ids, embeddings, embedded, null);
+    return ids;
+  }
+
+   public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded, String partitionName) {
+    List<String> ids = generateRandomIds(embeddings.size());
+    addAllInternal(ids, embeddings, embedded, partitionName);
     return ids;
   }
 
@@ -152,15 +162,16 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
             .collect(toList());
   }
 
-  private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
+  private void addInternal(String id, Embedding embedding, TextSegment textSegment, String partitionName) {
     addAllInternal(
       singletonList(id),
       singletonList(embedding),
-      textSegment == null ? null : singletonList(textSegment)
+      textSegment == null ? null : singletonList(textSegment),
+      partitionName
     );
   }
 
-  private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+  private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments, String partitionName) {
     List<InsertParam.Field> fields = new ArrayList<>();
     fields.add(new InsertParam.Field(ID_FIELD_NAME, ids));
     fields.add(new InsertParam.Field(TEXT_FIELD_NAME, toScalars(textSegments, ids.size())));
@@ -179,7 +190,6 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
     private String host;
     private Integer port;
     private String collectionName;
-    private String partitionName;
     private Integer dimension;
     private IndexType indexType;
     private MetricType metricType;
@@ -219,17 +229,6 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
      */
     public Builder collectionName(String collectionName) {
       this.collectionName = collectionName;
-      return this;
-    }
-
-    /**
-     * @param partitionName The name of the Milvus collection partition.
-     *                       If there is no such collection partition yet, it will be created automatically.
-     *                       Default value: null, The actual name will be defined by Milvus.
-     * @return builder
-     */
-    public Builder partitionName(String partitionName) {
-      this.partitionName = partitionName;
       return this;
     }
 
@@ -338,7 +337,6 @@ public class MilvusEmbeddingStore implements MilvusEmbeddingStoreExtend<TextSegm
         host,
         port,
         collectionName,
-        partitionName,
         dimension,
         indexType,
         metricType,
