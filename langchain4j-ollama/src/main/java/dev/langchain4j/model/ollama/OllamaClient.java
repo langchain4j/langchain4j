@@ -7,8 +7,10 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
+import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
@@ -21,6 +23,7 @@ import java.time.Duration;
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
 
+@Slf4j
 class OllamaClient {
 
     private static final Gson GSON = new GsonBuilder()
@@ -32,13 +35,19 @@ class OllamaClient {
     @Builder
     public OllamaClient(String baseUrl, Duration timeout) {
 
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        if (log.isDebugEnabled()) {
+            interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        } else {
+            interceptor.setLevel(HttpLoggingInterceptor.Level.NONE);
+        }
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .callTimeout(timeout)
+                .addInterceptor(interceptor)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
                 .build();
-
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(okHttpClient)
