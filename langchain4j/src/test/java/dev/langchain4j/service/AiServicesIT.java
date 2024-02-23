@@ -12,6 +12,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -32,7 +33,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.NUMBER;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.ChatMessageDeserializer.messagesFromJson;
 import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
@@ -1085,5 +1090,98 @@ public class AiServicesIT {
                 asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3)),
                 singletonList(calculatorSpecification)
         );
+    }
+
+    static class IdsProcessor {
+
+        @Tool("processes list of uuids into result string")
+        String processUuids(@P("uuids to use") List<String> uuids) {
+            return String.join("_", uuids);
+        }
+    }
+
+    @Test
+    void should_use_tool_with_array_parameters_then_answer() {
+        ToolSpecification expectedToolSpecification = ToolSpecification.builder()
+            .name("processUuids")
+            .description("processes list of uuids into result string")
+            .addParameter("arg0", ARRAY, items(STRING), description("uuids to use"))
+            .build();
+
+        IdsProcessor listProcessor = spy(new IdsProcessor());
+
+        ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .modelName(OpenAiChatModelName.GPT_3_5_TURBO)
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+            .chatLanguageModel(chatLanguageModel)
+            .chatMemory(chatMemory)
+            .tools(listProcessor)
+            .build();
+
+        String userMessage = "Process uuids 73b7323b-ed32-4782-a91e-3056455b9d75 and 8585784a-d3f7-4442-936d-18fa7193ddc2 and provide result of processing";
+
+        Response<AiMessage> response = assistant.chat(userMessage);
+
+        assertThat(response.content().text()).contains("73b7323b-ed32-4782-a91e-3056455b9d75_8585784a-d3f7-4442-936d-18fa7193ddc2");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isCloseTo(328, withPercentage(5));
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(163, withPercentage(5));
+        assertThat(tokenUsage.totalTokenCount())
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(STOP);
+
+        verify(listProcessor).processUuids(asList(
+            "73b7323b-ed32-4782-a91e-3056455b9d75",
+            "8585784a-d3f7-4442-936d-18fa7193ddc2"
+        ));
+        verifyNoMoreInteractions(listProcessor);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+
+        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
+        assertThat(messages.get(0).text()).isEqualTo(userMessage);
+
+        AiMessage aiMessage = (AiMessage) messages.get(1);
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotBlank();
+        assertThat(toolExecutionRequest.name()).isEqualTo("processUuids");
+        assertThat(toolExecutionRequest.arguments())
+            .isEqualToIgnoringWhitespace("{\"arg0\":  [\"73b7323b-ed32-4782-a91e-3056455b9d75\", \"8585784a-d3f7-4442-936d-18fa7193ddc2\"]}");
+
+        ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
+        assertThat(firstToolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
+        assertThat(firstToolExecutionResultMessage.toolName()).isEqualTo("processUuids");
+        assertThat(firstToolExecutionResultMessage.text()).isEqualTo("73b7323b-ed32-4782-a91e-3056455b9d75_8585784a-d3f7-4442-936d-18fa7193ddc2");
+
+        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
+        assertThat(messages.get(3).text()).contains("73b7323b-ed32-4782-a91e-3056455b9d75_8585784a-d3f7-4442-936d-18fa7193ddc2");
+
+
+        verify(chatLanguageModel).generate(
+            singletonList(messages.get(0)),
+            singletonList(expectedToolSpecification)
+        );
+
+        verify(chatLanguageModel).generate(
+            asList(messages.get(0), messages.get(1), messages.get(2)),
+            singletonList(expectedToolSpecification)
+        );
+        verifyNoMoreInteractions(chatLanguageModel);
     }
 }
