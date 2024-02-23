@@ -1,7 +1,10 @@
 package dev.langchain4j.memory.chat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
@@ -19,13 +22,16 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * This chat memory operates as a sliding window of {@link #maxTokens} tokens.
  * It retains as many of the most recent messages as can fit into the window.
- * If there isn't enough space for a new message, the oldest one (or multiple) is discarded.
- * Messages are indivisible. If a message doesn't fit, it's discarded completely.
+ * If there isn't enough space for a new message, the oldest one (or multiple) is evicted.
+ * Messages are indivisible. If a message doesn't fit, it is evicted completely.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
  * Only one {@link SystemMessage} can be held at a time.
  * If a new {@link SystemMessage} with the same content is added, it is ignored.
  * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
+ * <p>
+ * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
+ * the following orphan {@link ToolExecutionRequest}(s) are also automatically evicted.
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore}.
  */
@@ -83,17 +89,31 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     private static void ensureCapacity(List<ChatMessage> messages, int maxTokens, Tokenizer tokenizer) {
+
         int currentTokenCount = tokenizer.estimateTokenCountInMessages(messages);
         while (currentTokenCount > maxTokens) {
-            int messageToRemove = 0;
+
+            int messageToEvictIndex = 0;
             if (messages.get(0) instanceof SystemMessage) {
-                messageToRemove = 1;
+                messageToEvictIndex = 1;
             }
-            ChatMessage removedMessage = messages.remove(messageToRemove);
-            int tokenCountOfRemovedMessage = tokenizer.estimateTokenCountInMessage(removedMessage);
-            log.trace("Removing the following message ({} tokens) to comply with the capacity requirements: {}",
-                    tokenCountOfRemovedMessage, removedMessage);
-            currentTokenCount -= tokenCountOfRemovedMessage;
+
+            ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
+            int tokenCountOfEvictedMessage = tokenizer.estimateTokenCountInMessage(evictedMessage);
+            log.trace("Evicting the following message ({} tokens) to comply with the capacity requirements: {}",
+                    tokenCountOfEvictedMessage, evictedMessage);
+            currentTokenCount -= tokenCountOfEvictedMessage;
+
+            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+                while (messages.size() > messageToEvictIndex
+                        && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
+                    // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding
+                    // AiMessage, so we have to evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
+                    ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
+                    log.trace("Evicting orphan ToolExecutionResultMessage: {}", orphanToolExecutionResultMessage);
+                    currentTokenCount -= tokenizer.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
+                }
+            }
         }
     }
 
@@ -126,7 +146,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         /**
          * @param maxTokens The maximum number of tokens to retain.
          *                  Chat memory will retain as many of the most recent messages as can fit into {@code maxTokens}.
-         *                  Messages are indivisible. If a message doesn't fit, it's discarded completely.
+         *                  Messages are indivisible. If a message doesn't fit, it is evicted completely.
          * @param tokenizer A {@link Tokenizer} responsible for counting tokens in the messages.
          * @return builder
          */
