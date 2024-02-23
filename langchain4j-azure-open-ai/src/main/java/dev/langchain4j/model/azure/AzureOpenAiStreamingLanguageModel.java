@@ -13,8 +13,6 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
@@ -22,15 +20,16 @@ import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents an OpenAI language model, hosted on Azure, such as gpt-3.5-turbo-instruct.
  * The LLM's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
- * However, it's recommended to use {@link OpenAiStreamingChatModel} instead,
- * as it offers more advanced features like function calling, multi-turn conversations, etc.
+ * <p>
+ * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
+ * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
+ * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are 3 authentication methods:
  * <p>
@@ -140,7 +139,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                                              Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT));
+        this.tokenizer = tokenizer;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;

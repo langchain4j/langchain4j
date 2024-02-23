@@ -10,14 +10,12 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 
 import java.time.Duration;
 import java.util.Collections;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -26,7 +24,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * However, it's recommended to use {@link AzureOpenAiChatModel} instead,
  * as it offers more advanced features like function calling, multi-turn conversations, etc.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apikey (or an alternate authentication method, see below for more information) and deploymentName.
+ * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
+ * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are 3 authentication methods:
@@ -133,7 +132,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                      Double frequencyPenalty) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT));
+        this.tokenizer = tokenizer;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.maxTokens = maxTokens;
