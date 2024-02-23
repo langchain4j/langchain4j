@@ -11,9 +11,9 @@ import io.qdrant.client.grpc.Collections.Distance;
 import io.qdrant.client.grpc.Collections.VectorParams;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.qdrant.QdrantContainer;
 
 import java.util.concurrent.ExecutionException;
 
@@ -29,8 +29,7 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreIT {
   private static QdrantEmbeddingStore embeddingStore;
 
   @Container
-  private static final GenericContainer<?> qdrant =
-      new GenericContainer<>("qdrant/qdrant:latest").withExposedPorts(grpcPort);
+  private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:latest");
 
   EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

@@ -180,6 +180,7 @@ public class InternalQianfanHelper {
     }
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
+                .filter(chatMessage -> !(chatMessage instanceof SystemMessage))
                 .map(InternalQianfanHelper::toQianfanMessage)
                 .collect(toList());
     }
