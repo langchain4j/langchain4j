@@ -37,6 +37,8 @@ class OllamaClient {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .addInterceptor(new OllamaRequestLoggingInterceptor())
+                .addInterceptor(new OllamaResponseLoggingInterceptor())
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
