@@ -53,23 +53,23 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private SearchClient searchClient;
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions) {
-        this.initialize(endpoint, keyCredential, null, dimensions, null);
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions, boolean setupIndex) {
+        this.initialize(endpoint, keyCredential, null, dimensions, null,setupIndex);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index) {
-        this.initialize(endpoint, keyCredential, null, 0, index);
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index, boolean setupIndex) {
+        this.initialize(endpoint, keyCredential, null, 0, index,setupIndex);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions) {
-        this.initialize(endpoint, null, tokenCredential, dimensions, null);
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions, boolean setupIndex) {
+        this.initialize(endpoint, null, tokenCredential, dimensions, null,setupIndex);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index) {
-        this.initialize(endpoint, null, tokenCredential, 0, index);
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index, boolean setupIndex) {
+        this.initialize(endpoint, null, tokenCredential, 0, index,setupIndex);
     }
 
-    private void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
+    private void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index,boolean setupIndex) {
         if (keyCredential != null) {
             searchIndexClient = new SearchIndexClientBuilder()
                     .endpoint(endpoint)
@@ -95,10 +95,12 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
 
-        if (index == null) {
-            createOrUpdateIndex(dimensions);
-        } else {
-            createOrUpdateIndex(index);
+        if(setupIndex) {
+            if (index == null) {
+                createOrUpdateIndex(dimensions);
+            } else {
+                createOrUpdateIndex(index);
+            }
         }
     }
 
@@ -106,7 +108,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * Creates or updates the index using a ready-made index.
      * @param dimensions The number of dimensions of the embeddings.
      */
-     void createOrUpdateIndex(int dimensions) {
+    void createOrUpdateIndex(int dimensions) {
         List<SearchField> fields = new ArrayList<>();
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
                 .setKey(true)
@@ -340,6 +342,8 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
         private SearchIndex index;
 
+        private boolean setupIndex=true;
+
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
          *
@@ -348,6 +352,11 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
          */
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
+            return this;
+        }
+
+        public Builder setupIndex(boolean setupIndex) {
+            this.setupIndex = setupIndex;
             return this;
         }
 
@@ -399,18 +408,20 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
-            ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+            if(!setupIndex) {
+                ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+            }
             if (keyCredential == null) {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions);
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions,setupIndex);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, index);
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, index,setupIndex);
                 }
             } else {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, dimensions);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, dimensions,setupIndex);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, index);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, index,setupIndex);
                 }
             }
         }
