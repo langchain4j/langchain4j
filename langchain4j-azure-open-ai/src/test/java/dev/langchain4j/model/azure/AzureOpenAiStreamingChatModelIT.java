@@ -46,7 +46,6 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
@@ -103,7 +102,6 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
@@ -166,7 +164,6 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))

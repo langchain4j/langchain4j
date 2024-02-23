@@ -48,8 +48,8 @@ public class AzureOpenAiImageModelIT {
     void should_generate_image_in_base64() throws IOException {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .deploymentName("dall-e-3")
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName("dall-e-3")
                 .logRequestsAndResponses(false) // The image is big, so we don't want to log it by default
                 .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
                 .build();
