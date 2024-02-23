@@ -26,7 +26,7 @@ Currently, LangChain4j implements two algorithms for eviction policy:
 You can use `ChatMemory` as a standalone low-level component,
 or as a part of high-level components like `AiServices` and `ConversationalChain`.
 
-## Examples:
+## Examples
 - With `AiServices`:
   - [Chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
   - [Separate chat memory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)

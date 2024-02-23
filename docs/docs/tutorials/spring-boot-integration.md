@@ -34,4 +34,5 @@ and you can autowire it where needed.
 
 Spring Boot 2 and 3 are supported.
 
-More info coming soon
+## Examples
+- [Example of customer support agent using Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
