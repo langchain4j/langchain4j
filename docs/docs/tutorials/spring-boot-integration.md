@@ -32,6 +32,6 @@ and you can autowire it where needed.
 
 ## Supported Versions
 
-Spring Boot 2 and 3 are supported
+Spring Boot 2 and 3 are supported.
 
 More info coming soon

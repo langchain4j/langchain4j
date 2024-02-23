@@ -77,7 +77,7 @@ then you can find it on localhost:8080/q/dev-ui (or wherever you deploy your app
 
 [![](/img/quarkus-dev-ui-parameters.png)](/tutorials/set-model-parameters)
 
-More info on Quarkus integration can be found [here](/quarkus-integration).
+More info on Quarkus integration can be found [here](/tutorials/quarkus-integration).
 
 ## Setting Parameters in Spring Boot
 If you are using one of our [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring),
@@ -90,4 +90,4 @@ langchain4j.open-ai.chat-model.model-name=gpt-4-1106-preview
 The complete list of supported properties can be found
 [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-open-ai-spring-boot-starter/src/main/java/dev/langchain4j/openai/spring/AutoConfig.java).
 
-More info on Spring Boot integration can be found [here](/spring-boot-integration).
+More info on Spring Boot integration can be found [here](/tutorials/spring-boot-integration).
