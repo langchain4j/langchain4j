@@ -4,21 +4,13 @@ sidebar_position: 5
 
 # Get Started
 
-### Table of Contents
-
-- [Basic Project Setup](#basic-project-setup)
-- [Write a Hello World program](#write-a-hello-world-program)
-
-## Basic Project Setup
-
+## Prerequisites
 :::note
-
-Make sure you have Java 8+ installed. Verify it by typing in this command in your terminal:
+Ensure you have Java 8 or higher installed. Verify it by typing this command in your terminal:
 ```shell
 java --version
 ```
 :::
-![Java](https://img.shields.io/badge/Java-8_+-blue.svg?style=for-the-badge&labelColor=gray)
 
 ## Write a "Hello World" program
 
@@ -67,78 +59,3 @@ Now, it is time to chat!
 String answer = model.generate("Say 'Hello World'");
 System.out.println(answer); // Hello World
 ```
-
-Find step-by-step tutorials with more complex examples [here](/category/tutorials).
-
-## Highlights
-
-You can declaratively define concise "AI Services" that are powered by LLMs:
-
-```java
-interface Assistant {
-
-    String chat(String userMessage);
-}
-
-Assistant assistant = AiServices.create(Assistant.class, model);
-
-String answer = assistant.chat("Hello");
-    
-System.out.println(answer);
-// Hello! How can I assist you today?
-```
-
-You can use LLM as a classifier:
-
-```java
-enum Sentiment {
-    POSITIVE, NEUTRAL, NEGATIVE
-}
-
-interface SentimentAnalyzer {
-
-    @UserMessage("Analyze sentiment of {{it}}")
-    Sentiment analyzeSentimentOf(String text);
-
-    @UserMessage("Does {{it}} have a positive sentiment?")
-    boolean isPositive(String text);
-}
-
-SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
-
-Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
-// POSITIVE
-
-boolean positive = sentimentAnalyzer.isPositive("It is bad!");
-// false
-```
-
-You can easily extract structured information from unstructured data:
-
-```java
-class Person {
-
-    private String firstName;
-    private String lastName;
-    private LocalDate birthDate;
-}
-
-interface PersonExtractor {
-
-    @UserMessage("Extract information about a person from {{text}}")
-    Person extractPersonFrom(@V("text") String text);
-}
-
-PersonExtractor extractor = AiServices.create(PersonExtractor.class, model);
-
-String text = "In 1968, amidst the fading echoes of Independence Day, "
-            + "a child named John arrived under the calm evening sky. "
-            + "This newborn, bearing the surname Doe, marked the start of a new journey.";
-
-Person person = extractor.extractPersonFrom(text);
-// Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04 }
-```
-
-You can provide tools that LLMs can use! Can be anything: retrieve information from DB, call APIs, etc.
-See
-example [here](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java).

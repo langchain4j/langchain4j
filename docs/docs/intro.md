@@ -93,11 +93,11 @@ You still have the flexibility to adjust and fine-tune the behavior, but it is d
 LangChain4j features a modular design, comprising:
 - The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like `ChatMemory`, `OutputParser` as well as a high-level features like `AiServices`.
-- A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
-  You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
+- A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
+  You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.
 
 ### Tutorials (User Guide)
-Discover inspiring [use cases](/tutorials#need-inspiration) or follow our step-by-step introduction to LangChain4j features under [Tutorials](/category/tutorials).
+Discover inspiring [use cases](/tutorials/#or-consider-some-of-the-use-cases) or follow our step-by-step introduction to LangChain4j features under [Tutorials](/category/tutorials).
 
 You will get a tour of all LangChain4j functionality in steps of increasing complexity. All steps are demonstrated with complete code examples and code explanation.
 
