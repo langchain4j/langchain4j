@@ -14,7 +14,7 @@
     <artifactId>langchain4j-zhipu-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Zhipu</name>
+    <name>LangChain4j :: Integration :: Zhipu AI</name>
 
     <dependencies>
 
