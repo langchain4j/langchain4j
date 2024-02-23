@@ -8,8 +8,6 @@ import dev.langchain4j.model.openai.OpenAiTokenizer;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.TestUtils.*;
@@ -48,11 +46,11 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         int m1tokens = TOKENIZER.estimateTokenCountInMessage(m1);
         int m2tokens = TOKENIZER.estimateTokenCountInMessage(m2);
 
-        int overhead = TOKENIZER.estimateTokenCountInMessages(new ArrayList<>());
-        assertThat(TOKENIZER.estimateTokenCountInMessages(singletonList(m1))).isEqualTo(m1tokens + 3);
+        assertThat(TOKENIZER.estimateTokenCountInMessages(singletonList(m1)))
+                .isEqualTo(EXTRA_TOKENS_PER_REQUEST + m1tokens);
 
         ChatMemory chatMemory = TokenWindowChatMemory.builder()
-                .maxTokens(overhead + m1tokens + m2tokens, TOKENIZER)
+                .maxTokens(EXTRA_TOKENS_PER_REQUEST + m1tokens + m2tokens, TOKENIZER)
                 .build();
 
         chatMemory.add(m1);
@@ -81,23 +79,19 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         UserMessage firstUserMessage = userMessageWithTokens(10);
         chatMemory.add(firstUserMessage);
         assertThat(chatMemory.messages()).containsExactly(firstUserMessage);
-        // @formatter:off
         assertThat(TOKENIZER.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                  10 // firstUserMessage
-                + 3  // overhead
+                EXTRA_TOKENS_PER_REQUEST
+                        + 10 // firstUserMessage
         );
-        // @formatter:on
 
         AiMessage firstAiMessage = aiMessageWithTokens(10);
         chatMemory.add(firstAiMessage);
         assertThat(chatMemory.messages()).containsExactly(firstUserMessage, firstAiMessage);
-        // @formatter:off
         assertThat(TOKENIZER.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                  10 // firstUserMessage
-                + 10 // firstAiMessage
-                + 3  // overhead
+                EXTRA_TOKENS_PER_REQUEST
+                        + 10 // firstUserMessage
+                        + 10 // firstAiMessage
         );
-        // @formatter:on
 
         UserMessage secondUserMessage = userMessageWithTokens(10);
         chatMemory.add(secondUserMessage);
@@ -106,14 +100,12 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 firstAiMessage,
                 secondUserMessage
         );
-        // @formatter:off
         assertThat(TOKENIZER.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                 10 // firstUserMessage
-               + 10 // firstAiMessage
-               + 10 // secondUserMessage
-               + 3  // overhead
+                EXTRA_TOKENS_PER_REQUEST
+                        + 10 // firstUserMessage
+                        + 10 // firstAiMessage
+                        + 10 // secondUserMessage
         );
-        // @formatter:on
 
         AiMessage secondAiMessage = aiMessageWithTokens(10);
         chatMemory.add(secondAiMessage);
@@ -123,14 +115,12 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 secondUserMessage,
                 secondAiMessage
         );
-        // @formatter:off
         assertThat(TOKENIZER.estimateTokenCountInMessages(chatMemory.messages())).isEqualTo(
-                 10 // firstAiMessage
-               + 10 // secondUserMessage
-               + 10 // secondAiMessage
-               + 3  // overhead
+                EXTRA_TOKENS_PER_REQUEST
+                        + 10 // firstAiMessage
+                        + 10 // secondUserMessage
+                        + 10 // secondAiMessage
         );
-        // @formatter:on
     }
 
     @Test
