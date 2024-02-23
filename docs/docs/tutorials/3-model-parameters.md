@@ -77,13 +77,17 @@ then you can find it on localhost:8080/q/dev-ui (or wherever you deploy your app
 
 [![](/img/quarkus-dev-ui-parameters.png)](/tutorials/set-model-parameters)
 
+More info on Quarkus integration can be found [here](/quarkus-integration).
+
 ## Setting Parameters in Spring Boot
-LangChain4j parameters in Spring Boot applications can be set in the `application.properties` file as follows:
+If you are using one of our [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring),
+you can configure model parameters in the `application.properties` file as follows:
 ```
 langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
 langchain4j.open-ai.chat-model.model-name=gpt-4-1106-preview
-langchain4j.open-ai.chat-model.temperature=0.0
-langchain4j.open-ai.chat-model.timeout=PT60S
-langchain4j.open-ai.chat-model.log-requests=false
-langchain4j.open-ai.chat-model.log-responses=false
+...
 ```
+The complete list of supported properties can be found
+[here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-open-ai-spring-boot-starter/src/main/java/dev/langchain4j/openai/spring/AutoConfig.java).
+
+More info on Spring Boot integration can be found [here](/spring-boot-integration).
