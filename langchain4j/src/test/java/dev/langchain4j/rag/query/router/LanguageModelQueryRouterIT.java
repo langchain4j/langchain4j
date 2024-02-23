@@ -67,6 +67,26 @@ class LanguageModelQueryRouterIT {
         assertThat(retrievers).containsExactlyInAnyOrder(catArticlesRetriever, dogArticlesRetriever);
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_return_an_empty_list_when_LLM_did_not_provide_a_valid_response(ChatLanguageModel model) {
+
+        // given
+        Query query = Query.from("Hey, what's up?");
+
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+
+        QueryRouter router = new LanguageModelQueryRouter(model, retrieverToDescription);
+
+        // when
+        Collection<ContentRetriever> retrievers = router.route(query);
+
+        // then
+        assertThat(retrievers).hasSizeBetween(0, 2);
+    }
+
     static Stream<Arguments> models() {
         return Stream.of(
                 Arguments.of(

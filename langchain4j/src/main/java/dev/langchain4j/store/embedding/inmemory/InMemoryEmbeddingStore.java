@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.inmemory;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
@@ -20,6 +19,7 @@ import java.util.stream.IntStream;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.util.Comparator.comparingDouble;
@@ -186,9 +186,9 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     private static InMemoryEmbeddingStoreJsonCodec loadCodec() {
-        return ServiceHelper.loadFactoryService(
-                InMemoryEmbeddingStoreJsonCodecFactory.class,
-                InMemoryEmbeddingStoreJsonCodecFactory::create,
-                GsonInMemoryEmbeddingStoreJsonCodec::new);
+        for (InMemoryEmbeddingStoreJsonCodecFactory factory : loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
+            return factory.create();
+        }
+        return new GsonInMemoryEmbeddingStoreJsonCodec();
     }
 }

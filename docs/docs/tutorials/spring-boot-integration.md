@@ -2,7 +2,7 @@
 sidebar_position: 27
 ---
 
-# 14. Spring Boot Integration
+# Spring Boot Integration
 
 
 ## Compatibility
