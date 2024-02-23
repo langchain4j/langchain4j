@@ -25,7 +25,7 @@
         <azure.storage-common.version>12.24.1</azure.storage-common.version>
         <azure.identity.version>1.11.2</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
-        <okhttp.version>4.10.0</okhttp.version>
+        <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>0.6.1</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
