@@ -124,5 +124,33 @@
         </plugins>
     </reporting>
 
+    <profiles>
+        <profile>
+            <id>openrewrite</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.openrewrite.maven</groupId>
+                        <artifactId>rewrite-maven-plugin</artifactId>
+                        <version>5.23.1</version>
+                        <configuration>
+                            <activeRecipes>
+                                <recipe>org.openrewrite.java.OrderImports</recipe>
+                                <recipe>org.openrewrite.java.testing.assertj.Assertj</recipe>
+                            </activeRecipes>
+                            <failOnDryRunResults>true</failOnDryRunResults>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.openrewrite.recipe</groupId>
+                                <artifactId>rewrite-testing-frameworks</artifactId>
+                                <version>2.4.1</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

@@ -1,0 +1,54 @@
+# Description: This workflow runs OpenRewrite recipes against opened pull request and upload the patch.
+# Since this pull request receives untrusted code, we should **NOT** have any secrets in the environment.
+# https://securitylab.github.com/research/github-actions-preventing-pwn-requests/
+---
+name: receive-pr
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  upload-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{github.event.pull_request.head.ref}}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Capture the PR number
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#using-data-from-the-triggering-workflow
+      - name: Create pr_number.txt
+        run: echo "${{ github.event.number }}" > pr_number.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr_number
+          path: pr_number.txt
+      - name: Remove pr_number.txt
+        run: rm -f pr_number.txt
+
+      # Execute recipes
+      - name: Apply OpenRewrite recipes
+        run: mvn --activate-profiles openrewrite org.openrewrite.maven:rewrite-maven-plugin:run
+
+      # Capture the diff
+      - name: Create patch
+        run: |
+          git diff | tee git-diff.patch
+      - uses: actions/upload-artifact@v4
+        with:
+          name: patch
+          path: git-diff.patch
