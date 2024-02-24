@@ -17,14 +17,26 @@ public class Embedding {
 
     private final float[] vector;
 
+    /**
+     * Creates a new Embedding.
+     * @param vector the vector, takes ownership of the array.
+     */
     public Embedding(float[] vector) {
         this.vector = ensureNotNull(vector, "vector");
     }
 
+    /**
+     * Returns the vector.
+     * @return the vector.
+     */
     public float[] vector() {
         return vector;
     }
 
+    /**
+     * Returns a copy of the vector as a list.
+     * @return the vector as a list.
+     */
     public List<Float> vectorAsList() {
         List<Float> list = new ArrayList<>(vector.length);
         for (float f : vector) {
@@ -33,6 +45,25 @@ public class Embedding {
         return list;
     }
 
+    /**
+     * Normalize vector
+     */
+    public void normalize() {
+        double norm = 0.0;
+        for (float f : vector) {
+            norm += f * f;
+        }
+        norm = Math.sqrt(norm);
+
+        for (int i = 0; i < vector.length; i++) {
+            vector[i] /= norm;
+        }
+    }
+
+    /**
+     * Returns the dimension of the vector.
+     * @return the dimension of the vector.
+     */
     public int dimension() {
         return vector.length;
     }
@@ -57,10 +88,20 @@ public class Embedding {
                 " }";
     }
 
+    /**
+     * Creates a new Embedding from the given vector.
+     * @param vector the vector, takes ownership of the array.
+     * @return the new Embedding.
+     */
     public static Embedding from(float[] vector) {
         return new Embedding(vector);
     }
 
+    /**
+     * Creates a new Embedding from the given vector.
+     * @param vector the vector.
+     * @return the new Embedding.
+     */
     public static Embedding from(List<Float> vector) {
         float[] array = new float[vector.size()];
         for (int i = 0; i < vector.size(); i++) {

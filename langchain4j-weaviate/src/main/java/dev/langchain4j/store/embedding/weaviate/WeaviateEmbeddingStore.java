@@ -50,6 +50,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param scheme           The scheme, e.g. "https" of cluster URL. Find in under Details of your Weaviate cluster.
      * @param host             The host, e.g. "langchain4j-4jw7ufd9.weaviate.network" of cluster URL.
      *                         Find in under Details of your Weaviate cluster.
+     * @param port             The port, e.g. 8080. This parameter is optional.
      * @param objectClass      The object class you want to store, e.g. "MyGreatClass". Must start from an uppercase letter.
      * @param avoidDups        If true (default), then <code>WeaviateEmbeddingStore</code> will generate a hashed ID based on
      *                         provided text segment, which avoids duplicated entries in DB.
@@ -61,12 +62,17 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             String apiKey,
             String scheme,
             String host,
+            Integer port,
             String objectClass,
             Boolean avoidDups,
             String consistencyLevel
     ) {
         try {
-            Config config = new Config(ensureNotBlank(scheme, "scheme"), ensureNotBlank(host, "host"));
+
+            Config config = new Config(
+                    ensureNotBlank(scheme, "scheme"),
+                    concatenate(ensureNotBlank(host, "host"), port)
+            );
             this.client = WeaviateAuthClient.apiKey(config, getOrDefault(apiKey, ""));
         } catch (AuthException e) {
             throw new IllegalArgumentException(e);
@@ -74,6 +80,14 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.objectClass = getOrDefault(objectClass, "Default");
         this.avoidDups = getOrDefault(avoidDups, true);
         this.consistencyLevel = getOrDefault(consistencyLevel, QUORUM);
+    }
+
+    private static String concatenate(String host, Integer port) {
+        if (port == null) {
+            return host;
+        } else {
+            return host + ":" + port;
+        }
     }
 
     @Override

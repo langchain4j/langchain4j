@@ -1,21 +1,20 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory;
-import java.util.Collection;
+
 import java.util.List;
+
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class ChatMessageSerializer {
 
     static final ChatMessageJsonCodec CODEC = loadCodec();
 
     private static ChatMessageJsonCodec loadCodec() {
-        Collection<ChatMessageJsonCodecFactory> factories = ServiceHelper.loadFactories(ChatMessageJsonCodecFactory.class);
-        for (ChatMessageJsonCodecFactory factory : factories) {
+        for (ChatMessageJsonCodecFactory factory : loadFactories(ChatMessageJsonCodecFactory.class)) {
             return factory.create();
         }
-        // fallback to default
-        return new GsonChatMessageJsonCodec();
+                return new GsonChatMessageJsonCodec();
     }
 
     /**

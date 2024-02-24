@@ -62,11 +62,11 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
             if (value == null || value.toString() == null) {
                 throw illegalArgument("Value for the variable '%s' is null", variable);
             }
-            return template.replaceAll(inDoubleCurlyBrackets(variable), value.toString());
+            return template.replace(inDoubleCurlyBrackets(variable), value.toString());
         }
 
         private static String inDoubleCurlyBrackets(String variable) {
-            return "\\{\\{" + variable + "\\}\\}";
+            return "{{" + variable + "}}";
         }
     }
 }

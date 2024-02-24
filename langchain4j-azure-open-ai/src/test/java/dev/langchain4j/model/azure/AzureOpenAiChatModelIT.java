@@ -1,5 +1,7 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -11,7 +13,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
@@ -25,7 +26,6 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_ENDPOINT", matches = ".+")
 public class AzureOpenAiChatModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModelIT.class);
@@ -197,6 +197,33 @@ public class AzureOpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
     }
 
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_use_json_format(String deploymentName, String gptVersion) {
+        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .responseFormat(new ChatCompletionsJsonResponseFormat())
+                .logRequestsAndResponses(true)
+                .build();
+
+        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
+        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
+
+        Response<AiMessage> response = model.generate(systemMessage, userMessage);
+
+        logger.info(response.toString());
+
+        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
     private static ToolParameters getToolParameters() {
         Map<String, Map<String, Object>> properties = new HashMap<>();
 
@@ -226,8 +253,11 @@ public class AzureOpenAiChatModelIT {
 
     // WeatherLocation is used for this sample. This describes the parameter of the function you want to use.
     private static class WeatherLocation {
-        @JsonProperty(value = "unit") String unit;
-        @JsonProperty(value = "location") String location;
+        @JsonProperty(value = "unit")
+        String unit;
+        @JsonProperty(value = "location")
+        String location;
+
         @JsonCreator
         WeatherLocation(@JsonProperty(value = "unit") String unit, @JsonProperty(value = "location") String location) {
             this.unit = unit;

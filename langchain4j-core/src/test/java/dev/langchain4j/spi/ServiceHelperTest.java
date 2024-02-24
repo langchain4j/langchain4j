@@ -6,7 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.util.Collection;
 
 class ServiceHelperTest implements WithAssertions {
-    public void assertServices(Collection<ExampleService> services) {
+
+    private void assertServices(Collection<ExampleService> services) {
         assertThat(services).extracting(ExampleService::getGreeting)
                 .containsExactlyInAnyOrder("Hello", "Goodbye");
     }

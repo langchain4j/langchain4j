@@ -2,6 +2,6 @@
 sidebar_position: 24
 ---
 
-# 13. Quarkus Integration
+# Quarkus Integration
 
 Coming soon

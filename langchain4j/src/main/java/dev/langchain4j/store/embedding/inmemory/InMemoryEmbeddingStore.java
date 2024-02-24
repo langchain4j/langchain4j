@@ -189,7 +189,6 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         for (InMemoryEmbeddingStoreJsonCodecFactory factory : loadFactories(InMemoryEmbeddingStoreJsonCodecFactory.class)) {
             return factory.create();
         }
-        // fallback to default
         return new GsonInMemoryEmbeddingStoreJsonCodec();
     }
 }

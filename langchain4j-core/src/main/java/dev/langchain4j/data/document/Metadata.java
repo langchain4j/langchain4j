@@ -49,7 +49,7 @@ public class Metadata {
      *
      * @param key   the key
      * @param value the value
-     * @return this Metadata object, for chaining
+     * @return {@code this}
      */
     public Metadata add(String key, String value) {
         this.metadata.put(key, value);
@@ -57,7 +57,11 @@ public class Metadata {
     }
 
     /**
-     * Use {@link #add(String, String)} instead
+     * @deprecated Use {@link #add(String, String)} instead
+     *
+     * @param key   the key
+     * @param value the value
+     * @return {@code this}
      */
     @Deprecated
     public Metadata add(String key, Object value) {
@@ -68,7 +72,7 @@ public class Metadata {
      * Removes the given key from the metadata.
      *
      * @param key the key
-     * @return this Metadata object, for chaining
+     * @return {@code this}
      */
     public Metadata remove(String key) {
         this.metadata.remove(key);
@@ -76,6 +80,7 @@ public class Metadata {
     }
 
     /**
+     * Copies the metadata.
      * @return a copy of this Metadata object.
      */
     public Metadata copy() {
@@ -83,6 +88,7 @@ public class Metadata {
     }
 
     /**
+     * Get a copy of the metadata as a map of key-value pairs.
      * @return the metadata as a map of key-value pairs.
      */
     public Map<String, String> asMap() {
@@ -121,7 +127,11 @@ public class Metadata {
     }
 
     /**
-     * Use {@link #from(String, String)} instead
+     * @deprecated  Use {@link #from(String, String)} instead
+     *
+     * @param key   the key
+     * @param value the value
+     * @return a Metadata object
      */
     @Deprecated
     public static Metadata from(String key, Object value) {
@@ -150,7 +160,11 @@ public class Metadata {
     }
 
     /**
-     * Use {@link #metadata(String, String)} instead
+     * @deprecated Use {@link #metadata(String, String)} instead
+     *
+     * @param key   the key
+     * @param value the value
+     * @return a Metadata object
      */
     @Deprecated
     public static Metadata metadata(String key, Object value) {

@@ -122,7 +122,12 @@ public class ServiceOutputParser {
         StringBuilder jsonSchema = new StringBuilder();
         jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
-            jsonSchema.append(format("\"%s\": (%s),\n", field.getName(), descriptionFor(field)));
+            String name = field.getName();
+            if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                // Skip coverage instrumentation field.
+                continue;
+            }
+            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field)));
         }
         jsonSchema.append("}");
         return jsonSchema.toString();
@@ -146,15 +151,24 @@ public class ServiceOutputParser {
 
             if (parameterizedType.getRawType().equals(List.class)
                     || parameterizedType.getRawType().equals(Set.class)) {
-                return format("array of %s", simpleTypeName(typeArguments[0]));
+                if (((Class<?>) typeArguments[0]).getPackage() == null || ((Class<?>) typeArguments[0]).getPackage().getName().startsWith("java."))
+                    return format("array of %s", simpleTypeName(typeArguments[0]));
+                else
+                    return format("array of %s", jsonStructure((Class<?>) typeArguments[0]));
             }
         } else if (field.getType().isArray()) {
-            return format("array of %s", simpleTypeName(field.getType().getComponentType()));
+            if (field.getType().getComponentType().getPackage() == null || field.getType().getComponentType().getPackage().getName().startsWith("java."))
+                return format("array of %s", simpleTypeName(field.getType().getComponentType()));
+            else
+                return format("array of %s", jsonStructure(field.getType().getComponentType()));
         } else if (((Class<?>) type).isEnum()) {
             return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
         }
 
-        return simpleTypeName(type);
+        if (field.getType().getPackage() == null || field.getType().getPackage().getName().startsWith("java."))
+            return simpleTypeName(type);
+        else
+            return jsonStructure(field.getType());
     }
 
     private static String simpleTypeName(Type type) {

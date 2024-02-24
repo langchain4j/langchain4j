@@ -7,8 +7,14 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.util.List;
 
+/**
+ * A codec for serializing and deserializing {@link ChatMessage} objects to and from JSON.
+ */
 public class GsonChatMessageJsonCodec implements ChatMessageJsonCodec {
 
+    /**
+     * The {@link Gson} instance used for serialization and deserialization.
+     */
     static final Gson GSON = new GsonBuilder()
             .registerTypeAdapter(ChatMessage.class, new GsonChatMessageAdapter())
             .registerTypeAdapter(SystemMessage.class, new GsonChatMessageAdapter())
@@ -16,7 +22,16 @@ public class GsonChatMessageJsonCodec implements ChatMessageJsonCodec {
             .registerTypeAdapter(AiMessage.class, new GsonChatMessageAdapter())
             .registerTypeAdapter(ToolExecutionResultMessage.class, new GsonChatMessageAdapter())
             .create();
+
+    /**
+     * A {@link Type} object representing a list of {@link ChatMessage} objects.
+     */
     private static final Type MESSAGE_LIST_TYPE = (new TypeToken<List<ChatMessage>>() {}).getType();
+
+    /**
+     * Constructs a new {@link GsonChatMessageJsonCodec}.
+     */
+    public GsonChatMessageJsonCodec() {}
 
     @Override
     public ChatMessage messageFromJson(String json) {

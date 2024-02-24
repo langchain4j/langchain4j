@@ -11,6 +11,13 @@ public class DateOutputParser implements OutputParser<Date> {
 
     @Override
     public Date parse(String string) {
+        string = string.trim();
+
+        // SimpleDateFormat silently accepts dd-MM-yyyy; but parses it strangely.
+        if (string.indexOf("-") != 4 || string.indexOf("-", 5) != 7) {
+            throw new RuntimeException("Invalid date format: " + string);
+        }
+
         try {
             return SIMPLE_DATE_FORMAT.parse(string);
         } catch (ParseException e) {

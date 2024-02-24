@@ -10,6 +10,7 @@ import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
+import dev.langchain4j.model.azure.spi.AzureOpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
@@ -23,6 +24,7 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -170,6 +172,9 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
     }
 
     public static Builder builder() {
+        for (AzureOpenAiEmbeddingModelBuilderFactory factory : loadFactories(AzureOpenAiEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
         return new Builder();
     }
 

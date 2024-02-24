@@ -2,17 +2,15 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
-import dev.langchain4j.spi.ServiceHelper;
-import java.util.Collection;
+
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 class FactoryCreator {
 
     static final HuggingFaceClientFactory FACTORY = factory();
 
     private static HuggingFaceClientFactory factory() {
-        Collection<HuggingFaceClientFactory> factories =
-                ServiceHelper.loadFactories(HuggingFaceClientFactory.class);
-        for (HuggingFaceClientFactory factory : factories) {
+        for (HuggingFaceClientFactory factory : loadFactories(HuggingFaceClientFactory.class)) {
             return factory;
         }
         return new DefaultHuggingFaceClientFactory();
