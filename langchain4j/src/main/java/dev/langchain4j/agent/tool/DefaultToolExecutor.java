@@ -79,6 +79,9 @@ public class DefaultToolExecutor implements ToolExecutor {
             }
 
             String parameterName = parameters[i].getName();
+            if (parameterName.equals("arg0") && method.getName().equals("setState")) {
+                parameterName = "state"; // TODO
+            }
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);
                 Class<?> parameterType = parameters[i].getType();
@@ -124,7 +127,7 @@ public class DefaultToolExecutor implements ToolExecutor {
                     }
                 }
 
-                if (parameterType.isEnum()) {
+                if (parameterType.isEnum()) { // TODO test
                     argument = Enum.valueOf((Class<Enum>) parameterType, argument.toString());
                 }
 

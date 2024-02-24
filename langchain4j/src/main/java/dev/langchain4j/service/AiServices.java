@@ -1,8 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.DefaultToolExecutor;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -27,7 +25,9 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
+import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -165,6 +165,50 @@ public abstract class AiServices<T> {
         return new DefaultAiServices<>(context);
     }
 
+    public AiServices<T> stateObject(Object stateObject) { // LLM should be able to see it and update it
+        context.stateObject = stateObject;
+        return this;
+    }
+
+
+    public AiServices<T> states(Class<? extends Enum<?>> statesEnum, Enum<?> initialState, Map<Enum<?>, Set<Enum<?>>> allowedTransitions) {
+        context.states = statesEnum;
+        context.currentState = initialState.toString();
+
+        Map<String, Set<String>> convertedTransitions = new HashMap<>();
+        for (Map.Entry<Enum<?>, Set<Enum<?>>> entry : allowedTransitions.entrySet()) {
+            convertedTransitions.put(entry.getKey().toString(), entry.getValue().stream().map(Enum::name).collect(Collectors.toSet()));
+        }
+        context.allowedTransitions = convertedTransitions;
+
+        if (context.toolSpecifications == null) {
+            context.toolSpecifications = new ArrayList<>();
+        }
+        if (context.toolExecutors == null) {
+            context.toolExecutors = new HashMap<>();
+        }
+
+        context.toolExecutors.put("setState", new ToolExecutor() {
+            @Override
+            public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
+                Object newState = argumentsAsMap(toolExecutionRequest.arguments()).get("state");
+                context.currentState = newState.toString().toUpperCase();
+                return null;
+            }
+        });
+
+        return this;
+    }
+
+    public AiServices<T> systemMessages(Map<Enum<?>, String> stateToSystemMessage) { // TODO copy?
+        Map<String, String> convertedMap = new HashMap<>();
+        for (Map.Entry<Enum<?>, String> entry : stateToSystemMessage.entrySet()) {
+            convertedMap.put(entry.getKey().toString(), entry.getValue());
+        }
+        context.stateToSystemMessage = convertedMap;
+        return this;
+    }
+
     /**
      * Configures chat model that will be used under the hood of the AI Service.
      * <p>
@@ -269,6 +313,28 @@ public abstract class AiServices<T> {
         return tools(Arrays.asList(objectsWithTools));
     }
 
+    public AiServices<T> tools(Enum<?> state, Object... objectsWithTools) { // TODO validate state
+        if (context.toolSpecifications == null) {
+            context.toolSpecifications = new ArrayList<>();
+        }
+        if (context.toolExecutors == null) {
+            context.toolExecutors = new HashMap<>();
+        }
+
+        for (Object objectWithTool : objectsWithTools) {
+            for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
+                if (method.isAnnotationPresent(Tool.class)) {
+                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
+                    context.stateToToolSpecifications.computeIfAbsent(state.name(), k -> new ArrayList<>()).add(toolSpecification);
+                    context.toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
+                    // TODO validate not overriding
+                }
+            }
+        }
+
+        return this;
+    }
+
     /**
      * Configures the tools that the LLM can use.
      * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
@@ -280,8 +346,12 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(List<Object> objectsWithTools) {
-        context.toolSpecifications = new ArrayList<>();
-        context.toolExecutors = new HashMap<>();
+        if (context.toolSpecifications == null) {
+            context.toolSpecifications = new ArrayList<>();
+        }
+        if (context.toolExecutors == null) {
+            context.toolExecutors = new HashMap<>();
+        }
 
         for (Object objectWithTool : objectsWithTools) {
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
@@ -289,6 +359,7 @@ public abstract class AiServices<T> {
                     ToolSpecification toolSpecification = toolSpecificationFrom(method);
                     context.toolSpecifications.add(toolSpecification);
                     context.toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
+                    // TODO validate not overriding
                 }
             }
         }

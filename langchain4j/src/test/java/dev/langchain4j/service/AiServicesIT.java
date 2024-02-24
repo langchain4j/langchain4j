@@ -58,7 +58,6 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AiServicesIT {
-
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))

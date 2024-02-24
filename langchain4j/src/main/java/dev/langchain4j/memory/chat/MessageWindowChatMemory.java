@@ -49,6 +49,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
+        boolean added = false;
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> systemMessage = findSystemMessage(messages);
             if (systemMessage.isPresent()) {
@@ -56,10 +57,14 @@ public class MessageWindowChatMemory implements ChatMemory {
                     return; // do not add the same system message
                 } else {
                     messages.remove(systemMessage.get()); // need to replace existing system message
+                    messages.add(0, message); // TODO make configurable
+                    added = true;
                 }
             }
         }
-        messages.add(message);
+        if (!added) {
+            messages.add(message);
+        }
         ensureCapacity(messages, maxMessages);
         store.updateMessages(id, messages);
     }
