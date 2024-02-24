@@ -63,7 +63,7 @@ class AiServicesWithStatesTest {
 
         ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey("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") // TODO !!!
+                .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .temperature(0.0)
 //            .logRequests(true)
