@@ -9,8 +9,9 @@ import static java.time.Duration.ofSeconds;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import io.github.heezer.alephalpha.client.Client;
 import io.github.heezer.alephalpha.client.completion.CompletionRequest;
 import io.github.heezer.alephalpha.client.completion.CompletionResponse;
@@ -25,46 +26,87 @@ import lombok.Builder;
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
-public class AlephAlphaChatModel implements ChatLanguageModel, TokenCountEstimator {
+public class AlephAlphaChatModel implements ChatLanguageModel {
 
     private final Client client;
     private final String model;
-    //    private final Double temperature;
-    //    private final Double topP;
-    //    private final List<String> stop;
+    private final String hosting;
     private final Integer maxTokens;
-    //    private final Double presencePenalty;
-    //    private final Double frequencyPenalty;
-    //    private final Map<String, Integer> logitBias;
-    //    private final String responseFormat;
-    //    private final Integer seed;
-    //    private final String user;
+    private final Integer minTokens;
+    private Boolean echo;
+    private Double temperature;
+    private Integer topK;
+    private Double topP;
+    private Double presencePenalty;
+    private Double frequencyPenalty;
+    private Double sequencePenalty;
+    private Integer sequencePenaltyMinLength;
+    private Boolean repetitionPenaltiesIncludePrompt;
+    private Boolean repetitionPenaltiesIncludeCompletion;
+    private Boolean useMultiplicativePresencePenalty;
+    private Boolean useMultiplicativeFrequencyPenalty;
+    private Boolean useMultiplicativeSequencePenalty;
+    private String penaltyBias;
+    private List<String> penaltyExceptions;
+    private Boolean penaltyExceptionsIncludeStopSequences;
+    private Integer bestOf;
+    private Integer n;
+    private Object logitBias;
+    private Integer logProbs;
+    private List<String> stopSequences;
+    private Boolean tokens;
+    private Boolean rawCompletion;
+    private Boolean disableOptimizations;
+    private List<String> completionBiasInclusion;
+    private Boolean completionBiasInclusionFirstTokenOnly;
+    private List<String> completionBiasExclusion;
+    private Boolean completionBiasExclusionFirstTokenOnly;
+    private Double contextualControlThreshold;
+    private Boolean controlLogAdditive;
     private final Integer maxRetries;
-    private final List<String> stopSequences;
-
-    //    private final Tokenizer tokenizer;
 
     @Builder
     public AlephAlphaChatModel(
         String apiKey,
         String modelName,
-        //        Double temperature,
-        //        Double topP,
-        //        List<String> stop,
+        String hosting,
         Integer maxTokens,
+        Integer minTokens,
+        Boolean echo,
+        Double temperature,
+        Integer topK,
+        Double topP,
+        Double presencePenalty,
+        Double frequencyPenalty,
+        Double sequencePenalty,
+        Integer sequencePenaltyMinLength,
+        Boolean repetitionPenaltiesIncludePrompt,
+        Boolean repetitionPenaltiesIncludeCompletion,
+        Boolean useMultiplicativePresencePenalty,
+        Boolean useMultiplicativeFrequencyPenalty,
+        Boolean useMultiplicativeSequencePenalty,
+        String penaltyBias,
+        List<String> penaltyExceptions,
+        Boolean penaltyExceptionsIncludeStopSequences,
+        Integer bestOf,
+        Integer n,
+        Object logitBias,
+        Integer logProbs,
         List<String> stopSequences,
-        //        Double presencePenalty,
-        //        Double frequencyPenalty,
-        //        Map<String, Integer> logitBias,
-        //        String responseFormat,
-        //        Integer seed,
-        //        String user,
+        Boolean tokens,
+        Boolean rawCompletion,
+        Boolean disableOptimizations,
+        List<String> completionBiasInclusion,
+        Boolean completionBiasInclusionFirstTokenOnly,
+        List<String> completionBiasExclusion,
+        Boolean completionBiasExclusionFirstTokenOnly,
+        Double contextualControlThreshold,
+        Boolean controlLogAdditive,
         Duration timeout,
         Integer maxRetries,
         Proxy proxy,
         Boolean logRequests,
         Boolean logResponses
-        //        Tokenizer tokenizer
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -87,19 +129,40 @@ public class AlephAlphaChatModel implements ChatLanguageModel, TokenCountEstimat
 
         this.client = cBuilder.build();
         this.model = modelName;
-        //        this.temperature = getOrDefault(temperature, 0.7);
-        //        this.topP = topP;
-        //        this.stop = stop;
+        this.hosting = hosting;
         this.maxTokens = maxTokens;
-        //        this.presencePenalty = presencePenalty;
-        //        this.frequencyPenalty = frequencyPenalty;
-        //        this.logitBias = logitBias;
-        //        this.responseFormat = responseFormat;
-        //        this.seed = seed;
-        //        this.user = user;
-        this.maxRetries = getOrDefault(maxRetries, 3);
-        //        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
+        this.minTokens = minTokens;
+        this.echo = echo;
+        this.temperature = temperature;
+        this.topK = topK;
+        this.topP = topP;
+        this.presencePenalty = presencePenalty;
+        this.frequencyPenalty = frequencyPenalty;
+        this.sequencePenalty = sequencePenalty;
+        this.sequencePenaltyMinLength = sequencePenaltyMinLength;
+        this.repetitionPenaltiesIncludePrompt = repetitionPenaltiesIncludePrompt;
+        this.repetitionPenaltiesIncludeCompletion = repetitionPenaltiesIncludeCompletion;
+        this.useMultiplicativePresencePenalty = useMultiplicativePresencePenalty;
+        this.useMultiplicativeFrequencyPenalty = useMultiplicativeFrequencyPenalty;
+        this.useMultiplicativeSequencePenalty = useMultiplicativeSequencePenalty;
+        this.penaltyBias = penaltyBias;
+        this.penaltyExceptions = penaltyExceptions;
+        this.penaltyExceptionsIncludeStopSequences = penaltyExceptionsIncludeStopSequences;
+        this.bestOf = bestOf;
+        this.n = n;
+        this.logitBias = logitBias;
+        this.logProbs = logProbs;
         this.stopSequences = stopSequences;
+        this.tokens = tokens;
+        this.rawCompletion = rawCompletion;
+        this.disableOptimizations = disableOptimizations;
+        this.completionBiasInclusion = completionBiasInclusion;
+        this.completionBiasInclusionFirstTokenOnly = completionBiasInclusionFirstTokenOnly;
+        this.completionBiasExclusion = completionBiasExclusion;
+        this.completionBiasExclusionFirstTokenOnly = completionBiasExclusionFirstTokenOnly;
+        this.contextualControlThreshold = contextualControlThreshold;
+        this.controlLogAdditive = controlLogAdditive;
+        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override
@@ -110,11 +173,7 @@ public class AlephAlphaChatModel implements ChatLanguageModel, TokenCountEstimat
             throw new IllegalArgumentException("Multiple messages are currently not supported by this model");
         }
 
-        // TBD how to deal with type?
-        CompletionRequest.CompletionRequestBuilder requestBuilder = CompletionRequest
-            .builder()
-            .prompt(messages.get(0).text())
-            .stopSequences(stopSequences);
+        CompletionRequest.CompletionRequestBuilder requestBuilder = CompletionRequest.builder();
 
         if (model != null) {
             requestBuilder.model(model);
@@ -124,65 +183,71 @@ public class AlephAlphaChatModel implements ChatLanguageModel, TokenCountEstimat
             requestBuilder.maximumTokens(maxTokens);
         }
 
+        // TBD how to deal with type?
+        requestBuilder
+            .prompt(messages.get(0).text())
+            .hosting(hosting)
+            .minimumTokens(minTokens)
+            .echo(echo)
+            .temperature(temperature)
+            .topK(topK)
+            .topP(topP)
+            .presencePenalty(presencePenalty)
+            .frequencyPenalty(frequencyPenalty)
+            .sequencePenalty(sequencePenalty)
+            .sequencePenaltyMinLength(sequencePenaltyMinLength)
+            .repetitionPenaltiesIncludePrompt(repetitionPenaltiesIncludePrompt)
+            .repetitionPenaltiesIncludeCompletion(repetitionPenaltiesIncludeCompletion)
+            .useMultiplicativePresencePenalty(useMultiplicativePresencePenalty)
+            .useMultiplicativeFrequencyPenalty(useMultiplicativeFrequencyPenalty)
+            .useMultiplicativeSequencePenalty(useMultiplicativeSequencePenalty)
+            .penaltyBias(penaltyBias)
+            .penaltyExceptions(penaltyExceptions)
+            .penaltyExceptionsIncludeStopSequences(penaltyExceptionsIncludeStopSequences)
+            .bestOf(bestOf)
+            .n(n)
+            .logitBias(logitBias)
+            .logProbs(logProbs)
+            .stopSequences(stopSequences)
+            .tokens(tokens)
+            .rawCompletion(rawCompletion)
+            .disableOptimizations(disableOptimizations)
+            .completionBiasExclusion(completionBiasInclusion)
+            .completionBiasExclusionFirstTokenOnly(completionBiasInclusionFirstTokenOnly)
+            .completionBiasExclusion(completionBiasExclusion)
+            .completionBiasExclusionFirstTokenOnly(completionBiasExclusionFirstTokenOnly)
+            .contextualControlThreshold(contextualControlThreshold)
+            .controlLogAdditive(controlLogAdditive);
+
         CompletionResponse response = withRetry(() -> client.complete(requestBuilder.build()), maxRetries);
 
-        return Response.from(
-            aiMessage(
-                response
-                    .getCompletions()
-                    .stream()
-                    .map(CompletionResponse.Completion::getCompletion)
-                    .collect(Collectors.joining())
-            )
-            /* TBD implement it too,
-            tokenUsageFrom(response.usage()),
-            finishReasonFrom(response.choices().get(0).finishReason())
-        */
+        return Response.from(messageFrom(response), tokenUsageFrom(response), finishReasonFrom(response));
+    }
+
+    private static AiMessage messageFrom(CompletionResponse response) {
+        return aiMessage(
+            response
+                .getCompletions()
+                .stream()
+                .map(CompletionResponse.Completion::getCompletion)
+                .collect(Collectors.joining())
         );
     }
 
-    //    private Response<AiMessage> generate(
-    //        List<ChatMessage> messages,
-    //        List<ToolSpecification> toolSpecifications,
-    //        ToolSpecification toolThatMustBeExecuted
-    //    ) {
-    //        CompletionRequest.CompletionRequestBuilder requestBuilder = CompletionRequest
-    //            .builder()
-    //            .p.messages(toOpenAiMessages(messages))
-    //            .temperature(temperature)
-    //            .topP(topP)
-    //            .stop(stop)
-    //            .maxTokens(maxTokens)
-    //            .presencePenalty(presencePenalty)
-    //            .frequencyPenalty(frequencyPenalty)
-    //            .logitBias(logitBias)
-    //            .responseFormat(responseFormat)
-    //            .seed(seed)
-    //            .user(user);
-    //
-    //        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-    //            requestBuilder.tools(toTools(toolSpecifications));
-    //        }
-    //        if (toolThatMustBeExecuted != null) {
-    //            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
-    //        }
-    //
-    //        ChatCompletionRequest request = requestBuilder.build();
-    //
-    //        ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
-    //
-    //        return Response.from(
-    //            aiMessageFrom(response),
-    //            tokenUsageFrom(response.usage()),
-    //            finishReasonFrom(response.choices().get(0).finishReason())
-    //        );
-    //    }
+    private static TokenUsage tokenUsageFrom(CompletionResponse response) {
+        return new TokenUsage(response.getNumTokensPromptTotal(), response.getNumTokensGenerated());
+    }
 
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        // TBD
-        return 0;
-        //        return tokenizer.estimateTokenCountInMessages(messages);
+    private static FinishReason finishReasonFrom(CompletionResponse response) {
+        switch (response.getCompletions().get(0).getFinishReason()) {
+            case "maximum_tokens":
+                return FinishReason.LENGTH;
+            case "stop_sequence_reached":
+            case "end_of_text":
+                return FinishReason.STOP;
+            default:
+                return FinishReason.OTHER;
+        }
     }
 
     public static AlephAlphaChatModel withApiKey(String apiKey) {
