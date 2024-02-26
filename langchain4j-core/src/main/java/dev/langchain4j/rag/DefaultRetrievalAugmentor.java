@@ -55,7 +55,7 @@ import static java.util.stream.Collectors.*;
  * - {@link ContentInjector}
  * </pre>
  * Visual representation of this flow can be found
- * <a href="https://langchain4j.github.io/langchain4j/img/advanced-rag.png">here</a>.
+ * <a href="https://docs.langchain4j.dev/img/advanced-rag.png">here</a>.
  * <br>
  * For each base component listed above, we offer several ready-to-use implementations,
  * each based on a recognized approach.

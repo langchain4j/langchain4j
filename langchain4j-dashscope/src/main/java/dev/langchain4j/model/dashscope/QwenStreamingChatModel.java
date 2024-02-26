@@ -17,7 +17,6 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.dashscope.spi.QwenStreamingChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -25,6 +24,7 @@ import java.util.List;
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
 import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMultiModalMessages;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class QwenStreamingChatModel implements StreamingChatLanguageModel {
     private final String apiKey;
@@ -177,10 +177,10 @@ public class QwenStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static QwenStreamingChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QwenStreamingChatModelBuilderFactory.class,
-                QwenStreamingChatModelBuilder::new
-        );
+        for (QwenStreamingChatModelBuilderFactory factory : loadFactories(QwenStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QwenStreamingChatModelBuilder();
     }
 
     public static class QwenStreamingChatModelBuilder {

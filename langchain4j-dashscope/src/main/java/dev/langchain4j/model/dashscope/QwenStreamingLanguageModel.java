@@ -13,7 +13,6 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.dashscope.spi.QwenStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -21,6 +20,7 @@ import java.util.List;
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class QwenStreamingLanguageModel implements StreamingLanguageModel {
     private final String apiKey;
@@ -123,10 +123,10 @@ public class QwenStreamingLanguageModel implements StreamingLanguageModel {
     }
 
     public static QwenStreamingLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QwenStreamingLanguageModelBuilderFactory.class,
-                QwenStreamingLanguageModelBuilder::new
-        );
+        for (QwenStreamingLanguageModelBuilderFactory factory : loadFactories(QwenStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QwenStreamingLanguageModelBuilder();
     }
 
     public static class QwenStreamingLanguageModelBuilder {

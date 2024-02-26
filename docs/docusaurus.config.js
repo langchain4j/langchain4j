@@ -20,7 +20,7 @@ const config = {
     url: 'https://langchain4j.github.io/',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
-    baseUrl: '/langchain4j/',
+    baseUrl: '/',
 
     // GitHub pages deployment config.
     // If you aren't using GitHub pages, you don't need these.
@@ -41,6 +41,8 @@ const config = {
             /** @type {import('@docusaurus/preset-classic').Options} */
             ({
                 docs: {
+                    path: 'docs',
+                    routeBasePath: '', // change this to any URL route you'd want. For example: `home` - if you want /home/intro.
                     sidebarPath: './sidebars.js',
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
@@ -82,11 +84,15 @@ const config = {
                         type: 'docSidebar',
                         sidebarId: 'tutorialSidebar',
                         position: 'left',
-                        label: 'Get Started',
+                        label: 'Introduction',
                     },
-                    {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
-                    {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
-                    {to: 'https://lizeraes.github.io/langchain4j/apidocs/', label: 'Javadoc', position: 'left'},
+                    {to: '/tutorials', label: 'Tutorials', position: 'left'},
+                    {to: '/category/integrations', label: 'Integrations', position: 'left'},
+                    {
+                        href: 'https://docs.langchain4j.dev/apidocs/index.html',
+                        label: 'Javadoc',
+                        position: 'left'
+                    },
                     {to: '/blog', label: 'Blog', position: 'left'},
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
@@ -102,8 +108,8 @@ const config = {
                         title: 'Docs',
                         items: [
                             {
-                                label: 'Tutorial',
-                                to: '/docs/tutorials',
+                                label: 'Tutorials',
+                                to: '/tutorials',
                             },
                         ],
                     },
@@ -119,8 +125,8 @@ const config = {
                                 href: 'https://discord.com/invite/JzTFvyjG6R',
                             },
                             {
-                                 label: 'Stack Overflow',
-                                 href: 'https://stackoverflow.com/questions/tagged/langchain4j',
+                                label: 'Stack Overflow',
+                                href: 'https://stackoverflow.com/questions/tagged/langchain4j',
                             },
                         ],
                     },
