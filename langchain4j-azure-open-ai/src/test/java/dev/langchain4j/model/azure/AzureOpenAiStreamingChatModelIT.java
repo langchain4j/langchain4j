@@ -149,16 +149,7 @@ class AzureOpenAiStreamingChatModelIT {
             "gpt-35-turbo, gpt-3.5-turbo",
             "gpt-4,        gpt-4"
     })
-    void should_return_tool_execution_request(String deploymentName, String gptVersion) throws Exception {
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("calculator")
-                .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
-                .build();
-
-        UserMessage userMessage = userMessage("Two plus two?");
+    void should_call_function_with_argument(String deploymentName, String gptVersion) throws Exception {
 
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
 
@@ -170,7 +161,18 @@ class AzureOpenAiStreamingChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        model.generate(singletonList(userMessage), singletonList(toolSpecification), new StreamingResponseHandler<AiMessage>() {
+        UserMessage userMessage = userMessage("Two plus two?");
+
+        String toolName = "calculator";
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name(toolName)
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        model.generate(singletonList(userMessage), toolSpecification, new StreamingResponseHandler<AiMessage>() {
 
             @Override
             public void onNext(String token) {
@@ -198,7 +200,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(53);
