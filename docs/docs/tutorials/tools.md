@@ -4,6 +4,9 @@ sidebar_position: 18
 
 # Tools
 
-[Example with Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
+[Great guide on Tools](https://www.youtube.com/watch?v=cjI_6Siry-s)
+by [Tales from the jar side (Ken Kousen)](https://www.youtube.com/@talesfromthejarside)
 
-More info coming soon
+## Examples
+
+[AI Service with Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
