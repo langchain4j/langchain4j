@@ -118,10 +118,10 @@ public class ServiceOutputParser {
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
     }
 
-    private static String jsonStructure(Class<?> structured, Set<String> visited) {
+    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
         String simpleTypeName = simpleTypeName(structured);
-        visited.add(simpleTypeName);
+        visited.add(structured);
         jsonSchema.append(simpleTypeName + ": {\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
@@ -135,7 +135,7 @@ public class ServiceOutputParser {
         return jsonSchema.toString();
     }
 
-    private static String descriptionFor(Field field, Set<String> visited) {
+    private static String descriptionFor(Field field, Set<Class<?>> visited) {
         Description fieldDescription = field.getAnnotation(Description.class);
         if (fieldDescription == null) {
             return "type: " + typeOf(field, visited);
@@ -144,7 +144,7 @@ public class ServiceOutputParser {
         return String.join(" ", fieldDescription.value()) + "; type: " + typeOf(field, visited);
     }
 
-    private static String typeOf(Field field, Set<String> visited) {
+    private static String typeOf(Field field, Set<Class<?>> visited) {
         Type type = field.getGenericType();
 
         if (type instanceof ParameterizedType) {
@@ -164,11 +164,11 @@ public class ServiceOutputParser {
         return simpleNameOrJsonStructure(field.getType(), visited);
     }
 
-    private static String simpleNameOrJsonStructure(Class<?> structured, Set<String> visited) {
+    private static String simpleNameOrJsonStructure(Class<?> structured, Set<Class<?>> visited) {
         String simpleTypeName = simpleTypeName(structured);
         if (structured.getPackage() == null
                 || structured.getPackage().getName().startsWith("java.")
-                || visited.contains(simpleTypeName)) {
+                || visited.contains(structured)) {
             return simpleTypeName;
         } else {
             return jsonStructure(structured, visited);

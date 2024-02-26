@@ -160,7 +160,7 @@ class ServiceOutputParserTest {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
-        private List<Address> address;
+        private Address[] address;
     }
 
     @Test
@@ -219,6 +219,24 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents),\n" +
+                        "}");
+    }
+
+    static class PersonWithParentArray {
+        private String firstName;
+        private String lastName;
+        private PersonWithParentArray[] parents;
+    }
+
+    @Test
+    void outputFormatInstructions_PersonWithParentArray() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithParentArray.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray: {\n" +
+                        "\"firstName\": (type: string),\n" +
+                        "\"lastName\": (type: string),\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray),\n" +
                         "}");
     }
 
