@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# 2. Chat Memory
+# Chat Memory
 
 Maintaining and managing `ChatMessage`s manually is cumbersome.
 Therefore, `ChatMemory` exists.
@@ -26,7 +26,7 @@ Currently, LangChain4j implements two algorithms for eviction policy:
 You can use `ChatMemory` as a standalone low-level component,
 or as a part of high-level components like `AiServices` and `ConversationalChain`.
 
-Examples:
+## Examples
 - With `AiServices`:
   - [Chat memory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
   - [Separate chat memory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
@@ -35,3 +35,6 @@ Examples:
 - With `Chain`s
   - [Chat memory with ConversationalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatMemoryExamples.java)
   - [Chat memory with ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)
+
+## Related Tutorials
+- [Generative AI Conversations using LangChain4j ChatMemory](https://www.sivalabs.in/generative-ai-conversations-using-langchain4j-chat-memory/) by [Siva](https://www.sivalabs.in/)

@@ -1,6 +1,0 @@
-version: '3'
-services:
-  cassandra:
-    image: stargateio/dse-next:4.0.7-e47eb8e14b96
-    ports:
-      - 9042:9042

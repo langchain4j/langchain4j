@@ -1,7 +1,5 @@
 package dev.langchain4j.store.embedding.qdrant;
 
-import static dev.langchain4j.internal.Utils.randomUUID;
-
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -11,13 +9,15 @@ import io.qdrant.client.QdrantClient;
 import io.qdrant.client.QdrantGrpcClient;
 import io.qdrant.client.grpc.Collections.Distance;
 import io.qdrant.client.grpc.Collections.VectorParams;
-import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.qdrant.QdrantContainer;
+
+import java.util.concurrent.ExecutionException;
+
+import static dev.langchain4j.internal.Utils.randomUUID;
 
 @Testcontainers
 class QdrantEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -29,17 +29,12 @@ class QdrantEmbeddingStoreIT extends EmbeddingStoreIT {
   private static QdrantEmbeddingStore embeddingStore;
 
   @Container
-  private static final GenericContainer<?> qdrant =
-      new GenericContainer<>("qdrant/qdrant:latest").withExposedPorts(grpcPort);
+  private static final QdrantContainer qdrant = new QdrantContainer("qdrant/qdrant:latest");
 
   EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
   @BeforeAll
   static void setup() throws InterruptedException, ExecutionException {
-    qdrant.setWaitStrategy(
-        new LogMessageWaitStrategy()
-            .withRegEx(".*Actix runtime found; starting in Actix runtime.*"));
-
     embeddingStore =
         QdrantEmbeddingStore.builder()
             .host(qdrant.getHost())

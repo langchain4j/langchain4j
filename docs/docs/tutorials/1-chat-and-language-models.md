@@ -2,16 +2,14 @@
 sidebar_position: 2
 ---
 
-# 1. Chat and Language Models
+# Chat and Language Models
 
 LLMs are currently available in two API types:
 - `LanguageModel`s. Their API is very simple - they accept a `String` as input and return a `String` as output.
-Initially, they were trained for text completion, and later for instruction following.
 This API is now becoming obsolete in favor of chat API (second API type).
 - `ChatLanguageModel`s. These accept either a single or multiple `ChatMessage`s as input
 and return an `AiMessage` as output.
-Depending on supported modalities, some of LLMs also support combining both `String`s and `Image`s in the `ChatMessage`.
-They are trained for a variety of tasks and are much more versatile.
+`ChatMessage` usually contains text, but some LLMs also support a mix of text and `Image`s.
 Examples of such chat models include OpenAI's `gpt-3.5-turbo` and Google's `gemini-pro`.
 
 Support for `LanguageModel`s will no longer be expanded in LangChain4j,
@@ -19,6 +17,14 @@ so in all new features, we will use a `ChatLanguageModel` API.
 
 `ChatLanguageModel` is the low-level API in LangChain4j, offering the most power and flexibility.
 There are also high-level APIs (`Chain`s and `AiServices`) that we will cover later, after we go over the basics.
+
+Apart from `ChatLanguageModel` and `LanguageModel`, LangChain4j supports the following types of models:
+- `EmbeddingModel` - This model can translate text into an `Embedding`.
+- `ImageModel` - This model can generate and edit `Image`s.
+- `ModerationModel` - This model can check if the text contains harmful content.
+- `ScoringModel` - This model can score (or rank) multiple pieces of text against a query,
+essentially determining how relevant each piece of text is to the query. This is useful for RAG.
+These will be covered later.
 
 Now, let's take a closer look at the `ChatLanguageModel` API.
 
