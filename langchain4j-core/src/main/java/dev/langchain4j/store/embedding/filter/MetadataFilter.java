@@ -40,7 +40,7 @@ import static java.util.stream.Collectors.toList;
  * @see Or
  */
 @Experimental
-public interface MetadataFilter {
+public interface MetadataFilter { // TODO name: remove Metadata? e.g. FieldFilter?
 
     /**
      * Tests if a given {@link Metadata} satisfies this {@link MetadataFilter}.

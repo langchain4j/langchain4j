@@ -81,7 +81,7 @@ public class Metadata {
      *
      * @param key the key
      * @return the value associated with the given key, or {@code null} if the key is not present.
-     * @deprecated Use {@link #getString(String)}, {@link #getInteger(String)}, and other methods instead.
+     * @deprecated Use {@link #getString(String)}, {@link #getInteger(String)}, and other accessors instead.
      */
     @Deprecated
     public String get(String key) {
@@ -213,7 +213,7 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
-     * @deprecated Use {@link #put(String, String)}, {@link #put(String, int)}, and other methods instead.
+     * @deprecated Use {@link #put(String, String)}, {@link #put(String, int)}, and other accessors instead.
      */
     @Deprecated
     public Metadata add(String key, Object value) {
@@ -226,7 +226,7 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
-     * @deprecated Use {@link #put(String, String)}, {@link #put(String, int)}, and other methods instead.
+     * @deprecated Use {@link #put(String, String)}, {@link #put(String, int)}, and other accessors instead.
      */
     @Deprecated
     public Metadata add(String key, String value) {
@@ -423,7 +423,7 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return a Metadata object
-     * @deprecated Use {@link #from(String, String)}, {@link #from(String, int)} and other methods instead.
+     * @deprecated Use {@link #from(String, String)}, {@link #from(String, int)} and other accessors instead.
      */
     @Deprecated
     public static Metadata from(String key, Object value) {

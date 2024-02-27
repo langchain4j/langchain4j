@@ -21,7 +21,8 @@ public class TextSegment {
 
     /**
      * Creates a new text segment.
-     * @param text the text.
+     *
+     * @param text     the text.
      * @param metadata the metadata.
      */
     public TextSegment(String text, Metadata metadata) {
@@ -31,6 +32,7 @@ public class TextSegment {
 
     /**
      * Returns the text.
+     *
      * @return the text.
      */
     public String text() {
@@ -39,6 +41,7 @@ public class TextSegment {
 
     /**
      * Returns the metadata.
+     *
      * @return the metadata.
      */
     public Metadata metadata() {
@@ -47,10 +50,13 @@ public class TextSegment {
 
     /**
      * Returns the metadata value for the given key.
+     *
      * @param key the key.
      * @return the metadata value, or null if not found.
+     * @deprecated Use {@link #metadata()}, then {@link Metadata#getString(String)},
+     * {@link Metadata#getInteger(String)} and other accessors instead.
      */
-    @Deprecated // TODO
+    @Deprecated
     public String metadata(String key) {
         return metadata.get(key);
     }
@@ -79,6 +85,7 @@ public class TextSegment {
 
     /**
      * Creates a new text segment.
+     *
      * @param text the text.
      * @return the text segment.
      */
@@ -88,7 +95,8 @@ public class TextSegment {
 
     /**
      * Creates a new text segment.
-     * @param text the text.
+     *
+     * @param text     the text.
      * @param metadata the metadata.
      * @return the text segment.
      */
@@ -98,6 +106,7 @@ public class TextSegment {
 
     /**
      * Creates a new text segment.
+     *
      * @param text the text.
      * @return the text segment.
      */
@@ -107,7 +116,8 @@ public class TextSegment {
 
     /**
      * Creates a new text segment.
-     * @param text the text.
+     *
+     * @param text     the text.
      * @param metadata the metadata.
      * @return the text segment.
      */

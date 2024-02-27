@@ -65,7 +65,6 @@ public interface EmbeddingStore<Embedded> {
                 findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
         return new EmbeddingSearchResult<>(matches);
     }
-    // TODO just unit test it?
 
     /**
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
