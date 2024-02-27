@@ -12,12 +12,15 @@ import static io.milvus.param.MetricType.COSINE;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.SearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.filter.MetadataFilter;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
@@ -31,7 +34,11 @@ import java.util.List;
 
 /**
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
- * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
+ * <br>
+ * Supports both local and <a href="https://zilliz.com/">managed</a> Milvus instances.
+ * <br>
+ * Supports storing {@link Metadata} and filtering by it using {@link MetadataFilter}
+ * (provided inside {@link EmbeddingSearchRequest}).
  */
 public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
@@ -85,6 +92,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
   }
 
+  public void dropCollection(String collectionName) {
+    CollectionOperationsExecutor.dropCollection(milvusClient, collectionName);
+  }
+
   public String add(Embedding embedding) {
     String id = Utils.randomUUID();
     add(id, embedding);
@@ -114,31 +125,33 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
   }
 
   @Override
-  public List<EmbeddingMatch<TextSegment>> search(SearchRequest searchRequest) {
-    loadCollectionInMemory(milvusClient, collectionName);
+  public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+    loadCollectionInMemory(milvusClient, collectionName); // TODO improve
 
     SearchParam searchParam = buildSearchRequest(
-      collectionName,
-            searchRequest.queryEmbedding().vectorAsList(),
-            searchRequest.metadataFilter(),
-            searchRequest.maxResults(),
-      metricType,
-      consistencyLevel
+            collectionName,
+            embeddingSearchRequest.queryEmbedding().vectorAsList(),
+            embeddingSearchRequest.metadataFilter(),
+            embeddingSearchRequest.maxResults(),
+            metricType,
+            consistencyLevel
     );
 
     SearchResultsWrapper resultsWrapper = CollectionOperationsExecutor.search(milvusClient, searchParam);
 
     List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(
-      milvusClient,
-      resultsWrapper,
-      collectionName,
-      consistencyLevel,
-      retrieveEmbeddingsOnSearch
+            milvusClient,
+            resultsWrapper,
+            collectionName,
+            consistencyLevel,
+            retrieveEmbeddingsOnSearch
     );
 
-    return matches.stream()
-            .filter(match -> match.score() >= searchRequest.minScore())
+    List<EmbeddingMatch<TextSegment>> result = matches.stream()
+            .filter(match -> match.score() >= embeddingSearchRequest.minScore())
             .collect(toList());
+
+    return new EmbeddingSearchResult<>(result);
   }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {

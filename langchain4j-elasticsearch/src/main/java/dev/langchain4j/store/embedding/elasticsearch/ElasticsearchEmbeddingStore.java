@@ -24,8 +24,9 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.SearchRequest;
 import dev.langchain4j.store.embedding.filter.MetadataFilter;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
@@ -53,6 +54,9 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
+ * <br>
+ * Supports storing {@link Metadata} and filtering by it using {@link MetadataFilter}
+ * (provided inside {@link EmbeddingSearchRequest}).
  */
 public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
@@ -241,24 +245,25 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> search(SearchRequest searchRequest) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
         try {
             // Use Script Score and cosineSimilarity to calculate
             // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
             ScriptScoreQuery scriptScoreQuery = buildScriptScoreQuery(
-                    searchRequest.queryEmbedding().vector(),
-                    (float) searchRequest.minScore(),
-                    searchRequest.metadataFilter()
+                    embeddingSearchRequest.queryEmbedding().vector(),
+                    (float) embeddingSearchRequest.minScore(),
+                    embeddingSearchRequest.metadataFilter()
             );
             SearchResponse<Document> response = client.search(
                     co.elastic.clients.elasticsearch.core.SearchRequest.of(s -> s.index(indexName)
                             .query(q -> q.scriptScore(scriptScoreQuery))
-                            .size(searchRequest.maxResults())),
+                            .size(embeddingSearchRequest.maxResults())),
                     Document.class
             );
 
-            return toEmbeddingMatch(response);
+            return new EmbeddingSearchResult<>(toMatches(response));
         } catch (IOException e) {
+            // TODO improve
             log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
@@ -362,7 +367,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
-    private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {
+    private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
                         .map(document -> new EmbeddingMatch<>(

@@ -9,25 +9,19 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithMetadataFilteringIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.milvus.MilvusContainer;
 
 import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Testcontainers
-class MilvusEmbeddingStoreIT extends EmbeddingStoreWithMetadataFilteringIT {
+class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithMetadataFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 
-    @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.3.1");
-
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
-            .uri(milvus.getEndpoint())
+            .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com") // TODO env var
+            .token(System.getenv("MILVUS_API_KEY"))
             .collectionName(COLLECTION_NAME)
             .dimension(384)
             .retrieveEmbeddingsOnSearch(true)
@@ -53,12 +47,14 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithMetadataFilteringIT {
     @Test
     void should_not_retrieve_embeddings_when_searching() {
 
+        boolean retrieveEmbeddingsOnSearch = false;
+
         EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-                .host(milvus.getHost())
-                .port(milvus.getMappedPort(19530))
-                .collectionName(COLLECTION_NAME)
+                .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com") // TODO env var
+                .token(System.getenv("MILVUS_API_KEY"))
+                .collectionName("test")
                 .dimension(384)
-                .retrieveEmbeddingsOnSearch(false)
+                .retrieveEmbeddingsOnSearch(retrieveEmbeddingsOnSearch)
                 .build();
 
         Embedding firstEmbedding = embeddingModel.embed("hello").content();

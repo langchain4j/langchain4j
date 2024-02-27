@@ -7,20 +7,19 @@ import lombok.ToString;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureSameType;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
 @ToString
 @EqualsAndHashCode
 public class NotEqual implements MetadataFilter {
-
-    // TODO remove in favor of Not(Equal) ?
 
     private final String key;
     private final Object comparisonValue;
 
     public NotEqual(String key, Object comparisonValue) {
         this.key = ensureNotBlank(key, "key");
-        this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue");
+        this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
 
     public String key() {
@@ -33,12 +32,17 @@ public class NotEqual implements MetadataFilter {
 
     @Override
     public boolean test(Metadata metadata) {
-        Object actualValue = metadata.getObject(key);
-        if (actualValue == null) {
-            return false;
+        if (!metadata.containsKey(key)) {
+            return true;
         }
 
-        ensureSameType(actualValue, comparisonValue, key);
+        Object actualValue = metadata.getObject(key);
+        ensureTypesAreCompatible(actualValue, comparisonValue, key);
+
+        if (actualValue instanceof Number) {
+            return compareAsBigDecimals(actualValue, comparisonValue) != 0;
+        }
+
         return !actualValue.equals(comparisonValue);
     }
 }

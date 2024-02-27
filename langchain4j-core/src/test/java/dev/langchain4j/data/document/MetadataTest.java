@@ -2,6 +2,9 @@ package dev.langchain4j.data.document;
 
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -133,21 +136,179 @@ class MetadataTest implements WithAssertions {
     }
 
     @Test
-    void test_get() {
+    void should_create_from_map() {
 
-        Metadata metadata = new Metadata()
-                .add("string", "s")
-                .add("integer", 1)
-                .add("double", 1.0)
-                .add("boolean", true);
-        // TODO more types
+        // given
+        Map<String, Object> map = new HashMap<>();
+        map.put("string", "s");
+        map.put("integer", 1);
+        map.put("long", 1L);
+        map.put("float", 1f);
+        map.put("double", 1d);
 
+        // when
+        Metadata metadata = new Metadata(map);
+
+        // then
         assertThat(metadata.getString("string")).isEqualTo("s");
+        assertThat(metadata.getString("banana")).isNull();
+
         assertThat(metadata.getInteger("integer")).isEqualTo(1);
-        assertThat(metadata.getDouble("double")).isEqualTo(1.0);
-        assertThat(metadata.getBoolean("boolean")).isEqualTo(true);
-        // TODO more types
+        assertThat(metadata.getInteger("banana")).isNull();
+
+        assertThat(metadata.getLong("long")).isEqualTo(1L);
+        assertThat(metadata.getLong("banana")).isNull();
+
+        assertThat(metadata.getFloat("float")).isEqualTo(1f);
+        assertThat(metadata.getFloat("banana")).isNull();
+
+        assertThat(metadata.getDouble("double")).isEqualTo(1d);
+        assertThat(metadata.getDouble("banana")).isNull();
     }
 
-    // TODO more tests
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", " "})
+    void should_fail_to_create_from_map_when_key_is_null(String key) {
+
+        // given
+        Map<String, Object> map = new HashMap<>();
+        map.put(key, "value");
+
+        // when-then
+        assertThatThrownBy(() -> new Metadata(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value 'value' cannot be null or blank");
+
+        assertThatThrownBy(() -> Metadata.from(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value 'value' cannot be null or blank");
+    }
+
+    @Test
+    void should_fail_to_create_from_map_when_value_is_null() {
+
+        // given
+        Map<String, Object> map = new HashMap<>();
+        map.put("key", null);
+
+        // when-then
+        assertThatThrownBy(() -> new Metadata(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
+
+        assertThatThrownBy(() -> Metadata.from(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
+    }
+
+    @Test
+    void should_fail_to_create_from_map_when_value_is_of_unsupported_type() {
+
+        // given
+        Map<String, Object> map = new HashMap<>();
+        map.put("key", new Object());
+
+        // when-then
+        assertThatThrownBy(() -> new Metadata(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("The metadata key 'key' has the value")
+                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. " +
+                        "Currently, the supported types are: [class java.lang.String, int, class java.lang.Integer, " +
+                        "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+
+        assertThatThrownBy(() -> Metadata.from(map))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageStartingWith("The metadata key 'key' has the value")
+                .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. " +
+                        "Currently, the supported types are: [class java.lang.String, int, class java.lang.Integer, " +
+                        "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+    }
+
+    @Test
+    void should_get_typed_values() {
+
+        Metadata metadata = new Metadata()
+                .put("string", "s")
+                .put("integer", 1)
+                .put("long", 1L)
+                .put("float", 1f)
+                .put("double", 1d);
+
+        assertThat(metadata.getString("string")).isEqualTo("s");
+        assertThat(metadata.getString("banana")).isNull();
+
+        assertThat(metadata.getInteger("integer")).isEqualTo(1);
+        assertThat(metadata.getInteger("banana")).isNull();
+
+        assertThat(metadata.getLong("long")).isEqualTo(1L);
+        assertThat(metadata.getLong("banana")).isNull();
+
+        assertThat(metadata.getFloat("float")).isEqualTo(1f);
+        assertThat(metadata.getFloat("banana")).isNull();
+
+        assertThat(metadata.getDouble("double")).isEqualTo(1d);
+        assertThat(metadata.getDouble("banana")).isNull();
+    }
+
+    @Test
+    void should_fail_when_adding_null_key() {
+
+        // given
+        Metadata metadata = new Metadata();
+
+        // when-then
+        assertThatThrownBy(() -> metadata.put(null, "value"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value 'value' cannot be null or blank");
+
+        assertThatThrownBy(() -> metadata.put(null, 1))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value '1' cannot be null or blank");
+
+        assertThatThrownBy(() -> metadata.put(null, 1L))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value '1' cannot be null or blank");
+
+        assertThatThrownBy(() -> metadata.put(null, 1f))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value '1.0' cannot be null or blank");
+
+        assertThatThrownBy(() -> metadata.put(null, 1d))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata key with the value '1.0' cannot be null or blank");
+    }
+
+    @Test
+    void should_fail_when_adding_null_value() {
+
+        // given
+        Metadata metadata = new Metadata();
+
+        // when-then
+        assertThatThrownBy(() -> metadata.put("key", null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
+    }
+
+    @Test
+    void should_convert_to_map() {
+
+        // given
+        Map<String, Object> originalMap = new HashMap<>();
+        originalMap.put("string", "s");
+        originalMap.put("integer", 1);
+        originalMap.put("long", 1L);
+        originalMap.put("float", 1f);
+        originalMap.put("double", 1d);
+        Metadata metadata = Metadata.from(originalMap);
+
+        // when
+        Map<String, Object> map = metadata.toMap();
+
+        // then
+        assertThat(map).isEqualTo(originalMap);
+    }
+
+    // TODO test all new methods and creators
 }

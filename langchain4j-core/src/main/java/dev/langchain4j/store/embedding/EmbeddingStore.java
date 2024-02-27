@@ -54,16 +54,20 @@ public interface EmbeddingStore<Embedded> {
     List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
 
     /**
-     * TODO
+     * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
+     * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
      *
-     * @param searchRequest
-     * @return
+     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
-    List<EmbeddingMatch<Embedded>> search(SearchRequest searchRequest);
+    default EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request) { // TODO name: searchSimilar?
+        List<EmbeddingMatch<Embedded>> matches =
+                findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
+        return new EmbeddingSearchResult<>(matches);
+    }
+    // TODO just unit test it?
 
     /**
-     * This method is deprecated. Use {@link #search(SearchRequest)} instead.
-     * <br>
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      * By default, minScore is set to 0, which means that the results may include embeddings with low relevance.
      *
@@ -72,6 +76,7 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated Use {@link #search(EmbeddingSearchRequest)} instead.
      */
     @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
@@ -79,8 +84,6 @@ public interface EmbeddingStore<Embedded> {
     }
 
     /**
-     * This method is deprecated. Use {@link #search(SearchRequest)} instead.
-     * <br>
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      *
      * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
@@ -90,20 +93,21 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated Use {@link #search(EmbeddingSearchRequest)} instead.
      */
     @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        SearchRequest searchRequest = SearchRequest.builder()
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(referenceEmbedding)
                 .maxResults(maxResults)
                 .minScore(minScore)
                 .build();
-        return search(searchRequest);
+        EmbeddingSearchResult<Embedded> embeddingSearchResult = search(embeddingSearchRequest);
+        return embeddingSearchResult.matches();
     }
 
     /**
-     * This method is deprecated. Use {@link #search(SearchRequest)} instead.
-     * {@link SearchRequest#metadataFilter()} can be used to filter by memory ID.
+     * {@link EmbeddingSearchRequest#metadataFilter()} can be used to filter by memory ID.
      * <br>
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      * By default, minScore is set to 0, which means that the results may include embeddings with low relevance.
@@ -114,6 +118,7 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated Use {@link #search(EmbeddingSearchRequest)} instead.
      */
     @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(
@@ -122,9 +127,6 @@ public interface EmbeddingStore<Embedded> {
     }
 
     /**
-     * This method is deprecated. Use {@link #search(SearchRequest)} instead.
-     * {@link SearchRequest#metadataFilter()} can be used to filter by memory ID.
-     * <br>
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      *
      * @param memoryId           The memoryId used Distinguishing query requests from different users.
@@ -135,6 +137,7 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated Use {@link #search(EmbeddingSearchRequest)} instead.
      */
     @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(

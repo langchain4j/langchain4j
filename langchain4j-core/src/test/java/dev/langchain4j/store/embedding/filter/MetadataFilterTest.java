@@ -9,6 +9,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class MetadataFilterTest {
 
+    // TODO this can be removed? InMemoryEmbeddingStoreTest tests the same
+
     @Test
     void should_compare_strings() {
 
@@ -135,6 +137,8 @@ class MetadataFilterTest {
                 .hasMessageContaining("Type mismatch");
     }
 
+
+    // TODO and, or, not, combinations
     // TODO other types
     // TODO more tests, also check missing value, value type mismatch, auto-casting, etc
 }

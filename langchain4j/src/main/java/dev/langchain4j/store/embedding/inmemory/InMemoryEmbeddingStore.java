@@ -95,24 +95,24 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
-    public List<EmbeddingMatch<Embedded>> search(SearchRequest searchRequest) {
+    public EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest embeddingSearchRequest) {
 
         Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
         for (Entry<Embedded> entry : entries) {
-            if (searchRequest.metadataFilter() != null && entry.embedded instanceof TextSegment) {
+            if (embeddingSearchRequest.metadataFilter() != null && entry.embedded instanceof TextSegment) {
                 Metadata metadata = ((TextSegment) entry.embedded).metadata();
-                if (!searchRequest.metadataFilter().test(metadata)) {
+                if (!embeddingSearchRequest.metadataFilter().test(metadata)) {
                     continue;
                 }
             }
 
-            double cosineSimilarity = CosineSimilarity.between(entry.embedding, searchRequest.queryEmbedding());
+            double cosineSimilarity = CosineSimilarity.between(entry.embedding, embeddingSearchRequest.queryEmbedding());
             double score = RelevanceScore.fromCosineSimilarity(cosineSimilarity);
-            if (score >= searchRequest.minScore()) {
+            if (score >= embeddingSearchRequest.minScore()) {
                 matches.add(new EmbeddingMatch<>(score, entry.id, entry.embedding, entry.embedded));
-                if (matches.size() > searchRequest.maxResults()) {
+                if (matches.size() > embeddingSearchRequest.maxResults()) {
                     matches.poll();
                 }
             }
@@ -121,7 +121,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         List<EmbeddingMatch<Embedded>> result = new ArrayList<>(matches);
         result.sort(comparator);
         Collections.reverse(result);
-        return result;
+
+        return new EmbeddingSearchResult<>(result);
     }
 
     public String serializeToJson() {

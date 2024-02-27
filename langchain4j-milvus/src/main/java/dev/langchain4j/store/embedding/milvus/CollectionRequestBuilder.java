@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.milvus;
 import dev.langchain4j.store.embedding.filter.MetadataFilter;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.MetricType;
+import io.milvus.param.collection.DropCollectionParam;
 import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.HasCollectionParam;
 import io.milvus.param.collection.LoadCollectionParam;
@@ -28,6 +29,12 @@ class CollectionRequestBuilder {
 
     static HasCollectionParam buildHasCollectionRequest(String collectionName) {
         return HasCollectionParam.newBuilder()
+                .withCollectionName(collectionName)
+                .build();
+    }
+
+    static DropCollectionParam buildDropCollectionRequest(String collectionName) {
+        return DropCollectionParam.newBuilder()
                 .withCollectionName(collectionName)
                 .build();
     }

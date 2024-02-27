@@ -72,6 +72,12 @@ class CollectionOperationsExecutor {
         checkResponseNotFailed(response);
     }
 
+    static void dropCollection(MilvusServiceClient milvusClient, String collectionName) {
+        DropCollectionParam request = buildDropCollectionRequest(collectionName);
+        R<RpcStatus> response = milvusClient.dropCollection(request);
+        checkResponseNotFailed(response);
+    }
+
     static void createIndex(MilvusServiceClient milvusClient,
                             String collectionName,
                             IndexType indexType,

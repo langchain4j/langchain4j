@@ -8,7 +8,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -16,21 +15,22 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilter.MetadataKey.
 import static dev.langchain4j.store.embedding.filter.MetadataFilter.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toSet;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 /**
- * A minimum set of tests that each implementation of {@link EmbeddingStore} that supports metadata filtering must pass.
+ * A minimum set of tests that each implementation of {@link EmbeddingStore} that supports {@link MetadataFilter} must pass.
  */
 public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingStoreIT {
+
+    // TODO self-query retriever
+    // TODO memory id automatically as metadata filter?
 
     @ParameterizedTest
     @MethodSource
     void should_filter_by_metadata(MetadataFilter metadataFilter,
                                    List<Metadata> matchingMetadatas,
                                    List<Metadata> notMatchingMetadatas) {
-
         // given
         for (Metadata matchingMetadata : matchingMetadatas) {
             TextSegment matchingSegment = TextSegment.from("matching", matchingMetadata);
@@ -52,28 +52,27 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
 
         Embedding queryEmbedding = embeddingModel().embed("matching").content();
 
-        assertThat(embeddingStore().search(SearchRequest.builder()
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
                 .maxResults(100)
-                .build()))
+                .build();
+        assertThat(embeddingStore().search(request).matches())
+                // +1 for notMatchingSegmentWithoutMetadata
                 .hasSize(matchingMetadatas.size() + notMatchingMetadatas.size() + 1);
 
-        SearchRequest searchRequest = SearchRequest.builder()
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
                 .metadataFilter(metadataFilter)
                 .maxResults(100)
                 .build();
 
         // when
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(searchRequest);
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
 
         // then
         assertThat(matches).hasSize(matchingMetadatas.size());
-        assertThat(matches.stream().map(match -> match.embedded().metadata()).collect(toSet()))
-                .isEqualTo(new HashSet<>(matchingMetadatas));
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
         matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
-        // TODO fix int/long float/double types assertThat(matches.get(0).embedded()).isEqualTo(matchingSegment);
     }
 
     static Stream<Arguments> should_filter_by_metadata() {
@@ -82,469 +81,722 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
 
                 // === Equal ===
 
-                // Equal: strings
                 .add(Arguments.of(
                         key("key").eq("a"),
                         asList(
-                                new Metadata().add("key", "a"),
-                                new Metadata().add("key", "a").add("key2", "b")
+                                new Metadata().put("key", "a"),
+                                new Metadata().put("key", "a").put("key2", "b")
                         ),
                         asList(
-                                new Metadata().add("key", "A"),
-                                new Metadata().add("key", "b"),
-                                new Metadata().add("key", "aa"),
-                                new Metadata().add("key", "a a"),
-                                new Metadata().add("key2", "a")
+                                new Metadata().put("key", "A"),
+                                new Metadata().put("key", "b"),
+                                new Metadata().put("key", "aa"),
+                                new Metadata().put("key", "a a"),
+                                new Metadata().put("key2", "a")
                         )
                 ))
 
-//                 Equal: primitives
+                // integer
+                .add(Arguments.of(
+                        key("key").eq(Integer.MIN_VALUE),
+                        asList(
+                                new Metadata().put("key", Integer.MIN_VALUE),
+                                new Metadata().put("key", Integer.MIN_VALUE).put("key2", 0)
+                        ),
+                        asList(
+                                new Metadata().put("key", Integer.MIN_VALUE + 1),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", Integer.MAX_VALUE),
+                                new Metadata().put("key2", Integer.MIN_VALUE)
+                        )
 
-//                .add(Arguments.of(
-//                        key("key").eq((byte) 1),
-//                        asList(
-//                                new Metadata().add("key", (byte) 1),
-//                                new Metadata().add("key", (byte) 1).add("key2", (byte) 2)
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", (byte) -1),
-//                                new Metadata().add("key", (byte) 0),
-//                                new Metadata().add("key", (byte) 2),
-//                                new Metadata().add("key", (byte) 10),
-//                                new Metadata().add("key2", (byte) 1)
-//                        )
-//                ))
-//                .add(Arguments.of(
-//                        key("key").eq((short) 1),
-//                        asList(
-//                                new Metadata().add("key", (short) 1),
-//                                new Metadata().add("key", (short) 1).add("key2", (short) 2)
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", (short) -1),
-//                                new Metadata().add("key", (short) 0),
-//                                new Metadata().add("key", (short) 2),
-//                                new Metadata().add("key", (short) 10),
-//                                new Metadata().add("key2", (short) 1)
-//                        )
-//                ))
+                ))
                 .add(Arguments.of(
-                        key("key").eq(1),
+                        key("key").eq(0),
                         asList(
-                                new Metadata().add("key", 1),
-                                new Metadata().add("key", 1).add("key2", 2)
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", 0).put("key2", 1)
                         ),
                         asList(
-                                new Metadata().add("key", -1),
-                                new Metadata().add("key", 0),
-                                new Metadata().add("key", 2),
-                                new Metadata().add("key", 10),
-                                new Metadata().add("key2", 1)
+                                new Metadata().put("key", -1),
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key2", 0)
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(1L),
+                        key("key").eq(Integer.MAX_VALUE),
                         asList(
-                                new Metadata().add("key", 1L),
-                                new Metadata().add("key", 1L).add("key2", 2L)
+                                new Metadata().put("key", Integer.MAX_VALUE),
+                                new Metadata().put("key", Integer.MAX_VALUE).put("key2", 0)
                         ),
                         asList(
-                                new Metadata().add("key", -1L),
-                                new Metadata().add("key", 0L),
-                                new Metadata().add("key", 2L),
-                                new Metadata().add("key", 10L),
-                                new Metadata().add("key2", 1L)
+                                new Metadata().put("key", Integer.MIN_VALUE),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", Integer.MAX_VALUE - 1),
+                                new Metadata().put("key2", Integer.MAX_VALUE)
                         )
                 ))
-//                .add(Arguments.of(
-//                        key("key").eq(1.1f),
-//                        asList(
-//                                new Metadata().add("key", 1.1f),
-//                                new Metadata().add("key", 1.1f).add("key2", 2.2f)
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", -1.1f),
-//                                new Metadata().add("key", 0.0f),
-//                                new Metadata().add("key", 1.11f),
-//                                new Metadata().add("key", 2.2f),
-//                                new Metadata().add("key2", 1.1f)
-//                        )
-//                ))
-                .add(Arguments.of(
-                        key("key").eq(1.1),
-                        asList(
-                                new Metadata().add("key", 1.1),
-                                new Metadata().add("key", 1.1).add("key2", 2.2)
-                        ),
-                        asList(
-                                new Metadata().add("key", -1.1),
-                                new Metadata().add("key", 0.0),
-                                new Metadata().add("key", 1.11),
-                                new Metadata().add("key", 2.2),
-                                new Metadata().add("key2", 1.1)
-                        )
-                ))
-                .add(Arguments.of(
-                        key("key").eq(true),
-                        asList(
-                                new Metadata().add("key", true),
-                                new Metadata().add("key", true).add("key2", false)
-                        ),
-                        asList(
-                                new Metadata().add("key", false),
-                                new Metadata().add("key2", true)
-                        )
-                ))
-//                .add(Arguments.of(
-//                        key("key").eq('a'),
-//                        asList(
-//                                new Metadata().add("key", 'a'),
-//                                new Metadata().add("key", 'a').add("key2", 'b')
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", 'b'),
-//                                new Metadata().add("key2", 'a')
-//
-//                        )
-//                ))
 
-                // Equal: wrappers
-//                .add(Arguments.of(
-//                        key("key").eq(Byte.valueOf("1")),
-//                        asList(
-//                                new Metadata().add("key", Byte.valueOf("1")),
-//                                new Metadata().add("key", Byte.valueOf("1")).add("key2", Byte.valueOf("2"))
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", Byte.valueOf("-1")),
-//                                new Metadata().add("key", Byte.valueOf("0")),
-//                                new Metadata().add("key", Byte.valueOf("2")),
-//                                new Metadata().add("key", Byte.valueOf("10")),
-//                                new Metadata().add("key2", Byte.valueOf("1"))
-//                        )
-//                ))
-//                .add(Arguments.of(
-//                        key("key").eq(Short.valueOf("1")),
-//                        asList(
-//                                new Metadata().add("key", Short.valueOf("1")),
-//                                new Metadata().add("key", Short.valueOf("1")).add("key2", Short.valueOf("2"))
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", Short.valueOf("-1")),
-//                                new Metadata().add("key", Short.valueOf("0")),
-//                                new Metadata().add("key", Short.valueOf("2")),
-//                                new Metadata().add("key", Short.valueOf("10")),
-//                                new Metadata().add("key2", Short.valueOf("1"))
-//                        )
-//                ))
+                // long
                 .add(Arguments.of(
-                        key("key").eq(Integer.valueOf("1")),
+                        key("key").eq(Long.MIN_VALUE),
                         asList(
-                                new Metadata().add("key", Integer.valueOf("1")),
-                                new Metadata().add("key", Integer.valueOf("1")).add("key2", Integer.valueOf("2"))
+                                new Metadata().put("key", Long.MIN_VALUE),
+                                new Metadata().put("key", Long.MIN_VALUE).put("key2", 0L)
                         ),
                         asList(
-                                new Metadata().add("key", Integer.valueOf("-1")),
-                                new Metadata().add("key", Integer.valueOf("0")),
-                                new Metadata().add("key", Integer.valueOf("2")),
-                                new Metadata().add("key", Integer.valueOf("10")),
-                                new Metadata().add("key2", Integer.valueOf("1"))
+                                new Metadata().put("key", Long.MIN_VALUE + 1L),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", Long.MAX_VALUE),
+                                new Metadata().put("key2", Long.MIN_VALUE)
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(Long.valueOf("1")),
+                        key("key").eq(0L),
                         asList(
-                                new Metadata().add("key", Long.valueOf("1")),
-                                new Metadata().add("key", Long.valueOf("1")).add("key2", Long.valueOf("2"))
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", 0L).put("key2", 1L)
                         ),
                         asList(
-                                new Metadata().add("key", Long.valueOf("-1")),
-                                new Metadata().add("key", Long.valueOf("0")),
-                                new Metadata().add("key", Long.valueOf("2")),
-                                new Metadata().add("key", Long.valueOf("10")),
-                                new Metadata().add("key2", Long.valueOf("1"))
-                        )
-                ))
-//                .add(Arguments.of(
-//                        key("key").eq(Float.valueOf("1.1")),
-//                        asList(
-//                                new Metadata().add("key", Float.valueOf("1.1")),
-//                                new Metadata().add("key", Float.valueOf("1.1")).add("key2", Float.valueOf("2.2"))
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", Float.valueOf("-1.1")),
-//                                new Metadata().add("key", Float.valueOf("0.0")),
-//                                new Metadata().add("key", Float.valueOf("1.11")),
-//                                new Metadata().add("key", Float.valueOf("2.2")),
-//                                new Metadata().add("key2", Float.valueOf("1.1"))
-//                        )
-//                ))
-                .add(Arguments.of(
-                        key("key").eq(Double.valueOf("1.1")),
-                        asList(
-                                new Metadata().add("key", Double.valueOf("1.1")),
-                                new Metadata().add("key", Double.valueOf("1.1")).add("key2", Double.valueOf("2.2"))
-                        ),
-                        asList(
-                                new Metadata().add("key", Double.valueOf("-1.1")),
-                                new Metadata().add("key", Double.valueOf("0.0")),
-                                new Metadata().add("key", Double.valueOf("1.11")),
-                                new Metadata().add("key", Double.valueOf("2.2")),
-                                new Metadata().add("key2", Double.valueOf("1.1"))
+                                new Metadata().put("key", -1L),
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key2", 0L)
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(Boolean.TRUE),
+                        key("key").eq(Long.MAX_VALUE),
                         asList(
-                                new Metadata().add("key", Boolean.TRUE),
-                                new Metadata().add("key", Boolean.TRUE).add("key2", Boolean.FALSE)
+                                new Metadata().put("key", Long.MAX_VALUE),
+                                new Metadata().put("key", Long.MAX_VALUE).put("key2", 0L)
                         ),
                         asList(
-                                new Metadata().add("key", Boolean.FALSE),
-                                new Metadata().add("key2", Boolean.TRUE)
+                                new Metadata().put("key", Long.MIN_VALUE),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", Long.MAX_VALUE - 1L),
+                                new Metadata().put("key2", Long.MAX_VALUE)
                         )
                 ))
-//                .add(Arguments.of(
-//                        key("key").eq(Character.valueOf('a')),
-//                        asList(
-//                                new Metadata().add("key", Character.valueOf('a')),
-//                                new Metadata().add("key", Character.valueOf('a')).add("key2", Character.valueOf('b'))
-//                        ),
-//                        asList(
-//                                new Metadata().add("key", Character.valueOf('b')),
-//                                new Metadata().add("key2", Character.valueOf('a'))
-//                        )
-//                ))
+
+                // float
+                .add(Arguments.of(
+                        key("key").eq(-Float.MAX_VALUE),
+                        asList(
+                                new Metadata().put("key", -Float.MAX_VALUE),
+                                new Metadata().put("key", -Float.MAX_VALUE).put("key2", Float.MIN_VALUE)
+                        ),
+                        asList(
+                                new Metadata().put("key", Math.nextUp(-Float.MAX_VALUE)),
+                                new Metadata().put("key", Float.MIN_VALUE),
+                                new Metadata().put("key", Float.MAX_VALUE),
+                                new Metadata().put("key2", -Float.MAX_VALUE)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").eq(0f),
+                        asList(
+                                new Metadata().put("key", 0f),
+                                new Metadata().put("key", 0f).put("key2", 1f)
+                        ),
+                        asList(
+                                new Metadata().put("key", Math.nextDown(0f)),
+                                new Metadata().put("key", Math.nextUp(0f)),
+                                new Metadata().put("key2", 0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").eq(Float.MAX_VALUE),
+                        asList(
+                                new Metadata().put("key", Float.MAX_VALUE),
+                                new Metadata().put("key", Float.MAX_VALUE).put("key2", Float.MIN_VALUE)
+                        ),
+                        asList(
+                                new Metadata().put("key", -Float.MAX_VALUE),
+                                new Metadata().put("key", Float.MIN_VALUE),
+                                new Metadata().put("key", Math.nextDown(Float.MAX_VALUE)),
+                                new Metadata().put("key2", Float.MAX_VALUE)
+                        )
+                ))
+
+                // double
+                .add(Arguments.of(
+                        key("key").eq(-Double.MAX_VALUE),
+                        asList(
+                                new Metadata().put("key", -Double.MAX_VALUE),
+                                new Metadata().put("key", -Double.MAX_VALUE).put("key2", Double.MIN_VALUE)
+                        ),
+                        asList(
+                                new Metadata().put("key", Math.nextUp(-Double.MAX_VALUE)),
+                                new Metadata().put("key", Double.MIN_VALUE),
+                                new Metadata().put("key", Double.MAX_VALUE),
+                                new Metadata().put("key2", -Double.MAX_VALUE)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").eq(0d),
+                        asList(
+                                new Metadata().put("key", 0d),
+                                new Metadata().put("key", 0d).put("key2", 1d)
+                        ),
+                        asList(
+                                new Metadata().put("key", Math.nextDown(0d)),
+                                new Metadata().put("key", Math.nextUp(0d)),
+                                new Metadata().put("key2", 0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").eq(Double.MAX_VALUE),
+                        asList(
+                                new Metadata().put("key", Double.MAX_VALUE),
+                                new Metadata().put("key", Double.MAX_VALUE).put("key2", Double.MIN_VALUE)
+                        ),
+                        asList(
+                                new Metadata().put("key", -Double.MAX_VALUE),
+                                new Metadata().put("key", Double.MIN_VALUE),
+                                new Metadata().put("key", Math.nextDown(Double.MAX_VALUE)),
+                                new Metadata().put("key2", Double.MAX_VALUE)
+                        )
+                ))
 
 
                 // === GreaterThan ==
 
-                // GreaterThan: strings
                 .add(Arguments.of(
-                        key("key").gt("a"),
+                        key("key").gt("b"),
                         asList(
-                                new Metadata().add("key", "b"),
-                                new Metadata().add("key", "b").add("key2", "c")
+                                new Metadata().put("key", "c"),
+                                new Metadata().put("key", "c").put("key2", "a")
                         ),
-                        singletonList(new Metadata().add("key", "a"))
+                        asList(
+                                new Metadata().put("key", "a"),
+                                new Metadata().put("key", "b"),
+                                new Metadata().put("key2", "c")
+                        )
                 ))
-
-                // GreaterThan: primitives
-//                .add(Arguments.of(
-//                        key("key").gt((byte) 1),
-//                        asList(
-//                                new Metadata().add("key", (byte) 2),
-//                                new Metadata().add("key", (byte) 2).add("key2", (byte) 1)
-//                        ),
-//                        singletonList(new Metadata().add("key", (byte) 1))
-//                ))
-//                .add(Arguments.of(
-//                        key("key").gt((short) 1),
-//                        asList(
-//                                new Metadata().add("key", (short) 2),
-//                                new Metadata().add("key", (short) 2).add("key2", (short) 1)
-//                        ),
-//                        singletonList(new Metadata().add("key", (short) 1))
-//                ))
                 .add(Arguments.of(
                         key("key").gt(1),
                         asList(
-                                new Metadata().add("key", 2),
-                                new Metadata().add("key", 2).add("key2", 1)
+                                new Metadata().put("key", 2),
+                                new Metadata().put("key", 2).put("key2", 0)
                         ),
-                        singletonList(new Metadata().add("key", 1))
-                ))
-//                .add(Arguments.of(
-//                        key("key").gt(1L),
-//                        asList(
-//                                new Metadata().add("key", 2L),
-//                                new Metadata().add("key", 2L).add("key2", 1L)
-//                        ),
-//                        singletonList(new Metadata().add("key", 1L))
-//                ))
-//                .add(Arguments.of(
-//                        key("key").gt(1.1f),
-//                        asList(
-//                                new Metadata().add("key", 1.2f),
-//                                new Metadata().add("key", 1.2f).add("key2", 1.1f)
-//                        ),
-//                        singletonList(new Metadata().add("key", 1.1f))
-//                ))
-                .add(Arguments.of(
-                        key("key").gt(1.1),
                         asList(
-                                new Metadata().add("key", 1.2),
-                                new Metadata().add("key", 1.2).add("key2", 1.1)
-                        ),
-                        singletonList(new Metadata().add("key", 1.1))
+                                new Metadata().put("key", -2),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key2", 2)
+                        )
                 ))
-//                .add(Arguments.of(key("key").gt(true), new Metadata().add("key", true), new Metadata().add("key", false)))
-//                .add(Arguments.of(
-//                        key("key").gt('a'),
-//                        asList(
-//                                new Metadata().add("key", 'b'),
-//                                new Metadata().add("key", 'b').add("key2", 'a')
-//                        ),
-//                        singletonList(new Metadata().add("key", 'a'))
-//                ))
-
-                // GreaterThan: wrappers
-//                .add(Arguments.of(
-//                        key("key").gt(Byte.valueOf("1")),
-//                        asList(
-//                                new Metadata().add("key", Byte.valueOf("2")),
-//                                new Metadata().add("key", Byte.valueOf("2")).add("key2", Byte.valueOf("1"))
-//                        ),
-//                        singletonList(new Metadata().add("key", Byte.valueOf("1")))
-//                ))
-//                .add(Arguments.of(
-//                        key("key").gt(Short.valueOf("1")),
-//                        asList(
-//                                new Metadata().add("key", Short.valueOf("2")),
-//                                new Metadata().add("key", Short.valueOf("2")).add("key2", Short.valueOf("1"))
-//                        ),
-//                        singletonList(new Metadata().add("key", Short.valueOf("1")))
-//                ))
                 .add(Arguments.of(
-                        key("key").gt(Integer.valueOf("1")),
+                        key("key").gt(1L),
                         asList(
-                                new Metadata().add("key", Integer.valueOf("2")),
-                                new Metadata().add("key", Integer.valueOf("2")).add("key2", Integer.valueOf("1"))
+                                new Metadata().put("key", 2L),
+                                new Metadata().put("key", 2L).put("key2", 0L)
                         ),
-                        singletonList(new Metadata().add("key", Integer.valueOf("1")))
+                        asList(
+                                new Metadata().put("key", -2L),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key2", 2L)
+                        )
                 ))
-//                .add(Arguments.of(
-//                        key("key").gt(Long.valueOf("1")),
-//                        asList(
-//                                new Metadata().add("key", Long.valueOf("2")),
-//                                new Metadata().add("key", Long.valueOf("2")).add("key2", Long.valueOf("1"))
-//                        ),
-//                        singletonList(new Metadata().add("key", Long.valueOf("1")))
-//                ))
-//                .add(Arguments.of(
-//                        key("key").gt(Float.valueOf("1.1")),
-//                        asList(
-//                                new Metadata().add("key", Float.valueOf("1.2")),
-//                                new Metadata().add("key", Float.valueOf("1.2")).add("key2", Float.valueOf("1.1"))
-//                        ),
-//                        singletonList(new Metadata().add("key", Float.valueOf("1.1")))
-//                ))
                 .add(Arguments.of(
-                        key("key").gt(Double.valueOf("1.1")),
+                        key("key").gt(1.1f),
                         asList(
-                                new Metadata().add("key", Double.valueOf("1.2")),
-                                new Metadata().add("key", Double.valueOf("1.2")).add("key2", Double.valueOf("1.1"))
+                                new Metadata().put("key", 1.2f),
+                                new Metadata().put("key", 1.2f).put("key2", 1.0f)
                         ),
-                        singletonList(new Metadata().add("key", Double.valueOf("1.1")))
+                        asList(
+                                new Metadata().put("key", -1.2f),
+                                new Metadata().put("key", 0.0f),
+                                new Metadata().put("key", 1.1f),
+                                new Metadata().put("key2", 1.2f)
+                        )
                 ))
-//                .add(Arguments.of(key("key").gt(true), new Metadata().add("key", true), new Metadata().add("key", false)))
-//                .add(Arguments.of(
-//                        key("key").gt(Character.valueOf('a')),
-//                        asList(
-//                                new Metadata().add("key", Character.valueOf('b')),
-//                                new Metadata().add("key", Character.valueOf('b')).add("key2", Character.valueOf('a'))
-//                        ),
-//                        singletonList(new Metadata().add("key", Character.valueOf('a')))
-//                ))
+                .add(Arguments.of(
+                        key("key").gt(1.1d),
+                        asList(
+                                new Metadata().put("key", 1.2d),
+                                new Metadata().put("key", 1.2d).put("key2", 1.0d)
+                        ),
+                        asList(
+                                new Metadata().put("key", -1.2d),
+                                new Metadata().put("key", 0.0d),
+                                new Metadata().put("key", 1.1d),
+                                new Metadata().put("key2", 1.2d)
+                        )
+                ))
 
 
                 // === GreaterThanOrEqual ==
-                // TODO
+
+                .add(Arguments.of(
+                        key("key").gte("b"),
+                        asList(
+                                new Metadata().put("key", "b"),
+                                new Metadata().put("key", "c"),
+                                new Metadata().put("key", "c").put("key2", "a")
+                        ),
+                        asList(
+                                new Metadata().put("key", "a"),
+                                new Metadata().put("key2", "b")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").gte(1),
+                        asList(
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key", 2),
+                                new Metadata().put("key", 2).put("key2", 0)
+                        ),
+                        asList(
+                                new Metadata().put("key", -2),
+                                new Metadata().put("key", -1),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key2", 1),
+                                new Metadata().put("key2", 2)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").gte(1L),
+                        asList(
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key", 2L),
+                                new Metadata().put("key", 2L).put("key2", 0L)
+                        ),
+                        asList(
+                                new Metadata().put("key", -2L),
+                                new Metadata().put("key", -1L),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key2", 1L),
+                                new Metadata().put("key2", 2L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").gte(1.1f),
+                        asList(
+                                new Metadata().put("key", 1.1f),
+                                new Metadata().put("key", 1.2f),
+                                new Metadata().put("key", 1.2f).put("key2", 1.0f)
+                        ),
+                        asList(
+                                new Metadata().put("key", -1.2f),
+                                new Metadata().put("key", -1.1f),
+                                new Metadata().put("key", 0.0f),
+                                new Metadata().put("key2", 1.1f),
+                                new Metadata().put("key2", 1.2f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").gte(1.1d),
+                        asList(
+                                new Metadata().put("key", 1.1d),
+                                new Metadata().put("key", 1.2d),
+                                new Metadata().put("key", 1.2d).put("key2", 1.0d)
+                        ),
+                        asList(
+                                new Metadata().put("key", -1.2d),
+                                new Metadata().put("key", -1.1d),
+                                new Metadata().put("key", 0.0d),
+                                new Metadata().put("key2", 1.1d),
+                                new Metadata().put("key2", 1.2d)
+                        )
+                ))
+
+
+                // === LessThan ==
+
+                .add(Arguments.of(
+                        key("key").lt("b"),
+                        asList(
+
+                                new Metadata().put("key", "a"),
+                                new Metadata().put("key", "a").put("key2", "c")
+                        ),
+                        asList(
+                                new Metadata().put("key", "b"),
+                                new Metadata().put("key", "c"),
+                                new Metadata().put("key2", "a")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lt(1),
+                        asList(
+                                new Metadata().put("key", -2),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", 0).put("key2", 2)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key", 2),
+                                new Metadata().put("key2", 0)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lt(1L),
+                        asList(
+                                new Metadata().put("key", -2L),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", 0L).put("key2", 2L)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key", 2L),
+                                new Metadata().put("key2", 0L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lt(1.1f),
+                        asList(
+                                new Metadata().put("key", -1.2f),
+                                new Metadata().put("key", 1.0f),
+                                new Metadata().put("key", 1.0f).put("key2", 1.2f)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1.1f),
+                                new Metadata().put("key", 1.2f),
+                                new Metadata().put("key2", 1.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lt(1.1d),
+                        asList(
+                                new Metadata().put("key", -1.2d),
+                                new Metadata().put("key", 1.0d),
+                                new Metadata().put("key", 1.0d).put("key2", 1.2d)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1.1d),
+                                new Metadata().put("key", 1.2d),
+                                new Metadata().put("key2", 1.0d)
+                        )
+                ))
+
+
+                // === LessThanOrEqual ==
+
+                .add(Arguments.of(
+                        key("key").lte("b"),
+                        asList(
+
+                                new Metadata().put("key", "a"),
+                                new Metadata().put("key", "b"),
+                                new Metadata().put("key", "b").put("key2", "c")
+                        ),
+                        asList(
+                                new Metadata().put("key", "c"),
+                                new Metadata().put("key2", "a")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lte(1),
+                        asList(
+                                new Metadata().put("key", -2),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key", 1).put("key2", 2)
+                        ),
+                        asList(
+                                new Metadata().put("key", 2),
+                                new Metadata().put("key2", 0)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lte(1L),
+                        asList(
+                                new Metadata().put("key", -2L),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key", 1L).put("key2", 2L)
+                        ),
+                        asList(
+                                new Metadata().put("key", 2L),
+                                new Metadata().put("key2", 0L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lte(1.1f),
+                        asList(
+                                new Metadata().put("key", -1.2f),
+                                new Metadata().put("key", 1.0f),
+                                new Metadata().put("key", 1.1f),
+                                new Metadata().put("key", 1.1f).put("key2", 1.2f)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1.2f),
+                                new Metadata().put("key2", 1.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").lte(1.1d),
+                        asList(
+                                new Metadata().put("key", -1.2d),
+                                new Metadata().put("key", 1.0d),
+                                new Metadata().put("key", 1.1d),
+                                new Metadata().put("key", 1.1d).put("key2", 1.2d)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1.2d),
+                                new Metadata().put("key2", 1.0d)
+                        )
+                ))
 
 
                 // === In ===
 
-                // In: strings
+                // In: string
                 .add(Arguments.of(
                         key("name").in("Klaus"),
                         asList(
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("age", 42)
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus Heissler"),
-                                new Metadata().add("name", "Alice")
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name2", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").in(singletonList("Klaus")),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name2", "Klaus")
                         )
                 ))
                 .add(Arguments.of(
                         key("name").in("Klaus", "Alice"),
                         asList(
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("name", "Alice").add("age", 42)
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus Heissler"),
-                                new Metadata().add("name", "Zoe")
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Zoe"),
+                                new Metadata().put("name2", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").in(asList("Klaus", "Alice")),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Zoe"),
+                                new Metadata().put("name2", "Klaus")
                         )
                 ))
 
-                // TODO In: other types?
-
-                // In: integers
+                // In: integer
                 .add(Arguments.of(
                         key("age").in(42),
                         asList(
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 42).add("name", "Klaus")
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("name", "Klaus")
                         ),
-                        singletonList(
-                                new Metadata().add("age", 666)
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(new HashSet<>(singletonList(42))),
+                        key("age").in(singletonList(42)),
                         asList(
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 42).add("name", "Klaus")
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("name", "Klaus")
                         ),
-                        singletonList(
-                                new Metadata().add("age", 666)
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
                         )
                 ))
                 .add(Arguments.of(
                         key("age").in(42, 18),
                         asList(
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 18),
-                                new Metadata().add("age", 42).add("name", "Klaus"),
-                                new Metadata().add("age", 18).add("name", "Klaus")
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 18),
+                                new Metadata().put("age", 42).put("name", "Klaus"),
+                                new Metadata().put("age", 18).put("name", "Klaus")
                         ),
-                        singletonList(
-                                new Metadata().add("age", 666)
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(new HashSet<>(asList(42, 18))),
+                        key("age").in(asList(42, 18)),
                         asList(
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 18),
-                                new Metadata().add("age", 42).add("name", "Klaus"),
-                                new Metadata().add("age", 18).add("name", "Klaus")
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 18),
+                                new Metadata().put("age", 42).put("name", "Klaus"),
+                                new Metadata().put("age", 18).put("name", "Klaus")
                         ),
-                        singletonList(
-                                new Metadata().add("age", 666)
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
                         )
                 ))
 
-                // TODO In: array in metadata?
+                // In: long
+                .add(Arguments.of(
+                        key("age").in(42L),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 42L).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(singletonList(42L)),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 42L).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42L, 18L),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 18L),
+                                new Metadata().put("age", 42L).put("name", "Klaus"),
+                                new Metadata().put("age", 18L).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42L, 18L)),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 18L),
+                                new Metadata().put("age", 42L).put("name", "Klaus"),
+                                new Metadata().put("age", 18L).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        )
+                ))
 
+                // In: float
+                .add(Arguments.of(
+                        key("age").in(42.0f),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(singletonList(42.0f)),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42.0f, 18.0f),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 18.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0f).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42.0f, 18.0f)),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 18.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0f).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        )
+                ))
 
-                // === LessThan ===
-                // TODO
+                // In: double
+                .add(Arguments.of(
+                        key("age").in(42.0d),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(singletonList(42.0d)),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42.0d, 18.0d),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 18.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0d).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42.0d, 18.0d)),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 18.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0d).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        )
+                ))
 
-
-                // === LessThanOrEqual ===
-                // TODO
-
-
-                // === NotEqual ===
-                // TODO
-
-
-                // === NotIn ===
-                // TODO
+                // TODO test comparing to smaller, bigger types?
 
 
                 // === Or ===
@@ -556,13 +808,13 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 key("name").eq("Alice")
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("name", "Alice").add("age", 42)
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
                         ),
                         singletonList(
-                                new Metadata().add("name", "Zoe")
+                                new Metadata().put("name", "Zoe")
                         )
                 ))
                 .add(Arguments.of(
@@ -571,13 +823,13 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 key("name").eq("Klaus")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("name", "Alice").add("age", 42),
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("age", 42)
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
                         ),
                         singletonList(
-                                new Metadata().add("name", "Zoe")
+                                new Metadata().put("name", "Zoe")
                         )
                 ))
 
@@ -589,27 +841,27 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                         ),
                         asList(
                                 // only Or.left is present and true
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
 
                                 // Or.left is true, Or.right is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
+                                new Metadata().put("name", "Klaus").put("age", 666),
 
                                 // only Or.right is present and true
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 42).add("city", "Munich"),
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("city", "Munich"),
 
                                 // Or.right is true, Or.left is false
-                                new Metadata().add("age", 42).add("name", "Alice"),
+                                new Metadata().put("age", 42).put("name", "Alice"),
 
                                 // Or.left and Or.right are both true
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 666),
-                                new Metadata().add("name", "Alice").add("age", 666)
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 666),
+                                new Metadata().put("name", "Alice").put("age", 666)
                         )
                 ))
                 .add(Arguments.of(
@@ -619,27 +871,27 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                         ),
                         asList(
                                 // only Or.left is present and true
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 42).add("city", "Munich"),
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("city", "Munich"),
 
                                 // Or.left is true, Or.right is false
-                                new Metadata().add("age", 42).add("name", "Alice"),
+                                new Metadata().put("age", 42).put("name", "Alice"),
 
                                 // only Or.right is present and true
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
 
                                 // Or.right is true, Or.left is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
+                                new Metadata().put("name", "Klaus").put("age", 666),
 
                                 // Or.left and Or.right are both true
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 666),
-                                new Metadata().add("name", "Alice").add("age", 666)
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 666),
+                                new Metadata().put("name", "Alice").put("age", 666)
                         )
                 ))
 
@@ -654,42 +906,42 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                         ),
                         asList(
                                 // only Or.left is present and true
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("country", "Germany"),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("country", "Germany"),
 
                                 // Or.left is true, Or.right is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
-                                new Metadata().add("name", "Klaus").add("city", "Frankfurt"),
-                                new Metadata().add("name", "Klaus").add("age", 666).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 666),
+                                new Metadata().put("name", "Klaus").put("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 666).put("city", "Frankfurt"),
 
                                 // only Or.right is present and true
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 42).add("country", "Germany"),
-                                new Metadata().add("city", "Munich"),
-                                new Metadata().add("city", "Munich").add("country", "Germany"),
-                                new Metadata().add("age", 42).add("city", "Munich"),
-                                new Metadata().add("age", 42).add("city", "Munich").add("country", "Germany"),
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("country", "Germany"),
+                                new Metadata().put("city", "Munich"),
+                                new Metadata().put("city", "Munich").put("country", "Germany"),
+                                new Metadata().put("age", 42).put("city", "Munich"),
+                                new Metadata().put("age", 42).put("city", "Munich").put("country", "Germany"),
 
                                 // Or.right is true, Or.left is false
-                                new Metadata().add("age", 42).add("name", "Alice"),
-                                new Metadata().add("city", "Munich").add("name", "Alice"),
-                                new Metadata().add("age", 42).add("city", "Munich").add("name", "Alice"),
+                                new Metadata().put("age", 42).put("name", "Alice"),
+                                new Metadata().put("city", "Munich").put("name", "Alice"),
+                                new Metadata().put("age", 42).put("city", "Munich").put("name", "Alice"),
 
                                 // Or.left and Or.right are both true
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich").add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich").put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 666),
-                                new Metadata().add("city", "Frankfurt"),
-                                new Metadata().add("name", "Alice").add("age", 666),
-                                new Metadata().add("name", "Alice").add("city", "Frankfurt"),
-                                new Metadata().add("name", "Alice").add("age", 666).add("city", "Frankfurt")
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 666),
+                                new Metadata().put("city", "Frankfurt"),
+                                new Metadata().put("name", "Alice").put("age", 666),
+                                new Metadata().put("name", "Alice").put("city", "Frankfurt"),
+                                new Metadata().put("name", "Alice").put("age", 666).put("city", "Frankfurt")
                         )
                 ))
                 .add(Arguments.of(
@@ -702,41 +954,41 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                         ),
                         asList(
                                 // only Or.left is present and true
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("country", "Germany"),
-                                new Metadata().add("age", 42),
-                                new Metadata().add("age", 42).add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("country", "Germany"),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("country", "Germany"),
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
 
                                 // Or.left is true, Or.right is false
-                                new Metadata().add("name", "Klaus").add("city", "Frankfurt"),
-                                new Metadata().add("age", 42).add("city", "Frankfurt"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("city", "Frankfurt"),
+                                new Metadata().put("age", 42).put("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
 
                                 // only Or.right is present and true
-                                new Metadata().add("city", "Munich"),
-                                new Metadata().add("city", "Munich").add("country", "Germany"),
+                                new Metadata().put("city", "Munich"),
+                                new Metadata().put("city", "Munich").put("country", "Germany"),
 
                                 // Or.right is true, Or.left is false
-                                new Metadata().add("city", "Munich").add("name", "Alice"),
-                                new Metadata().add("city", "Munich").add("age", 666),
+                                new Metadata().put("city", "Munich").put("name", "Alice"),
+                                new Metadata().put("city", "Munich").put("age", 666),
 
                                 // Or.left and Or.right are both true
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich").add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich").put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 666),
-                                new Metadata().add("city", "Frankfurt"),
-                                new Metadata().add("name", "Alice").add("age", 666),
-                                new Metadata().add("name", "Alice").add("city", "Frankfurt"),
-                                new Metadata().add("name", "Alice").add("age", 666).add("city", "Frankfurt")
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 666),
+                                new Metadata().put("city", "Frankfurt"),
+                                new Metadata().put("name", "Alice").put("age", 666),
+                                new Metadata().put("name", "Alice").put("city", "Frankfurt"),
+                                new Metadata().put("name", "Alice").put("age", 666).put("city", "Frankfurt")
                         )
                 ))
 
@@ -748,24 +1000,24 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 key("age").eq(42)
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich")
                         ),
                         asList(
                                 // only And.left is present and true
-                                new Metadata().add("name", "Klaus"),
+                                new Metadata().put("name", "Klaus"),
 
                                 // And.left is true, And.right is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
+                                new Metadata().put("name", "Klaus").put("age", 666),
 
                                 // only And.right is present and true
-                                new Metadata().add("age", 42),
+                                new Metadata().put("age", 42),
 
                                 // And.right is true, And.left is false
-                                new Metadata().add("age", 42).add("name", "Alice"),
+                                new Metadata().put("age", 42).put("name", "Alice"),
 
                                 // And.left, And.right are both false
-                                new Metadata().add("age", 666).add("name", "Alice")
+                                new Metadata().put("age", 666).put("name", "Alice")
                         )
                 ))
                 .add(Arguments.of(
@@ -774,24 +1026,24 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 key("name").eq("Klaus")
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich")
                         ),
                         asList(
                                 // only And.left is present and true
-                                new Metadata().add("age", 42),
+                                new Metadata().put("age", 42),
 
                                 // And.left is true, And.right is false
-                                new Metadata().add("age", 42).add("name", "Alice"),
+                                new Metadata().put("age", 42).put("name", "Alice"),
 
                                 // only And.right is present and true
-                                new Metadata().add("name", "Klaus"),
+                                new Metadata().put("name", "Klaus"),
 
                                 // And.right is true, And.left is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
+                                new Metadata().put("name", "Klaus").put("age", 666),
 
                                 // And.left, And.right are both false
-                                new Metadata().add("age", 666).add("name", "Alice")
+                                new Metadata().put("age", 666).put("name", "Alice")
                         )
                 ))
 
@@ -805,24 +1057,24 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 )
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
                                 // only And.left is present and true
-                                new Metadata().add("name", "Klaus"),
+                                new Metadata().put("name", "Klaus"),
 
                                 // And.left is true, And.right is false
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 666).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 666).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
 
                                 // only And.right is present and true
-                                new Metadata().add("age", 42).add("city", "Munich"),
+                                new Metadata().put("age", 42).put("city", "Munich"),
 
                                 // And.right is true, And.left is false
-                                new Metadata().add("age", 42).add("city", "Munich").add("name", "Alice")
+                                new Metadata().put("age", 42).put("city", "Munich").put("name", "Alice")
                         )
                 ))
                 .add(Arguments.of(
@@ -834,24 +1086,24 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 key("city").eq("Munich")
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
                                 // only And.left is present and true
-                                new Metadata().add("name", "Klaus").add("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42),
 
                                 // And.left is true, And.right is false
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
 
                                 // only And.right is present and true
-                                new Metadata().add("city", "Munich"),
+                                new Metadata().put("city", "Munich"),
 
                                 // And.right is true, And.left is false
-                                new Metadata().add("city", "Munich").add("name", "Klaus"),
-                                new Metadata().add("city", "Munich").add("name", "Klaus").add("age", 666),
-                                new Metadata().add("city", "Munich").add("age", 42),
-                                new Metadata().add("city", "Munich").add("age", 42).add("name", "Alice")
+                                new Metadata().put("city", "Munich").put("name", "Klaus"),
+                                new Metadata().put("city", "Munich").put("name", "Klaus").put("age", 666),
+                                new Metadata().put("city", "Munich").put("age", 42),
+                                new Metadata().put("city", "Munich").put("age", 42).put("name", "Alice")
                         )
                 ))
 
@@ -866,30 +1118,30 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 )
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich").add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich").put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
                                 // only And.left is present and true
-                                new Metadata().add("name", "Klaus"),
+                                new Metadata().put("name", "Klaus"),
 
                                 // And.left is true, And.right is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
-                                new Metadata().add("name", "Klaus").add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 666),
+                                new Metadata().put("name", "Klaus").put("city", "Frankfurt"),
 
                                 // only And.right is present and true
-                                new Metadata().add("age", 42),
-                                new Metadata().add("city", "Munich"),
-                                new Metadata().add("age", 42).add("city", "Munich"),
+                                new Metadata().put("age", 42),
+                                new Metadata().put("city", "Munich"),
+                                new Metadata().put("age", 42).put("city", "Munich"),
 
                                 // And.right is true, And.left is false
-                                new Metadata().add("age", 42).add("name", "Alice"),
-                                new Metadata().add("city", "Munich").add("name", "Alice"),
-                                new Metadata().add("age", 42).add("city", "Munich").add("name", "Alice")
+                                new Metadata().put("age", 42).put("name", "Alice"),
+                                new Metadata().put("city", "Munich").put("name", "Alice"),
+                                new Metadata().put("age", 42).put("city", "Munich").put("name", "Alice")
                         )
                 ))
                 .add(Arguments.of(
@@ -901,31 +1153,31 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                                 key("city").eq("Munich")
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus").add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("city", "Munich").add("country", "Germany"),
-                                new Metadata().add("age", 42).add("city", "Munich"),
-                                new Metadata().add("age", 42).add("city", "Munich").add("country", "Germany"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("city", "Munich").put("country", "Germany"),
+                                new Metadata().put("age", 42).put("city", "Munich"),
+                                new Metadata().put("age", 42).put("city", "Munich").put("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
                                 // only And.left is present and true
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42),
 
                                 // And.left is true, And.right is false
-                                new Metadata().add("name", "Klaus").add("city", "Frankfurt"),
-                                new Metadata().add("age", 42).add("city", "Frankfurt"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("city", "Frankfurt"),
+                                new Metadata().put("age", 42).put("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
 
                                 // only And.right is present and true
-                                new Metadata().add("city", "Munich"),
+                                new Metadata().put("city", "Munich"),
 
                                 // And.right is true, And.left is false
-                                new Metadata().add("city", "Munich").add("name", "Alice"),
-                                new Metadata().add("city", "Munich").add("age", 666),
-                                new Metadata().add("city", "Munich").add("name", "Alice").add("age", 666)
+                                new Metadata().put("city", "Munich").put("name", "Alice"),
+                                new Metadata().put("city", "Munich").put("age", 666),
+                                new Metadata().put("city", "Munich").put("name", "Alice").put("age", 666)
                         )
                 ))
 
@@ -940,26 +1192,26 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                         ),
                         asList(
                                 // only Or.left is present and true
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("country", "Germany"),
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("country", "Germany"),
 
                                 // Or.left is true, Or.right is false
-                                new Metadata().add("name", "Klaus").add("age", 666),
-                                new Metadata().add("name", "Klaus").add("city", "Frankfurt"),
-                                new Metadata().add("name", "Klaus").add("age", 666).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 666),
+                                new Metadata().put("name", "Klaus").put("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 666).put("city", "Frankfurt"),
 
                                 // only Or.right is present and true
-                                new Metadata().add("age", 42).add("city", "Munich"),
-                                new Metadata().add("age", 42).add("city", "Munich").add("country", "Germany"),
+                                new Metadata().put("age", 42).put("city", "Munich"),
+                                new Metadata().put("age", 42).put("city", "Munich").put("country", "Germany"),
 
                                 // Or.right is true, Or.left is false
-                                new Metadata().add("age", 42).add("city", "Munich").add("name", "Alice")
+                                new Metadata().put("age", 42).put("city", "Munich").put("name", "Alice")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 666),
-                                new Metadata().add("city", "Frankfurt"),
-                                new Metadata().add("name", "Alice").add("age", 666).add("city", "Frankfurt")
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 666),
+                                new Metadata().put("city", "Frankfurt"),
+                                new Metadata().put("name", "Alice").put("age", 666).put("city", "Frankfurt")
                         )
                 ))
                 .add(Arguments.of(
@@ -972,32 +1224,30 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
                         ),
                         asList(
                                 // only Or.left is present and true
-                                new Metadata().add("name", "Klaus").add("age", 42),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("country", "Germany"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
 
                                 // Or.left is true, Or.right is false
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Frankfurt"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
 
                                 // only Or.right is present and true
-                                new Metadata().add("city", "Munich"),
-                                new Metadata().add("city", "Munich").add("country", "Germany"),
+                                new Metadata().put("city", "Munich"),
+                                new Metadata().put("city", "Munich").put("country", "Germany"),
 
                                 // Or.right is true, Or.left is true
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich"),
-                                new Metadata().add("name", "Klaus").add("age", 42).add("city", "Munich").add("country", "Germany")
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
+                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 666),
-                                new Metadata().add("city", "Frankfurt"),
-                                new Metadata().add("name", "Alice").add("age", 666).add("city", "Frankfurt")
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 666),
+                                new Metadata().put("city", "Frankfurt"),
+                                new Metadata().put("name", "Alice").put("age", 666).put("city", "Frankfurt")
                         )
                 ))
 
                 .build();
     }
-
-    // TODO test list, set, map?
 
     @ParameterizedTest
     @MethodSource
@@ -1026,42 +1276,373 @@ public abstract class EmbeddingStoreWithMetadataFilteringIT extends EmbeddingSto
         Embedding queryEmbedding = embeddingModel().embed("matching").content();
 
         assertThat(embeddingStore().findRelevant(queryEmbedding, 100))
+                // +1 for notMatchingSegmentWithoutMetadata
                 .hasSize(matchingMetadatas.size() + notMatchingMetadatas.size() + 1);
 
-        SearchRequest searchRequest = SearchRequest.builder()
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
                 .metadataFilter(metadataFilter)
                 .maxResults(100)
                 .build();
 
         // when
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(searchRequest);
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
 
         // then
         assertThat(matches).hasSize(matchingMetadatas.size() + 1); // +1 for notMatchingSegmentWithoutMetadata
-        HashSet<Metadata> expected = new HashSet<>(matchingMetadatas);
-        expected.add(new Metadata()); // for notMatchingSegmentWithoutMetadata
-        assertThat(matches.stream().map(match -> match.embedded().metadata()).collect(toSet())).isEqualTo(expected);
         matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
         matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
-        // TODO fix int/long float/double types assertThat(matches.get(0).embedded()).isEqualTo(matchingSegment);
     }
 
     static Stream<Arguments> should_filter_by_metadata_not() {
         return Stream.<Arguments>builder()
+
+                // === Not ===
                 .add(Arguments.of(
                         not(
                                 key("name").eq("Klaus")
                         ),
                         asList(
-                                new Metadata().add("name", "Alice"),
-                                new Metadata().add("age", 42)
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("age", 42)
                         ),
                         asList(
-                                new Metadata().add("name", "Klaus"),
-                                new Metadata().add("name", "Klaus").add("age", 42)
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
                         )
                 ))
+
+
+                // === NotEqual ===
+
+                .add(Arguments.of(
+                        key("key").ne("a"),
+                        asList(
+                                new Metadata().put("key", "A"),
+                                new Metadata().put("key", "b"),
+                                new Metadata().put("key", "aa"),
+                                new Metadata().put("key", "a a"),
+                                new Metadata().put("key2", "a")
+                        ),
+                        asList(
+                                new Metadata().put("key", "a"),
+                                new Metadata().put("key", "a").put("key2", "b")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").ne(1),
+                        asList(
+                                new Metadata().put("key", -1),
+                                new Metadata().put("key", 0),
+                                new Metadata().put("key", 2),
+                                new Metadata().put("key", 10),
+                                new Metadata().put("key2", 1)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key", 1).put("key2", 2)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").ne(1L),
+                        asList(
+                                new Metadata().put("key", -1L),
+                                new Metadata().put("key", 0L),
+                                new Metadata().put("key", 2L),
+                                new Metadata().put("key", 10L),
+                                new Metadata().put("key2", 1L)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key", 1L).put("key2", 2L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").ne(1.1f),
+                        asList(
+                                new Metadata().put("key", -1.1f),
+                                new Metadata().put("key", 0.0f),
+                                new Metadata().put("key", 1.11f),
+                                new Metadata().put("key", 2.2f),
+                                new Metadata().put("key2", 1.1f)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1.1f),
+                                new Metadata().put("key", 1.1f).put("key2", 2.2f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("key").ne(1.1),
+                        asList(
+                                new Metadata().put("key", -1.1),
+                                new Metadata().put("key", 0.0),
+                                new Metadata().put("key", 1.11),
+                                new Metadata().put("key", 2.2),
+                                new Metadata().put("key2", 1.1)
+                        ),
+                        asList(
+                                new Metadata().put("key", 1.1),
+                                new Metadata().put("key", 1.1).put("key2", 2.2)
+                        )
+                ))
+
+
+                // === NotIn ===
+
+                // NotIn: string
+                .add(Arguments.of(
+                        key("name").nin("Klaus"),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name2", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").nin(singletonList("Klaus")),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name2", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").nin("Klaus", "Alice"),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Zoe"),
+                                new Metadata().put("name2", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").nin(asList("Klaus", "Alice")),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Zoe"),
+                                new Metadata().put("name2", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
+                        )
+                ))
+
+                // NotIn: int
+                .add(Arguments.of(
+                        key("age").nin(42),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(singletonList(42)),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42, 18),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 18),
+                                new Metadata().put("age", 42).put("name", "Klaus"),
+                                new Metadata().put("age", 18).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42, 18)),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 18),
+                                new Metadata().put("age", 42).put("name", "Klaus"),
+                                new Metadata().put("age", 18).put("name", "Klaus")
+                        )
+                ))
+
+                // NotIn: long
+                .add(Arguments.of(
+                        key("age").nin(42L),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 42L).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(singletonList(42L)),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 42L).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42L, 18L),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 18L),
+                                new Metadata().put("age", 42L).put("name", "Klaus"),
+                                new Metadata().put("age", 18L).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42L, 18L)),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 18L),
+                                new Metadata().put("age", 42L).put("name", "Klaus"),
+                                new Metadata().put("age", 18L).put("name", "Klaus")
+                        )
+                ))
+
+                // NotIn: float
+                .add(Arguments.of(
+                        key("age").nin(42.0f),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(singletonList(42.0f)),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42.0f, 18.0f),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 18.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0f).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42.0f, 18.0f)),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 18.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0f).put("name", "Klaus")
+                        )
+                ))
+
+                // NotIn: double
+                .add(Arguments.of(
+                        key("age").nin(42.0d),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(singletonList(42.0d)),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42.0d, 18.0d),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 18.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0d).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42.0d, 18.0d)),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 18.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0d).put("name", "Klaus")
+                        )
+                ))
+
                 .build();
     }
 }

@@ -7,38 +7,42 @@ import lombok.ToString;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureSameType;
+import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
+import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
 
 @ToString
 @EqualsAndHashCode
 public class LessThan implements MetadataFilter {
 
-    // TODO remove in favor of Not(GreaterThanOrEqual) ?
-
     private final String key;
-    private final Comparable comparisonValue;
+    private final Comparable<?> comparisonValue;
 
-    public LessThan(String key, Comparable comparisonValue) {
+    public LessThan(String key, Comparable<?> comparisonValue) {
         this.key = ensureNotBlank(key, "key");
-        this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue");
+        this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
 
     public String key() {
         return key;
     }
 
-    public Comparable comparisonValue() {
+    public Comparable<?> comparisonValue() {
         return comparisonValue;
     }
 
     @Override
     public boolean test(Metadata metadata) {
-        Object actualValue = metadata.getObject(key);
-        if (actualValue == null) {
+        if (!metadata.containsKey(key)) {
             return false;
         }
 
-        ensureSameType(actualValue, comparisonValue, key);
+        Object actualValue = metadata.getObject(key);
+        ensureTypesAreCompatible(actualValue, comparisonValue, key);
+
+        if (actualValue instanceof Number) {
+            return compareAsBigDecimals(actualValue, comparisonValue) < 0;
+        }
+
         return ((Comparable) actualValue).compareTo(comparisonValue) < 0;
     }
 }
