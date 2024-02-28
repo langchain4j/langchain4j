@@ -132,7 +132,7 @@ Please note that the library is in active development and:
 - We need your input! Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features
   you need and your concerns about the current implementation.
 
-### Coming soon:
+### Coming soon
 
 - Extending "AI Service" features
 - Integration with more LLM providers (commercial and free)
