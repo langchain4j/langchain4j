@@ -29,7 +29,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: patch
-          github-token: ${{ secrets.GH_PAT_ACTIONS_READ }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
       - name: Apply patch
         run: |
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: pr_number
-          github-token: ${{ secrets.GH_PAT_ACTIONS_READ }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
       - name: Read pr_number.txt
         run: |
