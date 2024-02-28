@@ -261,7 +261,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.SIMILARITY, minScore);
     }
 
     List<EmbeddingMatch<TextSegment>> findRelevantWithFullText(String content, int maxResults, double minScore) {
@@ -271,7 +271,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setTop(maxResults),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.FULL_TEXT, minScore);
     }
 
     List<EmbeddingMatch<TextSegment>> findRelevantWithSimilarityHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
@@ -288,7 +288,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setTop(maxResults),
                         Context.NONE);
 
-                return mapResultsToEmbeddingMatches(searchResults, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.SIMILARITY_HYBRID, minScore);
     }
 
     List<EmbeddingMatch<TextSegment>> findRelevantWithSemanticHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
@@ -307,13 +307,13 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setTop(maxResults),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.SEMANTIC_HYBRID, minScore);
     }
 
-    private List<EmbeddingMatch<TextSegment>> mapResultsToEmbeddingMatches(SearchPagedIterable searchResults, double minScore) {
+    private List<EmbeddingMatch<TextSegment>> mapResultsToEmbeddingMatches(SearchPagedIterable searchResults, QueryType queryType, double minScore) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
-            Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
+            Double score = fromAzureScoreToRelevanceScore(searchResult.getScore(), queryType);
             if (score < minScore) {
                 continue;
             }
@@ -402,17 +402,32 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     /**
      * Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
-     *
-     * Score in Azure AI Search is transformed into a cosine similarity as described here:
-     * https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
-     *
-     * RelevanceScore in LangChain4j is a derivative of cosine similarity,
-     * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
      */
-    private double fromAzureScoreToRelevanceScore(double score) {
-        double cosineDistance = (1 - score) / score;
-        double cosineSimilarity = -cosineDistance + 1;
-        return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
+    private double fromAzureScoreToRelevanceScore(double score, QueryType queryType) {
+        if (queryType == QueryType.SIMILARITY) {
+            // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
+
+           //  Score in Azure AI Search is transformed into a cosine similarity as described here:
+           // https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
+
+           // RelevanceScore in LangChain4j is a derivative of cosine similarity,
+           // but it compresses it into 0..1 range (instead of -1..1) for ease of use.
+
+            double cosineDistance = (1 - score) / score;
+            double cosineSimilarity = -cosineDistance + 1;
+            return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
+        } else if (queryType == QueryType.FULL_TEXT) {
+            // Search score is into 0..1 range already
+            return score;
+        } else if (queryType == QueryType.SIMILARITY_HYBRID) {
+            // Search score is into 0..1 range already
+            return score;
+        } else if (queryType == QueryType.SEMANTIC_HYBRID) {
+            // Re-ranker score is into 0..4 range
+            return score/4.0;
+        } else {
+            throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + queryType);
+        }
     }
 
     public static Builder builder() {

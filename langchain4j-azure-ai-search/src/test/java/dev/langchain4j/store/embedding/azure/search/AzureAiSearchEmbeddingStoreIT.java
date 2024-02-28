@@ -166,7 +166,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
         awaitUntilPersisted();
 
-        String content = "A philosopher who was in the French Resistance";
+        String content = "Algeria";
         Embedding relevantEmbedding = embeddingModel.embed(content).content();
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithHybrid.findRelevant(relevantEmbedding, content, 1, 0);
         assertThat(relevant).hasSize(1);
@@ -229,7 +229,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void awaitUntilPersisted() {
         try {
-            Thread.sleep(5_000);
+            Thread.sleep(1_000);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
