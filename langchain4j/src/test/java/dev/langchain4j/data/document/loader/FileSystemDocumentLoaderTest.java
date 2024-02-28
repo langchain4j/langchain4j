@@ -27,7 +27,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("/"), new TextDocumentParser()))
-                .withMessageContaining("/ is not a file");
+                .withMessageContaining("is not a file");
     }
 
     @Test

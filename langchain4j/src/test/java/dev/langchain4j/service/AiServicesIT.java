@@ -1,9 +1,9 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.*;
-import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -12,8 +12,6 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.Builder;
@@ -38,7 +36,6 @@ import static dev.langchain4j.data.message.ChatMessageSerializer.messagesToJson;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
-import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.ChatWithMemory.ANOTHER_SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesIT.ChatWithMemory.SYSTEM_MESSAGE;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
@@ -47,7 +44,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.data.Percentage.withPercentage;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -133,7 +129,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31")));
+                        "You must answer strictly in the following format: yyyy-MM-dd")));
     }
 
     @Test
@@ -150,7 +146,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract time from " + text + "\n" +
-                        "You must answer strictly in the following format: 23:59:59")));
+                        "You must answer strictly in the following format: HH:mm:ss")));
     }
 
     @Test
@@ -167,7 +163,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract date and time from " + text + "\n" +
-                        "You must answer strictly in the following format: 2023-12-31T23:59:59")));
+                        "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
     }
 
 
@@ -200,7 +196,7 @@ public class AiServicesIT {
 
 
     @ToString
-    static class Address  {
+    static class Address {
         private Integer streetNumber;
         private String street;
         private String city;
@@ -249,9 +245,9 @@ public class AiServicesIT {
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "\"address\": (type: {\n" +
-                            "\"streetNumber\": (type: integer),\n" +
-                            "\"street\": (type: string),\n" +
-                            "\"city\": (type: string),\n" +
+                        "\"streetNumber\": (type: integer),\n" +
+                        "\"street\": (type: string),\n" +
+                        "\"city\": (type: string),\n" +
                         "}),\n" +
                         "}")));
     }
@@ -319,10 +315,16 @@ public class AiServicesIT {
         @UserMessage("Create recipe using only {{it}}")
         Recipe createRecipeFrom(String... ingredients);
 
+        @UserMessage(fromResource = "chefs-prompt-based-on-ingredients.txt")
+        Recipe createRecipeFromUsingResource(String... ingredients);
+
         Recipe createRecipeFrom(CreateRecipePrompt prompt);
 
         @SystemMessage("You are very {{character}} chef")
         Recipe createRecipeFrom(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
+
+        @SystemMessage(fromResource = "chefs-prompt-system-message.txt")
+        Recipe createRecipeFromUsingResource(@UserMessage CreateRecipePrompt prompt, @V("character") String character);
     }
 
     @Test
@@ -348,6 +350,57 @@ public class AiServicesIT {
                         "}")));
     }
 
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "}")));
+    }
+
+    interface BadChef {
+        public static final String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
+        public static final String CHEFS_PROMPT_IS_EMPTY_TXT = "chefs-prompt-is-empty.txt";
+
+        @UserMessage(fromResource = CHEFS_PROMPT_DOES_NOT_EXIST_TXT)
+        Recipe createRecipeFromNonExistingResource(String... ingredients);
+
+        @UserMessage(fromResource = CHEFS_PROMPT_IS_EMPTY_TXT)
+        Recipe createRecipeFromEmptyResource(String... ingredients);
+    }
+
+    @Test
+    void test_call_model_with_missing_resource() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeFromNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
+    }
+
+    @Test
+    void test_call_model_with_empty_resource() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeFromEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("@UserMessage's template cannot be empty");
+    }
 
     @Builder
     @StructuredPrompt("Create a recipe of a {{dish}} that can be prepared using only {{ingredients}}")
@@ -397,6 +450,37 @@ public class AiServicesIT {
                 .build();
 
         Recipe recipe = chef.createRecipeFrom(prompt, "funny");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(asList(
+                systemMessage("You are very funny chef"),
+                userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "}")
+        ));
+    }
+
+    @Test
+    void test_create_recipe_using_structured_prompt_and_system_message_from_resource() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        CreateRecipePrompt prompt = CreateRecipePrompt
+                .builder()
+                .dish("salad")
+                .ingredients(asList("cucumber", "tomato", "feta", "onion", "olives"))
+                .build();
+
+        Recipe recipe = chef.createRecipeFromUsingResource(prompt, "funny");
         System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
@@ -737,264 +821,6 @@ public class AiServicesIT {
                 aiMessage(firstAiResponseToSecondUser),
                 userMessage(secondMessageFromSecondUser),
                 aiMessage(secondAiResponseToSecondUser)
-        );
-    }
-
-
-    interface Assistant {
-
-        Response<AiMessage> chat(String userMessage);
-    }
-
-    static class Calculator {
-
-        @Tool("calculates the square root of the provided number")
-        double squareRoot(@P("number to operate on") double number) {
-            return Math.sqrt(number);
-        }
-    }
-
-    @Test
-    void should_execute_a_tool_then_answer() {
-
-        Calculator calculator = spy(new Calculator());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(calculator)
-                .build();
-
-        String userMessage = "What is the square root of 485906798473894056 in scientific notation?";
-
-        Response<AiMessage> response = assistant.chat(userMessage);
-
-        assertThat(response.content().text()).contains("6.97");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(72 + 110);
-        assertThat(tokenUsage.outputTokenCount()).isCloseTo(21 + 28, withPercentage(5));
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-
-
-        verify(calculator).squareRoot(485906798473894056.0);
-        verifyNoMoreInteractions(calculator);
-
-
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(4);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
-
-        ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
-        assertThat(toolExecutionResultMessage.toolName()).isEqualTo("squareRoot");
-        assertThat(toolExecutionResultMessage.text()).isEqualTo("6.97070153193991E8");
-
-        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3).text()).contains("6.97");
-
-
-        verify(chatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(calculatorSpecification)
-        );
-
-        verify(chatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(calculatorSpecification)
-        );
-    }
-
-    @Test
-    void should_execute_multiple_tools_sequentially_then_answer() {
-
-        Calculator calculator = spy(new Calculator());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(calculator)
-                .build();
-
-        String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
-
-        Response<AiMessage> response = assistant.chat(userMessage);
-
-        assertThat(response.content().text()).contains("6.97", "9.89");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(79 + 117 + 152);
-        assertThat(tokenUsage.outputTokenCount()).isCloseTo(21 + 20 + 53, withPercentage(5));
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-
-
-        verify(calculator).squareRoot(485906798473894056.0);
-        verify(calculator).squareRoot(97866249624785.0);
-        verifyNoMoreInteractions(calculator);
-
-
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(6);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
-
-        ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(toolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
-        assertThat(toolExecutionResultMessage.toolName()).isEqualTo("squareRoot");
-        assertThat(toolExecutionResultMessage.text()).isEqualTo("6.97070153193991E8");
-
-        AiMessage secondAiMessage = (AiMessage) messages.get(3);
-        assertThat(secondAiMessage.text()).isNull();
-        assertThat(secondAiMessage.toolExecutionRequests()).hasSize(1);
-        ToolExecutionRequest secondToolExecutionRequest = secondAiMessage.toolExecutionRequests().get(0);
-        assertThat(secondToolExecutionRequest.id()).isNotBlank();
-        assertThat(secondToolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(secondToolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": 97866249624785}");
-
-        ToolExecutionResultMessage secondToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(4);
-        assertThat(secondToolExecutionResultMessage.id()).isEqualTo(secondToolExecutionRequest.id());
-        assertThat(secondToolExecutionResultMessage.toolName()).isEqualTo("squareRoot");
-        assertThat(secondToolExecutionResultMessage.text()).isEqualTo("9892737.215997653");
-
-        assertThat(messages.get(5)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(5).text()).contains("6.97", "9.89");
-
-
-        verify(chatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(calculatorSpecification)
-        );
-
-        verify(chatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(calculatorSpecification)
-        );
-
-        verify(chatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4)),
-                singletonList(calculatorSpecification)
-        );
-    }
-
-    @Test
-    void should_execute_multiple_tools_in_parallel_then_answer() {
-
-        Calculator calculator = spy(new Calculator());
-
-        ChatLanguageModel chatLanguageModel = spy(OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106)
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build());
-
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .tools(calculator)
-                .build();
-
-        String userMessage = "What is the square root of 485906798473894056 and 97866249624785 in scientific notation?";
-
-        Response<AiMessage> response = assistant.chat(userMessage);
-
-        assertThat(response.content().text()).contains("6.97", "9.89");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(79 + 160);
-        assertThat(tokenUsage.outputTokenCount()).isCloseTo(54 + 58, withPercentage(5));
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isEqualTo(STOP);
-
-
-        verify(calculator).squareRoot(485906798473894056.0);
-        verify(calculator).squareRoot(97866249624785.0);
-        verifyNoMoreInteractions(calculator);
-
-
-        List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(5);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
-
-        ToolExecutionRequest firstToolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(firstToolExecutionRequest.id()).isNotBlank();
-        assertThat(firstToolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(firstToolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": 485906798473894056}");
-
-        ToolExecutionRequest secondToolExecutionRequest = aiMessage.toolExecutionRequests().get(1);
-        assertThat(secondToolExecutionRequest.id()).isNotBlank();
-        assertThat(secondToolExecutionRequest.name()).isEqualTo("squareRoot");
-        assertThat(secondToolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\": 97866249624785}");
-
-        ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(firstToolExecutionResultMessage.id()).isEqualTo(firstToolExecutionRequest.id());
-        assertThat(firstToolExecutionResultMessage.toolName()).isEqualTo("squareRoot");
-        assertThat(firstToolExecutionResultMessage.text()).isEqualTo("6.97070153193991E8");
-
-        ToolExecutionResultMessage secondToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(3);
-        assertThat(secondToolExecutionResultMessage.id()).isEqualTo(secondToolExecutionRequest.id());
-        assertThat(secondToolExecutionResultMessage.toolName()).isEqualTo("squareRoot");
-        assertThat(secondToolExecutionResultMessage.text()).isEqualTo("9892737.215997653");
-
-        assertThat(messages.get(4)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(4).text()).contains("6.97", "9.89");
-
-
-        verify(chatLanguageModel).generate(
-                singletonList(messages.get(0)),
-                singletonList(calculatorSpecification)
-        );
-
-        verify(chatLanguageModel).generate(
-                asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3)),
-                singletonList(calculatorSpecification)
         );
     }
 }

@@ -123,9 +123,7 @@ public class ServiceOutputParser {
         jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if (name.equals("__$hits$__")
-                    || java.lang.reflect.Modifier.isStatic(field.getModifiers())
-                    || java.lang.reflect.Modifier.isFinal(field.getModifiers())) {
+            if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip coverage instrumentation field.
                 continue;
             }

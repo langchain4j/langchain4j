@@ -2,6 +2,6 @@
 sidebar_position: 14
 ---
 
-# 8. Chains
+# Chains
 
-Coming soon
+Legacy Chains and chaining of AI Services is discussed [here](/tutorials/ai-services).
