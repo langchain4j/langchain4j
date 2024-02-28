@@ -38,6 +38,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Double repeatPenalty,
                                     Integer seed,
                                     Integer numPredict,
+                                    Integer numCtx,
                                     List<String> stop,
                                     String format,
                                     Duration timeout) {
@@ -53,6 +54,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .repeatPenalty(repeatPenalty)
                 .seed(seed)
                 .numPredict(numPredict)
+                .numCtx(numCtx)
                 .stop(stop)
                 .build();
         this.format = format;
