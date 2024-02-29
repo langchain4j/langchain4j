@@ -53,10 +53,9 @@ public class TextSegment {
      *
      * @param key the key.
      * @return the metadata value, or null if not found.
-     * @deprecated Use {@link #metadata()}, then {@link Metadata#getString(String)},
      * {@link Metadata#getInteger(String)} and other accessors instead.
      */
-    @Deprecated
+    // TODO deprecate later
     public String metadata(String key) {
         return metadata.get(key);
     }
