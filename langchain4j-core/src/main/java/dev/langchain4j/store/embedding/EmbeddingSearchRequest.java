@@ -6,6 +6,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.*;
@@ -15,6 +17,8 @@ import static dev.langchain4j.internal.ValidationUtils.*;
  * Contains all search criteria.
  */
 @Experimental
+@ToString
+@EqualsAndHashCode
 public class EmbeddingSearchRequest {
 
     private final Embedding queryEmbedding;

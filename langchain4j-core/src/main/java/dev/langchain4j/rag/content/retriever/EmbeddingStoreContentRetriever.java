@@ -4,12 +4,17 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 
 import java.util.List;
+import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.*;
@@ -23,41 +28,112 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * Configurable parameters (optional):
  * <br>
- * - {@link #maxResults}: The maximum number of {@link Content}s to retrieve.
+ * - {@code maxResults}: The maximum number of {@link Content}s to retrieve.
  * <br>
- * - {@link #minScore}: The minimum relevance score for the returned {@link Content}s.
- * {@link Content}s scoring below {@link #minScore} are excluded from the results.
+ * - {@code dynamicMaxResults}: It is a {@link Function} that accepts a {@link Query}
+ * (which also contains {@link Metadata}) and returns a {@code maxResults} value.
+ * It can be used to dynamically define {@code maxResults} value, depending on factors such as the query,
+ * the user (using {@link Metadata#chatMemoryId()}), etc.
+ * <br>
+ * - {@code minScore}: The minimum relevance score for the returned {@link Content}s.
+ * {@link Content}s scoring below {@code #minScore} are excluded from the results.
+ * <br>
+ * - {@code dynamicMinScore}: It is a {@link Function} that accepts a {@link Query}
+ * (which also contains {@link Metadata}) and returns a {@code minScore} value.
+ * It can be used to dynamically define {@code minScore} value, depending on factors such as the query,
+ * the user (using {@link Metadata#chatMemoryId()}), etc.
+ * <br>
+ * - {@code filter}: The {@link Filter} that will be applied to a {@link dev.langchain4j.data.document.Metadata} in the
+ * {@link Content#textSegment()}.
+ * <br>
+ * - {@code dynamicFilter}: It is a {@link Function} that accepts a {@link Query} (which also contains {@link Metadata})
+ * and returns a {@code minScore} value. It can be used to dynamically define {@code filter} value,
+ * depending on factors such as the query, the user (using {@link Metadata#chatMemoryId()}), etc.
  */
 public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
-    public static final int DEFAULT_MAX_RESULTS = 3;
-    public static final double DEFAULT_MIN_SCORE = 0;
+    public static final Function<Query, Integer> DEFAULT_MAX_RESULTS_PROVIDER = (query) -> 3;
+    public static final Function<Query, Double> DEFAULT_MIN_SCORE_PROVIDER = (query) -> 0.0;
+    public static final Function<Query, Filter> DEFAULT_FILTER_PROVIDER = (query) -> null;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
-    private final int maxResults;
-    private final double minScore;
+
+    private final Function<Query, Integer> maxResultsProvider;
+    private final Function<Query, Double> minScoreProvider;
+    private final Function<Query, Filter> filterProvider;
 
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                           EmbeddingModel embeddingModel) {
-        this(embeddingStore, embeddingModel, DEFAULT_MAX_RESULTS, DEFAULT_MIN_SCORE);
+        this(
+                embeddingStore,
+                embeddingModel,
+                DEFAULT_MAX_RESULTS_PROVIDER,
+                DEFAULT_MIN_SCORE_PROVIDER,
+                DEFAULT_FILTER_PROVIDER
+        );
     }
 
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                           EmbeddingModel embeddingModel,
                                           int maxResults) {
-        this(embeddingStore, embeddingModel, maxResults, DEFAULT_MIN_SCORE);
+        this(
+                embeddingStore,
+                embeddingModel,
+                (query) -> maxResults,
+                DEFAULT_MIN_SCORE_PROVIDER,
+                DEFAULT_FILTER_PROVIDER
+        );
     }
 
-    @Builder
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                           EmbeddingModel embeddingModel,
                                           Integer maxResults,
                                           Double minScore) {
+        this(
+                embeddingStore,
+                embeddingModel,
+                (query) -> maxResults,
+                (query) -> minScore,
+                DEFAULT_FILTER_PROVIDER
+        );
+    }
+
+    @Builder
+    protected EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
+                                             EmbeddingModel embeddingModel,
+                                             Function<Query, Integer> dynamicMaxResults,
+                                             Function<Query, Double> dynamicMinScore,
+                                             Function<Query, Filter> dynamicFilter) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
-        this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
-        this.minScore = ensureBetween(getOrDefault(minScore, DEFAULT_MIN_SCORE), 0, 1, "minScore");
+        this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS_PROVIDER);
+        this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE_PROVIDER);
+        this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER_PROVIDER);
+    }
+
+    public static class EmbeddingStoreContentRetrieverBuilder {
+
+        EmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
+            if (maxResults != null) {
+                dynamicMaxResults = (query) -> ensureGreaterThanZero(maxResults, "maxResults");
+            }
+            return this;
+        }
+
+        EmbeddingStoreContentRetrieverBuilder minScore(Double minScore) {
+            if (minScore != null) {
+                dynamicMinScore = (query) -> ensureBetween(minScore, 0, 1, "minScore");
+            }
+            return this;
+        }
+
+        EmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
+            if (filter != null) {
+                dynamicFilter = (query) -> filter;
+            }
+            return this;
+        }
     }
 
     @Override
@@ -65,9 +141,16 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
         Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embeddedQuery, maxResults, minScore);
+        EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddedQuery)
+                .maxResults(maxResultsProvider.apply(query))
+                .minScore(minScoreProvider.apply(query))
+                .filter(filterProvider.apply(query))
+                .build();
 
-        return relevant.stream()
+        EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
+
+        return searchResult.matches().stream()
                 .map(EmbeddingMatch::embedded)
                 .map(Content::from)
                 .collect(toList());
