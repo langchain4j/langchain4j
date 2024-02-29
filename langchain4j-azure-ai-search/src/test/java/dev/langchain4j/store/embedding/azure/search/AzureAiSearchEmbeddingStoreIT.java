@@ -166,12 +166,19 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
         awaitUntilPersisted();
 
-        String content = "Algeria";
-        Embedding relevantEmbedding = embeddingModel.embed(content).content();
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithHybrid.findRelevant(relevantEmbedding, content, 1, 0);
+        String test = "Algeria";
+        Embedding relevantEmbedding = embeddingModel.embed(test).content();
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithHybrid.findRelevant(relevantEmbedding, test, 1, 0);
         assertThat(relevant).hasSize(1);
         log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
         assertThat(relevant.get(0).embedded().text()).contains("Albert Camus");
+
+        String test2 = "École Normale Supérieure";
+        Embedding relevantEmbedding2 = embeddingModel.embed(test2).content();
+        List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStoreWithHybrid.findRelevant(relevantEmbedding2, test2, 1, 0);
+        assertThat(relevant).hasSize(1);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+        assertThat(relevant2.get(0).embedded().text()).contains("Paul-Michel Foucault");
     }
 
     @Test
@@ -201,12 +208,19 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
         awaitUntilPersisted();
 
-        String content = "A philosopher who was in the French Resistance";
-        Embedding relevantEmbedding = embeddingModel.embed(content).content();
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithSemantic.findRelevant(relevantEmbedding, content, 1, 0);
+        String test = "A philosopher who was in the French Resistance";
+        Embedding relevantEmbedding = embeddingModel.embed(test).content();
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithSemantic.findRelevant(relevantEmbedding, test, 1, 0);
         assertThat(relevant).hasSize(1);
         log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
         assertThat(relevant.get(0).embedded().text()).contains("Albert Camus");
+
+        String test2 = "A philosopher who studied at the École Normale Supérieure";
+        Embedding relevantEmbedding2 = embeddingModel.embed(test2).content();
+        List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStoreWithSemantic.findRelevant(relevantEmbedding2, test2, 1, 0);
+        assertThat(relevant).hasSize(1);
+        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+        assertThat(relevant2.get(0).embedded().text()).contains("Paul-Michel Foucault");
     }
 
     @Override
