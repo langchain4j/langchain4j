@@ -141,10 +141,30 @@ class MetadataTest implements WithAssertions {
         // given
         Map<String, Object> map = new HashMap<>();
         map.put("string", "s");
+
         map.put("integer", 1);
+        map.put("integer_as_string", "1");
+        map.put("integer_as_long", 1L);
+        map.put("integer_as_float", 1f);
+        map.put("integer_as_double", 1d);
+
         map.put("long", 1L);
+        map.put("long_as_string", "1");
+        map.put("long_as_integer", 1);
+        map.put("long_as_float", 1f);
+        map.put("long_as_double", 1d);
+
         map.put("float", 1f);
+        map.put("float_as_string", "1");
+        map.put("float_as_integer", 1);
+        map.put("float_as_long", 1L);
+        map.put("float_as_double", 1d);
+
         map.put("double", 1d);
+        map.put("double_as_string", "1");
+        map.put("double_as_integer", 1);
+        map.put("double_as_long", 1L);
+        map.put("double_as_float", 1f);
 
         // when
         Metadata metadata = new Metadata(map);
@@ -152,17 +172,37 @@ class MetadataTest implements WithAssertions {
         // then
         assertThat(metadata.getString("string")).isEqualTo("s");
         assertThat(metadata.getString("banana")).isNull();
+        assertThatThrownBy(() -> metadata.getString("integer"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Metadata entry with the key 'integer' has a value of '1' and type 'java.lang.Integer'. " +
+                        "It cannot be returned as a String.");
 
         assertThat(metadata.getInteger("integer")).isEqualTo(1);
+        assertThat(metadata.getInteger("integer_as_string")).isEqualTo(1);
+        assertThat(metadata.getInteger("integer_as_long")).isEqualTo(1);
+        assertThat(metadata.getInteger("integer_as_float")).isEqualTo(1);
+        assertThat(metadata.getInteger("integer_as_double")).isEqualTo(1);
         assertThat(metadata.getInteger("banana")).isNull();
 
         assertThat(metadata.getLong("long")).isEqualTo(1L);
+        assertThat(metadata.getLong("long_as_string")).isEqualTo(1L);
+        assertThat(metadata.getLong("long_as_integer")).isEqualTo(1L);
+        assertThat(metadata.getLong("long_as_float")).isEqualTo(1L);
+        assertThat(metadata.getLong("long_as_double")).isEqualTo(1L);
         assertThat(metadata.getLong("banana")).isNull();
 
         assertThat(metadata.getFloat("float")).isEqualTo(1f);
+        assertThat(metadata.getFloat("float_as_string")).isEqualTo(1f);
+        assertThat(metadata.getFloat("float_as_integer")).isEqualTo(1f);
+        assertThat(metadata.getFloat("float_as_long")).isEqualTo(1f);
+        assertThat(metadata.getFloat("float_as_double")).isEqualTo(1f);
         assertThat(metadata.getFloat("banana")).isNull();
 
         assertThat(metadata.getDouble("double")).isEqualTo(1d);
+        assertThat(metadata.getDouble("double_as_string")).isEqualTo(1d);
+        assertThat(metadata.getDouble("double_as_integer")).isEqualTo(1d);
+        assertThat(metadata.getDouble("double_as_long")).isEqualTo(1d);
+        assertThat(metadata.getDouble("double_as_float")).isEqualTo(1d);
         assertThat(metadata.getDouble("banana")).isNull();
     }
 

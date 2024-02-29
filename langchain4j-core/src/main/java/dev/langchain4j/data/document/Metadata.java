@@ -113,7 +113,8 @@ public class Metadata {
             return (String) value;
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' that is not String.", key, value);
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a String.", key, value, value.getClass().getName());
     }
 
     /**
@@ -145,7 +146,8 @@ public class Metadata {
             return ((Number) value).intValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Integer.", key, value);
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as an Integer.", key, value, value.getClass().getName());
     }
 
     /**
@@ -177,7 +179,8 @@ public class Metadata {
             return ((Number) value).longValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Long.", key, value);
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a Long.", key, value, value.getClass().getName());
     }
 
     /**
@@ -209,7 +212,8 @@ public class Metadata {
             return ((Number) value).floatValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Float.", key, value);
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a Float.", key, value, value.getClass().getName());
     }
 
     /**
@@ -241,7 +245,8 @@ public class Metadata {
             return ((Number) value).doubleValue();
         }
 
-        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Double.", key, value);
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a Double.", key, value, value.getClass().getName());
     }
 
     /**
