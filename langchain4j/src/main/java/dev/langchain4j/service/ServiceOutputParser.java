@@ -115,34 +115,36 @@ public class ServiceOutputParser {
             return "\nYou must put every item on a separate line.";
         }
 
-        return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType);
+        return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
     }
 
-    private static String jsonStructure(Class<?> structured) {
+    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
-        jsonSchema.append("{\n");
+        String simpleTypeName = simpleTypeName(structured);
+        visited.add(structured);
+        jsonSchema.append(simpleTypeName + ": {\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
             if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip coverage instrumentation field.
                 continue;
             }
-            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field)));
+            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
         }
         jsonSchema.append("}");
         return jsonSchema.toString();
     }
 
-    private static String descriptionFor(Field field) {
+    private static String descriptionFor(Field field, Set<Class<?>> visited) {
         Description fieldDescription = field.getAnnotation(Description.class);
         if (fieldDescription == null) {
-            return "type: " + typeOf(field);
+            return "type: " + typeOf(field, visited);
         }
 
-        return String.join(" ", fieldDescription.value()) + "; type: " + typeOf(field);
+        return String.join(" ", fieldDescription.value()) + "; type: " + typeOf(field, visited);
     }
 
-    private static String typeOf(Field field) {
+    private static String typeOf(Field field, Set<Class<?>> visited) {
         Type type = field.getGenericType();
 
         if (type instanceof ParameterizedType) {
@@ -151,24 +153,26 @@ public class ServiceOutputParser {
 
             if (parameterizedType.getRawType().equals(List.class)
                     || parameterizedType.getRawType().equals(Set.class)) {
-                if (((Class<?>) typeArguments[0]).getPackage() == null || ((Class<?>) typeArguments[0]).getPackage().getName().startsWith("java."))
-                    return format("array of %s", simpleTypeName(typeArguments[0]));
-                else
-                    return format("array of %s", jsonStructure((Class<?>) typeArguments[0]));
+                return format("array of %s", simpleNameOrJsonStructure((Class<?>) typeArguments[0], visited));
             }
         } else if (field.getType().isArray()) {
-            if (field.getType().getComponentType().getPackage() == null || field.getType().getComponentType().getPackage().getName().startsWith("java."))
-                return format("array of %s", simpleTypeName(field.getType().getComponentType()));
-            else
-                return format("array of %s", jsonStructure(field.getType().getComponentType()));
+            return format("array of %s", simpleNameOrJsonStructure(field.getType().getComponentType(), visited));
         } else if (((Class<?>) type).isEnum()) {
             return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
         }
 
-        if (field.getType().getPackage() == null || field.getType().getPackage().getName().startsWith("java."))
-            return simpleTypeName(type);
-        else
-            return jsonStructure(field.getType());
+        return simpleNameOrJsonStructure(field.getType(), visited);
+    }
+
+    private static String simpleNameOrJsonStructure(Class<?> structured, Set<Class<?>> visited) {
+        String simpleTypeName = simpleTypeName(structured);
+        if (structured.getPackage() == null
+                || structured.getPackage().getName().startsWith("java.")
+                || visited.contains(structured)) {
+            return simpleTypeName;
+        } else {
+            return jsonStructure(structured, visited);
+        }
     }
 
     private static String simpleTypeName(Type type) {
