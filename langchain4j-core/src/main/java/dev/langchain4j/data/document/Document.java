@@ -76,10 +76,8 @@ public class Document {
      *
      * @param key the key to look up.
      * @return the metadata value for the given key, or null if the key is not present.
-     * @deprecated Use {@link #metadata()}, then {@link Metadata#getString(String)},
-     * {@link Metadata#getInteger(String)} and other accessors instead.
      */
-    @Deprecated
+    // TODO deprecate later
     public String metadata(String key) {
         return metadata.get(key);
     }
