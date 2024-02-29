@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.milvus;
 
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
@@ -14,31 +14,31 @@ import static java.util.stream.Collectors.toList;
 
 class MilvusMetadataFilterMapper {
 
-    static String map(MetadataFilter metadataFilter) {
-        if (metadataFilter instanceof Equal) {
-            return mapEqual((Equal) metadataFilter);
-        } else if (metadataFilter instanceof NotEqual) {
-            return mapNotEqual((NotEqual) metadataFilter);
-        } else if (metadataFilter instanceof GreaterThan) {
-            return mapGreaterThan((GreaterThan) metadataFilter);
-        } else if (metadataFilter instanceof GreaterThanOrEqual) {
-            return mapGreaterThanOrEqual((GreaterThanOrEqual) metadataFilter);
-        } else if (metadataFilter instanceof LessThan) {
-            return mapLessThan((LessThan) metadataFilter);
-        } else if (metadataFilter instanceof LessThanOrEqual) {
-            return mapLessThanOrEqual((LessThanOrEqual) metadataFilter);
-        } else if (metadataFilter instanceof In) {
-            return mapIn((In) metadataFilter);
-        } else if (metadataFilter instanceof NotIn) {
-            return mapNotIn((NotIn) metadataFilter);
-        } else if (metadataFilter instanceof And) {
-            return mapAnd((And) metadataFilter);
-        } else if (metadataFilter instanceof Not) {
-            return mapNot((Not) metadataFilter);
-        } else if (metadataFilter instanceof Or) {
-            return mapOr((Or) metadataFilter);
+    static String map(Filter filter) {
+        if (filter instanceof Equal) {
+            return mapEqual((Equal) filter);
+        } else if (filter instanceof NotEqual) {
+            return mapNotEqual((NotEqual) filter);
+        } else if (filter instanceof GreaterThan) {
+            return mapGreaterThan((GreaterThan) filter);
+        } else if (filter instanceof GreaterThanOrEqual) {
+            return mapGreaterThanOrEqual((GreaterThanOrEqual) filter);
+        } else if (filter instanceof LessThan) {
+            return mapLessThan((LessThan) filter);
+        } else if (filter instanceof LessThanOrEqual) {
+            return mapLessThanOrEqual((LessThanOrEqual) filter);
+        } else if (filter instanceof In) {
+            return mapIn((In) filter);
+        } else if (filter instanceof NotIn) {
+            return mapNotIn((NotIn) filter);
+        } else if (filter instanceof And) {
+            return mapAnd((And) filter);
+        } else if (filter instanceof Not) {
+            return mapNot((Not) filter);
+        } else if (filter instanceof Or) {
+            return mapOr((Or) filter);
         } else {
-            throw new UnsupportedOperationException("Unsupported metadataFilter type: " + metadataFilter.getClass().getName());
+            throw new UnsupportedOperationException("Unsupported metadataFilter type: " + filter.getClass().getName());
         }
     }
 

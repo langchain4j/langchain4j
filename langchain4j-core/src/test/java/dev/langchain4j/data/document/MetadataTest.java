@@ -310,5 +310,11 @@ class MetadataTest implements WithAssertions {
         assertThat(map).isEqualTo(originalMap);
     }
 
+    @Test
+    void test_containsKey() {
+        assertThat(new Metadata().containsKey("key")).isFalse();
+        assertThat(new Metadata().add("key", "value").containsKey("key")).isTrue();
+    }
+
     // TODO test all new methods and creators
 }

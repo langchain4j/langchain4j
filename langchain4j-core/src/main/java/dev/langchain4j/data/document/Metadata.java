@@ -2,11 +2,12 @@ package dev.langchain4j.data.document;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
 
-import java.math.BigDecimal;
 import java.util.*;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -95,22 +96,41 @@ public class Metadata {
     }
 
     /**
-     * Returns the {@link String} value associated with the given key.
+     * Returns the {@code String} value associated with the given key.
      *
      * @param key the key
-     * @return the {@link String} value associated with the given key, or {@code null} if the key is not present.
+     * @return the {@code String} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not of type String
      */
     @Experimental
     public String getString(String key) {
-        return (String) metadata.get(key);
+        if (!containsKey(key)) {
+            return null;
+        }
+
+        Object value = metadata.get(key);
+        if (value instanceof String) {
+            return (String) value;
+        }
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' that is not String.", key, value);
     }
 
     /**
-     * Returns the {@link Integer} value associated with the given key.
-     * TODO test and document casting, everywhere
+     * Returns the {@code Integer} value associated with the given key.
+     * <br>
+     * Some {@link EmbeddingStore} implementations (still) store {@code Metadata} values as {@code String}s.
+     * In this case, the {@code String} value will be parsed into an {@code Integer} when this method is called.
+     * <br>
+     * Some {@link EmbeddingStore} implementations store {@code Metadata} key-value pairs as JSON.
+     * In this case, type information is lost when serializing to JSON and then deserializing back from JSON.
+     * JSON libraries can, for example, serialize an {@code Integer} and then deserialize it as a {@code Long}.
+     * Or serialize a {@code Float} and then deserialize it as a {@code Double}, and so on.
+     * In such cases, the actual value will be cast to an {@code Integer} when this method is called.
      *
      * @param key the key
      * @return the {@link Integer} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not {@link Number}
      */
     @Experimental
     public Integer getInteger(String key) {
@@ -120,20 +140,29 @@ public class Metadata {
 
         Object value = metadata.get(key);
         if (value instanceof String) {
-            return Integer.parseInt(value.toString()); // TODO needed? no
-        } else if (value instanceof Long) {
-            return (int) (long) value; // // TODO needed? yes, for InMemory persistent TODO check range
-        } else if (value instanceof Double) {
-            return (int) (double) value; // // TODO needed? no TODO check range?
+            return Integer.parseInt(value.toString());
+        } else if (value instanceof Number) {
+            return ((Number) value).intValue();
         }
-        return (int) value;
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Integer.", key, value);
     }
 
     /**
-     * Returns the {@link Long} value associated with the given key.
+     * Returns the {@code Long} value associated with the given key.
+     * <br>
+     * Some {@link EmbeddingStore} implementations (still) store {@code Metadata} values as {@code String}s.
+     * In this case, the {@code String} value will be parsed into an {@code Long} when this method is called.
+     * <br>
+     * Some {@link EmbeddingStore} implementations store {@code Metadata} key-value pairs as JSON.
+     * In this case, type information is lost when serializing to JSON and then deserializing back from JSON.
+     * JSON libraries can, for example, serialize an {@code Integer} and then deserialize it as a {@code Long}.
+     * Or serialize a {@code Float} and then deserialize it as a {@code Double}, and so on.
+     * In such cases, the actual value will be cast to a {@code Long} when this method is called.
      *
      * @param key the key
-     * @return the {@link Long} value associated with the given key, or {@code null} if the key is not present.
+     * @return the {@code Long} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not {@link Number}
      */
     @Experimental
     public Long getLong(String key) {
@@ -143,20 +172,29 @@ public class Metadata {
 
         Object value = metadata.get(key);
         if (value instanceof String) {
-            return Long.parseLong(value.toString()); // TODO needed? no
-        } else if (value instanceof Integer) {
-            return (long) (int) value; // // TODO needed? yes, milvus? TODO other types?
-        } else if (value instanceof Double) {
-            return (long) (double) value; // // TODO needed? no TODO check range?
+            return Long.parseLong(value.toString());
+        } else if (value instanceof Number) {
+            return ((Number) value).longValue();
         }
-        return (long) value;
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Long.", key, value);
     }
 
     /**
-     * Returns the {@link Float} value associated with the given key.
+     * Returns the {@code Float} value associated with the given key.
+     * <br>
+     * Some {@link EmbeddingStore} implementations (still) store {@code Metadata} values as {@code String}s.
+     * In this case, the {@code String} value will be parsed into a {@code Float} when this method is called.
+     * <br>
+     * Some {@link EmbeddingStore} implementations store {@code Metadata} key-value pairs as JSON.
+     * In this case, type information is lost when serializing to JSON and then deserializing back from JSON.
+     * JSON libraries can, for example, serialize an {@code Integer} and then deserialize it as a {@code Long}.
+     * Or serialize a {@code Float} and then deserialize it as a {@code Double}, and so on.
+     * In such cases, the actual value will be cast to a {@code Float} when this method is called.
      *
      * @param key the key
-     * @return the {@link Float} value associated with the given key, or {@code null} if the key is not present.
+     * @return the {@code Float} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not {@link Number}
      */
     @Experimental
     public Float getFloat(String key) {
@@ -166,18 +204,29 @@ public class Metadata {
 
         Object value = metadata.get(key);
         if (value instanceof String) {
-            return Float.parseFloat(value.toString()); // TODO needed? no
-        } else if (value instanceof Double) {
-            return BigDecimal.valueOf((double) value).floatValue(); // TODO needed? yes, for memory persistent, milvus
+            return Float.parseFloat(value.toString());
+        } else if (value instanceof Number) {
+            return ((Number) value).floatValue();
         }
-        return (float) value;
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Float.", key, value);
     }
 
     /**
-     * Returns the {@link Double} value associated with the given key.
+     * Returns the {@code Double} value associated with the given key.
+     * <br>
+     * Some {@link EmbeddingStore} implementations (still) store {@code Metadata} values as {@code String}s.
+     * In this case, the {@code String} value will be parsed into a {@code Double} when this method is called.
+     * <br>
+     * Some {@link EmbeddingStore} implementations store {@code Metadata} key-value pairs as JSON.
+     * In this case, type information is lost when serializing to JSON and then deserializing back from JSON.
+     * JSON libraries can, for example, serialize an {@code Integer} and then deserialize it as a {@code Long}.
+     * Or serialize a {@code Float} and then deserialize it as a {@code Double}, and so on.
+     * In such cases, the actual value will be cast to a {@code Double} when this method is called.
      *
      * @param key the key
-     * @return the {@link Double} value associated with the given key, or {@code null} if the key is not present.
+     * @return the {@code Double} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not {@link Number}
      */
     @Experimental
     public Double getDouble(String key) {
@@ -187,30 +236,20 @@ public class Metadata {
 
         Object value = metadata.get(key);
         if (value instanceof String) {
-            return Double.parseDouble(value.toString()); // TODO needed? no
+            return Double.parseDouble(value.toString());
+        } else if (value instanceof Number) {
+            return ((Number) value).doubleValue();
         }
-        return (double) value;
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' that cannot be cast to Double.", key, value);
     }
 
     /**
-     * TODO
+     * Check whether this {@code Metadata} contains a given key.
      *
-     * @param key
-     * @return
+     * @param key the key
+     * @return {@code true} if this metadata contains a given key; {@code false} otherwise.
      */
-    @Experimental
-    public Object getObject(String key) { // TODO REMOVE needed? if yes - better name?
-        // TODO check for null?
-        return metadata.get(key);
-    }
-
-    /**
-     * TODO
-     *
-     * @param key
-     * @return
-     */
-    // TODO test
     @Experimental
     public boolean containsKey(String key) {
         return metadata.containsKey(key);

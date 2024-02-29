@@ -4,13 +4,13 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithMetadataFilteringIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 
 /**
  * Tests if InMemoryEmbeddingStore works correctly after being serialized and deserialized back.
  * See awaitUntilPersisted()
  */
-class InMemoryEmbeddingStoreSerializedTest extends EmbeddingStoreWithMetadataFilteringIT {
+class InMemoryEmbeddingStoreSerializedTest extends EmbeddingStoreWithFilteringIT {
 
     InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 

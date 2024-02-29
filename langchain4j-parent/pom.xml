@@ -126,7 +126,7 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-metadata-filter-parser-sql</artifactId>
+                <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

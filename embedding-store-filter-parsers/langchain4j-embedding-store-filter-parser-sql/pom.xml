@@ -11,8 +11,8 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-metadata-filter-parser-sql</artifactId>
-    <name>LangChain4j :: Metadata Filter Parser :: SQL</name>
+    <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
+    <name>LangChain4j :: Embedding Store Filter Parser :: SQL</name>
 
     <dependencies>
 

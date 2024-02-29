@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.filter;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
@@ -18,14 +17,16 @@ import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.toList;
 
 /**
- * This is a base interface for a {@link Metadata} filter.
- * It allows representing simple (e.g. {@code type = "documentation"})
- * and complex (e.g. {@code type in ("documentation", "tutorial") AND year > 2020}) filter expressions in
+ * This class represents a filter that can be applied during search in an {@link EmbeddingStore}.
+ * <br>
+ * Many {@link EmbeddingStore}s support a feature called metadata filtering. A {@code Filter} can be used for this.
+ * <br>
+ * A {@code Filter} object can represent simple (e.g. {@code type = 'documentation'})
+ * and composite (e.g. {@code type = 'documentation' AND year > 2020}) filter expressions in
  * an {@link EmbeddingStore}-agnostic way.
  * <br>
- * Each {@link EmbeddingStore} implementation that supports metadata filtering is mapping {@link MetadataFilter}
+ * Each {@link EmbeddingStore} implementation that supports metadata filtering is mapping {@link Filter}
  * into it's native filter expression.
- * TODO
  *
  * @see Equal
  * @see NotEqual
@@ -40,187 +41,196 @@ import static java.util.stream.Collectors.toList;
  * @see Or
  */
 @Experimental
-public interface MetadataFilter { // TODO name: remove Metadata? e.g. FieldFilter?
+public interface Filter {
 
     /**
-     * Tests if a given {@link Metadata} satisfies this {@link MetadataFilter}.
+     * Tests if a given object satisfies this {@link Filter}.
      *
-     * @param metadata {@link Metadata} to test.
-     * @return true if {@link Metadata} satisfies this {@link MetadataFilter}, false otherwise.
+     * @param object An object to test.
+     * @return {@code true} if a given object satisfies this {@link Filter}, {@code false} otherwise.
      */
-    boolean test(Metadata metadata); // TODO move to in-memory?
+    boolean test(Object object);
 
-    static MetadataFilter and(MetadataFilter left, MetadataFilter right) {
+    default Filter and(Filter filter) {
+        return and(this, filter);
+    }
+
+    static Filter and(Filter left, Filter right) {
         return new And(left, right);
     }
 
-    static MetadataFilter or(MetadataFilter left, MetadataFilter right) {
+    static Filter or(Filter left, Filter right) {
         return new Or(left, right);
     }
 
-    static MetadataFilter not(MetadataFilter expression) {
+    default Filter or(Filter filter) {
+        return or(this, filter);
+    }
+
+    static Filter not(Filter expression) {
         return new Not(expression);
     }
 
-    class MetadataKey {
+    class Key {
 
         private final String key;
 
-        public MetadataKey(String key) {
+        public Key(String key) {
             this.key = ensureNotBlank(key, "key");
         }
 
-        public static MetadataKey key(String key) { // TODO name
-            return new MetadataKey(key);
+        @Experimental
+        public static Key key(String key) {
+            return new Key(key);
         }
 
         // eq
 
-        public MetadataFilter eq(String value) {
+        public Filter eq(String value) {
             return new Equal(key, value);
         }
 
-        public MetadataFilter eq(int value) {
+        public Filter eq(int value) {
             return new Equal(key, value);
         }
 
-        public MetadataFilter eq(long value) {
+        public Filter eq(long value) {
             return new Equal(key, value);
         }
 
-        public MetadataFilter eq(float value) {
+        public Filter eq(float value) {
             return new Equal(key, value);
         }
 
-        public MetadataFilter eq(double value) {
+        public Filter eq(double value) {
             return new Equal(key, value);
         }
 
         // ne
 
-        public MetadataFilter ne(String value) {
+        public Filter ne(String value) {
             return new NotEqual(key, value);
         }
 
-        public MetadataFilter ne(int value) {
+        public Filter ne(int value) {
             return new NotEqual(key, value);
         }
 
-        public MetadataFilter ne(long value) {
+        public Filter ne(long value) {
             return new NotEqual(key, value);
         }
 
-        public MetadataFilter ne(float value) {
+        public Filter ne(float value) {
             return new NotEqual(key, value);
         }
 
-        public MetadataFilter ne(double value) {
+        public Filter ne(double value) {
             return new NotEqual(key, value);
         }
 
         // gt
 
-        public MetadataFilter gt(String value) {
+        public Filter gt(String value) {
             return new GreaterThan(key, value);
         }
 
-        public MetadataFilter gt(int value) {
+        public Filter gt(int value) {
             return new GreaterThan(key, value);
         }
 
-        public MetadataFilter gt(long value) {
+        public Filter gt(long value) {
             return new GreaterThan(key, value);
         }
 
-        public MetadataFilter gt(float value) {
+        public Filter gt(float value) {
             return new GreaterThan(key, value);
         }
 
-        public MetadataFilter gt(double value) {
+        public Filter gt(double value) {
             return new GreaterThan(key, value);
         }
 
         // gte
 
-        public MetadataFilter gte(String value) {
+        public Filter gte(String value) {
             return new GreaterThanOrEqual(key, value);
         }
 
-        public MetadataFilter gte(int value) {
+        public Filter gte(int value) {
             return new GreaterThanOrEqual(key, value);
         }
 
-        public MetadataFilter gte(long value) {
+        public Filter gte(long value) {
             return new GreaterThanOrEqual(key, value);
         }
 
-        public MetadataFilter gte(float value) {
+        public Filter gte(float value) {
             return new GreaterThanOrEqual(key, value);
         }
 
-        public MetadataFilter gte(double value) {
+        public Filter gte(double value) {
             return new GreaterThanOrEqual(key, value);
         }
 
         // lt
 
-        public MetadataFilter lt(String value) {
+        public Filter lt(String value) {
             return new LessThan(key, value);
         }
 
-        public MetadataFilter lt(int value) {
+        public Filter lt(int value) {
             return new LessThan(key, value);
         }
 
-        public MetadataFilter lt(long value) {
+        public Filter lt(long value) {
             return new LessThan(key, value);
         }
 
-        public MetadataFilter lt(float value) {
+        public Filter lt(float value) {
             return new LessThan(key, value);
         }
 
-        public MetadataFilter lt(double value) {
+        public Filter lt(double value) {
             return new LessThan(key, value);
         }
 
         // lte
 
-        public MetadataFilter lte(String value) {
+        public Filter lte(String value) {
             return new LessThanOrEqual(key, value);
         }
 
-        public MetadataFilter lte(int value) {
+        public Filter lte(int value) {
             return new LessThanOrEqual(key, value);
         }
 
-        public MetadataFilter lte(long value) {
+        public Filter lte(long value) {
             return new LessThanOrEqual(key, value);
         }
 
-        public MetadataFilter lte(float value) {
+        public Filter lte(float value) {
             return new LessThanOrEqual(key, value);
         }
 
-        public MetadataFilter lte(double value) {
+        public Filter lte(double value) {
             return new LessThanOrEqual(key, value);
         }
 
         // in
 
-        public MetadataFilter in(String... values) {
+        public Filter in(String... values) {
             return new In(key, asList(values));
         }
 
-        public MetadataFilter in(int... values) { // TODO test without args
+        public Filter in(int... values) {
             return new In(key, stream(values).boxed().collect(toList()));
         }
 
-        public MetadataFilter in(long... values) { // TODO test without args
+        public Filter in(long... values) {
             return new In(key, stream(values).boxed().collect(toList()));
         }
 
-        public MetadataFilter in(float... values) { // TODO test without args
+        public Filter in(float... values) {
             List<Float> valuesList = new ArrayList<>();
             for (float value : values) {
                 valuesList.add(value);
@@ -228,30 +238,29 @@ public interface MetadataFilter { // TODO name: remove Metadata? e.g. FieldFilte
             return new In(key, valuesList);
         }
 
-        public MetadataFilter in(double... values) {
+        public Filter in(double... values) {
             return new In(key, stream(values).boxed().collect(toList()));
         }
 
-        public MetadataFilter in(Collection<?> values) {
-            // TODO test all values of same type? not null? of supported types only?
+        public Filter in(Collection<?> values) {
             return new In(key, values);
         }
 
         // nin
 
-        public MetadataFilter nin(String... values) {
+        public Filter nin(String... values) {
             return new NotIn(key, asList(values));
         }
 
-        public MetadataFilter nin(int... values) { // TODO test without args
+        public Filter nin(int... values) {
             return new NotIn(key, stream(values).boxed().collect(toList()));
         }
 
-        public MetadataFilter nin(long... values) { // TODO test without args
+        public Filter nin(long... values) {
             return new NotIn(key, stream(values).boxed().collect(toList()));
         }
 
-        public MetadataFilter nin(float... values) { // TODO test without args
+        public Filter nin(float... values) {
             List<Float> valuesList = new ArrayList<>();
             for (float value : values) {
                 valuesList.add(value);
@@ -259,12 +268,11 @@ public interface MetadataFilter { // TODO name: remove Metadata? e.g. FieldFilte
             return new NotIn(key, valuesList);
         }
 
-        public MetadataFilter nin(double... values) {
+        public Filter nin(double... values) {
             return new NotIn(key, stream(values).boxed().collect(toList()));
         }
 
-        public MetadataFilter nin(Collection<?> values) {
-            // TODO test all values of same type? not null? of supported types only?
+        public Filter nin(Collection<?> values) {
             return new NotIn(key, values);
         }
     }

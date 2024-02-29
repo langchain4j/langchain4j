@@ -27,7 +27,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -55,7 +55,7 @@ import static java.util.stream.Collectors.toList;
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
  * Current implementation assumes the index uses the cosine distance metric.
  * <br>
- * Supports storing {@link Metadata} and filtering by it using {@link MetadataFilter}
+ * Supports storing {@link Metadata} and filtering by it using {@link Filter}
  * (provided inside {@link EmbeddingSearchRequest}).
  */
 public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> {
@@ -271,14 +271,14 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private ScriptScoreQuery buildScriptScoreQuery(float[] vector,
                                                    float minScore,
-                                                   MetadataFilter metadataFilter
+                                                   Filter filter
     ) throws JsonProcessingException {
 
         Query query;
-        if (metadataFilter == null) {
+        if (filter == null) {
             query = Query.of(q -> q.matchAll(m -> m));
         } else {
-            query = ElasticsearchMetadataFilterMapper.map(metadataFilter);
+            query = ElasticsearchMetadataFilterMapper.map(filter);
         }
 
         return ScriptScoreQuery.of(q -> q.

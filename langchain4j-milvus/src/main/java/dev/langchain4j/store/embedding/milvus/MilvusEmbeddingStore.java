@@ -20,7 +20,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
@@ -37,8 +37,8 @@ import java.util.List;
  * <br>
  * Supports both local and <a href="https://zilliz.com/">managed</a> Milvus instances.
  * <br>
- * Supports storing {@link Metadata} and filtering by it using {@link MetadataFilter}
- * (provided inside {@link EmbeddingSearchRequest}).
+ * Supports storing {@link Metadata} and filtering by it using a {@link Filter}
+ * (provided inside an {@link EmbeddingSearchRequest}).
  */
 public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 

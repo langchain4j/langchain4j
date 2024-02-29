@@ -1,7 +1,7 @@
-package dev.langchain4j.store.embedding.filter.sql;
+package dev.langchain4j.store.embedding.filter.parser.sql;
 
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
-import dev.langchain4j.store.embedding.filter.MetadataFilterParser;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.FilterParser;
 import dev.langchain4j.store.embedding.filter.comparison.GreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
@@ -16,55 +16,56 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
 
 /**
- * Parses SQL "WHERE" clause into a {@link MetadataFilter}
- * using <a href="https://github.com/JSQLParser/JSqlParser">JSqlParser</a>.
+ * Parses an SQL "WHERE" clause into a {@link Filter} object using
+ * <a href="https://github.com/JSQLParser/JSqlParser">JSqlParser</a>.
  * Currently, supports all SQL dialects supported by JSqlParser, but we recommend using ANSI SQL as we cannot guarantee
  * that this class will support all SQL dialects going forward.
  * <br>
  * Currently, the following operations are supported:
  * <pre>
- * - {@link Equal}: {@code name = 'Klaus'}
- * - {@link NotEqual}: {@code name != 'Klaus'}
+ * - {@link Equal}: {@code name = 'Klaus'}, {@code age = 18}
+ * - {@link NotEqual}: {@code name != 'Klaus'}, {@code name != 18}
  * - {@link GreaterThan}: {@code age > 18}
  * - {@link GreaterThanOrEqual}: {@code age >= 18}
  * - {@link LessThan}: {@code age < 18}
  * - {@link LessThanOrEqual}: {@code age <= 18}
- * - {@link In}: {@code name IN ('Klaus', 'Francine')}
- * - {@link NotIn}: {@code id NOT IN (1, 2, 3)}
+ * - {@link In}: {@code name IN ('Klaus', 'Francine')}, {@code age IN (18, 19)}
+ * - {@link NotIn}: {@code id NOT IN ('1', '2', '3')}, {@code id NOT IN (1, 2, 3)}
  *
  * - {@link And}: {@code name = 'Klaus' AND age = 18}
- * - {@link Not}: {@code NOT(name = 'Klaus')}
+ * - {@link Not}: {@code NOT(name = 'Klaus')}, {@code NOT name = 'Klaus'}
  * - {@link Or}: {@code name = 'Klaus' OR age = 18}
+ *
+ * - Parentheses can be used: {@code (name = 'Klaus' OR name = 'Francine') AND age = 18}
  * </pre>
  * If you require additional operations,
  * please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
  * <br>
- * Examples:
+ * Here are a few examples of how a {@code String} is parsed into a {@link Filter}:
  * <pre>
- * String -&gt; MetadataFilter
  * {@code name = 'Klaus'} -&gt; {@code key("name").eq("Klaus")}
  * {@code name = 'Klaus' AND age >= 18} -&gt; {@code key("name").eq("Klaus").and(key("age").gte(18))}
  * </pre>
  */
-public class SqlMetadataFilterParser implements MetadataFilterParser {
+public class SqlFilterParser implements FilterParser {
 
     /**
-     * TODO
-     * Can parse full SQL statements (TODO example) as well as just where clause (TODO example)
+     * Parses an SQL "WHERE" clause into a {@link Filter} object.
+     * Can parse a complete SQL statement (e.g., {@code SELECT * FROM fake_table WHERE id = 7})
+     * as well as just the contents of a "WHERE" clause (e.g., {@code id = 7}).
      *
-     * @param sql
-     * @return
+     * @param sql SQL "WHERE" clause
+     * @return A {@link Filter} object
      */
     @Override
-    public MetadataFilter parse(String sql) {
+    public Filter parse(String sql) {
 
         if (!sql.toUpperCase().startsWith("SELECT")) {
-            sql = "SELECT * FROM fake_table WHERE " + sql; // TODO
+            sql = "SELECT * FROM fake_table WHERE " + sql;
         }
 
         try {
@@ -75,7 +76,7 @@ public class SqlMetadataFilterParser implements MetadataFilterParser {
         }
     }
 
-    private MetadataFilter map(Expression expression) {
+    private Filter map(Expression expression) {
         if (expression instanceof BinaryExpression) {
             return map((BinaryExpression) expression);
         } else if (expression instanceof NotExpression) {
@@ -89,7 +90,7 @@ public class SqlMetadataFilterParser implements MetadataFilterParser {
         }
     }
 
-    private MetadataFilter map(BinaryExpression binaryExpression) {
+    private Filter map(BinaryExpression binaryExpression) {
         if (binaryExpression instanceof AndExpression) {
             return new And(map(binaryExpression.getLeftExpression()), map(binaryExpression.getRightExpression()));
         } else if (binaryExpression instanceof OrExpression) {
@@ -111,7 +112,7 @@ public class SqlMetadataFilterParser implements MetadataFilterParser {
         }
     }
 
-    private MetadataFilter map(InExpression inExpression) {
+    private Filter map(InExpression inExpression) {
         String key = ((Column) inExpression.getLeftExpression()).getColumnName();
 
         Collection<Object> comparisonValues = new ArrayList<>();

@@ -4,7 +4,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithMetadataFilteringIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import lombok.SneakyThrows;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -13,7 +13,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 @Testcontainers
-class ElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithMetadataFilteringIT {
+class ElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     private static final ElasticsearchContainer elasticsearch =

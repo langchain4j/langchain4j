@@ -4,14 +4,14 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithMetadataFilteringIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 @EnabledIfEnvironmentVariable(named = "ELASTICSEARCH_CLOUD_API_KEY", matches = ".+")
-class ElasticsearchCloudEmbeddingStoreIT extends EmbeddingStoreWithMetadataFilteringIT {
+class ElasticsearchCloudEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
             .serverUrl(System.getenv("ELASTICSEARCH_CLOUD_URL"))

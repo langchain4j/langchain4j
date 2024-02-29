@@ -1,16 +1,15 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
-import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 
-public class Or extends BinaryMetadataFilter {
+public class Or extends BinaryFilter {
 
-    public Or(MetadataFilter left, MetadataFilter right) {
+    public Or(Filter left, Filter right) {
         super(left, right);
     }
 
     @Override
-    public boolean test(Metadata metadata) {
-        return left().test(metadata) || right().test(metadata);
+    public boolean test(Object object) {
+        return left().test(object) || right().test(object);
     }
 }

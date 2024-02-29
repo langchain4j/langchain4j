@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
@@ -16,7 +16,7 @@ import static java.util.Collections.unmodifiableSet;
 
 @ToString
 @EqualsAndHashCode
-public class In implements MetadataFilter {
+public class In implements Filter {
 
     private final String key;
     private final Collection<?> comparisonValues;
@@ -26,7 +26,6 @@ public class In implements MetadataFilter {
         Set<?> copy = new HashSet<>(ensureNotEmpty(comparisonValues, "comparisonValues with key '" + key + "'"));
         this.comparisonValues = unmodifiableSet(copy);
         comparisonValues.forEach(value -> ensureNotNull(value, "comparisonValue with key '" + key + "'"));
-        // TODO test
     }
 
     public String key() {
@@ -38,12 +37,17 @@ public class In implements MetadataFilter {
     }
 
     @Override
-    public boolean test(Metadata metadata) {
+    public boolean test(Object object) {
+        if (!(object instanceof Metadata)) {
+            return false;
+        }
+
+        Metadata metadata = (Metadata) object;
         if (!metadata.containsKey(key)) {
             return false;
         }
 
-        Object actualValue = metadata.getObject(key);
+        Object actualValue = metadata.toMap().get(key);
         ensureTypesAreCompatible(actualValue, comparisonValues.iterator().next(), key);
 
         if (comparisonValues.iterator().next() instanceof Number) {

@@ -6,7 +6,7 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreWithMetadataFilteringIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -19,7 +19,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
-class MilvusEmbeddingStoreIT extends EmbeddingStoreWithMetadataFilteringIT {
+class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 

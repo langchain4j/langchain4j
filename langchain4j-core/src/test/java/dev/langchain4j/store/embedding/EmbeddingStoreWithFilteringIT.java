@@ -1,8 +1,9 @@
-package dev.langchain4j.store.embedding.filter.sql;
+package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
-import dev.langchain4j.store.embedding.filter.MetadataFilterParser;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -10,294 +11,68 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.MetadataFilter.MetadataKey.key;
-import static dev.langchain4j.store.embedding.filter.MetadataFilter.*;
+import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.params.provider.Arguments.of;
+import static org.assertj.core.data.Percentage.withPercentage;
 
-class SqlMetadataFilterParserTest {
+/**
+ * A minimum set of tests that each implementation of {@link EmbeddingStore} that supports {@link Filter} must pass.
+ */
+public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
-    MetadataFilterParser parser = new SqlMetadataFilterParser();
-
-    @ParameterizedTest
-    @MethodSource
-    void should_parse(String sqlWhereExpression, MetadataFilter expectedMetadataFilter) {
-
-        // when
-        MetadataFilter metadataFilter = parser.parse(sqlWhereExpression);
-
-        // then
-        assertThat(metadataFilter).isEqualTo(expectedMetadataFilter);
-    }
-
-    static Stream<Arguments> should_parse() {
-        return Stream.<Arguments>builder()
-
-                // eq
-                .add(of(
-                        "name = 'Klaus'",
-                        key("name").eq("Klaus")
-                ))
-                .add(of(
-                        "age = 18",
-                        key("age").eq(18L)
-                ))
-                .add(of(
-                        "weight = 67.8",
-                        key("weight").eq(67.8d)
-                ))
-
-
-                // ne
-                .add(of(
-                        "name != 'Klaus'",
-                        key("name").ne("Klaus")
-                ))
-                .add(of(
-                        "age != 18",
-                        key("age").ne(18L)
-                ))
-                .add(of(
-                        "weight != 67.8",
-                        key("weight").ne(67.8d)
-                ))
-
-
-                // gt
-                .add(of(
-                        "name > 'Klaus'",
-                        key("name").gt("Klaus")
-                ))
-                .add(of(
-                        "age > 18",
-                        key("age").gt(18L)
-                ))
-                .add(of(
-                        "weight > 67.8",
-                        key("weight").gt(67.8d)
-                ))
-
-
-                // gte
-                .add(of(
-                        "name >= 'Klaus'",
-                        key("name").gte("Klaus")
-                ))
-                .add(of(
-                        "age >= 18",
-                        key("age").gte(18L)
-                ))
-                .add(of(
-                        "weight >= 67.8",
-                        key("weight").gte(67.8d)
-                ))
-
-
-                // lt
-                .add(of(
-                        "name < 'Klaus'",
-                        key("name").lt("Klaus")
-                ))
-                .add(of(
-                        "age < 18",
-                        key("age").lt(18L)
-                ))
-                .add(of(
-                        "weight < 67.8",
-                        key("weight").lt(67.8d)
-                ))
-
-
-                // lte
-                .add(of(
-                        "name <= 'Klaus'",
-                        key("name").lte("Klaus")
-                ))
-                .add(of(
-                        "age <= 18",
-                        key("age").lte(18L)
-                ))
-                .add(of(
-                        "weight <= 67.8",
-                        key("weight").lte(67.8d)
-                ))
-
-
-                // in
-                .add(of(
-                        "name IN ('Klaus', 'Francine')",
-                        key("name").in("Klaus", "Francine")
-                ))
-                .add(of(
-                        "age IN (18, 42)",
-                        key("age").in(18L, 42L)
-                ))
-                .add(of(
-                        "weight IN (67.8, 78.9)",
-                        key("weight").in(67.8d, 78.9d)
-                ))
-
-
-                // nin
-                .add(of(
-                        "name NOT IN ('Klaus', 'Francine')",
-                        key("name").nin("Klaus", "Francine")
-                ))
-                .add(of(
-                        "age NOT IN (18, 42)",
-                        key("age").nin(18L, 42L)
-                ))
-                .add(of(
-                        "weight NOT IN (67.8, 78.9)",
-                        key("weight").nin(67.8d, 78.9d)
-                ))
-
-
-                // and
-                .add(of(
-                        "name = 'Klaus' AND age = 18",
-                        and(
-                                key("name").eq("Klaus"),
-                                key("age").eq(18L)
-                        )
-                ))
-
-
-                // not
-                .add(of(
-                        "NOT name = 'Klaus'",
-                        not(key("name").eq("Klaus"))
-                ))
-                .add(of(
-                        "NOT (name = 'Klaus')",
-                        not(key("name").eq("Klaus"))
-                ))
-
-
-                // or
-                .add(of(
-                        "name = 'Klaus' OR age = 18",
-                        or(
-                                key("name").eq("Klaus"),
-                                key("age").eq(18L)
-                        )
-                ))
-
-
-                // or x2
-                .add(of(
-                        "color = 'white' OR color = 'black' OR color = 'red'",
-                        or(
-                                or(
-                                        key("color").eq("white"),
-                                        key("color").eq("black")
-                                ),
-                                key("color").eq("red")
-                        )
-                ))
-                .add(of(
-                        "(color = 'white' OR color = 'black') OR color = 'red'",
-                        or(
-                                or(
-                                        key("color").eq("white"),
-                                        key("color").eq("black")
-                                ),
-                                key("color").eq("red")
-                        )
-                ))
-                .add(of(
-                        "color = 'white' OR (color = 'black' OR color = 'red')",
-                        or(
-                                key("color").eq("white"),
-                                or(
-                                        key("color").eq("black"),
-                                        key("color").eq("red")
-                                )
-                        )
-                ))
-
-
-                // or + and
-                .add(of(
-                        "color = 'white' OR color = 'black' AND form = 'circle'",
-                        or(
-                                key("color").eq("white"),
-                                and(
-                                        key("color").eq("black"),
-                                        key("form").eq("circle")
-                                )
-                        )
-                ))
-                .add(of(
-                        "(color = 'white' OR color = 'black') AND form = 'circle'",
-                        and(
-                                or(
-                                        key("color").eq("white"),
-                                        key("color").eq("black")
-                                ),
-                                key("form").eq("circle")
-                        )
-                ))
-
-
-                // and + or
-                .add(of(
-                        "color = 'white' AND shape = 'circle' OR color = 'red'",
-                        or(
-                                and(
-                                        key("color").eq("white"),
-                                        key("shape").eq("circle")
-                                ),
-                                key("color").eq("red")
-                        )
-                ))
-                .add(of(
-                        "color = 'white' AND (shape = 'circle' OR color = 'red')",
-                        and(
-                                key("color").eq("white"),
-                                or(
-                                        key("shape").eq("circle"),
-                                        key("color").eq("red")
-                                )
-                        )
-                ))
-
-
-                // and x2
-                .add(of(
-                        "color = 'white' AND form = 'circle' AND area > 7",
-                        and(
-                                and(
-                                        key("color").eq("white"),
-                                        key("form").eq("circle")
-                                ),
-                                key("area").gt(7L)
-                        )
-                ))
-
-                .build();
-    }
+    // TODO self-query retriever
+    // TODO memory id automatically as filter?
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata(String sqlWhereExpression,
+    void should_filter_by_metadata(Filter filter,
                                    List<Metadata> matchingMetadatas,
                                    List<Metadata> notMatchingMetadatas) {
-
-        MetadataFilter metadataFilter = parser.parse(sqlWhereExpression);
-
+        // given
         for (Metadata matchingMetadata : matchingMetadatas) {
-            assertThat(metadataFilter.test(matchingMetadata)).isTrue();
+            TextSegment matchingSegment = TextSegment.from("matching", matchingMetadata);
+            Embedding matchingEmbedding = embeddingModel().embed(matchingSegment).content();
+            embeddingStore().add(matchingEmbedding, matchingSegment);
         }
 
         for (Metadata notMatchingMetadata : notMatchingMetadatas) {
-            assertThat(metadataFilter.test(notMatchingMetadata)).isFalse();
+            TextSegment notMatchingSegment = TextSegment.from("not matching", notMatchingMetadata);
+            Embedding notMatchingEmbedding = embeddingModel().embed(notMatchingSegment).content();
+            embeddingStore().add(notMatchingEmbedding, notMatchingSegment);
         }
 
-        Metadata emptyMetadata = new Metadata();
-        assertThat(metadataFilter.test(emptyMetadata)).isFalse();
+        TextSegment notMatchingSegmentWithoutMetadata = TextSegment.from("not matching, without metadata");
+        Embedding notMatchingWithoutMetadataEmbedding = embeddingModel().embed(notMatchingSegmentWithoutMetadata).content();
+        embeddingStore().add(notMatchingWithoutMetadataEmbedding, notMatchingSegmentWithoutMetadata);
+
+        awaitUntilPersisted();
+
+        Embedding queryEmbedding = embeddingModel().embed("matching").content();
+
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .maxResults(100)
+                .build();
+        assertThat(embeddingStore().search(request).matches())
+                // +1 for notMatchingSegmentWithoutMetadata
+                .hasSize(matchingMetadatas.size() + notMatchingMetadatas.size() + 1);
+
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .filter(filter)
+                .maxResults(100)
+                .build();
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+
+        // then
+        assertThat(matches).hasSize(matchingMetadatas.size());
+        matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
+        matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
     }
 
     static Stream<Arguments> should_filter_by_metadata() {
@@ -307,7 +82,7 @@ class SqlMetadataFilterParserTest {
                 // === Equal ===
 
                 .add(Arguments.of(
-                        "key = 'a'",
+                        key("key").eq("a"),
                         asList(
                                 new Metadata().put("key", "a"),
                                 new Metadata().put("key", "a").put("key2", "b")
@@ -323,7 +98,7 @@ class SqlMetadataFilterParserTest {
 
                 // integer
                 .add(Arguments.of(
-                        "key = -2147483648",
+                        key("key").eq(Integer.MIN_VALUE),
                         asList(
                                 new Metadata().put("key", Integer.MIN_VALUE),
                                 new Metadata().put("key", Integer.MIN_VALUE).put("key2", 0)
@@ -337,7 +112,7 @@ class SqlMetadataFilterParserTest {
 
                 ))
                 .add(Arguments.of(
-                        "key = 0",
+                        key("key").eq(0),
                         asList(
                                 new Metadata().put("key", 0),
                                 new Metadata().put("key", 0).put("key2", 1)
@@ -349,7 +124,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key = 2147483647",
+                        key("key").eq(Integer.MAX_VALUE),
                         asList(
                                 new Metadata().put("key", Integer.MAX_VALUE),
                                 new Metadata().put("key", Integer.MAX_VALUE).put("key2", 0)
@@ -364,7 +139,7 @@ class SqlMetadataFilterParserTest {
 
                 // long
                 .add(Arguments.of(
-                        "key = -9223372036854775808",
+                        key("key").eq(Long.MIN_VALUE),
                         asList(
                                 new Metadata().put("key", Long.MIN_VALUE),
                                 new Metadata().put("key", Long.MIN_VALUE).put("key2", 0L)
@@ -377,7 +152,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key = 0",
+                        key("key").eq(0L),
                         asList(
                                 new Metadata().put("key", 0L),
                                 new Metadata().put("key", 0L).put("key2", 1L)
@@ -389,7 +164,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key = 9223372036854775807",
+                        key("key").eq(Long.MAX_VALUE),
                         asList(
                                 new Metadata().put("key", Long.MAX_VALUE),
                                 new Metadata().put("key", Long.MAX_VALUE).put("key2", 0L)
@@ -404,20 +179,20 @@ class SqlMetadataFilterParserTest {
 
                 // float
                 .add(Arguments.of(
-                        "key = -340282346638528859811704183484516925440",
+                        key("key").eq(-Float.MAX_VALUE),
                         asList(
-                                new Metadata().put("key", -340282346638528859811704183484516925440f),
-                                new Metadata().put("key", -340282346638528859811704183484516925440f).put("key2", 0f)
+                                new Metadata().put("key", -Float.MAX_VALUE),
+                                new Metadata().put("key", -Float.MAX_VALUE).put("key2", Float.MIN_VALUE)
                         ),
                         asList(
                                 new Metadata().put("key", Math.nextUp(-Float.MAX_VALUE)),
                                 new Metadata().put("key", Float.MIN_VALUE),
                                 new Metadata().put("key", Float.MAX_VALUE),
-                                new Metadata().put("key2", -340282346638528859811704183484516925440f)
+                                new Metadata().put("key2", -Float.MAX_VALUE)
                         )
                 ))
                 .add(Arguments.of(
-                        "key = 0",
+                        key("key").eq(0f),
                         asList(
                                 new Metadata().put("key", 0f),
                                 new Metadata().put("key", 0f).put("key2", 1f)
@@ -429,16 +204,16 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key = 340282346638528859811704183484516925440",
+                        key("key").eq(Float.MAX_VALUE),
                         asList(
-                                new Metadata().put("key", 340282346638528859811704183484516925440f),
-                                new Metadata().put("key", 340282346638528859811704183484516925440f).put("key2", 0f)
+                                new Metadata().put("key", Float.MAX_VALUE),
+                                new Metadata().put("key", Float.MAX_VALUE).put("key2", Float.MIN_VALUE)
                         ),
                         asList(
                                 new Metadata().put("key", -Float.MAX_VALUE),
                                 new Metadata().put("key", Float.MIN_VALUE),
                                 new Metadata().put("key", Math.nextDown(Float.MAX_VALUE)),
-                                new Metadata().put("key2", 340282346638528859811704183484516925440f)
+                                new Metadata().put("key2", Float.MAX_VALUE)
                         )
                 ))
 
@@ -447,7 +222,7 @@ class SqlMetadataFilterParserTest {
                         key("key").eq(-Double.MAX_VALUE),
                         asList(
                                 new Metadata().put("key", -Double.MAX_VALUE),
-                                new Metadata().put("key", -Double.MAX_VALUE).put("key2", 0d)
+                                new Metadata().put("key", -Double.MAX_VALUE).put("key2", Double.MIN_VALUE)
                         ),
                         asList(
                                 new Metadata().put("key", Math.nextUp(-Double.MAX_VALUE)),
@@ -457,7 +232,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key = 0",
+                        key("key").eq(0d),
                         asList(
                                 new Metadata().put("key", 0d),
                                 new Metadata().put("key", 0d).put("key2", 1d)
@@ -472,7 +247,7 @@ class SqlMetadataFilterParserTest {
                         key("key").eq(Double.MAX_VALUE),
                         asList(
                                 new Metadata().put("key", Double.MAX_VALUE),
-                                new Metadata().put("key", Double.MAX_VALUE).put("key2", 0d)
+                                new Metadata().put("key", Double.MAX_VALUE).put("key2", Double.MIN_VALUE)
                         ),
                         asList(
                                 new Metadata().put("key", -Double.MAX_VALUE),
@@ -486,7 +261,7 @@ class SqlMetadataFilterParserTest {
                 // === GreaterThan ==
 
                 .add(Arguments.of(
-                        "key > 'b'",
+                        key("key").gt("b"),
                         asList(
                                 new Metadata().put("key", "c"),
                                 new Metadata().put("key", "c").put("key2", "a")
@@ -498,7 +273,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key > 1",
+                        key("key").gt(1),
                         asList(
                                 new Metadata().put("key", 2),
                                 new Metadata().put("key", 2).put("key2", 0)
@@ -511,7 +286,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key > 1",
+                        key("key").gt(1L),
                         asList(
                                 new Metadata().put("key", 2L),
                                 new Metadata().put("key", 2L).put("key2", 0L)
@@ -524,7 +299,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key > 1.1",
+                        key("key").gt(1.1f),
                         asList(
                                 new Metadata().put("key", 1.2f),
                                 new Metadata().put("key", 1.2f).put("key2", 1.0f)
@@ -537,7 +312,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key > 1.1",
+                        key("key").gt(1.1d),
                         asList(
                                 new Metadata().put("key", 1.2d),
                                 new Metadata().put("key", 1.2d).put("key2", 1.0d)
@@ -554,7 +329,7 @@ class SqlMetadataFilterParserTest {
                 // === GreaterThanOrEqual ==
 
                 .add(Arguments.of(
-                        "key >= 'b'",
+                        key("key").gte("b"),
                         asList(
                                 new Metadata().put("key", "b"),
                                 new Metadata().put("key", "c"),
@@ -566,7 +341,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key >= 1",
+                        key("key").gte(1),
                         asList(
                                 new Metadata().put("key", 1),
                                 new Metadata().put("key", 2),
@@ -581,7 +356,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key >= 1",
+                        key("key").gte(1L),
                         asList(
                                 new Metadata().put("key", 1L),
                                 new Metadata().put("key", 2L),
@@ -596,7 +371,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key >= 1.1",
+                        key("key").gte(1.1f),
                         asList(
                                 new Metadata().put("key", 1.1f),
                                 new Metadata().put("key", 1.2f),
@@ -611,7 +386,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key >= 1.1",
+                        key("key").gte(1.1d),
                         asList(
                                 new Metadata().put("key", 1.1d),
                                 new Metadata().put("key", 1.2d),
@@ -630,7 +405,7 @@ class SqlMetadataFilterParserTest {
                 // === LessThan ==
 
                 .add(Arguments.of(
-                        "key < 'b'",
+                        key("key").lt("b"),
                         asList(
 
                                 new Metadata().put("key", "a"),
@@ -643,7 +418,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key < 1",
+                        key("key").lt(1),
                         asList(
                                 new Metadata().put("key", -2),
                                 new Metadata().put("key", 0),
@@ -656,7 +431,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key < 1",
+                        key("key").lt(1L),
                         asList(
                                 new Metadata().put("key", -2L),
                                 new Metadata().put("key", 0L),
@@ -669,7 +444,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key < 1.1",
+                        key("key").lt(1.1f),
                         asList(
                                 new Metadata().put("key", -1.2f),
                                 new Metadata().put("key", 1.0f),
@@ -682,7 +457,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key < 1.1",
+                        key("key").lt(1.1d),
                         asList(
                                 new Metadata().put("key", -1.2d),
                                 new Metadata().put("key", 1.0d),
@@ -699,7 +474,7 @@ class SqlMetadataFilterParserTest {
                 // === LessThanOrEqual ==
 
                 .add(Arguments.of(
-                        "key <= 'b'",
+                        key("key").lte("b"),
                         asList(
 
                                 new Metadata().put("key", "a"),
@@ -712,7 +487,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key <= 1",
+                        key("key").lte(1),
                         asList(
                                 new Metadata().put("key", -2),
                                 new Metadata().put("key", 0),
@@ -725,7 +500,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key <= 1",
+                        key("key").lte(1L),
                         asList(
                                 new Metadata().put("key", -2L),
                                 new Metadata().put("key", 0L),
@@ -738,7 +513,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key <= 1.1",
+                        key("key").lte(1.1f),
                         asList(
                                 new Metadata().put("key", -1.2f),
                                 new Metadata().put("key", 1.0f),
@@ -751,7 +526,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key <= 1.1",
+                        key("key").lte(1.1d),
                         asList(
                                 new Metadata().put("key", -1.2d),
                                 new Metadata().put("key", 1.0d),
@@ -769,7 +544,7 @@ class SqlMetadataFilterParserTest {
 
                 // In: string
                 .add(Arguments.of(
-                        "name IN ('Klaus')",
+                        key("name").in("Klaus"),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42)
@@ -781,7 +556,33 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "name IN ('Klaus', 'Alice')",
+                        key("name").in(singletonList("Klaus")),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name2", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").in("Klaus", "Alice"),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Zoe"),
+                                new Metadata().put("name2", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").in(asList("Klaus", "Alice")),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -797,7 +598,7 @@ class SqlMetadataFilterParserTest {
 
                 // In: integer
                 .add(Arguments.of(
-                        "age IN (42)",
+                        key("age").in(42),
                         asList(
                                 new Metadata().put("age", 42),
                                 new Metadata().put("age", 42).put("name", "Klaus")
@@ -808,7 +609,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age IN (42, 18)",
+                        key("age").in(singletonList(42)),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42, 18),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 18),
+                                new Metadata().put("age", 42).put("name", "Klaus"),
+                                new Metadata().put("age", 18).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42, 18)),
                         asList(
                                 new Metadata().put("age", 42),
                                 new Metadata().put("age", 18),
@@ -823,7 +648,7 @@ class SqlMetadataFilterParserTest {
 
                 // In: long
                 .add(Arguments.of(
-                        "age IN (42)",
+                        key("age").in(42L),
                         asList(
                                 new Metadata().put("age", 42L),
                                 new Metadata().put("age", 42L).put("name", "Klaus")
@@ -834,7 +659,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age IN (42, 18)",
+                        key("age").in(singletonList(42L)),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 42L).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42L, 18L),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 18L),
+                                new Metadata().put("age", 42L).put("name", "Klaus"),
+                                new Metadata().put("age", 18L).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42L, 18L)),
                         asList(
                                 new Metadata().put("age", 42L),
                                 new Metadata().put("age", 18L),
@@ -849,7 +698,7 @@ class SqlMetadataFilterParserTest {
 
                 // In: float
                 .add(Arguments.of(
-                        "age IN (42.0)",
+                        key("age").in(42.0f),
                         asList(
                                 new Metadata().put("age", 42.0f),
                                 new Metadata().put("age", 42.0f).put("name", "Klaus")
@@ -860,7 +709,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age IN (42.0, 18.0)",
+                        key("age").in(singletonList(42.0f)),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42.0f, 18.0f),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 18.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0f).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42.0f, 18.0f)),
                         asList(
                                 new Metadata().put("age", 42.0f),
                                 new Metadata().put("age", 18.0f),
@@ -875,7 +748,7 @@ class SqlMetadataFilterParserTest {
 
                 // In: double
                 .add(Arguments.of(
-                        "age IN (42.0)",
+                        key("age").in(42.0d),
                         asList(
                                 new Metadata().put("age", 42.0d),
                                 new Metadata().put("age", 42.0d).put("name", "Klaus")
@@ -886,7 +759,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age IN (42.0, 18.0)",
+                        key("age").in(singletonList(42.0d)),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(42.0d, 18.0d),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 18.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0d).put("name", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").in(asList(42.0d, 18.0d)),
                         asList(
                                 new Metadata().put("age", 42.0d),
                                 new Metadata().put("age", 18.0d),
@@ -899,12 +796,17 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
 
+                // TODO test comparing to smaller, bigger types?
+
 
                 // === Or ===
 
                 // Or: one key
                 .add(Arguments.of(
-                        "name = 'Klaus' OR name = 'Alice'",
+                        or(
+                                key("name").eq("Klaus"),
+                                key("name").eq("Alice")
+                        ),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -916,7 +818,10 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "name = 'Alice' OR name = 'Klaus'",
+                        or(
+                                key("name").eq("Alice"),
+                                key("name").eq("Klaus")
+                        ),
                         asList(
                                 new Metadata().put("name", "Alice"),
                                 new Metadata().put("name", "Alice").put("age", 42),
@@ -927,22 +832,13 @@ class SqlMetadataFilterParserTest {
                                 new Metadata().put("name", "Zoe")
                         )
                 ))
-                .add(Arguments.of(
-                        "(name = 'Klaus' OR name = 'Alice')",
-                        asList(
-                                new Metadata().put("name", "Klaus"),
-                                new Metadata().put("name", "Klaus").put("age", 42),
-                                new Metadata().put("name", "Alice"),
-                                new Metadata().put("name", "Alice").put("age", 42)
-                        ),
-                        singletonList(
-                                new Metadata().put("name", "Zoe")
-                        )
-                ))
 
                 // Or: multiple keys
                 .add(Arguments.of(
-                        "name = 'Klaus' OR age = 42",
+                        or(
+                                key("name").eq("Klaus"),
+                                key("age").eq(42)
+                        ),
                         asList(
                                 // only Or.left is present and true
                                 new Metadata().put("name", "Klaus"),
@@ -969,7 +865,10 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age = 42 OR name = 'Klaus'",
+                        or(
+                                key("age").eq(42),
+                                key("name").eq("Klaus")
+                        ),
                         asList(
                                 // only Or.left is present and true
                                 new Metadata().put("age", 42),
@@ -998,7 +897,13 @@ class SqlMetadataFilterParserTest {
 
                 // Or: x2
                 .add(Arguments.of(
-                        "name = 'Klaus' OR age = 42 OR city = 'Munich'",
+                        or(
+                                key("name").eq("Klaus"),
+                                or(
+                                        key("age").eq(42),
+                                        key("city").eq("Munich")
+                                )
+                        ),
                         asList(
                                 // only Or.left is present and true
                                 new Metadata().put("name", "Klaus"),
@@ -1040,48 +945,13 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "(name = 'Klaus' OR age = 42) OR city = 'Munich'",
-                        asList(
-                                // only Or.left is present and true
-                                new Metadata().put("name", "Klaus"),
-                                new Metadata().put("name", "Klaus").put("country", "Germany"),
-                                new Metadata().put("age", 42),
-                                new Metadata().put("age", 42).put("country", "Germany"),
-                                new Metadata().put("name", "Klaus").put("age", 42),
-                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
-
-                                // Or.left is true, Or.right is false
-                                new Metadata().put("name", "Klaus").put("city", "Frankfurt"),
-                                new Metadata().put("age", 42).put("city", "Frankfurt"),
-                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
-
-                                // only Or.right is present and true
-                                new Metadata().put("city", "Munich"),
-                                new Metadata().put("city", "Munich").put("country", "Germany"),
-
-                                // Or.right is true, Or.left is false
-                                new Metadata().put("city", "Munich").put("name", "Alice"),
-                                new Metadata().put("city", "Munich").put("age", 666),
-
-                                // Or.left and Or.right are both true
-                                new Metadata().put("name", "Klaus").put("age", 42),
-                                new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
-                                new Metadata().put("name", "Klaus").put("city", "Munich"),
-                                new Metadata().put("name", "Klaus").put("city", "Munich").put("country", "Germany"),
-                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
-                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
+                        or(
+                                or(
+                                        key("name").eq("Klaus"),
+                                        key("age").eq(42)
+                                ),
+                                key("city").eq("Munich")
                         ),
-                        asList(
-                                new Metadata().put("name", "Alice"),
-                                new Metadata().put("age", 666),
-                                new Metadata().put("city", "Frankfurt"),
-                                new Metadata().put("name", "Alice").put("age", 666),
-                                new Metadata().put("name", "Alice").put("city", "Frankfurt"),
-                                new Metadata().put("name", "Alice").put("age", 666).put("city", "Frankfurt")
-                        )
-                ))
-                .add(Arguments.of(
-                        "name = 'Klaus' OR (age = 42 OR city = 'Munich')",
                         asList(
                                 // only Or.left is present and true
                                 new Metadata().put("name", "Klaus"),
@@ -1125,7 +995,10 @@ class SqlMetadataFilterParserTest {
                 // === AND ===
 
                 .add(Arguments.of(
-                        "name = 'Klaus' AND age = 42",
+                        and(
+                                key("name").eq("Klaus"),
+                                key("age").eq(42)
+                        ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42),
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich")
@@ -1148,7 +1021,10 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age = 42 AND name = 'Klaus'",
+                        and(
+                                key("age").eq(42),
+                                key("name").eq("Klaus")
+                        ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42),
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich")
@@ -1173,7 +1049,13 @@ class SqlMetadataFilterParserTest {
 
                 // And: x2
                 .add(Arguments.of(
-                        "name = 'Klaus' AND age = 42 AND city = 'Munich'",
+                        and(
+                                key("name").eq("Klaus"),
+                                and(
+                                        key("age").eq(42),
+                                        key("city").eq("Munich")
+                                )
+                        ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
@@ -1196,30 +1078,13 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "(name = 'Klaus' AND age = 42) AND city = 'Munich'",
-                        asList(
-                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
-                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
+                        and(
+                                and(
+                                        key("name").eq("Klaus"),
+                                        key("age").eq(42)
+                                ),
+                                key("city").eq("Munich")
                         ),
-                        asList(
-                                // only And.left is present and true
-                                new Metadata().put("name", "Klaus").put("age", 42),
-
-                                // And.left is true, And.right is false
-                                new Metadata().put("name", "Klaus").put("age", 42).put("city", "Frankfurt"),
-
-                                // only And.right is present and true
-                                new Metadata().put("city", "Munich"),
-
-                                // And.right is true, And.left is false
-                                new Metadata().put("city", "Munich").put("name", "Klaus"),
-                                new Metadata().put("city", "Munich").put("name", "Klaus").put("age", 666),
-                                new Metadata().put("city", "Munich").put("age", 42),
-                                new Metadata().put("city", "Munich").put("age", 42).put("name", "Alice")
-                        )
-                ))
-                .add(Arguments.of(
-                        "name = 'Klaus' AND (age = 42 AND city = 'Munich')",
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich").put("country", "Germany")
@@ -1245,7 +1110,13 @@ class SqlMetadataFilterParserTest {
                 // === AND + nested OR ===
 
                 .add(Arguments.of(
-                        "name = 'Klaus' AND (age = 42 OR city = 'Munich')",
+                        and(
+                                key("name").eq("Klaus"),
+                                or(
+                                        key("age").eq(42),
+                                        key("city").eq("Munich")
+                                )
+                        ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42),
                                 new Metadata().put("name", "Klaus").put("age", 42).put("country", "Germany"),
@@ -1274,7 +1145,13 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "(name = 'Klaus' OR age = 42) AND city = 'Munich'",
+                        and(
+                                or(
+                                        key("name").eq("Klaus"),
+                                        key("age").eq(42)
+                                ),
+                                key("city").eq("Munich")
+                        ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("city", "Munich"),
                                 new Metadata().put("name", "Klaus").put("city", "Munich").put("country", "Germany"),
@@ -1306,7 +1183,13 @@ class SqlMetadataFilterParserTest {
 
                 // === OR + nested AND ===
                 .add(Arguments.of(
-                        "name = 'Klaus' OR age = 42 AND city = 'Munich'",
+                        or(
+                                key("name").eq("Klaus"),
+                                and(
+                                        key("age").eq(42),
+                                        key("city").eq("Munich")
+                                )
+                        ),
                         asList(
                                 // only Or.left is present and true
                                 new Metadata().put("name", "Klaus"),
@@ -1332,7 +1215,13 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "name = 'Klaus' AND age = 42 OR city = 'Munich'",
+                        or(
+                                and(
+                                        key("name").eq("Klaus"),
+                                        key("age").eq(42)
+                                ),
+                                key("city").eq("Munich")
+                        ),
                         asList(
                                 // only Or.left is present and true
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -1362,22 +1251,47 @@ class SqlMetadataFilterParserTest {
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata_not(String sqlWhereExpression,
+    void should_filter_by_metadata_not(Filter filter,
                                        List<Metadata> matchingMetadatas,
                                        List<Metadata> notMatchingMetadatas) {
-
-        MetadataFilter metadataFilter = parser.parse(sqlWhereExpression);
-
+        // given
         for (Metadata matchingMetadata : matchingMetadatas) {
-            assertThat(metadataFilter.test(matchingMetadata)).isTrue();
+            TextSegment matchingSegment = TextSegment.from("matching", matchingMetadata);
+            Embedding matchingEmbedding = embeddingModel().embed(matchingSegment).content();
+            embeddingStore().add(matchingEmbedding, matchingSegment);
         }
 
         for (Metadata notMatchingMetadata : notMatchingMetadatas) {
-            assertThat(metadataFilter.test(notMatchingMetadata)).isFalse();
+            TextSegment notMatchingSegment = TextSegment.from("not matching", notMatchingMetadata);
+            Embedding notMatchingEmbedding = embeddingModel().embed(notMatchingSegment).content();
+            embeddingStore().add(notMatchingEmbedding, notMatchingSegment);
         }
 
-        Metadata emptyMetadata = new Metadata();
-        assertThat(metadataFilter.test(emptyMetadata)).isTrue();
+        TextSegment notMatchingSegmentWithoutMetadata = TextSegment.from("matching");
+        Embedding notMatchingWithoutMetadataEmbedding = embeddingModel().embed(notMatchingSegmentWithoutMetadata).content();
+        embeddingStore().add(notMatchingWithoutMetadataEmbedding, notMatchingSegmentWithoutMetadata);
+
+        awaitUntilPersisted();
+
+        Embedding queryEmbedding = embeddingModel().embed("matching").content();
+
+        assertThat(embeddingStore().findRelevant(queryEmbedding, 100))
+                // +1 for notMatchingSegmentWithoutMetadata
+                .hasSize(matchingMetadatas.size() + notMatchingMetadatas.size() + 1);
+
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
+                .queryEmbedding(queryEmbedding)
+                .filter(filter)
+                .maxResults(100)
+                .build();
+
+        // when
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore().search(embeddingSearchRequest).matches();
+
+        // then
+        assertThat(matches).hasSize(matchingMetadatas.size() + 1); // +1 for notMatchingSegmentWithoutMetadata
+        matches.forEach(match -> assertThat(match.embedded().text()).isEqualTo("matching"));
+        matches.forEach(match -> assertThat(match.score()).isCloseTo(1, withPercentage(0.01)));
     }
 
     static Stream<Arguments> should_filter_by_metadata_not() {
@@ -1385,17 +1299,9 @@ class SqlMetadataFilterParserTest {
 
                 // === Not ===
                 .add(Arguments.of(
-                        "NOT(name = 'Klaus')",
-                        asList(
-                                new Metadata().put("name", "Alice"),
-                                new Metadata().put("age", 42)
+                        not(
+                                key("name").eq("Klaus")
                         ),
-                        asList(
-                                new Metadata().put("name", "Klaus"),
-                                new Metadata().put("name", "Klaus").put("age", 42)
-                        )
-                )).add(Arguments.of(
-                        "NOT name = 'Klaus'",
                         asList(
                                 new Metadata().put("name", "Alice"),
                                 new Metadata().put("age", 42)
@@ -1410,7 +1316,7 @@ class SqlMetadataFilterParserTest {
                 // === NotEqual ===
 
                 .add(Arguments.of(
-                        "key != 'a'",
+                        key("key").ne("a"),
                         asList(
                                 new Metadata().put("key", "A"),
                                 new Metadata().put("key", "b"),
@@ -1424,7 +1330,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key != 1",
+                        key("key").ne(1),
                         asList(
                                 new Metadata().put("key", -1),
                                 new Metadata().put("key", 0),
@@ -1438,7 +1344,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key != 1",
+                        key("key").ne(1L),
                         asList(
                                 new Metadata().put("key", -1L),
                                 new Metadata().put("key", 0L),
@@ -1452,7 +1358,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key != 1.1",
+                        key("key").ne(1.1f),
                         asList(
                                 new Metadata().put("key", -1.1f),
                                 new Metadata().put("key", 0.0f),
@@ -1466,7 +1372,7 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "key != 1.1",
+                        key("key").ne(1.1),
                         asList(
                                 new Metadata().put("key", -1.1),
                                 new Metadata().put("key", 0.0),
@@ -1485,7 +1391,7 @@ class SqlMetadataFilterParserTest {
 
                 // NotIn: string
                 .add(Arguments.of(
-                        "name NOT IN ('Klaus')",
+                        key("name").nin("Klaus"),
                         asList(
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Alice"),
@@ -1497,7 +1403,33 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "name NOT IN ('Klaus', 'Alice')",
+                        key("name").nin(singletonList("Klaus")),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name2", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").nin("Klaus", "Alice"),
+                        asList(
+                                new Metadata().put("name", "Klaus Heisler"),
+                                new Metadata().put("name", "Zoe"),
+                                new Metadata().put("name2", "Klaus")
+                        ),
+                        asList(
+                                new Metadata().put("name", "Klaus"),
+                                new Metadata().put("name", "Klaus").put("age", 42),
+                                new Metadata().put("name", "Alice"),
+                                new Metadata().put("name", "Alice").put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        key("name").nin(asList("Klaus", "Alice")),
                         asList(
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Zoe"),
@@ -1513,7 +1445,7 @@ class SqlMetadataFilterParserTest {
 
                 // NotIn: int
                 .add(Arguments.of(
-                        "age NOT IN (42)",
+                        key("age").nin(42),
                         asList(
                                 new Metadata().put("age", 666),
                                 new Metadata().put("age2", 42)
@@ -1524,7 +1456,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age NOT IN (42, 18)",
+                        key("age").nin(singletonList(42)),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 42).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42, 18),
+                        asList(
+                                new Metadata().put("age", 666),
+                                new Metadata().put("age2", 42)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42),
+                                new Metadata().put("age", 18),
+                                new Metadata().put("age", 42).put("name", "Klaus"),
+                                new Metadata().put("age", 18).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42, 18)),
                         asList(
                                 new Metadata().put("age", 666),
                                 new Metadata().put("age2", 42)
@@ -1539,7 +1495,7 @@ class SqlMetadataFilterParserTest {
 
                 // NotIn: long
                 .add(Arguments.of(
-                        "age NOT IN (42)",
+                        key("age").nin(42L),
                         asList(
                                 new Metadata().put("age", 666L),
                                 new Metadata().put("age2", 42L)
@@ -1550,7 +1506,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age NOT IN (42, 18)",
+                        key("age").nin(singletonList(42L)),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 42L).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42L, 18L),
+                        asList(
+                                new Metadata().put("age", 666L),
+                                new Metadata().put("age2", 42L)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42L),
+                                new Metadata().put("age", 18L),
+                                new Metadata().put("age", 42L).put("name", "Klaus"),
+                                new Metadata().put("age", 18L).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42L, 18L)),
                         asList(
                                 new Metadata().put("age", 666L),
                                 new Metadata().put("age2", 42L)
@@ -1565,7 +1545,7 @@ class SqlMetadataFilterParserTest {
 
                 // NotIn: float
                 .add(Arguments.of(
-                        "age NOT IN (42.0)",
+                        key("age").nin(42.0f),
                         asList(
                                 new Metadata().put("age", 666.0f),
                                 new Metadata().put("age2", 42.0f)
@@ -1576,7 +1556,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age NOT IN (42.0, 18.0)",
+                        key("age").nin(singletonList(42.0f)),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42.0f, 18.0f),
+                        asList(
+                                new Metadata().put("age", 666.0f),
+                                new Metadata().put("age2", 42.0f)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0f),
+                                new Metadata().put("age", 18.0f),
+                                new Metadata().put("age", 42.0f).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0f).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42.0f, 18.0f)),
                         asList(
                                 new Metadata().put("age", 666.0f),
                                 new Metadata().put("age2", 42.0f)
@@ -1591,7 +1595,7 @@ class SqlMetadataFilterParserTest {
 
                 // NotIn: double
                 .add(Arguments.of(
-                        "age NOT IN (42.0)",
+                        key("age").nin(42.0d),
                         asList(
                                 new Metadata().put("age", 666.0d),
                                 new Metadata().put("age2", 42.0d)
@@ -1602,7 +1606,31 @@ class SqlMetadataFilterParserTest {
                         )
                 ))
                 .add(Arguments.of(
-                        "age NOT IN (42.0, 18.0)",
+                        key("age").nin(singletonList(42.0d)),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(42.0d, 18.0d),
+                        asList(
+                                new Metadata().put("age", 666.0d),
+                                new Metadata().put("age2", 42.0d)
+                        ),
+                        asList(
+                                new Metadata().put("age", 42.0d),
+                                new Metadata().put("age", 18.0d),
+                                new Metadata().put("age", 42.0d).put("name", "Klaus"),
+                                new Metadata().put("age", 18.0d).put("name", "Klaus")
+                        )
+                ))
+                .add(Arguments.of(
+                        key("age").nin(asList(42.0d, 18.0d)),
                         asList(
                                 new Metadata().put("age", 666.0d),
                                 new Metadata().put("age2", 42.0d)

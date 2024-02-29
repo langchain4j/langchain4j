@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.filter.comparison;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
@@ -12,7 +12,7 @@ import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensu
 
 @ToString
 @EqualsAndHashCode
-public class GreaterThan implements MetadataFilter {
+public class GreaterThan implements Filter {
 
     private final String key;
     private final Comparable<?> comparisonValue;
@@ -31,12 +31,17 @@ public class GreaterThan implements MetadataFilter {
     }
 
     @Override
-    public boolean test(Metadata metadata) {
+    public boolean test(Object object) {
+        if (!(object instanceof Metadata)) {
+            return false;
+        }
+
+        Metadata metadata = (Metadata) object;
         if (!metadata.containsKey(key)) {
             return false;
         }
 
-        Object actualValue = metadata.getObject(key);
+        Object actualValue = metadata.toMap().get(key);
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {

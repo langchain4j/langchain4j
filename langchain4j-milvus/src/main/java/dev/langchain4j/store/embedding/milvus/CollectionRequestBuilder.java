@@ -1,6 +1,6 @@
 package dev.langchain4j.store.embedding.milvus;
 
-import dev.langchain4j.store.embedding.filter.MetadataFilter;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.MetricType;
 import io.milvus.param.collection.DropCollectionParam;
@@ -54,7 +54,7 @@ class CollectionRequestBuilder {
 
     static SearchParam buildSearchRequest(String collectionName,
                                           List<Float> vector,
-                                          MetadataFilter metadataFilter,
+                                          Filter filter,
                                           int maxResults,
                                           MetricType metricType,
                                           ConsistencyLevelEnum consistencyLevel) {
@@ -67,8 +67,8 @@ class CollectionRequestBuilder {
                 .withConsistencyLevel(consistencyLevel)
                 .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME, METADATA_FIELD_NAME));
 
-        if (metadataFilter != null) {
-            builder.withExpr(MilvusMetadataFilterMapper.map(metadataFilter));
+        if (filter != null) {
+            builder.withExpr(MilvusMetadataFilterMapper.map(filter));
         }
 
         return builder.build();
