@@ -19,11 +19,31 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
     void should_add_embedding_with_segment_with_metadata() {
 
         Metadata metadata = new Metadata();
-        metadata.put("string", "abc");
-        metadata.put("integer", 1);
-        metadata.put("long", 2L);
-        metadata.put("float", 3.3f);
-        metadata.put("double", 4.4d);
+        metadata.put("string_empty", "");
+        metadata.put("string_space", " ");
+        metadata.put("string_abc", "abc");
+
+        metadata.put("integer_min", Integer.MIN_VALUE);
+        metadata.put("integer_0", 0);
+        metadata.put("integer_1", 1);
+        metadata.put("integer_max", Integer.MAX_VALUE);
+
+        metadata.put("long_min", Long.MIN_VALUE);
+        metadata.put("long_0", 0L);
+        metadata.put("long_1", 1L);
+        metadata.put("long_max", Long.MAX_VALUE);
+
+        metadata.put("float_min", -Float.MAX_VALUE);
+        metadata.put("float_0", Float.MIN_VALUE);
+        metadata.put("float_1", 1f);
+        metadata.put("float_123", 1.23456789f);
+        metadata.put("float_max", Float.MAX_VALUE);
+
+        metadata.put("double_min", -Double.MAX_VALUE);
+        metadata.put("double_0", Double.MIN_VALUE);
+        metadata.put("double_1", 1d);
+        metadata.put("double_123", 1.23456789d);
+        metadata.put("double_max", Double.MAX_VALUE);
 
         TextSegment segment = TextSegment.from("hello", metadata);
         Embedding embedding = embeddingModel().embed(segment.text()).content();
@@ -50,11 +70,31 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
         assertThat(match.embedded().text()).isEqualTo(segment.text());
 
-        assertThat(match.embedded().metadata().getString("string")).isEqualTo("abc");
-        assertThat(match.embedded().metadata().getInteger("integer")).isEqualTo(1);
-        assertThat(match.embedded().metadata().getLong("long")).isEqualTo(2L);
-        assertThat(match.embedded().metadata().getFloat("float")).isEqualTo(3.3f);
-        assertThat(match.embedded().metadata().getDouble("double")).isEqualTo(4.4d);
+        assertThat(match.embedded().metadata().getString("string_empty")).isEqualTo("");
+        assertThat(match.embedded().metadata().getString("string_space")).isEqualTo(" ");
+        assertThat(match.embedded().metadata().getString("string_abc")).isEqualTo("abc");
+
+        assertThat(match.embedded().metadata().getInteger("integer_min")).isEqualTo(Integer.MIN_VALUE);
+        assertThat(match.embedded().metadata().getInteger("integer_0")).isEqualTo(0);
+        assertThat(match.embedded().metadata().getInteger("integer_1")).isEqualTo(1);
+        assertThat(match.embedded().metadata().getInteger("integer_max")).isEqualTo(Integer.MAX_VALUE);
+
+        assertThat(match.embedded().metadata().getLong("long_min")).isEqualTo(Long.MIN_VALUE);
+        assertThat(match.embedded().metadata().getLong("long_0")).isEqualTo(0L);
+        assertThat(match.embedded().metadata().getLong("long_1")).isEqualTo(1L);
+        assertThat(match.embedded().metadata().getLong("long_max")).isEqualTo(Long.MAX_VALUE);
+
+        assertThat(match.embedded().metadata().getFloat("float_min")).isEqualTo(-Float.MAX_VALUE);
+        assertThat(match.embedded().metadata().getFloat("float_0")).isEqualTo(Float.MIN_VALUE);
+        assertThat(match.embedded().metadata().getFloat("float_1")).isEqualTo(1f);
+        assertThat(match.embedded().metadata().getFloat("float_123")).isEqualTo(1.23456789f);
+        assertThat(match.embedded().metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
+
+        assertThat(match.embedded().metadata().getDouble("double_min")).isEqualTo(-Double.MAX_VALUE);
+        assertThat(match.embedded().metadata().getDouble("double_0")).isEqualTo(Double.MIN_VALUE);
+        assertThat(match.embedded().metadata().getDouble("double_1")).isEqualTo(1d);
+        assertThat(match.embedded().metadata().getDouble("double_123")).isEqualTo(1.23456789d);
+        assertThat(match.embedded().metadata().getDouble("double_max")).isEqualTo(Double.MAX_VALUE);
 
         // new API
         assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()

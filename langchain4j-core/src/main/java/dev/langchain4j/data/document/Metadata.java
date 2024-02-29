@@ -1,7 +1,9 @@
 package dev.langchain4j.data.document;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
 
+import java.math.BigDecimal;
 import java.util.*;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -81,9 +83,7 @@ public class Metadata {
      *
      * @param key the key
      * @return the value associated with the given key, or {@code null} if the key is not present.
-     * @deprecated Use {@link #getString(String)}, {@link #getInteger(String)}, and other accessors instead.
      */
-    @Deprecated
     public String get(String key) {
         Object value = metadata.get(key);
         if (value != null) {
@@ -99,6 +99,7 @@ public class Metadata {
      * @param key the key
      * @return the {@link String} value associated with the given key, or {@code null} if the key is not present.
      */
+    @Experimental
     public String getString(String key) {
         return (String) metadata.get(key);
     }
@@ -110,6 +111,7 @@ public class Metadata {
      * @param key the key
      * @return the {@link Integer} value associated with the given key, or {@code null} if the key is not present.
      */
+    @Experimental
     public Integer getInteger(String key) {
         if (!containsKey(key)) {
             return null;
@@ -118,6 +120,10 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Integer.parseInt(value.toString()); // TODO needed? no
+        } else if (value instanceof Long) {
+            return (int) (long) value; // // TODO needed? yes, for InMemory persistent TODO check range
+        } else if (value instanceof Double) {
+            return (int) (double) value; // // TODO needed? no TODO check range?
         }
         return (int) value;
     }
@@ -128,6 +134,7 @@ public class Metadata {
      * @param key the key
      * @return the {@link Long} value associated with the given key, or {@code null} if the key is not present.
      */
+    @Experimental
     public Long getLong(String key) {
         if (!containsKey(key)) {
             return null;
@@ -136,8 +143,10 @@ public class Metadata {
         Object value = metadata.get(key);
         if (value instanceof String) {
             return Long.parseLong(value.toString()); // TODO needed? no
-        } else if (value instanceof Integer) { // TODO needed? yes
-            return (long) (int) value; // TODO other types?
+        } else if (value instanceof Integer) {
+            return (long) (int) value; // // TODO needed? yes, milvus? TODO other types?
+        } else if (value instanceof Double) {
+            return (long) (double) value; // // TODO needed? no TODO check range?
         }
         return (long) value;
     }
@@ -148,6 +157,7 @@ public class Metadata {
      * @param key the key
      * @return the {@link Float} value associated with the given key, or {@code null} if the key is not present.
      */
+    @Experimental
     public Float getFloat(String key) {
         if (!containsKey(key)) {
             return null;
@@ -157,12 +167,7 @@ public class Metadata {
         if (value instanceof String) {
             return Float.parseFloat(value.toString()); // TODO needed? no
         } else if (value instanceof Double) {
-            Double doubleValue = (Double) value;
-            if (doubleValue < -Float.MAX_VALUE || doubleValue > Float.MAX_VALUE) { // TODO test
-                // TODO message
-                throw illegalArgument("Double value '%s' out of range for a float", doubleValue);
-            }
-            return doubleValue.floatValue(); // TODO needed? yes
+            return BigDecimal.valueOf((double) value).floatValue(); // TODO needed? yes, for memory persistent, milvus
         }
         return (float) value;
     }
@@ -173,14 +178,15 @@ public class Metadata {
      * @param key the key
      * @return the {@link Double} value associated with the given key, or {@code null} if the key is not present.
      */
+    @Experimental
     public Double getDouble(String key) {
         if (!containsKey(key)) {
             return null;
         }
 
         Object value = metadata.get(key);
-        if (value instanceof String) { // TODO needed? no
-            return Double.parseDouble(value.toString());
+        if (value instanceof String) {
+            return Double.parseDouble(value.toString()); // TODO needed? no
         }
         return (double) value;
     }
@@ -191,6 +197,7 @@ public class Metadata {
      * @param key
      * @return
      */
+    @Experimental
     public Object getObject(String key) { // TODO REMOVE needed? if yes - better name?
         // TODO check for null?
         return metadata.get(key);
@@ -203,6 +210,7 @@ public class Metadata {
      * @return
      */
     // TODO test
+    @Experimental
     public boolean containsKey(String key) {
         return metadata.containsKey(key);
     }
@@ -213,9 +221,7 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
-     * @deprecated Use {@link #put(String, String)}, {@link #put(String, int)}, and other accessors instead.
      */
-    @Deprecated
     public Metadata add(String key, Object value) {
         return put(key, value.toString());
     }
@@ -226,9 +232,7 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
-     * @deprecated Use {@link #put(String, String)}, {@link #put(String, int)}, and other accessors instead.
      */
-    @Deprecated
     public Metadata add(String key, String value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -242,6 +246,7 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
+    @Experimental
     public Metadata put(String key, String value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -255,7 +260,8 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    public Metadata put(String key, int value) { // TODO putInteger?
+    @Experimental
+    public Metadata put(String key, int value) {
         validate(key, value);
         this.metadata.put(key, value);
         return this;
@@ -268,6 +274,7 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
+    @Experimental
     public Metadata put(String key, long value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -281,6 +288,7 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
+    @Experimental
     public Metadata put(String key, float value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -294,6 +302,7 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
+    @Experimental
     public Metadata put(String key, double value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -324,9 +333,7 @@ public class Metadata {
      * Get a copy of the metadata as a map of key-value pairs.
      *
      * @return the metadata as a map of key-value pairs.
-     * @deprecated Use {@link #toMap()} instead.
      */
-    @Deprecated
     public Map<String, String> asMap() {
         Map<String, String> map = new HashMap<>();
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
@@ -340,6 +347,7 @@ public class Metadata {
      *
      * @return the metadata as a map of key-value pairs.
      */
+    @Experimental
     public Map<String, Object> toMap() {
         return new HashMap<>(metadata);
     }
@@ -382,6 +390,7 @@ public class Metadata {
      * @param value the value
      * @return a Metadata object
      */
+    @Experimental
     public static Metadata from(String key, int value) {
         return new Metadata().put(key, value);
     }
@@ -393,6 +402,7 @@ public class Metadata {
      * @param value the value
      * @return a Metadata object
      */
+    @Experimental
     public static Metadata from(String key, long value) {
         return new Metadata().put(key, value);
     }
@@ -404,6 +414,7 @@ public class Metadata {
      * @param value the value
      * @return a Metadata object
      */
+    @Experimental
     public static Metadata from(String key, float value) {
         return new Metadata().put(key, value);
     }
@@ -415,6 +426,7 @@ public class Metadata {
      * @param value the value
      * @return a Metadata object
      */
+    @Experimental
     public static Metadata from(String key, double value) {
         return new Metadata().put(key, value);
     }
@@ -423,9 +435,7 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return a Metadata object
-     * @deprecated Use {@link #from(String, String)}, {@link #from(String, int)} and other accessors instead.
      */
-    @Deprecated
     public static Metadata from(String key, Object value) {
         return new Metadata().add(key, value);
     }
@@ -455,10 +465,10 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return a Metadata object
-     * @deprecated Use {@link #metadata(String, String)} instead
      */
-    @Deprecated
     public static Metadata metadata(String key, Object value) {
         return from(key, value);
     }
+
+    // TODO deprecate old methods after the @Experimental ones have been proven to be ok
 }

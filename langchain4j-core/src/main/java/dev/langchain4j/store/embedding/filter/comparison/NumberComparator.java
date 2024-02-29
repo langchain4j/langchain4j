@@ -10,9 +10,24 @@ class NumberComparator {
     }
 
     static boolean containsAsBigDecimals(Object actualNumber, Collection<?> comparisonNumbers) {
-        BigDecimal actualNumberAsBigDecimal = new BigDecimal(actualNumber.toString());
+        BigDecimal actualNumberAsBigDecimal = toBigDecimal(actualNumber);
         return comparisonNumbers.stream()
-                .map(number -> new BigDecimal(number.toString()))
-                .anyMatch(number -> number.equals(actualNumberAsBigDecimal));
+                .map(NumberComparator::toBigDecimal)
+                .anyMatch(comparisonNumberAsBigDecimal ->
+                        comparisonNumberAsBigDecimal.compareTo(actualNumberAsBigDecimal) == 0);
+    }
+
+    private static BigDecimal toBigDecimal(Object actualNumber) {
+        if (actualNumber instanceof Integer) {
+            return BigDecimal.valueOf((int) actualNumber);
+        } else if (actualNumber instanceof Long) {
+            return BigDecimal.valueOf((long) actualNumber);
+        } else if (actualNumber instanceof Float) {
+            return BigDecimal.valueOf((float) actualNumber);
+        } else if (actualNumber instanceof Double) {
+            return BigDecimal.valueOf((double) actualNumber);
+        }
+
+        throw new IllegalArgumentException("Unsupported type: " + actualNumber.getClass().getName());
     }
 }

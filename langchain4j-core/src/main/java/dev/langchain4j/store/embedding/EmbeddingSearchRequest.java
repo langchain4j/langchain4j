@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -13,6 +14,7 @@ import static dev.langchain4j.internal.ValidationUtils.*;
  * Represents a request to search in an {@link EmbeddingStore}.
  * Contains all search criteria.
  */
+@Experimental
 public class EmbeddingSearchRequest {
 
     private final Embedding queryEmbedding;
@@ -36,6 +38,7 @@ public class EmbeddingSearchRequest {
      *                       This is an optional parameter. Default: no filtering
      */
     @Builder
+    @Experimental
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, MetadataFilter metadataFilter) {
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
@@ -43,18 +46,22 @@ public class EmbeddingSearchRequest {
         this.metadataFilter = metadataFilter;
     }
 
+    @Experimental
     public Embedding queryEmbedding() {
         return queryEmbedding;
     }
 
+    @Experimental
     public int maxResults() {
         return maxResults;
     }
 
+    @Experimental
     public double minScore() {
         return minScore;
     }
 
+    @Experimental
     public MetadataFilter metadataFilter() {
         return metadataFilter;
     }
