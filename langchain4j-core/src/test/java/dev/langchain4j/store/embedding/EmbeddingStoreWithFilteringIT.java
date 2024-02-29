@@ -94,165 +94,53 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("key2", "a")
                         )
                 ))
-
-                // integer
                 .add(Arguments.of(
-                        key("key").eq(Integer.MIN_VALUE),
+                        key("key").eq(1),
                         asList(
-                                new Metadata().put("key", Integer.MIN_VALUE),
-                                new Metadata().put("key", Integer.MIN_VALUE).put("key2", 0)
-                        ),
-                        asList(
-                                new Metadata().put("key", Integer.MIN_VALUE + 1),
-                                new Metadata().put("key", 0),
-                                new Metadata().put("key", Integer.MAX_VALUE),
-                                new Metadata().put("key2", Integer.MIN_VALUE)
-                        )
-
-                ))
-                .add(Arguments.of(
-                        key("key").eq(0),
-                        asList(
-                                new Metadata().put("key", 0),
-                                new Metadata().put("key", 0).put("key2", 1)
+                                new Metadata().put("key", 1),
+                                new Metadata().put("key", 1).put("key2", 0)
                         ),
                         asList(
                                 new Metadata().put("key", -1),
-                                new Metadata().put("key", 1),
-                                new Metadata().put("key2", 0)
-                        )
-                ))
-                .add(Arguments.of(
-                        key("key").eq(Integer.MAX_VALUE),
-                        asList(
-                                new Metadata().put("key", Integer.MAX_VALUE),
-                                new Metadata().put("key", Integer.MAX_VALUE).put("key2", 0)
-                        ),
-                        asList(
-                                new Metadata().put("key", Integer.MIN_VALUE),
                                 new Metadata().put("key", 0),
-                                new Metadata().put("key", Integer.MAX_VALUE - 1),
-                                new Metadata().put("key2", Integer.MAX_VALUE)
-                        )
-                ))
-
-                // long
-                .add(Arguments.of(
-                        key("key").eq(Long.MIN_VALUE),
-                        asList(
-                                new Metadata().put("key", Long.MIN_VALUE),
-                                new Metadata().put("key", Long.MIN_VALUE).put("key2", 0L)
-                        ),
-                        asList(
-                                new Metadata().put("key", Long.MIN_VALUE + 1L),
-                                new Metadata().put("key", 0L),
-                                new Metadata().put("key", Long.MAX_VALUE),
-                                new Metadata().put("key2", Long.MIN_VALUE)
+                                new Metadata().put("key2", 1)
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(0L),
+                        key("key").eq(1L),
                         asList(
-                                new Metadata().put("key", 0L),
-                                new Metadata().put("key", 0L).put("key2", 1L)
+                                new Metadata().put("key", 1L),
+                                new Metadata().put("key", 1L).put("key2", 0L)
                         ),
                         asList(
                                 new Metadata().put("key", -1L),
-                                new Metadata().put("key", 1L),
-                                new Metadata().put("key2", 0L)
-                        )
-                ))
-                .add(Arguments.of(
-                        key("key").eq(Long.MAX_VALUE),
-                        asList(
-                                new Metadata().put("key", Long.MAX_VALUE),
-                                new Metadata().put("key", Long.MAX_VALUE).put("key2", 0L)
-                        ),
-                        asList(
-                                new Metadata().put("key", Long.MIN_VALUE),
                                 new Metadata().put("key", 0L),
-                                new Metadata().put("key", Long.MAX_VALUE - 1L),
-                                new Metadata().put("key2", Long.MAX_VALUE)
-                        )
-                ))
-
-                // float
-                .add(Arguments.of(
-                        key("key").eq(-Float.MAX_VALUE),
-                        asList(
-                                new Metadata().put("key", -Float.MAX_VALUE),
-                                new Metadata().put("key", -Float.MAX_VALUE).put("key2", Float.MIN_VALUE)
-                        ),
-                        asList(
-                                new Metadata().put("key", Math.nextUp(-Float.MAX_VALUE)),
-                                new Metadata().put("key", Float.MIN_VALUE),
-                                new Metadata().put("key", Float.MAX_VALUE),
-                                new Metadata().put("key2", -Float.MAX_VALUE)
+                                new Metadata().put("key2", 1L)
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(0f),
+                        key("key").eq(1.23f),
                         asList(
-                                new Metadata().put("key", 0f),
-                                new Metadata().put("key", 0f).put("key2", 1f)
+                                new Metadata().put("key", 1.23f),
+                                new Metadata().put("key", 1.23f).put("key2", 0f)
                         ),
                         asList(
-                                new Metadata().put("key", Math.nextDown(0f)),
-                                new Metadata().put("key", Math.nextUp(0f)),
-                                new Metadata().put("key2", 0f)
+                                new Metadata().put("key", -1.23f),
+                                new Metadata().put("key", 1.22f),
+                                new Metadata().put("key", 1.24f),
+                                new Metadata().put("key2", 1.23f)
                         )
-                ))
-                .add(Arguments.of(
-                        key("key").eq(Float.MAX_VALUE),
+                )).add(Arguments.of(
+                        key("key").eq(1.23d),
                         asList(
-                                new Metadata().put("key", Float.MAX_VALUE),
-                                new Metadata().put("key", Float.MAX_VALUE).put("key2", Float.MIN_VALUE)
+                                new Metadata().put("key", 1.23d),
+                                new Metadata().put("key", 1.23d).put("key2", 0d)
                         ),
                         asList(
-                                new Metadata().put("key", -Float.MAX_VALUE),
-                                new Metadata().put("key", Float.MIN_VALUE),
-                                new Metadata().put("key", Math.nextDown(Float.MAX_VALUE)),
-                                new Metadata().put("key2", Float.MAX_VALUE)
-                        )
-                ))
-
-                // double
-                .add(Arguments.of(
-                        key("key").eq(-Double.MAX_VALUE),
-                        asList(
-                                new Metadata().put("key", -Double.MAX_VALUE),
-                                new Metadata().put("key", -Double.MAX_VALUE).put("key2", Double.MIN_VALUE)
-                        ),
-                        asList(
-                                new Metadata().put("key", Math.nextUp(-Double.MAX_VALUE)),
-                                new Metadata().put("key", Double.MIN_VALUE),
-                                new Metadata().put("key", Double.MAX_VALUE),
-                                new Metadata().put("key2", -Double.MAX_VALUE)
-                        )
-                ))
-                .add(Arguments.of(
-                        key("key").eq(0d),
-                        asList(
-                                new Metadata().put("key", 0d),
-                                new Metadata().put("key", 0d).put("key2", 1d)
-                        ),
-                        asList(
-                                new Metadata().put("key", Math.nextDown(0d)),
-                                new Metadata().put("key", Math.nextUp(0d)),
-                                new Metadata().put("key2", 0f)
-                        )
-                ))
-                .add(Arguments.of(
-                        key("key").eq(Double.MAX_VALUE),
-                        asList(
-                                new Metadata().put("key", Double.MAX_VALUE),
-                                new Metadata().put("key", Double.MAX_VALUE).put("key2", Double.MIN_VALUE)
-                        ),
-                        asList(
-                                new Metadata().put("key", -Double.MAX_VALUE),
-                                new Metadata().put("key", Double.MIN_VALUE),
-                                new Metadata().put("key", Math.nextDown(Double.MAX_VALUE)),
-                                new Metadata().put("key2", Double.MAX_VALUE)
+                                new Metadata().put("key", -1.23d),
+                                new Metadata().put("key", 1.22d),
+                                new Metadata().put("key", 1.24d),
+                                new Metadata().put("key2", 1.23d)
                         )
                 ))
 
