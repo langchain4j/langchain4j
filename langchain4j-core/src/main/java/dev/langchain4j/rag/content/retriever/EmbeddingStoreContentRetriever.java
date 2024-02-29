@@ -23,7 +23,8 @@ import static java.util.stream.Collectors.toList;
 /**
  * A {@link ContentRetriever} backed by an {@link EmbeddingStore}.
  * <br>
- * By default, this retriever fetches the 3 most similar {@link Content}s relevant to the provided {@link Query}.
+ * By default, it retrieves the 3 most similar {@link Content}s to the provided {@link Query},
+ * without any {@link Filter}ing.
  * <br>
  * <br>
  * Configurable parameters (optional):
