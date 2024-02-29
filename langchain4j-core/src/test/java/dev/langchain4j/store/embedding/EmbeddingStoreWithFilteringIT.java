@@ -24,7 +24,6 @@ import static org.assertj.core.data.Percentage.withPercentage;
 public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
     // TODO self-query retriever
-    // TODO memory id automatically as filter?
 
     @ParameterizedTest
     @MethodSource
