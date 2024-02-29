@@ -796,8 +796,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
 
-                // TODO test comparing to smaller, bigger types?
-
 
                 // === Or ===
 

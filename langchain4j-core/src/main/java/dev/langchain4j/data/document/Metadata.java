@@ -427,54 +427,6 @@ public class Metadata {
     }
 
     /**
-     * Constructs a Metadata object from a single key-value pair.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     */
-    @Experimental
-    public static Metadata from(String key, int value) {
-        return new Metadata().put(key, value);
-    }
-
-    /**
-     * Constructs a Metadata object from a single key-value pair.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     */
-    @Experimental
-    public static Metadata from(String key, long value) {
-        return new Metadata().put(key, value);
-    }
-
-    /**
-     * Constructs a Metadata object from a single key-value pair.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     */
-    @Experimental
-    public static Metadata from(String key, float value) {
-        return new Metadata().put(key, value);
-    }
-
-    /**
-     * Constructs a Metadata object from a single key-value pair.
-     *
-     * @param key   the key
-     * @param value the value
-     * @return a Metadata object
-     */
-    @Experimental
-    public static Metadata from(String key, double value) {
-        return new Metadata().put(key, value);
-    }
-
-    /**
      * @param key   the key
      * @param value the value
      * @return a Metadata object
