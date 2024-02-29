@@ -115,21 +115,21 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     public static class EmbeddingStoreContentRetrieverBuilder {
 
-        EmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
+        public EmbeddingStoreContentRetrieverBuilder maxResults(Integer maxResults) {
             if (maxResults != null) {
                 dynamicMaxResults = (query) -> ensureGreaterThanZero(maxResults, "maxResults");
             }
             return this;
         }
 
-        EmbeddingStoreContentRetrieverBuilder minScore(Double minScore) {
+        public EmbeddingStoreContentRetrieverBuilder minScore(Double minScore) {
             if (minScore != null) {
                 dynamicMinScore = (query) -> ensureBetween(minScore, 0, 1, "minScore");
             }
             return this;
         }
 
-        EmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
+        public EmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
             if (filter != null) {
                 dynamicFilter = (query) -> filter;
             }
