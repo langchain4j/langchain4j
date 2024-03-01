@@ -18,6 +18,9 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
 
+        <module>langchain4j-rag-auto</module>
+        <module>langchain4j-rag-auto</module>
+
         <!-- model providers -->
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
@@ -61,6 +64,7 @@
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+        <module>document-parsers/langchain4j-document-parser-apache-tika</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>

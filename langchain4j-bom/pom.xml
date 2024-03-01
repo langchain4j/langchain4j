@@ -14,7 +14,8 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
-    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
+    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules
+    </description>
 
     <dependencyManagement>
         <dependencies>
@@ -104,7 +105,7 @@
                 <artifactId>langchain4j-mistral-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
-          
+
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-cohere</artifactId>
@@ -241,16 +242,20 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-document-parser-apache-poi</artifactId>
+                <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
+                <artifactId>langchain4j-document-parser-apache-poi</artifactId>
                 <version>${project.version}</version>
             </dependency>
-
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-parser-apache-tika</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>
