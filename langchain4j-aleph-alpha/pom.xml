@@ -14,7 +14,7 @@
     <artifactId>langchain4j-aleph-alpha</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Aleph Alpha</name>
+    <name>LangChain4j :: Integration :: Aleph Alpha</name>
 
     <dependencies>
 

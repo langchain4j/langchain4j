@@ -51,7 +51,7 @@
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Dev07</infinispan.version>
-        <aleph-alpha-client.version>0.1.1</aleph-alpha-client.version>
+        <aleph-alpha-client.version>0.1.2</aleph-alpha-client.version>
     </properties>
 
     <dependencyManagement>
