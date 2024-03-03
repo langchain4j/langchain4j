@@ -5,7 +5,7 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.chromadb.ChromaDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -15,11 +15,10 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 class ChromaEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Container
-    private static final GenericContainer<?> chroma = new GenericContainer<>("ghcr.io/chroma-core/chroma:0.4.6")
-            .withExposedPorts(8000);
+    private static final ChromaDBContainer chroma = new ChromaDBContainer("ghcr.io/chroma-core/chroma:0.4.6");
 
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore.builder()
-            .baseUrl(String.format("http://%s:%d", chroma.getHost(), chroma.getMappedPort(8000)))
+            .baseUrl(chroma.getEndpoint())
             .collectionName(randomUUID())
             .build();
 
