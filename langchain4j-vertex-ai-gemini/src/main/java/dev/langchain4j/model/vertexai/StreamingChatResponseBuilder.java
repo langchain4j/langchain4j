@@ -1,18 +1,22 @@
 package dev.langchain4j.model.vertexai;
 
-import com.google.cloud.vertexai.api.Candidate;
-import com.google.cloud.vertexai.api.GenerateContentResponse;
-import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
+import com.google.cloud.vertexai.api.*;
+import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.List;
+import java.util.Optional;
 
 class StreamingChatResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+
+    private boolean hasFunctionCall = false;
+    private FunctionCall functionCall;
+
     private volatile TokenUsage tokenUsage;
     private volatile FinishReason finishReason;
 
@@ -26,7 +30,19 @@ class StreamingChatResponseBuilder {
             return;
         }
 
-        contentBuilder.append(ResponseHandler.getText(partialResponse));
+        Optional<Part> functionCallPart = candidates.stream()
+                .map(Candidate::getContent)
+                .map(Content::getPartsList)
+                .flatMap(List::stream)
+                .filter(Part::hasFunctionCall)
+                .findFirst();
+
+        if (functionCallPart.isPresent()) {
+            this.hasFunctionCall = true;
+            this.functionCall = functionCallPart.get().getFunctionCall();
+        } else {
+            contentBuilder.append(ResponseHandler.getText(partialResponse));
+        }
 
         if (partialResponse.hasUsageMetadata()) {
             tokenUsage = TokenUsageMapper.map(partialResponse.getUsageMetadata());
@@ -39,10 +55,18 @@ class StreamingChatResponseBuilder {
     }
 
     Response<AiMessage> build() {
-        return Response.from(
+        if (hasFunctionCall) {
+            return Response.from(
+                AiMessage.from(FunctionCallHelper.fromFunctionCall(this.functionCall)),
+                tokenUsage,
+                finishReason
+            );
+        } else {
+            return Response.from(
                 AiMessage.from(contentBuilder.toString()),
                 tokenUsage,
                 finishReason
-        );
+            );
+        }
     }
 }

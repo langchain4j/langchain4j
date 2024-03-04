@@ -3,8 +3,10 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
+import com.google.cloud.vertexai.api.Tool;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.cloud.vertexai.generativeai.ResponseHandler;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -12,7 +14,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
 import lombok.Builder;
 
-import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -41,8 +43,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                 ensureNotBlank(location, "location"))
         ) {
             this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
@@ -83,6 +83,29 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             handler.onComplete(responseBuilder.build());
         } catch (Exception exception) {
             handler.onError(exception);
+        }
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
+        try {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            //TODO: hack for now, till the next release that will have a tool param
+            // in the underlying streamGenerateContent() method
+            this.generativeModel.setTools(Collections.singletonList(tool));
+            generate(messages, handler);
+        } finally {
+            //TODO: remove the finally block (see above todo)
+            this.generativeModel.setTools(Collections.emptyList());
+        }
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        if (toolSpecification == null) {
+            generate(messages, handler);
+        } else {
+            generate(messages, Collections.singletonList(toolSpecification), handler);
         }
     }
 

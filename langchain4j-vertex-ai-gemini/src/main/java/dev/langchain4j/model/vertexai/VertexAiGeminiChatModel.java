@@ -1,11 +1,11 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
-import com.google.cloud.vertexai.api.Content;
-import com.google.cloud.vertexai.api.GenerateContentResponse;
-import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
+import com.google.cloud.vertexai.api.*;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.cloud.vertexai.generativeai.ResponseHandler;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -13,8 +13,9 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
 import lombok.Builder;
 
-import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -62,8 +63,6 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                 ensureNotBlank(location, "location"))
         ) {
             this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
         }
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
@@ -90,7 +89,6 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.maxRetries = 3;
     }
-
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
                                    GenerationConfig generationConfig,
                                    Integer maxRetries) {
@@ -101,16 +99,51 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-
         List<Content> contents = ContentsMapper.map(messages);
-
         GenerateContentResponse response = withRetry(() -> generativeModel.generateContent(contents, generationConfig), maxRetries);
 
-        return Response.from(
+        Content content = ResponseHandler.getContent(response);
+        Optional<Part> containsFunctionCall = content.getPartsList().stream().filter(Part::hasFunctionCall).findFirst();
+
+        if (containsFunctionCall.isPresent()) {
+            FunctionCall functionCall = containsFunctionCall.get().getFunctionCall();
+            ToolExecutionRequest toolExecutionRequest = FunctionCallHelper.fromFunctionCall(functionCall);
+
+            return Response.from(
+                AiMessage.from(toolExecutionRequest),
+                TokenUsageMapper.map(response.getUsageMetadata()),
+                FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
+            );
+        } else {
+            return Response.from(
                 AiMessage.from(ResponseHandler.getText(response)),
                 TokenUsageMapper.map(response.getUsageMetadata()),
                 FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
-        );
+            );
+        }
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        try {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            //TODO: hack for now, till the next release that will have a tool param
+            // in the underlying generateContent() method
+            this.generativeModel.setTools(Collections.singletonList(tool));
+            return generate(messages);
+        } finally {
+            //TODO: remove the finally block (see above todo)
+            this.generativeModel.setTools(Collections.emptyList());
+        }
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        if (toolSpecification == null) {
+            return generate(messages);
+        } else {
+            return generate(messages, Collections.singletonList(toolSpecification));
+        }
     }
 
     public static VertexAiGeminiChatModelBuilder builder() {
