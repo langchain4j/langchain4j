@@ -106,7 +106,7 @@ LangChain4j offers ready-to-use integrations with models of OpenAI, HuggingFace,
 It has document loaders for all common document types, and integrations with plenty of embedding models and embedding stores, to facilitate retrieval-augmented generation and AI-powered classification.
 All integrations are listed [here](/category/integrations).
 
-### Code examples
+### Code Examples
 
 You can browse through code examples in the `langchain4j-examples` repo:
 
@@ -118,9 +118,7 @@ dependency which builds on this project) can be
 found [here](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples)
 
 ### Useful Materials
-- [Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g) by [Andrej Karpathy](https://www.youtube.com/@AndrejKarpathy)
-- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
-- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
+[Useful Materials](https://docs.langchain4j.dev/useful-materials)
 
 ### Disclaimer
 
