@@ -23,7 +23,6 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.vertexai.FunctionCallHelper.unwrapProtoValue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
