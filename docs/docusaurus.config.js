@@ -88,6 +88,11 @@ const config = {
                     },
                     {to: '/get-started', label: 'Get Started', position: 'left'},
                     {to: '/category/tutorials', label: 'Tutorials', position: 'left'},
+                    {
+                        href: 'https://github.com/langchain4j/langchain4j-examples',
+                        label: 'Examples',
+                        position: 'left',
+                    },
                     {to: '/category/integrations', label: 'Integrations', position: 'left'},
                     {to: '/useful-materials', label: 'Useful Materials', position: 'left'},
                     {
@@ -119,6 +124,10 @@ const config = {
                             {
                                 label: 'Tutorials',
                                 to: '/category/tutorials',
+                            },
+                            {
+                                label: 'Examples',
+                                href: 'https://github.com/langchain4j/langchain4j-examples',
                             },
                             {
                                 label: 'Integrations',
