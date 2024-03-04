@@ -122,6 +122,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                                          List<ToolSpecification> toolSpecifications,
                                          ToolSpecification toolThatMustBeExecuted
     ) {
+        // TODO make configurable
+        messages.forEach(message -> System.out.println("-> " + message));
+        if (toolSpecifications != null) {
+            toolSpecifications.forEach(toolSpecification -> System.out.println("-> " + toolSpecification));
+        }
+
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
                 .messages(toOpenAiMessages(messages))
@@ -147,8 +153,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
+        AiMessage aiMessage = aiMessageFrom(response);
+        System.out.println("<- " + aiMessage);
+        System.out.println("==========================================================================================");
+
         return Response.from(
-                aiMessageFrom(response),
+                aiMessage,
                 tokenUsageFrom(response.usage()),
                 finishReasonFrom(response.choices().get(0).finishReason())
         );

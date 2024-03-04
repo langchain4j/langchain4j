@@ -125,9 +125,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
-                        Response<AiMessage> response = context.toolSpecifications == null
+                        Response<AiMessage> response = context.toolSpecifications() == null // TODO
                                 ? context.chatModel.generate(messages)
-                                : context.chatModel.generate(messages, context.toolSpecifications);
+                                : context.chatModel.generate(messages, context.toolSpecifications()); // TODO
                         TokenUsage tokenUsageAccumulator = response.tokenUsage();
 
                         verifyModerationIfNeeded(moderationFuture);
@@ -142,7 +142,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             AiMessage aiMessage = response.content();
 
-                            if (context.hasChatMemory()) {
+                            if (context.hasChatMemory() && !isStateTransition(aiMessage)) {
                                 context.chatMemory(memoryId).add(aiMessage);
                             }
 
@@ -155,19 +155,32 @@ class DefaultAiServices<T> extends AiServices<T> {
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                                 ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
-                                ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
-                                        toolExecutionRequest,
-                                        toolExecutionResult
-                                );
-                                chatMemory.add(toolExecutionResultMessage);
+                                if (isStateTransition(aiMessage)) {
+                                    // TODO conditional transition
+                                    chatMemory.add(context.systemMessage());
+                                } else {
+
+                                    ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
+                                            toolExecutionRequest,
+                                            toolExecutionResult
+                                    );
+
+                                    chatMemory.add(toolExecutionResultMessage);
+                                }
                             }
 
-                            response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
+                            response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications());
                             tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
                         return parse(response, method.getReturnType());
+                    }
+
+                    private boolean isStateTransition(AiMessage aiMessage) {
+                        return aiMessage.hasToolExecutionRequests()
+                                && aiMessage.toolExecutionRequests().size() == 1
+                                && aiMessage.toolExecutionRequests().get(0).name().equals("setState");
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
@@ -202,6 +215,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
             Prompt prompt = PromptTemplate.from(systemMessageTemplate).apply(variables);
             return Optional.of(prompt.toSystemMessage());
+        } else if (context.stateToSystemMessage != null) {
+            return Optional.of(context.systemMessage()); // TODO nullable?
         }
 
         return Optional.empty();

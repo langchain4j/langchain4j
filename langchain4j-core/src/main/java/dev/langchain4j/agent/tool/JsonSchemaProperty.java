@@ -1,7 +1,9 @@
 package dev.langchain4j.agent.tool;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Objects;
+import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Collections.singletonMap;
@@ -189,6 +191,10 @@ public class JsonSchemaProperty {
                 throw new RuntimeException("Value " + enumValue.getClass().getName() + " should be enum");
             }
         }
+        return from("enum", enumValues);
+    }
+
+    public static JsonSchemaProperty enums(Set<String> enumValues) { // TODO String?
         return from("enum", enumValues);
     }
 
