@@ -86,9 +86,10 @@ const config = {
                         position: 'left',
                         label: 'Introduction',
                     },
+                    {to: '/get-started', label: 'Get Started', position: 'left'},
                     {to: '/category/tutorials', label: 'Tutorials', position: 'left'},
                     {to: '/category/integrations', label: 'Integrations', position: 'left'},
-                    {to: '/useful-materials', label: 'Integrations', position: 'left'},
+                    {to: '/useful-materials', label: 'Useful Materials', position: 'left'},
                     {
                         href: 'https://docs.langchain4j.dev/apidocs/index.html',
                         label: 'Javadoc',
@@ -108,9 +109,22 @@ const config = {
                         title: 'Docs',
                         items: [
                             {
-                                label: 'Tutorials',
-                                to: '/tutorials',
+                                label: 'Introduction',
+                                to: '/intro',
                             },
+                            {
+                                label: 'Get Started',
+                                to: '/get-started',
+                            },
+                            {
+                                label: 'Tutorials',
+                                to: '/category/tutorials',
+                            },
+                            ,
+                            {
+                                label: 'Integrations',
+                                to: '/category/integrations',
+                            }
                         ],
                     },
                     {
