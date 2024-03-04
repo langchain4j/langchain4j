@@ -120,11 +120,10 @@ const config = {
                                 label: 'Tutorials',
                                 to: '/category/tutorials',
                             },
-                            ,
                             {
                                 label: 'Integrations',
                                 to: '/category/integrations',
-                            }
+                            },
                         ],
                     },
                     {
