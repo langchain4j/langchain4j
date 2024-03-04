@@ -124,6 +124,10 @@ const config = {
                                 label: 'Integrations',
                                 to: '/category/integrations',
                             },
+                            {
+                                label: 'Useful Materials',
+                                to: '/useful-materials',
+                            },
                         ],
                     },
                     {
