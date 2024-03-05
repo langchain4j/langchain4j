@@ -8,7 +8,6 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.localai.spi.LocalAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -16,6 +15,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -75,10 +75,10 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static LocalAiEmbeddingModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                LocalAiEmbeddingModelBuilderFactory.class,
-                LocalAiEmbeddingModelBuilder::new
-        );
+        for (LocalAiEmbeddingModelBuilderFactory factory : loadFactories(LocalAiEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiEmbeddingModelBuilder();
     }
 
     public static class LocalAiEmbeddingModelBuilder {
