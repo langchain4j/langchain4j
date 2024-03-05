@@ -41,6 +41,8 @@ const config = {
             /** @type {import('@docusaurus/preset-classic').Options} */
             ({
                 docs: {
+                    path: 'docs',
+                    routeBasePath: '', // change this to any URL route you'd want. For example: `home` - if you want /home/intro.
                     sidebarPath: './sidebars.js',
                     // Please change this to your repo.
                     // Remove this to remove the "edit this page" links.
@@ -84,18 +86,24 @@ const config = {
                         position: 'left',
                         label: 'Introduction',
                     },
-                    {to: '/docs/tutorials', label: 'Tutorials', position: 'left'},
-                    {to: '/docs/category/integrations', label: 'Integrations', position: 'left'},
+                    {to: '/get-started', label: 'Get Started', position: 'left'},
+                    {to: '/category/tutorials', label: 'Tutorials', position: 'left'},
+                    {
+                        href: 'https://github.com/langchain4j/langchain4j-examples',
+                        label: 'Examples',
+                        position: 'left',
+                    },
+                    {to: '/category/integrations', label: 'Integrations', position: 'left'},
+                    {to: '/useful-materials', label: 'Useful Materials', position: 'left'},
                     {
                         href: 'https://docs.langchain4j.dev/apidocs/index.html',
                         label: 'Javadoc',
                         position: 'left'
                     },
-                    {to: '/blog', label: 'Blog', position: 'left'},
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
                         label: 'GitHub',
-                        position: 'right',
+                        position: 'left',
                     },
                 ],
             },
@@ -106,8 +114,28 @@ const config = {
                         title: 'Docs',
                         items: [
                             {
+                                label: 'Introduction',
+                                to: '/intro',
+                            },
+                            {
+                                label: 'Get Started',
+                                to: '/get-started',
+                            },
+                            {
                                 label: 'Tutorials',
-                                to: '/docs/tutorials',
+                                to: '/category/tutorials',
+                            },
+                            {
+                                label: 'Examples',
+                                href: 'https://github.com/langchain4j/langchain4j-examples',
+                            },
+                            {
+                                label: 'Integrations',
+                                to: '/category/integrations',
+                            },
+                            {
+                                label: 'Useful Materials',
+                                to: '/useful-materials',
                             },
                         ],
                     },
@@ -131,10 +159,6 @@ const config = {
                     {
                         title: 'More',
                         items: [
-                            {
-                                label: 'Blog',
-                                to: '/blog',
-                            },
                             {
                                 label: 'GitHub',
                                 href: 'https://github.com/langchain4j/langchain4j',

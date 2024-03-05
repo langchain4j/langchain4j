@@ -2,10 +2,7 @@ package dev.langchain4j.model.qianfan;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -117,4 +114,20 @@ class QianfanChatModelIT {
 
 
     }
+    @Test
+    void should_generate_answer_with_system_message() {
+
+        // given
+        UserMessage userMessage = userMessage("Where is the capital of China");
+
+        SystemMessage systemMessage = SystemMessage.from("Please add the word hello before each answer");
+
+        // when
+        Response<AiMessage> response = model.generate(userMessage,systemMessage);
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("hello");
+
+    }
+
 }
