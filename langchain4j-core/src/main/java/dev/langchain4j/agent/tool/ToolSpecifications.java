@@ -2,11 +2,13 @@ package dev.langchain4j.agent.tool;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -73,29 +75,23 @@ public class ToolSpecifications {
             return removeNulls(STRING, description);
         }
 
-        if (type == boolean.class || type == Boolean.class) {
+        if (isBoolean(type)) {
             return removeNulls(BOOLEAN, description);
         }
 
-        if (type == byte.class || type == Byte.class
-                || type == short.class || type == Short.class
-                || type == int.class || type == Integer.class
-                || type == long.class || type == Long.class
-                || type == BigInteger.class) {
+        if (isInteger(type)) {
             return removeNulls(INTEGER, description);
         }
 
-        // TODO put constraints on min and max?
-        if (type == float.class || type == Float.class
-                || type == double.class || type == Double.class
-                || type == BigDecimal.class) {
+        if (isNumber(type)) {
             return removeNulls(NUMBER, description);
         }
 
-        if (type.isArray()
-                || type == List.class
-                || type == Set.class) { // TODO something else?
-            return removeNulls(ARRAY, description); // TODO provide type of array?
+        if (type.isArray()) {
+            return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
+        }
+        if (Collection.class.isAssignableFrom(type)) {
+            return removeNulls(ARRAY, arrayTypeFrom(parameter.getParameterizedType()), description);
         }
 
         if (type.isEnum()) {
@@ -103,6 +99,52 @@ public class ToolSpecifications {
         }
 
         return removeNulls(OBJECT, description); // TODO provide internals
+    }
+
+    private static JsonSchemaProperty arrayTypeFrom(Type type) {
+        if (type instanceof ParameterizedType) {
+            ParameterizedType parameterizedType  = (ParameterizedType) type;
+            Type[] actualTypeArguments = parameterizedType .getActualTypeArguments();
+            if (actualTypeArguments.length == 1) {
+                return arrayTypeFrom((Class<?>) actualTypeArguments[0]);
+            }
+        }
+        return items(JsonSchemaProperty.OBJECT);
+    }
+
+    // TODO put constraints on min and max?
+    private static boolean isNumber(Class<?> type) {
+        return type == float.class || type == Float.class
+            || type == double.class || type == Double.class
+            || type == BigDecimal.class;
+    }
+
+    private static boolean isInteger(Class<?> type) {
+        return type == byte.class || type == Byte.class
+            || type == short.class || type == Short.class
+            || type == int.class || type == Integer.class
+            || type == long.class || type == Long.class
+            || type == BigInteger.class;
+    }
+
+    private static boolean isBoolean(Class<?> type) {
+        return type == boolean.class || type == Boolean.class;
+    }
+
+    private static JsonSchemaProperty arrayTypeFrom(Class<?> clazz) {
+        if (clazz == String.class) {
+            return items(JsonSchemaProperty.STRING);
+        }
+        if (isBoolean(clazz)) {
+            return items(JsonSchemaProperty.BOOLEAN);
+        }
+        if (isInteger(clazz)) {
+            return items(JsonSchemaProperty.INTEGER);
+        }
+        if (isNumber(clazz)) {
+            return items(JsonSchemaProperty.NUMBER);
+        }
+        return items(JsonSchemaProperty.OBJECT);
     }
 
     /**
