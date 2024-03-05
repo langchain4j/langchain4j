@@ -7,6 +7,7 @@ import dev.ai4j.openai4j.moderation.ModerationResult;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.openai.spi.OpenAiModerationModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -18,6 +19,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_MODERATION_LATEST;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -102,5 +104,30 @@ public class OpenAiModerationModel implements ModerationModel {
 
     public static OpenAiModerationModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
+    }
+
+    public static OpenAiModerationModelBuilder builder() {
+        for (OpenAiModerationModelBuilderFactory factory : loadFactories(OpenAiModerationModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiModerationModelBuilder();
+    }
+
+    public static class OpenAiModerationModelBuilder {
+
+        public OpenAiModerationModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+
+        public OpenAiModerationModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiModerationModelBuilder modelName(OpenAiModerationModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
     }
 }

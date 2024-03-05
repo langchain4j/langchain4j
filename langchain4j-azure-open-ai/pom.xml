@@ -7,21 +7,20 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.26.0-SNAPSHOT</version>
+        <version>0.28.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-azure-open-ai</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j integration with Azure OpenAI</name>
+    <name>LangChain4j :: Integration :: Azure OpenAI</name>
 
     <dependencies>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <version>${project.version}</version>
+            <artifactId>langchain4j-core</artifactId>
         </dependency>
 
         <dependency>
@@ -33,6 +32,12 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-identity</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>

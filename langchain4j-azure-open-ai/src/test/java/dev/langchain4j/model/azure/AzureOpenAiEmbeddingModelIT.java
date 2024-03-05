@@ -7,25 +7,24 @@ import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@EnabledIfEnvironmentVariable(named = "AZURE_OPENAI_ENDPOINT", matches = ".+")
 public class AzureOpenAiEmbeddingModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiEmbeddingModelIT.class);
 
     EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .serviceVersion(System.getenv("AZURE_OPENAI_SERVICE_VERSION"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
+            .deploymentName("text-embedding-ada-002")
+            .tokenizer(new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
             .logRequestsAndResponses(true)
             .build();
 

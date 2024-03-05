@@ -87,7 +87,7 @@ A lot of parameters are set behind the scenes, such as timeout, model type and m
 In [Set Model Parameters](set-model-parameters) you will learn how to set these parameters explicitly.
 
 If you want to use another LLM, langchain4j has integrations with all major model providers (Google Vertex and Gemini, Azure OpenAI, ...) and (local) model wrappers (HuggingFace, Ollama, LocalAI).
-All integrations with examples and tutorials are listed under [Integrations](/docs/category/integrations).
+All integrations with examples and tutorials are listed under [Integrations](/category/integrations).
 
 In this easy example, the output is returned as a complete String. If you want to print the output token by token, use [Streaming](response-streaming).
 
