@@ -8,6 +8,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,10 +198,11 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = setupConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
+            // TODO add filter
             String query = String.format(
                     "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, metadata FROM %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
                     referenceVector, table, minScore, maxResults);

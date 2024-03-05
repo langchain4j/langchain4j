@@ -16,6 +16,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -208,12 +209,13 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
         List<Float> vector = referenceEmbedding.vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
                 .setKNearestNeighborsCount(maxResults);
 
+        // TODO add where filter
         SearchPagedIterable searchResults =
                 searchClient.search(null,
                         new SearchOptions()

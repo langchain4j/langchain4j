@@ -36,7 +36,7 @@ class EmbeddingStoreTest implements WithAssertions {
 
         @Override
         public List<EmbeddingMatch<String>> findRelevant(
-                Embedding referenceEmbedding, int maxResults, double minScore) {
+                Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
             return Collections.singletonList(
                     new EmbeddingMatch<>(
                             0.5,
@@ -54,7 +54,7 @@ class EmbeddingStoreTest implements WithAssertions {
     public static class MemoryIdEmbeddingStore extends MinimalEmbeddingStore {
         @Override
         public List<EmbeddingMatch<String>> findRelevant(
-                Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore) {
+                Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
             return Collections.singletonList(
                     new EmbeddingMatch<>(
                             0.5,
