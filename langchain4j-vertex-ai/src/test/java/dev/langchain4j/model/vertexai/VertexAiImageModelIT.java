@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class VertexAiImageModelIT {
 
@@ -76,7 +76,7 @@ public class VertexAiImageModelIT {
 
         Response<List<Image>> imageListResponse = imagenModel.generate("photo of a sunset over Malibu beach", 3);
 
-        assertThat(imageListResponse.content().size()).isEqualTo(3);
+        assertThat(imageListResponse.content()).hasSize(3);
         imageListResponse.content().forEach(img -> {
             assertThat(img.url()).isNotNull();
             assertThat(img.base64Data()).isNotNull();
@@ -191,6 +191,6 @@ public class VertexAiImageModelIT {
                 .withPersisting()
                 .build();
 
-        assertThrows(Throwable.class, () -> imagenModel.generate("a nude woman"));
+        assertThatExceptionOfType(Throwable.class).isThrownBy(() -> imagenModel.generate("a nude woman"));
     }
 }
