@@ -5,15 +5,16 @@ import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.*;
 import java.util.List;
-import java.util.Set;
 
 import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.*;
-import static java.util.stream.Collectors.toSet;
+import static java.util.stream.Collectors.toList;
 
 class FileSystemDocumentLoaderTest implements WithAssertions {
 
@@ -58,11 +59,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         List<Document> documents = loadDocuments(resourceDirectory, new TextDocumentParser());
 
         // then
-        assertThat(documents).hasSize(4);
-
-        Set<String> fileNames = documents.stream()
+        List<String> fileNames = documents.stream()
                 .map(document -> document.metadata("file_name"))
-                .collect(toSet());
+                .collect(toList());
         assertThat(fileNames).containsExactlyInAnyOrder(
                 "miles-of-smiles-terms-of-use.txt",
                 "test-file.banana",
@@ -94,27 +93,25 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                 .hasSize(documents.size() - 1);
     }
 
-    @Test
-    void should_load_matching_documents() {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "glob:*.banana",
+            "glob:**.banana",
+    })
+    void should_load_matching_documents(String syntaxAndPattern) {
 
         // given
         Path resourceDirectory = resourceDirectory();
-        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.txt");
+        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher(syntaxAndPattern);
 
         // when
         List<Document> documents = loadDocuments(resourceDirectory, pathMatcher, new TextDocumentParser());
 
         // then
-        assertThat(documents).hasSize(3);
-
-        Set<String> fileNames = documents.stream()
+        List<String> fileNames = documents.stream()
                 .map(document -> document.metadata("file_name"))
-                .collect(toSet());
-        assertThat(fileNames).containsExactlyInAnyOrder(
-                "miles-of-smiles-terms-of-use.txt",
-                "test-file-iso-8859-1.txt",
-                "test-file-utf8.txt"
-        );
+                .collect(toList());
+        assertThat(fileNames).containsExactlyInAnyOrder("test-file.banana");
 
         // when-then
         assertThat(loadDocuments(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
@@ -131,18 +128,17 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         List<Document> documents = loadDocumentsRecursively(resourceDirectory, new TextDocumentParser());
 
         // then
-        assertThat(documents).hasSize(6);
-
-        Set<String> fileNames = documents.stream()
+        List<String> fileNames = documents.stream()
                 .map(document -> document.metadata("file_name"))
-                .collect(toSet());
+                .collect(toList());
         assertThat(fileNames).containsExactlyInAnyOrder(
                 "miles-of-smiles-terms-of-use.txt",
                 "test-file.banana",
                 "test-file-iso-8859-1.txt",
                 "test-file-utf8.txt",
                 "chefs-prompt-based-on-ingredients.txt",
-                "chefs-prompt-system-message.txt"
+                "chefs-prompt-system-message.txt",
+                "test-file-2.banana"
         );
 
         // when-then
@@ -155,24 +151,58 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
 
         // given
         Path resourceDirectory = resourceDirectory();
-        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:**/*.txt");
+        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:*.banana");
 
         // when
         List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
 
         // then
-        assertThat(documents).hasSize(5);
-
-        Set<String> fileNames = documents.stream()
+        List<String> fileNames = documents.stream()
                 .map(document -> document.metadata("file_name"))
-                .collect(toSet());
-        assertThat(fileNames).containsExactlyInAnyOrder(
-                "miles-of-smiles-terms-of-use.txt",
-                "test-file-iso-8859-1.txt",
-                "test-file-utf8.txt",
-                "chefs-prompt-based-on-ingredients.txt",
-                "chefs-prompt-system-message.txt"
-        );
+                .collect(toList());
+        assertThat(fileNames).containsExactlyInAnyOrder("test-file.banana");
+
+        // when-then
+        assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
+                .isEqualTo(documents);
+    }
+
+    @Test
+    void should_recursively_load_matching_documents_with_glob_crossing_directory_boundaries() {
+
+        // given
+        Path resourceDirectory = resourceDirectory();
+        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:**.banana");
+
+        // when
+        List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
+
+        // then
+        List<String> fileNames = documents.stream()
+                .map(document -> document.metadata("file_name"))
+                .collect(toList());
+        assertThat(fileNames).containsExactlyInAnyOrder("test-file.banana", "test-file-2.banana");
+
+        // when-then
+        assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
+                .isEqualTo(documents);
+    }
+
+    @Test
+    void should_recursively_load_matching_documents_with_glob_specifying_concrete_directory() {
+
+        // given
+        Path resourceDirectory = resourceDirectory();
+        PathMatcher pathMatcher = FileSystems.getDefault().getPathMatcher("glob:banana/*.banana");
+
+        // when
+        List<Document> documents = loadDocumentsRecursively(resourceDirectory, pathMatcher, new TextDocumentParser());
+
+        // then
+        List<String> fileNames = documents.stream()
+                .map(document -> document.metadata("file_name"))
+                .collect(toList());
+        assertThat(fileNames).containsExactlyInAnyOrder("test-file-2.banana");
 
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))

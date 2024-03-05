@@ -72,7 +72,7 @@ public class FileSystemDocumentLoader {
         }
 
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
-            return loadDocuments(pathStream, (path) -> true, documentParser);
+            return loadDocuments(pathStream, (path) -> true, directoryPath, documentParser);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -96,9 +96,12 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
-     *                       For example (remove "\" from glob pattern):
-     *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>.
+     * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
+     *                       will load all files from {@code directoryPath} with a {@code txt} extension.
+     *                       When traversing the directory, each file path is converted from absolute to relative
+     *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                       Thus, {@code pathMatcher} should use relative patterns.
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
@@ -111,7 +114,7 @@ public class FileSystemDocumentLoader {
         }
 
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
-            return loadDocuments(pathStream, pathMatcher, documentParser);
+            return loadDocuments(pathStream, pathMatcher, directoryPath, documentParser);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -122,9 +125,12 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
-     *                       For example (remove "\" from glob pattern):
-     *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>
+     * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
+     *                       will load all files from {@code directoryPath} with a {@code txt} extension.
+     *                       When traversing the directory, each file path is converted from absolute to relative
+     *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                       Thus, {@code pathMatcher} should use relative patterns.
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
@@ -150,7 +156,7 @@ public class FileSystemDocumentLoader {
         }
 
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
-            return loadDocuments(pathStream, (path) -> true, documentParser);
+            return loadDocuments(pathStream, (path) -> true, directoryPath, documentParser);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -174,9 +180,12 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
-     *                       For example (remove "\" from glob pattern):
-     *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>
+     * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
+     *                       will load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       When traversing the directory tree, each file path is converted from absolute to relative
+     *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                       Thus, {@code pathMatcher} should use relative patterns.
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
@@ -189,7 +198,7 @@ public class FileSystemDocumentLoader {
         }
 
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
-            return loadDocuments(pathStream, pathMatcher, documentParser);
+            return loadDocuments(pathStream, pathMatcher, directoryPath, documentParser);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -200,9 +209,12 @@ public class FileSystemDocumentLoader {
      * Skips any documents that fail to load.
      *
      * @param directoryPath  The path to the directory with files.
-     * @param pathMatcher    Only files matching the criteria set by the provided {@link PathMatcher} will be loaded.
-     *                       For example (remove "\" from glob pattern):
-     *                       <code>FileSystems.getDefault().getPathMatcher("glob:**\/*.txt")</code>
+     * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
+     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
+     *                       will load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       When traversing the directory tree, each file path is converted from absolute to relative
+     *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
+     *                       Thus, {@code pathMatcher} should use relative patterns.
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
@@ -215,12 +227,18 @@ public class FileSystemDocumentLoader {
 
     private static List<Document> loadDocuments(Stream<Path> pathStream,
                                                 PathMatcher pathMatcher,
+                                                Path pathMatcherRoot,
                                                 DocumentParser documentParser) {
         List<Document> documents = new ArrayList<>();
 
         pathStream
                 .filter(Files::isRegularFile)
+                // converting absolute path into relative before using pathMatcher
+                // because patterns defined in pathMatcher are relative to pathMatcherRoot (directoryPath)
+                .map(pathMatcherRoot::relativize)
                 .filter(pathMatcher::matches)
+                // converting relative path back into absolute before loading document
+                .map(pathMatcherRoot::resolve)
                 .forEach(file -> {
                     try {
                         Document document = loadDocument(file, documentParser);
