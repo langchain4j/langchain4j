@@ -53,7 +53,7 @@ public class AzureBlobStorageDocumentLoaderIT {
         Document document = loader.loadDocument(TEST_CONTAINER, TEST_BLOB, parser);
 
         assertThat(document.text()).isEqualTo(TEST_CONTENT);
-        assertThat(document.metadata().asMap().size()).isEqualTo(4);
+        assertThat(document.metadata().asMap()).hasSize(4);
         assertThat(document.metadata("source")).endsWith("/test-file.txt");
     }
 

@@ -7,7 +7,6 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -42,10 +41,9 @@ abstract class CassandraChatMemoryStoreTestSupport {
         chatMemoryStore = createChatMemoryStore();
         log.info("Chat memory store is created.");
         // Connection to Cassandra is established
-        Assertions.assertTrue(chatMemoryStore.getCassandraSession()
+        assertThat(chatMemoryStore.getCassandraSession()
                 .getMetadata()
-                .getKeyspace(KEYSPACE)
-                .isPresent());
+                .getKeyspace(KEYSPACE)).isPresent();
         log.info("Chat memory table is present.");
     }
 
@@ -55,10 +53,10 @@ abstract class CassandraChatMemoryStoreTestSupport {
     void shouldCreateChatMemoryStore() {
         chatMemoryStore.create();
         // Table exists
-        Assertions.assertTrue(chatMemoryStore.getCassandraSession()
+        assertThat(chatMemoryStore.getCassandraSession()
                 .refreshSchema()
                 .getKeyspace(KEYSPACE).get()
-                .getTable(CassandraChatMemoryStore.DEFAULT_TABLE_NAME).isPresent());
+                .getTable(CassandraChatMemoryStore.DEFAULT_TABLE_NAME)).isPresent();
         chatMemoryStore.clear();
     }
 
