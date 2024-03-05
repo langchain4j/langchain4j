@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.localai.spi.LocalAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -20,6 +21,7 @@ import java.util.List;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toFunctions;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 
@@ -125,6 +127,20 @@ public class LocalAiStreamingChatModel implements StreamingChatLanguageModel {
         String content = delta.content();
         if (content != null) {
             handler.onNext(content);
+        }
+    }
+
+    public static LocalAiStreamingChatModelBuilder builder() {
+        for (LocalAiStreamingChatModelBuilderFactory factory : loadFactories(LocalAiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiStreamingChatModelBuilder();
+    }
+
+    public static class LocalAiStreamingChatModelBuilder {
+        public LocalAiStreamingChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }

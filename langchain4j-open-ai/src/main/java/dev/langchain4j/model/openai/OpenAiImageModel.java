@@ -5,6 +5,7 @@ import dev.ai4j.openai4j.image.GenerateImagesRequest;
 import dev.ai4j.openai4j.image.GenerateImagesResponse;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.NonNull;
@@ -19,6 +20,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -120,7 +122,28 @@ public class OpenAiImageModel implements ImageModel {
         );
     }
 
+    public static OpenAiImageModelBuilder builder() {
+        for (OpenAiImageModelBuilderFactory factory : loadFactories(OpenAiImageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiImageModelBuilder();
+    }
+
     public static class OpenAiImageModelBuilder {
+        public OpenAiImageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+
+        public OpenAiImageModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiImageModelBuilder modelName(OpenAiImageModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
 
         public OpenAiImageModelBuilder withPersisting() {
             return withPersisting(true);

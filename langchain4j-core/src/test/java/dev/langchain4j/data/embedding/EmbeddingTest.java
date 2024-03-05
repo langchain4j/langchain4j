@@ -92,4 +92,13 @@ class EmbeddingTest implements WithAssertions {
                 .isEqualTo(new Embedding(new float[]{1.0f, 2.0f, 3.0f}));
     }
 
+    @Test
+    void test_normalize() {
+        Embedding embedding = new Embedding(new float[]{6f, 8f});
+        embedding.normalize();
+
+        Embedding expect = new Embedding(new float[]{0.6f, 0.8f});
+        assertThat(embedding).isEqualTo(expect);
+    }
+
 }

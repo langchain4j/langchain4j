@@ -172,6 +172,32 @@ class OllamaClient {
         }
     }
 
+    public ModelsListResponse listModels() {
+        try {
+            retrofit2.Response<ModelsListResponse> retrofitResponse = ollamaApi.listModels().execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public OllamaModelCard showInformation(ShowModelInformationRequest showInformationRequest) {
+        try {
+            retrofit2.Response<OllamaModelCard> retrofitResponse = ollamaApi.showInformation(showInformationRequest).execute();
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();

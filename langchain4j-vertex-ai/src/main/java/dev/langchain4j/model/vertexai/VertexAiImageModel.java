@@ -10,6 +10,7 @@ import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.vertexai.spi.VertexAiImageModelBuilderFactory;
 
 import java.io.IOException;
 import java.net.URI;
@@ -26,6 +27,7 @@ import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
 /**
@@ -280,6 +282,9 @@ public class VertexAiImageModel implements ImageModel {
     }
 
     public static Builder builder() {
+        for (VertexAiImageModelBuilderFactory factory : loadFactories(VertexAiImageModelBuilderFactory.class)) {
+            return factory.get();
+        }
         return new Builder();
     }
 

@@ -50,6 +50,21 @@ public class Embedding {
     }
 
     /**
+     * Normalize vector
+     */
+    public void normalize() {
+        double norm = 0.0;
+        for (float f : vector) {
+            norm += f * f;
+        }
+        norm = Math.sqrt(norm);
+
+        for (int i = 0; i < vector.length; i++) {
+            vector[i] /= norm;
+        }
+    }
+
+    /**
      * Returns the dimension of the vector.
      * @return the dimension of the vector.
      */

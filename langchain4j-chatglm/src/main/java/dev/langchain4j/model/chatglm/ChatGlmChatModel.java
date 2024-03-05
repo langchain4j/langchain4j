@@ -4,6 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chatglm.spi.ChatGlmChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -14,6 +15,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Support <a href="https://github.com/THUDM/ChatGLM-6B">ChatGLM</a>,
@@ -80,5 +82,19 @@ public class ChatGlmChatModel implements ChatLanguageModel {
 
     private boolean containsSystemMessage(List<ChatMessage> messages) {
         return messages.stream().anyMatch(message -> message.type() == ChatMessageType.SYSTEM);
+    }
+
+    public static ChatGlmChatModelBuilder builder() {
+        for (ChatGlmChatModelBuilderFactory factory : loadFactories(ChatGlmChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new ChatGlmChatModelBuilder();
+    }
+
+    public static class ChatGlmChatModelBuilder {
+        public ChatGlmChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }
