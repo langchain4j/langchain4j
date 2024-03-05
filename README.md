@@ -58,9 +58,7 @@ Documentation can be found [here](https://docs.langchain4j.dev).
 Tutorials can be found [here](https://docs.langchain4j.dev/tutorials).
 
 ## Useful Materials
-- [Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g) by [Andrej Karpathy](https://www.youtube.com/@AndrejKarpathy)
-- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
-- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
+[Useful Materials](https://docs.langchain4j.dev/useful-materials)
 
 ## Library Structure
 LangChain4j features a modular design, comprising:
