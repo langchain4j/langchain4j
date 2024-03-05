@@ -13,8 +13,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 public class QwenTestHelper {
     public static Stream<Arguments> languageModelNameProvider() {
@@ -85,14 +85,14 @@ public class QwenTestHelper {
     public static String multimodalImageData() {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try (InputStream in = QwenTestHelper.class.getResourceAsStream("/parrot.jpg")) {
-            assertNotNull(in);
+            assertThat(in).isNotNull();
             byte[] data = new byte[512];
             int n;
             while ((n = in.read(data)) != -1) {
                 buffer.write(data, 0, n);
             }
         } catch (IOException e) {
-            fail(e.getMessage());
+            fail("", e.getMessage());
         }
 
         return Base64.getEncoder().encodeToString(buffer.toByteArray());
