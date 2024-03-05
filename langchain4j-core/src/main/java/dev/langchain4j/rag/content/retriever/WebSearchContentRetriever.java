@@ -1,16 +1,16 @@
 package dev.langchain4j.rag.content.retriever;
 
-import dev.langchain4j.WillChangeSoon;
+import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.data.web.WebResult;
+import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import dev.langchain4j.web.search.WebSearchResults;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.tool.web.search.WebSearchTool;
+import dev.langchain4j.web.search.WebSearchEngine;
 import lombok.Builder;
 
 import java.util.List;
@@ -19,62 +19,120 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.stream.Collectors.toList;
 
-@WillChangeSoon("Retrieve() logic may change in the future after feedback")
+/**
+ * A {@link ContentRetriever} backed by a {@link WebSearchEngine}.
+ * <br>
+ * By default, this retriever fetches the  all web pages {@link Content} for a given {@link Query}.
+ * <br>
+ * <br>
+ * Configurable parameters (optional):
+ * <ul>
+ *     <li>{@link DocumentSplitter} - To split the web pages into smaller text segments.</li>
+ *     <li>{@link EmbeddingModel} - To generate embeddings to ingest them into an internal {@link EmbeddingStore} and find the most
+ *     relevant web search results based on the {@link Query}</li>
+ *     <li>{@link #maxResults} - The maximum number of results to retrieve by the internal {@link EmbeddingStore}.
+ *     <br>
+ *     Default value is 3.
+ *     </li>
+ * </ul>
+ */
 public class WebSearchContentRetriever implements ContentRetriever{
 
     private static final int DEFAULT_MAX_RESULTS = 3;
-    private static final double DEFAULT_MIN_SCORE = 0;
-
-    private final WebSearchTool webSearchTool;
+    
+    private final WebSearchEngine webSearchEngine;
     private final EmbeddingModel embeddingModel;
+    private final DocumentSplitter documentSplitter;
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final int maxResults;
-    private final double minScore;
 
-    public WebSearchContentRetriever(WebSearchTool webSearchTool,
-                                     EmbeddingModel embeddingModel,
-                                     EmbeddingStore<TextSegment> embeddingStore) {
-        this(webSearchTool, embeddingModel, embeddingStore, DEFAULT_MAX_RESULTS, DEFAULT_MIN_SCORE);
+    /**
+     * Constructs a new WebSearchContentRetriever with the specified web search engine.
+     * @param webSearchEngine The web search engine to use for retrieving web search results.
+     */
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine) {
+        this(webSearchEngine, null, null,null);
     }
 
-    public WebSearchContentRetriever(WebSearchTool webSearchTool,
-                                     EmbeddingModel embeddingModel,
-                                     EmbeddingStore<TextSegment> embeddingStore,
-                                     int maxResults) {
-        this(webSearchTool, embeddingModel, embeddingStore, maxResults, DEFAULT_MIN_SCORE);
+    /**
+     * Constructs a new WebSearchContentRetriever with the specified web search engine and document splitter.
+     * @param webSearchEngine The web search engine to use for retrieving web search results.
+     * @param documentSplitter The document splitter to use for splitting web search results into smaller text segments.
+     */
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine, DocumentSplitter documentSplitter) {
+        this(webSearchEngine, null, documentSplitter,null);
     }
 
+    /**
+     * Constructs a new WebSearchContentRetriever with the specified web search engine and embedding model.
+     * @param webSearchEngine The web search engine to use for retrieving web search results.
+     * @param embeddingModel The embedding model to use for generating embeddings and finding the most 3 relevant web search results.
+     */
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine, EmbeddingModel embeddingModel) {
+        this(webSearchEngine, embeddingModel, null,null);
+    }
+
+    /**
+     * Constructs a new WebSearchContentRetriever with the specified web search engine, embedding model, and maximum results.
+     * @param webSearchEngine The web search engine to use for retrieving search results.
+     * @param embeddingModel The embedding model to use for generating embeddings.
+     * @param maxResults The maximum number of relevant results to retrieve.
+     */
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine, EmbeddingModel embeddingModel, Integer maxResults) {
+        this(webSearchEngine, embeddingModel, null, maxResults);
+    }
+
+    /**
+     * Constructs a new WebSearchContentRetriever with the specified web search engine, embedding model, and document splitter.
+     * @param webSearchEngine The web search engine to use for retrieving search results.
+     * @param embeddingModel The embedding model to use for generating embeddings and finding the most relevant 3 web search results.
+     * @param documentSplitter The document splitter to use for splitting search results into text segments.
+     */
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine,
+                                     EmbeddingModel embeddingModel,
+                                     DocumentSplitter documentSplitter) {
+        this(webSearchEngine, embeddingModel, documentSplitter, DEFAULT_MAX_RESULTS);
+    }
+
+    /**
+     * Constructs a new WebSearchContentRetriever with the specified web search engine, embedding model, document splitter, and maximum results.
+     * @param webSearchEngine The web search engine to use for retrieving search results.
+     * @param embeddingModel The embedding model to use for generating embeddings and finding the relevant web search results.
+     * @param documentSplitter The document splitter to use for splitting search results into text segments.
+     * @param maxResults The maximum number of relevant results to retrieve.
+     */
     @Builder
-    public WebSearchContentRetriever(WebSearchTool webSearchTool,
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine,
                                      EmbeddingModel embeddingModel,
-                                     EmbeddingStore<TextSegment> embeddingStore,
-                                     Integer maxResults,
-                                     Double minScore) {
-        this.webSearchTool = ensureNotNull(webSearchTool, "webSearchTool");
-        this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
-        this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
+                                     DocumentSplitter documentSplitter,
+                                     Integer maxResults) {
+        this.webSearchEngine = ensureNotNull(webSearchEngine, "webSearchEngine");
+        this.embeddingModel = embeddingModel;
+        this.documentSplitter = documentSplitter;
+        this.embeddingStore = new InMemoryEmbeddingStore<>();
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
-        this.minScore = ensureBetween(getOrDefault(minScore, DEFAULT_MIN_SCORE), 0, 1, "minScore");
     }
-
 
     @Override
     public List<Content> retrieve(Query query) {
-        List<WebResult> webResults = webSearchTool.searchResults(query.text());
-        // I am not sure if the extraction of relevant content using the embeddingModel and embeddingStore should be applied here
-        // OR this should be scored by a scoringModel as a post process once all the results are retrieved from the web (aggregator).
-        // Your feedback is required here
-        // PS: Most python projects return the List<Content> as it was retrieved from the web search tool
-        Response<List<Embedding>> embeddedSnippets = embeddingModel.embedAll(webResults.stream()
-                .map(WebResult::toTextSegment)
-                .collect(toList()));
+        WebSearchResults webSearchResults = webSearchEngine.search(query.text());
+        List<TextSegment> textSegments = webSearchResults.toTextSegments();
+        if (documentSplitter != null) {
+            textSegments = documentSplitter.splitAll(webSearchResults.toDocuments());
+        }
+        if (embeddingModel != null) {
+            Embedding embedding = embeddingModel.embed(query.text()).content();
+            embeddingStore.add(embedding, TextSegment.from(query.text()));
 
-        List<EmbeddingMatch<TextSegment>> relevantSnippets = embeddedSnippets.content().stream()
-                .flatMap(embedding -> embeddingStore.findRelevant(embedding, maxResults, minScore).stream())
-                .collect(toList());
+            List<Embedding> embeddings = embeddingModel.embedAll(textSegments).content();
+            embeddingStore.addAll(embeddings, textSegments);
 
-        return relevantSnippets.stream()
-                .map(EmbeddingMatch::embedded)
+            List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, maxResults);
+            textSegments = relevant.stream()
+                    .map(EmbeddingMatch::embedded)
+                    .collect(toList());
+        }
+        return textSegments.stream()
                 .map(Content::from)
                 .collect(toList());
     }
