@@ -32,7 +32,7 @@ public class EmbeddingSearchRequest {
      *                       This is a mandatory parameter.
      * @param maxResults     The maximum number of embeddings to return. This is an optional parameter. Default: 3
      * @param minScore       The minimum score, ranging from 0 to 1 (inclusive).
-     *                       Only embeddings with a score >= minScore will be returned.
+     *                       Only embeddings with a score &gt;= minScore will be returned.
      *                       This is an optional parameter. Default: 0
      * @param filter         The {@link Metadata} filter to be applied during search.
      *                       Only {@link TextSegment}s whose {@link Metadata}
