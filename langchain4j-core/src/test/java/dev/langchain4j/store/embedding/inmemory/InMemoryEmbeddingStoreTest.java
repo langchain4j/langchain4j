@@ -3,8 +3,10 @@ package dev.langchain4j.store.embedding.inmemory;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.Test;
@@ -12,8 +14,12 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.DoubleStream;
+import java.util.stream.IntStream;
 
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
@@ -24,7 +30,7 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreIT {
 
     EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+    EmbeddingModel embeddingModel = new InMemory20DimensionsEmbeddingModel();
 
     @Test
     void should_serialize_to_and_deserialize_from_json() {
@@ -72,6 +78,39 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreIT {
 
             assertThat(deserializedEmbeddingStore.entries).isEqualTo(originalEmbeddingStore.entries);
             assertThat(deserializedEmbeddingStore.entries).isInstanceOf(CopyOnWriteArrayList.class);
+        }
+    }
+
+    private static class InMemory20DimensionsEmbeddingModel implements EmbeddingModel {
+        @Override
+        public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+            List<Embedding> embeddings =
+                    textSegments.stream().map(ts -> {
+                        double[] lengthAndHashCodes = splitIntoFixedChunkSize(ts.text()).stream()
+                                .flatMapToDouble(chunk -> DoubleStream.of(chunk.hashCode(), chunk.length()))
+                                .toArray();
+                        float[] doubleArray = new float[lengthAndHashCodes.length];
+                        for (int i = 0; i < lengthAndHashCodes.length; i++) {
+                            doubleArray[i] = (float) lengthAndHashCodes[i];
+                        }
+                        return new Embedding(doubleArray);
+                    }).collect(toList());
+
+            int tokenUsage = textSegments.stream().mapToInt(ts -> ts.text().length()).sum();
+
+            return Response.from(embeddings, new TokenUsage(tokenUsage), FinishReason.STOP);
+        }
+
+        // This method is used to split the text into chunks of fixed size to generate the number of dimensions desired.
+        private static List<String> splitIntoFixedChunkSize(String text) {
+            int length = text.length();
+            int chunkSize = 2; // split text into chunks of 2 characters
+            return IntStream.range(0, 10) // List of 10 chunks
+                    .mapToObj(i -> {
+                        int start = i * chunkSize;
+                        int end = Math.min(start + chunkSize, length);
+                        return start < length ? text.substring(start, end) : " ";
+                    }).collect(toList());
         }
     }
 
