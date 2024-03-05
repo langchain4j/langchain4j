@@ -58,16 +58,14 @@ Documentation can be found [here](https://docs.langchain4j.dev).
 Tutorials can be found [here](https://docs.langchain4j.dev/tutorials).
 
 ## Useful Materials
-- [Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g) by [Andrej Karpathy](https://www.youtube.com/@AndrejKarpathy)
-- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
-- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
+[Useful Materials](https://docs.langchain4j.dev/useful-materials)
 
 ## Library Structure
 LangChain4j features a modular design, comprising:
 - The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like `ChatMemory`, `OutputParser` as well as a high-level features like `AiServices`.
-- A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
-  You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
+- A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
+  You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.
 
 ## News
 
