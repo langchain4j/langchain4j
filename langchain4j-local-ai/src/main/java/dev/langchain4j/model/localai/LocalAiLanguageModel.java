@@ -4,6 +4,7 @@ import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.ai4j.openai4j.completion.CompletionResponse;
 import dev.langchain4j.model.language.LanguageModel;
+import dev.langchain4j.model.localai.spi.LocalAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -12,6 +13,7 @@ import java.time.Duration;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -76,5 +78,19 @@ public class LocalAiLanguageModel implements LanguageModel {
                 null,
                 finishReasonFrom(response.choices().get(0).finishReason())
         );
+    }
+
+    public static LocalAiLanguageModelBuilder builder() {
+        for (LocalAiLanguageModelBuilderFactory factory : loadFactories(LocalAiLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new LocalAiLanguageModelBuilder();
+    }
+
+    public static class LocalAiLanguageModelBuilder {
+        public LocalAiLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

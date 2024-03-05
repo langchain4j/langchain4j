@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
+import dev.langchain4j.model.ollama.spi.OllamaStreamingLanguageModelBuilderFactory;
 import lombok.Builder;
 
 import java.time.Duration;
@@ -9,6 +10,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
 
 /**
@@ -63,5 +65,19 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .build();
 
         client.streamingCompletion(request, handler);
+    }
+
+    public static OllamaStreamingLanguageModelBuilder builder() {
+        for (OllamaStreamingLanguageModelBuilderFactory factory : loadFactories(OllamaStreamingLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OllamaStreamingLanguageModelBuilder();
+    }
+
+    public static class OllamaStreamingLanguageModelBuilder {
+        public OllamaStreamingLanguageModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
     }
 }

@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.vertexai.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
 import lombok.Builder;
 
 import java.io.IOException;
@@ -16,6 +17,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents a Google Vertex AI Gemini language model with a stream chat completion interface, such as gemini-pro.
@@ -81,6 +83,20 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             handler.onComplete(responseBuilder.build());
         } catch (Exception exception) {
             handler.onError(exception);
+        }
+    }
+
+    public static VertexAiGeminiStreamingChatModelBuilder builder() {
+        for (VertexAiGeminiStreamingChatModelBuilderFactory factory : loadFactories(VertexAiGeminiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new VertexAiGeminiStreamingChatModelBuilder();
+    }
+
+    public static class VertexAiGeminiStreamingChatModelBuilder {
+        public VertexAiGeminiStreamingChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
         }
     }
 }

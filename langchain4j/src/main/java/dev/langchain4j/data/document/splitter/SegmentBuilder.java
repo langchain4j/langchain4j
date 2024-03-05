@@ -5,58 +5,116 @@ import java.util.function.Function;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * Segment builder utility class for HierarchicalDocumentSplitter.
+ */
 class SegmentBuilder {
-
-    private StringBuilder segmentBuilder;
-
     private final int maxSegmentSize;
     private final Function<String, Integer> sizeFunction;
-
     private final String joinSeparator;
+    private final int joinSeparatorSize;
+    private String segment = "";
+    private int segmentSize = 0;
 
-    SegmentBuilder(int maxSegmentSize, Function<String, Integer> sizeFunction, String joinSeparator) {
-        this.segmentBuilder = new StringBuilder();
+    /**
+     * Creates a new instance of {@link SegmentBuilder}.
+     * @param maxSegmentSize The maximum size of a segment.
+     * @param sizeFunction The function to use to estimate the size of a text.
+     * @param joinSeparator The separator to use when joining multiple texts into a single segment.
+     */
+    public SegmentBuilder(int maxSegmentSize, Function<String, Integer> sizeFunction, String joinSeparator) {
         this.maxSegmentSize = ensureGreaterThanZero(maxSegmentSize, "maxSegmentSize");
         this.sizeFunction = ensureNotNull(sizeFunction, "sizeFunction");
         this.joinSeparator = ensureNotNull(joinSeparator, "joinSeparator");
+        joinSeparatorSize = sizeOf(joinSeparator);
     }
 
-    boolean hasSpaceFor(String text) {
+    /**
+     * Returns the current size of the segment (as returned by the {@code sizeFunction}).
+     * @return The current size of the segment.
+     */
+    public int getSize() {
+        return segmentSize;
+    }
+
+    /**
+     * Returns {@code true} if the provided text can be added to the current segment.
+     * @param text The text to check.
+     * @return {@code true} if the provided text can be added to the current segment.
+     */
+    public boolean hasSpaceFor(String text) {
+        int totalSize = sizeOf(text);
         if (isNotEmpty()) {
-            return sizeOf(segmentBuilder.toString()) + sizeOf(joinSeparator) + sizeOf(text) <= maxSegmentSize;
-        } else {
-            return sizeOf(text) <= maxSegmentSize;
+            totalSize += segmentSize + joinSeparatorSize;
         }
+        return totalSize <= maxSegmentSize;
     }
 
-    private int sizeOf(String text) {
+    /**
+     * Returns {@code true} if the provided size can be added to the current segment.
+     * @param size The size to check.
+     * @return {@code true} if the provided size can be added to the current segment.
+     */
+    public boolean hasSpaceFor(int size) {
+        int totalSize = size;
+        if (isNotEmpty()) {
+            totalSize += segmentSize + joinSeparatorSize;
+        }
+        return totalSize <= maxSegmentSize;
+    }
+
+    /**
+     * Returns the size of the provided text (as returned by the {@code sizeFunction}).
+     * @param text The text to check.
+     * @return The size of the provided text.
+     */
+    public int sizeOf(String text) {
         return sizeFunction.apply(text);
     }
 
-    void append(String text) {
+    /**
+     * Appends the provided text to the current segment.
+     * @param text The text to append.
+     */
+    public void append(String text) {
         if (isNotEmpty()) {
-            segmentBuilder.append(joinSeparator);
+            segment += joinSeparator;
         }
-        segmentBuilder.append(text);
+        segment += text;
+        segmentSize = sizeOf(segment);
     }
 
-    void prepend(String text) {
+    /**
+     * Prepends the provided text to the current segment.
+     * @param text The text to prepend.
+     */
+    public void prepend(String text) {
         if (isNotEmpty()) {
-            segmentBuilder.insert(0, text + joinSeparator);
+            segment = text + joinSeparator + segment;
         } else {
-            segmentBuilder.insert(0, text);
+            segment = text;
         }
+        segmentSize = sizeOf(segment);
     }
 
-    boolean isNotEmpty() {
-        return segmentBuilder.length() > 0;
+    /**
+     * Returns {@code true} if the current segment is not empty.
+     * @return {@code true} if the current segment is not empty.
+     */
+    public boolean isNotEmpty() {
+        return !segment.isEmpty();
     }
 
-    String build() {
-        return segmentBuilder.toString().trim();
+    @Override
+    public String toString() {
+        return segment.trim();
     }
 
-    void reset() {
-        segmentBuilder = new StringBuilder();
+    /**
+     * Resets the current segment.
+     */
+    public void reset() {
+        segment = "";
+        segmentSize = 0;
     }
 }

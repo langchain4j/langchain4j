@@ -42,7 +42,7 @@ class AmazonS3DocumentLoaderIT {
 
     @BeforeEach
     public void beforeEach() {
-        s3Container = new LocalStackContainer(DockerImageName.parse("localstack/localstack:2.0"))
+        s3Container = new LocalStackContainer(DockerImageName.parse("localstack/localstack:3.1.0"))
                 .withServices(S3)
                 .withEnv("DEFAULT_REGION", TEST_REGION);
         s3Container.start();

@@ -1,9 +1,8 @@
 package dev.langchain4j.model.output;
 
-import dev.langchain4j.internal.Json;
-
 import java.util.Arrays;
 
+@SuppressWarnings("rawtypes")
 public class EnumOutputParser implements OutputParser<Enum> {
 
     private final Class<? extends Enum> enumClass;
@@ -14,7 +13,12 @@ public class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public Enum parse(String string) {
-        return Json.fromJson(string, enumClass);
+        for (Enum enumConstant : enumClass.getEnumConstants()) {
+            if (enumConstant.name().equalsIgnoreCase(string)) {
+                return enumConstant;
+            }
+        }
+        throw new RuntimeException("Unknown enum value: " + string);
     }
 
     @Override

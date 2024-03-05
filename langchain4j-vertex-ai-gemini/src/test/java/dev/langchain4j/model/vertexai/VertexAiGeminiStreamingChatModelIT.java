@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
@@ -25,17 +24,16 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@EnabledIfEnvironmentVariable(named = "GCP_PROJECT", matches = ".+")
 class VertexAiGeminiStreamingChatModelIT {
 
     StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-pro")
             .build();
 
     StreamingChatLanguageModel visionModel = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-pro-vision")
             .build();
@@ -107,8 +105,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
-                .project("langchain4j")
-                .location("us-central1")
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
                 .modelName("gemini-pro")
                 .maxOutputTokens(1)
                 .build();
@@ -162,7 +160,7 @@ class VertexAiGeminiStreamingChatModelIT {
     void should_allow_custom_generativeModel_and_generationConfig() throws Exception {
 
         // given
-        VertexAI vertexAi = new VertexAI("langchain4j", "us-central1");
+        VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
         GenerativeModel generativeModel = new GenerativeModel("gemini-pro", vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 

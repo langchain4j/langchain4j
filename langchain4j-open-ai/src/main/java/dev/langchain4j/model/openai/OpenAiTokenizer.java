@@ -17,7 +17,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Json.fromJson;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.openai.OpenAiModelName.*;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.*;
 import static java.util.Collections.singletonList;
 
 /**
@@ -97,7 +97,7 @@ public class OpenAiTokenizer implements Tokenizer {
         }
 
         if (aiMessage.toolExecutionRequests() != null) {
-            if (modelName.contains("1106")) {
+            if (isOneOfLatestModels()) {
                 tokenCount += 6;
             } else {
                 tokenCount += 3;
@@ -131,7 +131,7 @@ public class OpenAiTokenizer implements Tokenizer {
     }
 
     private int extraTokensPerMessage() {
-        if (modelName.equals(GPT_3_5_TURBO_0301)) {
+        if (modelName.equals("gpt-3.5-turbo-0301")) {
             return 4;
         } else {
             return 3;
@@ -139,7 +139,7 @@ public class OpenAiTokenizer implements Tokenizer {
     }
 
     private int extraTokensPerName() {
-        if (modelName.equals(GPT_3_5_TURBO_0301)) {
+        if (modelName.equals("gpt-3.5-turbo-0301")) {
             return -1; // if there's a name, the role is omitted
         } else {
             return 1;
@@ -179,11 +179,11 @@ public class OpenAiTokenizer implements Tokenizer {
 
         int tokenCount = 3;
         Map<String, Map<String, Object>> properties = parameters.properties();
-        if (modelName.contains("1106")) {
+        if (isOneOfLatestModels()) {
             tokenCount += properties.size() - 1;
         }
         for (String property : properties.keySet()) {
-            if (modelName.contains("1106")) {
+            if (isOneOfLatestModels()) {
                 tokenCount += 2;
             } else {
                 tokenCount += 3;
@@ -191,18 +191,18 @@ public class OpenAiTokenizer implements Tokenizer {
             tokenCount += estimateTokenCountInText(property);
             for (Map.Entry<String, Object> entry : properties.get(property).entrySet()) {
                 if ("type".equals(entry.getKey())) {
-                    if ("array".equals(entry.getValue()) && modelName.contains("1106")) {
+                    if ("array".equals(entry.getValue()) && isOneOfLatestModels()) {
                         tokenCount += 1;
                     }
                     // TODO object
                 } else if ("description".equals(entry.getKey())) {
                     tokenCount += 2;
                     tokenCount += estimateTokenCountInText(entry.getValue().toString());
-                    if (modelName.contains("1106") && parameters.required().contains(property)) {
+                    if (isOneOfLatestModels() && parameters.required().contains(property)) {
                         tokenCount += 1;
                     }
                 } else if ("enum".equals(entry.getKey())) {
-                    if (modelName.contains("1106")) {
+                    if (isOneOfLatestModels()) {
                         tokenCount -= 2;
                     } else {
                         tokenCount -= 3;
@@ -222,7 +222,7 @@ public class OpenAiTokenizer implements Tokenizer {
         int tokenCount = estimateTokenCountInToolSpecifications(singletonList(toolSpecification));
         tokenCount += 4;
         tokenCount += estimateTokenCountInText(toolSpecification.name());
-        if (modelName.contains("1106")) {
+        if (isOneOfLatestModels()) {
             tokenCount += 3;
         }
         return tokenCount;
@@ -274,7 +274,7 @@ public class OpenAiTokenizer implements Tokenizer {
             toolsCount++;
         }
 
-        if (modelName.equals(GPT_3_5_TURBO_1106)) {
+        if (modelName.equals(GPT_3_5_TURBO_1106.toString()) || isOneOfLatestGpt4Models()) {
             tokenCount += 16;
             tokenCount += 3 * toolsWithoutArgumentsCount;
             tokenCount += toolsCount;
@@ -286,7 +286,7 @@ public class OpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (modelName.equals(GPT_4_1106_PREVIEW)) {
+        if (modelName.equals(GPT_4_1106_PREVIEW.toString())) {
             tokenCount += 3;
             if (toolsCount > 1) {
                 tokenCount += 18;
@@ -302,7 +302,7 @@ public class OpenAiTokenizer implements Tokenizer {
     @Override
     public int estimateTokenCountInForcefulToolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
 
-        if (modelName.equals(GPT_4_1106_PREVIEW)) {
+        if (isOneOfLatestGpt4Models()) {
             int argumentsCount = countArguments(toolExecutionRequest.arguments());
             if (argumentsCount == 0) {
                 return 1;
@@ -315,7 +315,7 @@ public class OpenAiTokenizer implements Tokenizer {
         tokenCount -= 4;
         tokenCount -= estimateTokenCountInText(toolExecutionRequest.name());
 
-        if (modelName.equals(GPT_3_5_TURBO_1106)) {
+        if (modelName.equals(GPT_3_5_TURBO_1106.toString())) {
             int argumentsCount = countArguments(toolExecutionRequest.arguments());
             if (argumentsCount == 0) {
                 return 1;
@@ -333,5 +333,21 @@ public class OpenAiTokenizer implements Tokenizer {
         }
         Map<?, ?> argumentsMap = fromJson(arguments, Map.class);
         return argumentsMap.size();
+    }
+
+    private boolean isOneOfLatestModels() {
+        return isOneOfLatestGpt3Models() || isOneOfLatestGpt4Models();
+    }
+
+    private boolean isOneOfLatestGpt3Models() {
+        // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
+        return modelName.equals(GPT_3_5_TURBO_1106.toString())
+                || modelName.equals(GPT_3_5_TURBO_0125.toString());
+    }
+
+    private boolean isOneOfLatestGpt4Models() {
+        return modelName.equals(GPT_4_TURBO_PREVIEW.toString())
+                || modelName.equals(GPT_4_1106_PREVIEW.toString())
+                || modelName.equals(GPT_4_0125_PREVIEW.toString());
     }
 }
