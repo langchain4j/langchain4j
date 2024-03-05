@@ -14,8 +14,7 @@ class StreamingChatResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
 
-    private boolean hasFunctionCall = false;
-    private FunctionCall functionCall;
+    private volatile FunctionCall functionCall;
 
     private volatile TokenUsage tokenUsage;
     private volatile FinishReason finishReason;
@@ -38,8 +37,7 @@ class StreamingChatResponseBuilder {
                 .findFirst();
 
         if (functionCallPart.isPresent()) {
-            this.hasFunctionCall = true;
-            this.functionCall = functionCallPart.get().getFunctionCall();
+            functionCall = functionCallPart.get().getFunctionCall();
         } else {
             contentBuilder.append(ResponseHandler.getText(partialResponse));
         }
@@ -55,9 +53,9 @@ class StreamingChatResponseBuilder {
     }
 
     Response<AiMessage> build() {
-        if (hasFunctionCall) {
+        if (functionCall != null) {
             return Response.from(
-                AiMessage.from(FunctionCallHelper.fromFunctionCall(this.functionCall)),
+                AiMessage.from(FunctionCallHelper.fromFunctionCall(functionCall)),
                 tokenUsage,
                 finishReason
             );
