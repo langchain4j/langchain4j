@@ -15,7 +15,6 @@
     <packaging>jar</packaging>
 
     <name>LangChain4j :: Integration :: OpenSearch</name>
-    <description>Opensearch as a vector store</description>
 
     <dependencies>
         <dependency>
