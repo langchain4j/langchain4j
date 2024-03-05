@@ -19,7 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
         <openai4j.version>0.13.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
+        <azure-ai-openai.version>1.0.0-beta.7</azure-ai-openai.version>
         <azure-ai-search.version>11.6.1</azure-ai-search.version>
         <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
         <azure.storage-common.version>12.24.1</azure.storage-common.version>
