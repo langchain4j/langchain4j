@@ -4,7 +4,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -36,18 +35,19 @@ class EmbeddingStoreTest implements WithAssertions {
         }
 
         @Override
-        public EmbeddingSearchResult<String> search(EmbeddingSearchRequest embeddingSearchRequest) {
-            return new EmbeddingSearchResult<>(Arrays.asList(
+        public List<EmbeddingMatch<String>> findRelevant(
+                Embedding referenceEmbedding, int maxResults, double minScore) {
+            return Collections.singletonList(
                     new EmbeddingMatch<>(
                             0.5,
                             "id",
-                            embeddingSearchRequest.queryEmbedding(),
+                            referenceEmbedding,
                             String.format(
                                     Locale.US,
                                     "%s, %d, %.2f",
-                                    embeddingSearchRequest.queryEmbedding().vectorAsList(),
-                                    embeddingSearchRequest.maxResults(),
-                                    embeddingSearchRequest.minScore()))));
+                                    referenceEmbedding.vectorAsList(),
+                                    maxResults,
+                                    minScore)));
         }
     }
 

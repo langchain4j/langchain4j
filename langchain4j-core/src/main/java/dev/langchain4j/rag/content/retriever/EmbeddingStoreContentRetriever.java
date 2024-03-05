@@ -20,7 +20,7 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.stream.Collectors.toList;
 
 /**
- * A {@link ContentRetriever} backed by an {@link EmbeddingStore}.
+ * A {@link ContentRetriever} that retrieves from an {@link EmbeddingStore}.
  * <br>
  * By default, it retrieves the 3 most similar {@link Content}s to the provided {@link Query},
  * without any {@link Filter}ing.
@@ -52,7 +52,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
-    public static final Function<Query, Filter> DEFAULT_FILTER_PROVIDER = (query) -> null;
+    public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
@@ -68,7 +68,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER_PROVIDER
+                DEFAULT_FILTER
         );
     }
 
@@ -80,7 +80,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER_PROVIDER
+                DEFAULT_FILTER
         );
     }
 
@@ -93,7 +93,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 (query) -> minScore,
-                DEFAULT_FILTER_PROVIDER
+                DEFAULT_FILTER
         );
     }
 
@@ -107,7 +107,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
-        this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER_PROVIDER);
+        this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
     }
 
     public static class EmbeddingStoreContentRetrieverBuilder {

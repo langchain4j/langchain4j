@@ -107,8 +107,8 @@ public class LanguageModelSqlFilterBuilder {
 
     protected final ChatLanguageModel chatLanguageModel;
     protected final TableDefinition tableDefinition;
-    protected final PromptTemplate promptTemplate;
     protected final String createTableStatement;
+    protected final PromptTemplate promptTemplate;
     protected final SqlFilterParser sqlFilterParser;
 
     public LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
@@ -117,14 +117,14 @@ public class LanguageModelSqlFilterBuilder {
     }
 
     @Builder
-    public LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
-                                         TableDefinition tableDefinition,
-                                         PromptTemplate promptTemplate,
-                                         SqlFilterParser sqlFilterParser) {
+    private LanguageModelSqlFilterBuilder(ChatLanguageModel chatLanguageModel,
+                                          TableDefinition tableDefinition,
+                                          PromptTemplate promptTemplate,
+                                          SqlFilterParser sqlFilterParser) {
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
-        this.tableDefinition = ensureNotNull(tableDefinition, "table");
-        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
+        this.tableDefinition = ensureNotNull(tableDefinition, "tableDefinition");
         this.createTableStatement = format(tableDefinition);
+        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.sqlFilterParser = getOrDefault(sqlFilterParser, SqlFilterParser::new);
     }
 
@@ -153,10 +153,10 @@ public class LanguageModelSqlFilterBuilder {
     }
 
     protected Prompt createPrompt(Query query) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("create_table_statement", createTableStatement);
-        map.put("query", query.text());
-        return promptTemplate.apply(map);
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("create_table_statement", createTableStatement);
+        variables.put("query", query.text());
+        return promptTemplate.apply(variables);
     }
 
     protected String clean(String sql) {
@@ -169,19 +169,19 @@ public class LanguageModelSqlFilterBuilder {
         if (isNullOrBlank(extractedSql)) {
             log.trace("Cannot extract SQL, giving up");
             return null;
-        } else {
-            log.trace("Extracted SQL: '{}'", extractedSql);
         }
 
         try {
+            log.trace("Extracted SQL: '{}'", extractedSql);
             return sqlFilterParser.parse(extractedSql);
         } catch (Exception e2) {
-            log.warn("Failed parsing the following SQL, giving up: '{}'", extractedSql, e);
+            log.warn("Failed parsing the following SQL, giving up: '{}'", extractedSql, e2);
             return null;
         }
     }
 
     protected String extractSelectStatement(String dirtySql) {
+        // TODO improve
         if (dirtySql.contains("```sql")) {
             for (String part : dirtySql.split("```sql")) {
                 if (part.toUpperCase().contains("SELECT") && part.toUpperCase().contains("WHERE")) {

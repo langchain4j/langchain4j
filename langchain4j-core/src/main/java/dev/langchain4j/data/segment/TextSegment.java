@@ -53,7 +53,6 @@ public class TextSegment {
      *
      * @param key the key.
      * @return the metadata value, or null if not found.
-     * {@link Metadata#getInteger(String)} and other accessors instead.
      */
     // TODO deprecate later
     public String metadata(String key) {

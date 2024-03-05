@@ -23,8 +23,6 @@ import static org.assertj.core.data.Percentage.withPercentage;
  */
 public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
-    // TODO self-query retriever
-
     @ParameterizedTest
     @MethodSource
     void should_filter_by_metadata(Filter filter,

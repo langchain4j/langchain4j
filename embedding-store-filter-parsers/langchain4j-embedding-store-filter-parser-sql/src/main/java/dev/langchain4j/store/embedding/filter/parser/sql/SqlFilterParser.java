@@ -35,6 +35,9 @@ import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
  * Parses an SQL "WHERE" clause into a {@link Filter} object using
  * <a href="https://github.com/JSQLParser/JSqlParser">JSqlParser</a>.
  * <br>
+ * Can parse a complete SQL statement (e.g., {@code SELECT * FROM fake_table WHERE id = 7})
+ * as well as just the contents of a "WHERE" clause (e.g., {@code id = 7}).
+ * <br>
  * Currently, supports all SQL dialects supported by JSqlParser.
  * <br>
  * But we recommend using ANSI SQL or PostgreSQL as we cannot guarantee that this class will support all SQL dialects going forward.
@@ -102,14 +105,6 @@ public class SqlFilterParser implements FilterParser {
         this.localDateTime = LocalDateTime.now(ensureNotNull(clock, "clock"));
     }
 
-    /**
-     * Parses an SQL "WHERE" clause into a {@link Filter} object.
-     * Can parse a complete SQL statement (e.g., {@code SELECT * FROM fake_table WHERE id = 7})
-     * as well as just the contents of a "WHERE" clause (e.g., {@code id = 7}).
-     *
-     * @param sql SQL "WHERE" clause
-     * @return A {@link Filter} object
-     */
     @Override
     public Filter parse(String sql) {
 

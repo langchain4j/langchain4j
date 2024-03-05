@@ -5,6 +5,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
 import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -100,10 +101,13 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
+        Filter filter = embeddingSearchRequest.metadataFilter();
+
         for (Entry<Embedded> entry : entries) {
-            if (embeddingSearchRequest.metadataFilter() != null && entry.embedded instanceof TextSegment) {
+
+            if (filter != null && entry.embedded instanceof TextSegment) {
                 Metadata metadata = ((TextSegment) entry.embedded).metadata();
-                if (!embeddingSearchRequest.metadataFilter().test(metadata)) {
+                if (!filter.test(metadata)) {
                     continue;
                 }
             }

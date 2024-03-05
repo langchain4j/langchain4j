@@ -9,6 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.time.LocalDate;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
@@ -16,6 +17,9 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class LanguageModelSqlFilterBuilderIT {
+
+    private static final String OLLAMA_BASE_URL = "http://localhost:11434";
+    private static final int OLLAMA_NUM_PREDICT = 25;
 
     TableDefinition table = new TableDefinition(
             "movies",
@@ -59,7 +63,7 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(key("genre").eq("action").and(key("year").eq(2024L)));
+        assertThat(filter).isEqualTo(key("genre").eq("action").and(key("year").eq((long) LocalDate.now().getYear())));
     }
 
     @ParameterizedTest
@@ -91,7 +95,7 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(key("year").eq(2023L));
+        assertThat(filter).isEqualTo(key("year").eq((long) LocalDate.now().getYear() - 1));
     }
 
     static Stream<Arguments> models() {
@@ -107,37 +111,37 @@ class LanguageModelSqlFilterBuilderIT {
                 ),
                 Arguments.of(
                         OllamaChatModel.builder()
-                                .baseUrl("http://localhost:11434")
+                                .baseUrl(OLLAMA_BASE_URL)
                                 .modelName("sqlcoder")
-//                                .numPredict(35)
+                                .numPredict(OLLAMA_NUM_PREDICT)
                                 .build()
                 ),
                 Arguments.of(
                         OllamaChatModel.builder()
-                                .baseUrl("http://localhost:11434")
+                                .baseUrl(OLLAMA_BASE_URL)
                                 .modelName("codellama")
-//                                .numPredict(35)
+                                .numPredict(OLLAMA_NUM_PREDICT)
                                 .build()
                 ),
                 Arguments.of(
                         OllamaChatModel.builder()
-                                .baseUrl("http://localhost:11434")
+                                .baseUrl(OLLAMA_BASE_URL)
                                 .modelName("mistral")
-//                                .numPredict(35)
+                                .numPredict(OLLAMA_NUM_PREDICT)
                                 .build()
                 ),
                 Arguments.of(
                         OllamaChatModel.builder()
-                                .baseUrl("http://localhost:11434")
+                                .baseUrl(OLLAMA_BASE_URL)
                                 .modelName("llama2")
-//                                .numPredict(35)
+                                .numPredict(OLLAMA_NUM_PREDICT)
                                 .build()
                 ),
                 Arguments.of(
                         OllamaChatModel.builder()
-                                .baseUrl("http://localhost:11434")
+                                .baseUrl(OLLAMA_BASE_URL)
                                 .modelName("phi")
-//                                .numPredict(35)
+                                .numPredict(OLLAMA_NUM_PREDICT)
                                 .build()
                 )
         );

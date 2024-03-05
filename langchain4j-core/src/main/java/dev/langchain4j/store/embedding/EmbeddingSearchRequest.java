@@ -14,7 +14,6 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
- * Contains all search criteria.
  */
 @Experimental
 @ToString

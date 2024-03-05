@@ -59,12 +59,12 @@ public interface Filter {
         return new And(left, right);
     }
 
-    static Filter or(Filter left, Filter right) {
-        return new Or(left, right);
-    }
-
     default Filter or(Filter filter) {
         return or(this, filter);
+    }
+
+    static Filter or(Filter left, Filter right) {
+        return new Or(left, right);
     }
 
     static Filter not(Filter expression) {

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import static dev.langchain4j.internal.Utils.randomUUID;
 
 @EnabledIfEnvironmentVariable(named = "ELASTICSEARCH_CLOUD_API_KEY", matches = ".+")
-class ElasticsearchCloudEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+class ElasticsearchEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
             .serverUrl(System.getenv("ELASTICSEARCH_CLOUD_URL"))

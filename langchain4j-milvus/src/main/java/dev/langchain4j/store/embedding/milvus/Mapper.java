@@ -73,10 +73,7 @@ class Mapper {
             double score = resultsWrapper.getIDScore(0).get(i).getScore();
             String rowId = resultsWrapper.getIDScore(0).get(i).getStrID();
             Embedding embedding = idToEmbedding.get(rowId);
-            RowRecord rowRecord = resultsWrapper.getRowRecords().get(i);
-            String text = (String) rowRecord.get(TEXT_FIELD_NAME);
-            JSONObject metadata = (JSONObject) rowRecord.get(METADATA_FIELD_NAME);
-            TextSegment textSegment = isNullOrBlank(text) ? null : TextSegment.from(text, toMetadata(metadata));
+            TextSegment textSegment = toTextSegment(resultsWrapper.getRowRecords().get(i));
             EmbeddingMatch<TextSegment> embeddingMatch = new EmbeddingMatch<>(
                     RelevanceScore.fromCosineSimilarity(score),
                     rowId,
@@ -87,6 +84,21 @@ class Mapper {
         }
 
         return matches;
+    }
+
+    private static TextSegment toTextSegment(RowRecord rowRecord) {
+
+        String text = (String) rowRecord.get(TEXT_FIELD_NAME);
+        if (isNullOrBlank(text)) {
+            return null;
+        }
+
+        if (!rowRecord.getFieldValues().containsKey(METADATA_FIELD_NAME)) {
+            return TextSegment.from(text);
+        }
+
+        JSONObject metadata = (JSONObject) rowRecord.get(METADATA_FIELD_NAME);
+        return TextSegment.from(text, toMetadata(metadata));
     }
 
     private static Metadata toMetadata(JSONObject metadata) {

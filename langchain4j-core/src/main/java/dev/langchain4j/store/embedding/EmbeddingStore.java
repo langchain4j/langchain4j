@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.util.List;
 
@@ -56,7 +57,11 @@ public interface EmbeddingStore<Embedded> {
 
     /**
      * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
+     * <br>
      * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
+     * <br>
+     * {@link EmbeddingSearchRequest#metadataFilter()} can be used to filter by user/memory ID.
+     * Please note that not all {@link EmbeddingStore} implementations support {@link Filter}ing.
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
@@ -78,6 +83,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
+    // TODO deprecate later
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return findRelevant(referenceEmbedding, maxResults, 0);
     }
@@ -93,6 +99,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
+    // TODO deprecate later
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(referenceEmbedding)
@@ -104,8 +111,6 @@ public interface EmbeddingStore<Embedded> {
     }
 
     /**
-     * {@link EmbeddingSearchRequest#metadataFilter()} can be used to filter by memory ID.
-     * <br>
      * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
      * By default, minScore is set to 0, which means that the results may include embeddings with low relevance.
      *
@@ -116,6 +121,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
+    // TODO deprecate later
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults) {
         return findRelevant(memoryId, referenceEmbedding, maxResults, 0);
@@ -133,6 +139,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
+    // TODO deprecate later
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore) {
         throw new RuntimeException("Not implemented");

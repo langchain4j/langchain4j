@@ -17,8 +17,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * For a {@link Document}, the metadata could store information such as the source, creation date,
  * owner, or any other relevant details.
  * <br>
- * For a {@link TextSegment}, in addition to metadata inherited from a document, it can also include segment-specific
- * information, such as the page number, the position of the segment within the document, chapter, etc.
+ * For a {@link TextSegment}, in addition to metadata inherited from a {@link Document}, it can also include
+ * segment-specific information, such as the page number, the position of the segment within the document, chapter, etc.
  * <br>
  * The metadata is stored as a key-value map, where the key is a {@link String} and the value can be one of:
  * {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}.
@@ -435,8 +435,9 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return a Metadata object
+     * @deprecated Use {@link #from(String, String)} instead
      */
-    // TODO deprecate later
+    @Deprecated
     public static Metadata from(String key, Object value) {
         return new Metadata().add(key, value);
     }
@@ -466,8 +467,9 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return a Metadata object
+     * @deprecated Use {@link #metadata(String, String)} instead
      */
-    // TODO deprecate later
+    @Deprecated
     public static Metadata metadata(String key, Object value) {
         return from(key, value);
     }
