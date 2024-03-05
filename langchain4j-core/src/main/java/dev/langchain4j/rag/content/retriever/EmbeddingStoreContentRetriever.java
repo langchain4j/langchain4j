@@ -4,7 +4,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
@@ -31,30 +30,28 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * - {@code maxResults}: The maximum number of {@link Content}s to retrieve.
  * <br>
- * - {@code dynamicMaxResults}: It is a {@link Function} that accepts a {@link Query}
- * (which also contains {@link Metadata}) and returns a {@code maxResults} value.
+ * - {@code dynamicMaxResults}: It is a {@link Function} that accepts a {@link Query} and returns a {@code maxResults} value.
  * It can be used to dynamically define {@code maxResults} value, depending on factors such as the query,
- * the user (using {@link Metadata#chatMemoryId()}), etc.
+ * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
  * <br>
  * - {@code minScore}: The minimum relevance score for the returned {@link Content}s.
  * {@link Content}s scoring below {@code #minScore} are excluded from the results.
  * <br>
- * - {@code dynamicMinScore}: It is a {@link Function} that accepts a {@link Query}
- * (which also contains {@link Metadata}) and returns a {@code minScore} value.
+ * - {@code dynamicMinScore}: It is a {@link Function} that accepts a {@link Query} and returns a {@code minScore} value.
  * It can be used to dynamically define {@code minScore} value, depending on factors such as the query,
- * the user (using {@link Metadata#chatMemoryId()}), etc.
+ * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
  * <br>
  * - {@code filter}: The {@link Filter} that will be applied to a {@link dev.langchain4j.data.document.Metadata} in the
  * {@link Content#textSegment()}.
  * <br>
- * - {@code dynamicFilter}: It is a {@link Function} that accepts a {@link Query} (which also contains {@link Metadata})
- * and returns a {@code minScore} value. It can be used to dynamically define {@code filter} value,
- * depending on factors such as the query, the user (using {@link Metadata#chatMemoryId()}), etc.
+ * - {@code dynamicFilter}: It is a {@link Function} that accepts a {@link Query} and returns a {@code minScore} value.
+ * It can be used to dynamically define {@code filter} value, depending on factors such as the query,
+ * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
  */
 public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
-    public static final Function<Query, Integer> DEFAULT_MAX_RESULTS_PROVIDER = (query) -> 3;
-    public static final Function<Query, Double> DEFAULT_MIN_SCORE_PROVIDER = (query) -> 0.0;
+    public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
+    public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
     public static final Function<Query, Filter> DEFAULT_FILTER_PROVIDER = (query) -> null;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
@@ -69,8 +66,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
         this(
                 embeddingStore,
                 embeddingModel,
-                DEFAULT_MAX_RESULTS_PROVIDER,
-                DEFAULT_MIN_SCORE_PROVIDER,
+                DEFAULT_MAX_RESULTS,
+                DEFAULT_MIN_SCORE,
                 DEFAULT_FILTER_PROVIDER
         );
     }
@@ -82,7 +79,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingStore,
                 embeddingModel,
                 (query) -> maxResults,
-                DEFAULT_MIN_SCORE_PROVIDER,
+                DEFAULT_MIN_SCORE,
                 DEFAULT_FILTER_PROVIDER
         );
     }
@@ -101,15 +98,15 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     @Builder
-    protected EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
-                                             EmbeddingModel embeddingModel,
-                                             Function<Query, Integer> dynamicMaxResults,
-                                             Function<Query, Double> dynamicMinScore,
-                                             Function<Query, Filter> dynamicFilter) {
+    private EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
+                                           EmbeddingModel embeddingModel,
+                                           Function<Query, Integer> dynamicMaxResults,
+                                           Function<Query, Double> dynamicMinScore,
+                                           Function<Query, Filter> dynamicFilter) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
-        this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS_PROVIDER);
-        this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE_PROVIDER);
+        this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
+        this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER_PROVIDER);
     }
 

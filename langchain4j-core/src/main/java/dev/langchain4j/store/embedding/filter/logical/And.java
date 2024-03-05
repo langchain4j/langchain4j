@@ -1,11 +1,29 @@
 package dev.langchain4j.store.embedding.filter.logical;
 
 import dev.langchain4j.store.embedding.filter.Filter;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
-public class And extends BinaryFilter {
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+@ToString
+@EqualsAndHashCode
+public class And implements Filter {
+
+    private final Filter left;
+    private final Filter right;
 
     public And(Filter left, Filter right) {
-        super(left, right);
+        this.left = ensureNotNull(left, "left");
+        this.right = ensureNotNull(right, "right");
+    }
+
+    public Filter left() {
+        return left;
+    }
+
+    public Filter right() {
+        return right;
     }
 
     @Override

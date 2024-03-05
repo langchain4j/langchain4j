@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.filter.parser.sql;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.FilterParser;
 import dev.langchain4j.store.embedding.filter.comparison.GreaterThan;
@@ -9,6 +10,10 @@ import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
+import net.sf.jsqlparser.expression.operators.arithmetic.Division;
+import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
+import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
@@ -16,34 +21,51 @@ import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 
+import java.net.URLEncoder;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 
 /**
  * Parses an SQL "WHERE" clause into a {@link Filter} object using
  * <a href="https://github.com/JSQLParser/JSqlParser">JSqlParser</a>.
- * Currently, supports all SQL dialects supported by JSqlParser, but we recommend using ANSI SQL as we cannot guarantee
- * that this class will support all SQL dialects going forward.
+ * <br>
+ * Currently, supports all SQL dialects supported by JSqlParser.
+ * <br>
+ * But we recommend using ANSI SQL or PostgreSQL as we cannot guarantee that this class will support all SQL dialects going forward.
+ * <br>
  * <br>
  * Currently, the following operations are supported:
  * <pre>
- * - {@link Equal}: {@code name = 'Klaus'}, {@code age = 18}
- * - {@link NotEqual}: {@code name != 'Klaus'}, {@code name != 18}
+ * - {@link Equal}: {@code name = 'Klaus'}
+ * - {@link NotEqual}: {@code id != 7}
  * - {@link GreaterThan}: {@code age > 18}
  * - {@link GreaterThanOrEqual}: {@code age >= 18}
  * - {@link LessThan}: {@code age < 18}
  * - {@link LessThanOrEqual}: {@code age <= 18}
- * - {@link In}: {@code name IN ('Klaus', 'Francine')}, {@code age IN (18, 19)}
- * - {@link NotIn}: {@code id NOT IN ('1', '2', '3')}, {@code id NOT IN (1, 2, 3)}
+ * - {@link In}: {@code name IN ('Klaus', 'Francine')}
+ * - {@link NotIn}: {@code id NOT IN (1, 2, 3)}
+ * - BETWEEN: {@code year BETWEEN 2000 AND 2020}: will be parsed into {@code key("year").gte(2000).and(key("year").lte(2020))}
  *
  * - {@link And}: {@code name = 'Klaus' AND age = 18}
- * - {@link Not}: {@code NOT(name = 'Klaus')}, {@code NOT name = 'Klaus'}
+ * - {@link Not}: {@code NOT(name = 'Klaus')} / {@code NOT name = 'Klaus'}
  * - {@link Or}: {@code name = 'Klaus' OR age = 18}
  *
- * - Parentheses can be used: {@code (name = 'Klaus' OR name = 'Francine') AND age = 18}
+ * - YEAR/MONTH(CURDATE()): For example, {@code year = YEAR(CURDATE())} to get the current year. Provided {@link Clock} will be used to resolve {@code CURDATE()}.
+ * - EXTRACT(YEAR/MONTH/WEEK/DAY/DOW/DOY/HOUR/MINUTE FROM CURRENT_DATE/CURRENT_TIME/CURRENT_TIMESTAMP): For example: {@code year = EXTRACT(YEAR FROM CURRENT_DATE)} to get the current year. Provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
+ *
+ * - Arithmetic: {@code +}, {@code -}, {@code *}, {@code /}. For example: {@code year = YEAR(CURDATE()) - 1} to get previous year.
+ *
+ * - Parentheses: {@code (name = 'Klaus' OR name = 'Francine') AND age = 18}. Expressions within parentheses are evaluated first.
  * </pre>
  * If you require additional operations,
  * please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
+ * <br>
  * <br>
  * Here are a few examples of how a {@code String} is parsed into a {@link Filter}:
  * <pre>
@@ -51,7 +73,34 @@ import java.util.Collection;
  * {@code name = 'Klaus' AND age >= 18} -&gt; {@code key("name").eq("Klaus").and(key("age").gte(18))}
  * </pre>
  */
+@Experimental
 public class SqlFilterParser implements FilterParser {
+
+    private final LocalDateTime localDateTime;
+
+    /**
+     * Creates an instance of {@code SqlFilterParser}.
+     * <br>
+     * By default, {@link Clock#systemDefaultZone()} will be used to get the current date and/or time when required.
+     * For example, when parsing the SQL query
+     * {@code SELECT * FROM fake_table WHERE year = EXTRACT(YEAR FROM CURRENT_DATE)},
+     * the {@link Clock#systemDefaultZone()} will be used to resolve {@code CURRENT_DATE}.
+     */
+    public SqlFilterParser() {
+        this(Clock.systemDefaultZone());
+    }
+
+    /**
+     * Creates an instance of {@code SqlFilterParser}.
+     *
+     * @param clock A {@link Clock} to be used to get the current date and/or time when required.
+     *              For example, when parsing the SQL query
+     *              {@code SELECT * FROM fake_table WHERE year = EXTRACT(YEAR FROM CURRENT_DATE)},
+     *              the provided {@link Clock} will be used to resolve {@code CURRENT_DATE}.
+     */
+    public SqlFilterParser(Clock clock) {
+        this.localDateTime = LocalDateTime.now(ensureNotNull(clock, "clock"));
+    }
 
     /**
      * Parses an SQL "WHERE" clause into a {@link Filter} object.
@@ -85,30 +134,42 @@ public class SqlFilterParser implements FilterParser {
             return map(((Parenthesis) expression).getExpression());
         } else if (expression instanceof InExpression) {
             return map(((InExpression) expression));
+        } else if (expression instanceof Between) {
+            return map(((Between) expression));
         } else {
-            throw new RuntimeException("Unsupported expression: " + expression);
+            throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
         }
     }
 
-    private Filter map(BinaryExpression binaryExpression) {
-        if (binaryExpression instanceof AndExpression) {
-            return new And(map(binaryExpression.getLeftExpression()), map(binaryExpression.getRightExpression()));
-        } else if (binaryExpression instanceof OrExpression) {
-            return new Or(map(binaryExpression.getLeftExpression()), map(binaryExpression.getRightExpression()));
-        } else if (binaryExpression instanceof EqualsTo) {
-            return new Equal(getKey(binaryExpression), getValue(binaryExpression));
-        } else if (binaryExpression instanceof NotEqualsTo) {
-            return new NotEqual(getKey(binaryExpression), getValue(binaryExpression));
-        } else if (binaryExpression instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThan) {
-            return new GreaterThan(getKey(binaryExpression), getValue(binaryExpression));
-        } else if (binaryExpression instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals) {
-            return new GreaterThanOrEqual(getKey(binaryExpression), getValue(binaryExpression));
-        } else if (binaryExpression instanceof MinorThan) {
-            return new LessThan(getKey(binaryExpression), getValue(binaryExpression));
-        } else if (binaryExpression instanceof MinorThanEquals) {
-            return new LessThanOrEqual(getKey(binaryExpression), getValue(binaryExpression));
+    private static String createGithubIssueLink(Expression unsupportedExpression) {
+        try {
+            return ". Please click the following link to open an issue on our GitHub: " +
+                    "https://github.com/langchain4j/langchain4j/issues/new?labels=SqlFilterParser&title=SqlFilterParser:%20Support%20new%20expression%20type&body=" +
+                    URLEncoder.encode(unsupportedExpression.toString(), "UTF-8");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private Filter map(BinaryExpression expression) {
+        if (expression instanceof AndExpression) {
+            return new And(map(expression.getLeftExpression()), map(expression.getRightExpression()));
+        } else if (expression instanceof OrExpression) {
+            return new Or(map(expression.getLeftExpression()), map(expression.getRightExpression()));
+        } else if (expression instanceof EqualsTo) {
+            return new Equal(getKey(expression), getValue(expression));
+        } else if (expression instanceof NotEqualsTo) {
+            return new NotEqual(getKey(expression), getValue(expression));
+        } else if (expression instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThan) {
+            return new GreaterThan(getKey(expression), getValue(expression));
+        } else if (expression instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals) {
+            return new GreaterThanOrEqual(getKey(expression), getValue(expression));
+        } else if (expression instanceof MinorThan) {
+            return new LessThan(getKey(expression), getValue(expression));
+        } else if (expression instanceof MinorThanEquals) {
+            return new LessThanOrEqual(getKey(expression), getValue(expression));
         } else {
-            throw new RuntimeException("Unsupported expression: " + binaryExpression);
+            throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
         }
     }
 
@@ -141,12 +202,22 @@ public class SqlFilterParser implements FilterParser {
         }
     }
 
-    private static String getKey(BinaryExpression binaryExpression) {
+    private Filter map(Between between) {
+        String key = ((Column) between.getLeftExpression()).getColumnName();
+        Comparable<?> from = getValue(between.getBetweenExpressionStart());
+        Comparable<?> to = getValue(between.getBetweenExpressionEnd());
+        return new GreaterThanOrEqual(key, from).and(new LessThanOrEqual(key, to));
+    }
+
+    private String getKey(BinaryExpression binaryExpression) {
         return ((Column) binaryExpression.getLeftExpression()).getColumnName();
     }
 
-    private static Comparable<?> getValue(BinaryExpression binaryExpression) {
-        Expression expression = binaryExpression.getRightExpression();
+    private Comparable<?> getValue(BinaryExpression binaryExpression) {
+        return getValue(binaryExpression.getRightExpression());
+    }
+
+    private Comparable<?> getValue(Expression expression) {
         if (expression instanceof StringValue) {
             return ((StringValue) expression).getValue();
         } else if (expression instanceof LongValue) {
@@ -164,8 +235,125 @@ public class SqlFilterParser implements FilterParser {
                     return Double.parseDouble("-" + stringValue);
                 }
             }
+        } else if (expression instanceof Function) {
+            Function function = (Function) expression;
+            if (function.getName().equalsIgnoreCase("YEAR")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
+                    Function function2 = (Function) parameters.get(0);
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentYear();
+                    }
+                }
+            } else if (function.getName().equalsIgnoreCase("MONTH")) {
+                ExpressionList<?> parameters = function.getParameters();
+                if (parameters.size() == 1 && parameters.get(0) instanceof Function) {
+                    Function function2 = (Function) parameters.get(0);
+                    if (function2.getName().equalsIgnoreCase("CURDATE")) {
+                        return currentMonth();
+                    }
+                }
+            }
+            // TODO add other
+        } else if (expression instanceof ExtractExpression) {
+            ExtractExpression extractExpression = (ExtractExpression) expression;
+            if (extractExpression.getExpression() instanceof TimeKeyExpression) {
+                TimeKeyExpression timeKeyExpression = (TimeKeyExpression) extractExpression.getExpression();
+                if (timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_DATE")
+                        || timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_TIME")
+                        || timeKeyExpression.getStringValue().equalsIgnoreCase("CURRENT_TIMESTAMP")) {
+                    String field = extractExpression.getName().toUpperCase();
+                    switch (field) {
+                        case "YEAR":
+                            return currentYear();
+                        case "MONTH":
+                            return currentMonth();
+                        case "WEEK":
+                            return currentWeekOfYear();
+                        case "DAY":
+                            return currentDayOfMonth();
+                        case "DOW":
+                            return currentDayOfWeek();
+                        case "DOY":
+                            return currentDayOfYear();
+                        case "HOUR":
+                            return currentHour();
+                        case "MINUTE":
+                            return currentMinute();
+                        // TODO add other
+                    }
+                } else {
+                    // TODO parse timestamp?
+                }
+            }
+        } else if (expression instanceof Addition) {
+            Comparable<?> left = getValue(((Addition) expression).getLeftExpression());
+            Comparable<?> right = getValue(((Addition) expression).getRightExpression());
+            if (left instanceof Long && right instanceof Long) {
+                return (Long) left + (Long) right;
+            } else if (left instanceof Double && right instanceof Double) {
+                return (Double) left + (Double) right;
+            }
+        } else if (expression instanceof Subtraction) {
+            Comparable<?> left = getValue(((Subtraction) expression).getLeftExpression());
+            Comparable<?> right = getValue(((Subtraction) expression).getRightExpression());
+            if (left instanceof Long && right instanceof Long) {
+                return (Long) left - (Long) right;
+            } else if (left instanceof Double && right instanceof Double) {
+                return (Double) left - (Double) right;
+            }
+        } else if (expression instanceof Multiplication) {
+            Comparable<?> left = getValue(((Multiplication) expression).getLeftExpression());
+            Comparable<?> right = getValue(((Multiplication) expression).getRightExpression());
+            if (left instanceof Long && right instanceof Long) {
+                return (Long) left * (Long) right;
+            } else if (left instanceof Double && right instanceof Double) {
+                return (Double) left * (Double) right;
+            }
+        } else if (expression instanceof Division) {
+            Comparable<?> left = getValue(((Division) expression).getLeftExpression());
+            Comparable<?> right = getValue(((Division) expression).getRightExpression());
+            if (left instanceof Long && right instanceof Long) {
+                return (Long) left / (Long) right;
+            } else if (left instanceof Double && right instanceof Double) {
+                return (Double) left / (Double) right;
+            }
         }
 
-        throw new IllegalArgumentException("Unsupported expression: " + expression);
+        throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
     }
+
+    private long currentYear() {
+        return localDateTime.getYear();
+    }
+
+    private long currentMonth() {
+        return localDateTime.getMonthValue();
+    }
+
+    private long currentWeekOfYear() {
+        return localDateTime.get(WEEK_OF_WEEK_BASED_YEAR);
+    }
+
+    private long currentDayOfMonth() {
+        return localDateTime.getDayOfMonth();
+    }
+
+    private long currentDayOfWeek() {
+        return localDateTime.getDayOfWeek().getValue();
+    }
+
+    private long currentDayOfYear() {
+        return localDateTime.getDayOfYear();
+    }
+
+    private long currentHour() {
+        return localDateTime.getHour();
+    }
+
+    private long currentMinute() {
+        return localDateTime.getMinute();
+    }
+
+    // TODO FallbackStrategy? FAIL/IGNORE_UNSUPPORTED?
 }

@@ -3,15 +3,22 @@ package dev.langchain4j.store.embedding.filter.parser.sql;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.FilterParser;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
 import static dev.langchain4j.store.embedding.filter.Filter.*;
+import static java.time.ZoneOffset.UTC;
+import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +26,8 @@ import static org.junit.jupiter.params.provider.Arguments.of;
 
 class SqlFilterParserTest {
 
-    FilterParser parser = new SqlFilterParser();
+    Clock clock = Clock.fixed(Instant.now(), UTC);
+    FilterParser parser = new SqlFilterParser(clock);
 
     @ParameterizedTest
     @MethodSource
@@ -1557,4 +1565,129 @@ class SqlFilterParserTest {
 
                 .build();
     }
+
+    @Test
+    void should_support_CURDATE() {
+
+        assertThat(parser.parse("year = YEAR(CURDATE())"))
+                .isEqualTo(key("year").eq(currentYear()));
+        assertThat(parser.parse("month = MONTH(CURDATE())"))
+                .isEqualTo(key("month").eq(currentMonth()));
+    }
+
+    @Test
+    void should_support_EXTRACT() {
+
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE)"))
+                .isEqualTo(key("year").eq(currentYear()));
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_TIME)"))
+                .isEqualTo(key("year").eq(currentYear()));
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("year").eq(currentYear()));
+
+        assertThat(parser.parse("month = EXTRACT(MONTH FROM CURRENT_DATE)"))
+                .isEqualTo(key("month").eq(currentMonth()));
+        assertThat(parser.parse("month = EXTRACT(MONTH FROM CURRENT_TIME)"))
+                .isEqualTo(key("month").eq(currentMonth()));
+        assertThat(parser.parse("month = EXTRACT(MONTH FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("month").eq(currentMonth()));
+
+        assertThat(parser.parse("week = EXTRACT(WEEK FROM CURRENT_DATE)"))
+                .isEqualTo(key("week").eq(currentWeek()));
+        assertThat(parser.parse("week = EXTRACT(WEEK FROM CURRENT_TIME)"))
+                .isEqualTo(key("week").eq(currentWeek()));
+        assertThat(parser.parse("week = EXTRACT(WEEK FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("week").eq(currentWeek()));
+
+        assertThat(parser.parse("day = EXTRACT(DAY FROM CURRENT_DATE)"))
+                .isEqualTo(key("day").eq(currentDayOfMonth()));
+        assertThat(parser.parse("day = EXTRACT(DAY FROM CURRENT_TIME)"))
+                .isEqualTo(key("day").eq(currentDayOfMonth()));
+        assertThat(parser.parse("day = EXTRACT(DAY FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("day").eq(currentDayOfMonth()));
+
+        assertThat(parser.parse("dow = EXTRACT(DOW FROM CURRENT_DATE)"))
+                .isEqualTo(key("dow").eq(currentDayOfWeek()));
+        assertThat(parser.parse("dow = EXTRACT(DOW FROM CURRENT_TIME)"))
+                .isEqualTo(key("dow").eq(currentDayOfWeek()));
+        assertThat(parser.parse("dow = EXTRACT(DOW FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("dow").eq(currentDayOfWeek()));
+
+        assertThat(parser.parse("doy = EXTRACT(DOY FROM CURRENT_DATE)"))
+                .isEqualTo(key("doy").eq(currentDayOfYear()));
+        assertThat(parser.parse("doy = EXTRACT(DOY FROM CURRENT_TIME)"))
+                .isEqualTo(key("doy").eq(currentDayOfYear()));
+        assertThat(parser.parse("doy = EXTRACT(DOY FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("doy").eq(currentDayOfYear()));
+
+        assertThat(parser.parse("hour = EXTRACT(HOUR FROM CURRENT_TIME)"))
+                .isEqualTo(key("hour").eq(currentHour()));
+        assertThat(parser.parse("hour = EXTRACT(HOUR FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("hour").eq(currentHour()));
+
+        assertThat(parser.parse("minute = EXTRACT(MINUTE FROM CURRENT_TIME)"))
+                .isEqualTo(key("minute").eq(currentMinute()));
+        assertThat(parser.parse("minute = EXTRACT(MINUTE FROM CURRENT_TIMESTAMP)"))
+                .isEqualTo(key("minute").eq(currentMinute()));
+    }
+
+    private long currentYear() {
+        return LocalDate.now(clock).getYear();
+    }
+
+    private long currentMonth() {
+        return LocalDate.now(clock).getMonthValue();
+    }
+
+    private long currentWeek() {
+        return LocalDate.now(clock).get(WEEK_OF_WEEK_BASED_YEAR);
+    }
+
+    private long currentDayOfMonth() {
+        return LocalDate.now(clock).getDayOfMonth();
+    }
+
+    private long currentDayOfWeek() {
+        return LocalDate.now(clock).getDayOfWeek().getValue();
+    }
+
+    private long currentDayOfYear() {
+        return LocalDate.now(clock).getDayOfYear();
+    }
+
+    private long currentHour() {
+        return LocalTime.now(clock).getHour();
+    }
+
+    private long currentMinute() {
+        return LocalTime.now(clock).getMinute();
+    }
+
+    @Test
+    void should_support_arithmetics() {
+
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) + 1"))
+                .isEqualTo(key("year").eq(currentYear() + 1));
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) - 1"))
+                .isEqualTo(key("year").eq(currentYear() - 1));
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) * 2"))
+                .isEqualTo(key("year").eq(currentYear() * 2));
+        assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) / 2"))
+                .isEqualTo(key("year").eq(currentYear() / 2));
+    }
+
+    @Test
+    void should_support_BETWEEN() {
+
+        // given
+        String sql = "SELECT name FROM movies WHERE year BETWEEN 1990 AND 1999;";
+
+        // when
+        Filter filter = parser.parse(sql);
+
+        // then
+        assertThat(filter).isEqualTo(key("year").gte(1990L).and(key("year").lte(1999L)));
+    }
+
+    // TODO SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama') ORDER BY RAND() LIMIT 1
 }
