@@ -4,14 +4,60 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
+import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static org.assertj.core.api.Assertions.assertThat;
 
-class MessageWindowChatMemoryTest {
+class MessageWindowChatMemoryTest implements WithAssertions {
+    @Test
+    void test_id() {
+        {
+            ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                    .maxMessages(1)
+                    .build();
+            assertThat(chatMemory.id()).isEqualTo("default");
+        }
+        {
+            ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                    .id("abc")
+                    .maxMessages(1)
+                    .build();
+            assertThat(chatMemory.id()).isEqualTo("abc");
+        }
+    }
+
+    @Test
+    void test_store_and_clear() {
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(2)
+                .build();
+
+        chatMemory.add(userMessage("hello"));
+        chatMemory.add(userMessage("world"));
+
+        assertThat(chatMemory.messages())
+                .containsExactly(
+                        userMessage("hello"),
+                        userMessage("world")
+                );
+
+        chatMemory.add(userMessage("banana"));
+
+        assertThat(chatMemory.messages())
+                .containsExactly(
+                        userMessage("world"),
+                        userMessage("banana")
+                );
+
+        chatMemory.clear();
+        // idempotent
+        chatMemory.clear();
+
+        assertThat(chatMemory.messages()).isEmpty();
+    }
 
     @Test
     void should_keep_specified_number_of_messages_in_chat_memory() {

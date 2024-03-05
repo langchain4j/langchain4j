@@ -52,17 +52,20 @@ Please see examples of how LangChain4j can be used in [langchain4j-examples](htt
 - [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
 
 ## Documentation
-Documentation can be found [here](https://langchain4j.github.io/langchain4j/).
+Documentation can be found [here](https://docs.langchain4j.dev).
 
 ## Tutorials
-Tutorials can be found [here](https://langchain4j.github.io/langchain4j/docs/tutorials).
+Tutorials can be found [here](https://docs.langchain4j.dev/tutorials).
+
+## Useful Materials
+[Useful Materials](https://docs.langchain4j.dev/useful-materials)
 
 ## Library Structure
 LangChain4j features a modular design, comprising:
 - The `langchain4j-core` module, which defines core abstractions (such as `ChatLanguageModel` and `EmbeddingStore`) and their APIs.
 - The main `langchain4j` module, containing useful tools like `ChatMemory`, `OutputParser` as well as a high-level features like `AiServices`.
-- A wide array of `langchain4j-xyz` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
-  You can use the `langchain4j-xyz` modules independently. For additional features, simply import the main `langchain4j` dependency.
+- A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
+  You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.
 
 ## News
 
@@ -263,16 +266,16 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 
 1. Add LangChain4j OpenAI dependency to your project:
     - Maven:
-      ```
+      ```xml
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.26.1</version>
+          <version>0.27.1</version>
       </dependency>
       ```
     - Gradle:
-      ```
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.26.1'
+      ```groovy
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.27.1'
       ```
 
 2. Import your OpenAI API key:
@@ -291,12 +294,29 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     
     System.out.println(answer); // Hello! How can I assist you today?
     ```
+## Supported LLM Integrations ([Docs](https://docs.langchain4j.dev/category/integrations))
+| Provider                                                                                                | Native Image     | [Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming](https://docs.langchain4j.dev/integrations/language-models/response-streaming)  | [Async Completion](https://docs.langchain4j.dev/category/language-models) | [Async Streaming](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [ReRanking](https://docs.langchain4j.dev/category/reranking-models) 
+|---------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
+| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
+| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-openai)             |  | ✅ | ✅ |  |   | ✅ | ✅ | 
+| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/huggingface)              |  | ✅ |  | ✅ |  | ✅ |  |  |
+| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |  | ✅ |  |  |  | ✅ |
+| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
+| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
+| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ | ✅ | ✅ |
+| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |  | ✅ | ✅ |  | ✅ | ✅ |
+| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | ✅ |  |
+| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |  |  |  |  |  |  |  | ✅ |
+| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
+| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ |  |  |  |  |
+| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  |  |  |  |  | ✅ |  |
 
 ## Disclaimer
 
 Please note that the library is in active development and:
 
-- Many features are still missing. We are working hard on implementing them ASAP.
+- Some features are still missing. We are working hard on implementing them ASAP.
 - API might change at any moment. At this point, we prioritize good design in the future over backward compatibility
   now. We hope for your understanding.
 - We need your input! Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need and your concerns about the current implementation.

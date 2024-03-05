@@ -1,22 +1,21 @@
 package dev.langchain4j.data.message;
 
-import dev.langchain4j.spi.ServiceHelper;
 import dev.langchain4j.spi.data.message.ChatMessageJsonCodecFactory;
+
 import java.util.List;
 
-/**
- * A serializer for {@link ChatMessage} objects.
- */
-public class ChatMessageSerializer {
-    private ChatMessageSerializer() {}
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-    /**
-     * The {@link ChatMessageJsonCodec} instance used for serialization and deserialization.
-     */
-    static final ChatMessageJsonCodec CODEC = ServiceHelper.loadFactoryService(
-            ChatMessageJsonCodecFactory.class,
-            ChatMessageJsonCodecFactory::create,
-            GsonChatMessageJsonCodec::new);
+public class ChatMessageSerializer {
+
+    static final ChatMessageJsonCodec CODEC = loadCodec();
+
+    private static ChatMessageJsonCodec loadCodec() {
+        for (ChatMessageJsonCodecFactory factory : loadFactories(ChatMessageJsonCodecFactory.class)) {
+            return factory.create();
+        }
+                return new GsonChatMessageJsonCodec();
+    }
 
     /**
      * Serializes a chat message into a JSON string.

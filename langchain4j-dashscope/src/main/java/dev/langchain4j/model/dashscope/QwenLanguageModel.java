@@ -10,7 +10,6 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.dashscope.spi.QwenLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.spi.ServiceHelper;
 import lombok.Builder;
 
 import java.util.List;
@@ -19,6 +18,7 @@ import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultForma
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class QwenLanguageModel implements LanguageModel {
     private final String apiKey;
@@ -98,10 +98,10 @@ public class QwenLanguageModel implements LanguageModel {
     }
 
     public static QwenLanguageModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                QwenLanguageModelBuilderFactory.class,
-                QwenLanguageModelBuilder::new
-        );
+        for (QwenLanguageModelBuilderFactory factory : loadFactories(QwenLanguageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new QwenLanguageModelBuilder();
     }
 
     public static class QwenLanguageModelBuilder {

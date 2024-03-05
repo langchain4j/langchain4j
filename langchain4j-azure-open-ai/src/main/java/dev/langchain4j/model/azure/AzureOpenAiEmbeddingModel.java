@@ -13,24 +13,23 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.spi.ServiceHelper;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an OpenAI embedding model, hosted on Azure, such as text-embedding-ada-002.
  * <p>
- * Mandatory parameters for initialization are: endpoint, serviceVersion, apikey (or an alternate authentication method, see below for more information) and deploymentName.
+ * Mandatory parameters for initialization are: endpoint and apikey (or an alternate authentication method, see below for more information).
+ * Optionally you can set serviceVersion (if not, the latest version is used) and deploymentName (if not, a default name is used).
  * You can also provide your own OpenAIClient instance, if you need more flexibility.
  * <p>
  * There are 3 authentication methods:
@@ -112,7 +111,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                       Tokenizer tokenizer) {
 
         this.deploymentName = getOrDefault(deploymentName, "text-embedding-ada-002");
-        this.tokenizer = getOrDefault(tokenizer, new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002));
+        this.tokenizer = tokenizer;
     }
 
     /**
@@ -172,10 +171,10 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
     }
 
     public static Builder builder() {
-        return ServiceHelper.loadFactoryService(
-                AzureOpenAiEmbeddingModelBuilderFactory.class,
-                Builder::new
-        );
+        for (AzureOpenAiEmbeddingModelBuilderFactory factory : loadFactories(AzureOpenAiEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
     }
 
     public static class Builder {
