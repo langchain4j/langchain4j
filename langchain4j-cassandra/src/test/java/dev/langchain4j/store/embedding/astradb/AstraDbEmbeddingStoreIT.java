@@ -25,9 +25,6 @@ import java.util.UUID;
 
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Disabled("AstraDB is not available in the CI")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -48,12 +45,12 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
     public static void initStoreForTests() {
         AstraDBAdmin astraDBAdminClient = new AstraDBAdmin(getAstraToken());
         dbId = astraDBAdminClient.createDatabase(TEST_DB);
-        assertNotNull(dbId);
+        assertThat(dbId).isNotNull();
         log.info("[init] - Database exists id={}", dbId);
 
         // Select the Database as working object
         db = astraDBAdminClient.database(dbId);
-        assertNotNull(db);
+        assertThat(db).isNotNull();
 
         AstraDBCollection collection =
                 db.createCollection(TEST_COLLECTION, 1536, SimilarityMetric.cosine);
@@ -90,11 +87,11 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
         Embedding embedding = Embedding.from(new float[]{9.9F, 4.5F, 3.5F, 1.3F, 1.7F, 5.7F, 6.4F, 5.5F, 8.2F, 9.3F, 1.5F});
         TextSegment textSegment = TextSegment.from("Text", Metadata.from("Key", "Value"));
         String id = embeddingStore.add(embedding, textSegment);
-        assertTrue(id != null && !id.isEmpty());
+        assertThat(id != null && !id.isEmpty()).isTrue();
 
         Embedding refereceEmbedding = Embedding.from(new float[]{8.7F, 4.5F, 3.4F, 1.2F, 5.5F, 5.6F, 6.4F, 5.5F, 8.1F, 9.1F, 1.1F});
         List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.findRelevant(refereceEmbedding, 1);
-        assertEquals(1, embeddingMatches.size());
+        assertThat(embeddingMatches).hasSize(1);
 
         EmbeddingMatch<TextSegment> embeddingMatch = embeddingMatches.get(0);
         assertThat(embeddingMatch.score()).isBetween(0d, 1d);
