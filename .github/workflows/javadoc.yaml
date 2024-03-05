@@ -34,7 +34,7 @@ jobs:
           distribution: 'adopt'
 
       - name: Generate Javadoc
-        run: mvn javadoc:aggregate -DskipTests -pl '!langchain4j-opensearch,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j'
+        run: mvn javadoc:aggregate -DskipTests -pl '!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-neo4j'
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
