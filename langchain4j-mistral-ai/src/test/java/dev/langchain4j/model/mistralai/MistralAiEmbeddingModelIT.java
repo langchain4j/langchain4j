@@ -51,7 +51,7 @@ class MistralAiEmbeddingModelIT {
         Response<List<Embedding>> response = model.embedAll(asList(textSegment1, textSegment2));
 
         // then
-        assertThat(response.content().size()).isEqualTo(2);
+        assertThat(response.content()).hasSize(2);
         assertThat(response.content().get(0).vector()).hasSize(1024);
         assertThat(response.content().get(1).vector()).hasSize(1024);
 
