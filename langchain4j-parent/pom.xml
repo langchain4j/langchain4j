@@ -19,7 +19,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
         <openai4j.version>0.13.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
+        <azure-ai-openai.version>1.0.0-beta.7</azure-ai-openai.version>
         <azure-ai-search.version>11.6.1</azure-ai-search.version>
         <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
         <azure.storage-common.version>12.24.1</azure.storage-common.version>
@@ -32,7 +32,7 @@
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.19.2</testcontainers.version>
+        <testcontainers.version>1.19.6</testcontainers.version>
         <bytebuddy.version>1.14.10</bytebuddy.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
@@ -50,7 +50,7 @@
         <netty.version>4.1.104.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
-        <infinispan.version>15.0.0.Dev07</infinispan.version>
+        <infinispan.version>15.0.0.Dev09</infinispan.version>
     </properties>
 
     <dependencyManagement>
