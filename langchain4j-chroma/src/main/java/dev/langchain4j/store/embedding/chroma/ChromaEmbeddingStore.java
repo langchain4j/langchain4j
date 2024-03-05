@@ -5,6 +5,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -159,8 +160,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults);
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
+        QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults, where);
 
         QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
 

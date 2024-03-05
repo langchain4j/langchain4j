@@ -14,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 import org.bson.Document;
 import org.bson.codecs.configuration.CodecRegistry;
 import org.bson.codecs.pojo.PojoCodecProvider;
@@ -268,12 +269,13 @@ public class MongoDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
         List<Double> queryVector = referenceEmbedding.vectorAsList().stream()
                 .map(Float::doubleValue)
                 .collect(toList());
         long numCandidates = maxResults * maxResultRatio;
 
+        // TODO add filter
         List<Bson> pipeline = Arrays.asList(
                 vectorSearch(
                         fieldPath("embedding"),

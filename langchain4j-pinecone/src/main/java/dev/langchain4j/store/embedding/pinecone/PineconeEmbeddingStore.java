@@ -4,10 +4,7 @@ import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.CosineSimilarity;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.*;
 import io.pinecone.PineconeClient;
 import io.pinecone.PineconeClientConfig;
 import io.pinecone.PineconeConnection;
@@ -41,13 +38,13 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Creates an instance of PineconeEmbeddingStore.
      *
-     * @param apiKey      The Pinecone API key.
-     * @param environment The environment (e.g., "northamerica-northeast1-gcp").
-     * @param projectId   The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
-     *                    The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
-     * @param index       The name of the index (e.g., "test").
-     * @param nameSpace   (Optional) Namespace. If not provided, "default" will be used.
-     * @param metadataTextKey   (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
+     * @param apiKey          The Pinecone API key.
+     * @param environment     The environment (e.g., "northamerica-northeast1-gcp").
+     * @param projectId       The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
+     *                        The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
+     * @param index           The name of the index (e.g., "test").
+     * @param nameSpace       (Optional) Namespace. If not provided, "default" will be used.
+     * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
      */
     public PineconeEmbeddingStore(String apiKey,
                                   String environment,
@@ -146,8 +143,9 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
 
+        //TODO add filter
         QueryRequest queryRequest = QueryRequest
                 .newBuilder()
                 .addAllVector(referenceEmbedding.vectorAsList())

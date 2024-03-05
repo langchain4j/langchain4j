@@ -12,10 +12,7 @@ import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.CosineSimilarity;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.*;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -50,12 +47,9 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Embedding Store.
      *
-     * @param session
-     *      cassandra Session
-     * @param tableName
-     *      table name
-     * @param dimension
-     *      dimension
+     * @param session   cassandra Session
+     * @param tableName table name
+     * @param dimension dimension
      */
     public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension) {
         this(session, tableName, dimension, CassandraSimilarityMetric.COSINE);
@@ -64,14 +58,10 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Embedding Store.
      *
-     * @param session
-     *      cassandra Session
-     * @param tableName
-     *      table name
-     * @param dimension
-     *      dimension
-     * @param metric
-     *      metric
+     * @param session   cassandra Session
+     * @param tableName table name
+     * @param dimension dimension
+     * @param metric    metric
      */
     public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
         this.cassandraSession = session;
@@ -161,7 +151,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.withAuthCredentials(userName, password);
             }
             contactPoints.forEach(cp -> builder.addContactPoint(new InetSocketAddress(cp, port)));
-            return new CassandraEmbeddingStore(builder.build(),table, dimension, metric);
+            return new CassandraEmbeddingStore(builder.build(), table, dimension, metric);
         }
     }
 
@@ -317,7 +307,8 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param minScore   threshold
      * @return list of matching elements
      */
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, int maxResults, double minScore, EmbeddingWhere where) {
+        // TODO add filter
         return embeddingTable
                 .similaritySearch(AnnQuery.builder()
                         .embeddings(embedding.vectorAsList())

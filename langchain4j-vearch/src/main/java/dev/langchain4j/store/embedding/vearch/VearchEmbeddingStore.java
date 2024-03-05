@@ -3,10 +3,7 @@ package dev.langchain4j.store.embedding.vearch;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.CosineSimilarity;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.*;
 
 import java.time.Duration;
 import java.util.*;
@@ -131,10 +128,11 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
         double minSimilarity = CosineSimilarity.fromRelevanceScore(minScore);
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
         fields.addAll(vearchConfig.getMetadataFieldNames());
+        // TODO add filter
         SearchRequest request = SearchRequest.builder()
                 .query(SearchRequest.QueryParam.builder()
                         .sum(singletonList(SearchRequest.VectorParam.builder()

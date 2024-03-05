@@ -6,6 +6,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
@@ -211,6 +212,7 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             this.openSearchClient = openSearchClient;
             return this;
         }
+
         public OpenSearchEmbeddingStore build() {
             if (openSearchClient != null) {
                 return new OpenSearchEmbeddingStore(openSearchClient, indexName);
@@ -265,9 +267,10 @@ public class OpenSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
      * See https://opensearch.org/docs/latest/search-plugins/knn/knn-score-script/
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
         List<EmbeddingMatch<TextSegment>> matches;
         try {
+            //TODO add filter
             ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
             SearchResponse<Document> response = client.search(
                     SearchRequest.of(s -> s.index(indexName)

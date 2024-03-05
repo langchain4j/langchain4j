@@ -4,6 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
@@ -133,8 +134,9 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<EmbeddingMatch<TextSegment>> findRelevant(
             Embedding referenceEmbedding,
             int maxResults,
-            double minCertainty
+            double minCertainty, EmbeddingWhere where
     ) {
+        // TODO add filter
         Result<GraphQLResponse> result = client
                 .graphQL()
                 .get()

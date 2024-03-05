@@ -16,6 +16,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingWhere;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,9 +105,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     /**
      * Creates or updates the index using a ready-made index.
+     *
      * @param dimensions The number of dimensions of the embeddings.
      */
-     void createOrUpdateIndex(int dimensions) {
+    void createOrUpdateIndex(int dimensions) {
         List<SearchField> fields = new ArrayList<>();
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
                 .setKey(true)
@@ -164,6 +166,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     /**
      * Creates or updates the index, with full control on its configuration.
+     *
      * @param index The index to be created or updated.
      */
     void createOrUpdateIndex(SearchIndex index) {
@@ -208,12 +211,13 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore, EmbeddingWhere where) {
         List<Float> vector = referenceEmbedding.vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
                 .setKNearestNeighborsCount(maxResults);
 
+        // TODO add where filter
         SearchPagedIterable searchResults =
                 searchClient.search(null,
                         new SearchOptions()
@@ -311,10 +315,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     /**
      * Calculates LangChain4J's RelevanceScore from Azure AI Search's score.
-     *
+     * <p>
      * Score in Azure AI Search is transformed into a cosine similarity as described here:
      * https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
-     *
+     * <p>
      * RelevanceScore in LangChain4J is a derivative of cosine similarity,
      * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
      */
@@ -364,6 +368,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
         /**
          * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
+         *
          * @param tokenCredential the credentials to authenticate with Azure Active Directory
          * @return builder
          */
