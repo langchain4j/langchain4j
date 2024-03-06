@@ -23,8 +23,6 @@ import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @Slf4j
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -73,10 +71,10 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         Embedding sourceEmbedding     = embeddingModel().embed(sourceSentence).content();
         TextSegment sourceTextSegment = TextSegment.from(sourceSentence);
         String id =  embeddingStore().add(sourceEmbedding, sourceTextSegment);
-        assertTrue(id != null && !id.isEmpty());
+        assertThat(id != null && !id.isEmpty()).isTrue();
 
         List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.findRelevant(sourceEmbedding, 10);
-        assertEquals(1, embeddingMatches.size());
+        assertThat(embeddingMatches).hasSize(1);
 
         EmbeddingMatch<TextSegment> embeddingMatch = embeddingMatches.get(0);
         assertThat(embeddingMatch.score()).isBetween(0d, 1d);
@@ -93,21 +91,21 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
                 .add("user", "GOD")
                 .add("test", "false"));
         String id =  embeddingStore().add(sourceEmbedding, sourceTextSegment);
-        assertTrue(id != null && !id.isEmpty());
+        assertThat(id != null && !id.isEmpty()).isTrue();
 
         // Should be found with no filter
         List<EmbeddingMatch<TextSegment>> matchesAnnOnly = embeddingStore
                 .findRelevant(sourceEmbedding, 10);
-        assertEquals(1, matchesAnnOnly.size());
+        assertThat(matchesAnnOnly).hasSize(1);
 
         // Should retrieve if user is god
         List<EmbeddingMatch<TextSegment>> matchesGod = embeddingStore
                 .findRelevant(sourceEmbedding, 10, .5d, Metadata.from("user", "GOD"));
-        assertEquals(1, matchesGod.size());
+        assertThat(matchesGod).hasSize(1);
 
         List<EmbeddingMatch<TextSegment>> matchesJohn = embeddingStore
                 .findRelevant(sourceEmbedding, 10, .5d, Metadata.from("user", "JOHN"));
-        assertEquals(0, matchesJohn.size());
+        assertThat(matchesJohn).isEmpty();
     }
 
     // metrics returned are 1.95% off we updated to "withPercentage(2)"
