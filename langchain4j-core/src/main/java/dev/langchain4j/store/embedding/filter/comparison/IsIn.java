@@ -24,8 +24,8 @@ public class IsIn implements Filter {
     public IsIn(String key, Collection<?> comparisonValues) {
         this.key = ensureNotBlank(key, "key");
         Set<?> copy = new HashSet<>(ensureNotEmpty(comparisonValues, "comparisonValues with key '" + key + "'"));
-        this.comparisonValues = unmodifiableSet(copy);
         comparisonValues.forEach(value -> ensureNotNull(value, "comparisonValue with key '" + key + "'"));
+        this.comparisonValues = unmodifiableSet(copy);
     }
 
     public String key() {
