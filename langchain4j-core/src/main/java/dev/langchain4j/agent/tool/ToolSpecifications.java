@@ -1,15 +1,11 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.output.structured.Description;
+
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.List;
-import java.util.Objects;
-import java.util.Map;
-import java.util.HashMap;
+import java.util.*;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -127,8 +123,8 @@ public class ToolSpecifications {
 
         Class<?> type = parameter.getType();
 
-        P annotation = parameter.getAnnotation(P.class);
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
+        Description annotation = parameter.getAnnotation(Description.class);
+        JsonSchemaProperty description = annotation == null ? null : description(String.join(" ", annotation.value()));
 
         if (type == String.class) {
             return removeNulls(STRING, description);

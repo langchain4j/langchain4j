@@ -2,6 +2,7 @@ package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
 
+import dev.langchain4j.model.output.structured.Description;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -18,8 +19,9 @@ class ToolSpecificationsTest implements WithAssertions {
                 .containsExactly(JsonSchemaProperty.STRING);
     }
 
-    public class SimpleClass {
+    public static class Person {
 
+        @Description("Name of the person")
         private String name;
         private boolean active;
 
@@ -78,7 +80,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 Set p26,
                 Collection p27,
                 E p28,
-                SimpleClass p29
+                Person p29
                 ) {
             return 42;
         }
@@ -124,7 +126,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 Set.class,
                 Collection.class,
                 E.class,
-                SimpleClass.class);
+                Person.class);
     }
 
     public static <K, V> Map<K, V> mapOf(K k1, V v1) {
@@ -201,7 +203,7 @@ class ToolSpecificationsTest implements WithAssertions {
                         .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
                         .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
                         .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg29", mapOf("type", "object", "schema", mapOf("name" , mapOf("type", "string"), "active", mapOf( "type","boolean" ))));
+                        .containsEntry("arg29", mapOf("type", "object", "schema", mapOf("name" , mapOf("description", "Name of the person", "type", "string"), "active", mapOf( "type","boolean" ))));
 
         assertThat(properties.get("arg28")).containsEntry("type", "string");
         assertThat(Arrays.equals((Object[]) properties.get("arg28").get("enum"), new E[]{E.A, E.B, E.C})).isTrue();
@@ -308,7 +310,7 @@ class ToolSpecificationsTest implements WithAssertions {
         }
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
-                .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from("schema", mapOf( "name", mapOf("type","string"), "active", mapOf("type" ,"boolean"))));
+                .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from("schema", mapOf( "name", mapOf("description","Name of the person","type","string"), "active", mapOf("type" ,"boolean"))));
     }
 
 }
