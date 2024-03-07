@@ -95,11 +95,18 @@ public class ToolSpecifications {
             return removeNulls(STRING, enums((Object[]) type.getEnumConstants()), description);
         }
 
-        return removeNulls(OBJECT, schema(type, new HashSet<>()), description);
+        return removeNulls(OBJECT, schema(type), description);
     }
 
+    private static JsonSchemaProperty schema(Class<?> structured){
+        //TODO: Externalize the depth
+        return schema(structured, new HashSet<>(), 3);
+    }
 
-    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited) {
+    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited, int level) {
+        if (level < 0 || visited.contains(structured)) {
+            return null;
+        }
 
         visited.add(structured);
         Map<String,Object> properties = new HashMap<>();
@@ -109,7 +116,7 @@ public class ToolSpecifications {
                 // Skip coverage instrumentation field.
                 continue;
             }
-            Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
+            Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited, level);
             Map<Object,Object> objectMap = new HashMap<>();
             for(JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
                 objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
@@ -119,11 +126,11 @@ public class ToolSpecifications {
         return from( "schema", properties );
     }
 
-    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field parameter, Set<Class<?>> visited) {
+    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited , int level) {
 
-        Class<?> type = parameter.getType();
+        Class<?> type = field.getType();
 
-        Description annotation = parameter.getAnnotation(Description.class);
+        Description annotation = field.getAnnotation(Description.class);
         JsonSchemaProperty description = annotation == null ? null : description(String.join(" ", annotation.value()));
 
         if (type == String.class) {
@@ -146,14 +153,14 @@ public class ToolSpecifications {
             return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
         }
         if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) parameter.getGenericType()).getActualTypeArguments()[0]), description);
+            return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0]), description);
         }
 
         if (type.isEnum()) {
             return removeNulls(STRING, enums((Object[]) type.getEnumConstants()), description);
         }
 
-        return removeNulls(OBJECT, schema(type, visited), description);
+        return removeNulls(OBJECT, schema(type, visited, level - 1), description);
     }
 
     private static JsonSchemaProperty arrayTypeFrom(Type type) {
