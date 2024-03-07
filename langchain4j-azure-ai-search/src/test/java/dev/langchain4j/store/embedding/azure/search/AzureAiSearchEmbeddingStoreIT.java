@@ -230,8 +230,12 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         AzureAiSearchEmbeddingStore azureAiSearchEmbeddingStore = (AzureAiSearchEmbeddingStore) embeddingStoreWithSimilarity;
-        azureAiSearchEmbeddingStore.deleteIndex();
-        azureAiSearchEmbeddingStore.createOrUpdateIndex(dimensions);
+        try {
+            azureAiSearchEmbeddingStore.deleteIndex();
+            azureAiSearchEmbeddingStore.createOrUpdateIndex(dimensions);
+        } catch (RuntimeException e) {
+            log.error("Failed to clean up the index. You should look at deleting it manually.", e);
+        }
     }
 
     @Override
