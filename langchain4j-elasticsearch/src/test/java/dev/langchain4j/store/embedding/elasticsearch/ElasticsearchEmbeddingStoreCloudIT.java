@@ -18,7 +18,6 @@ class ElasticsearchEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
             .serverUrl(System.getenv("ELASTICSEARCH_CLOUD_URL"))
             .apiKey(System.getenv("ELASTICSEARCH_CLOUD_API_KEY"))
             .indexName(randomUUID())
-            .dimension(384)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();

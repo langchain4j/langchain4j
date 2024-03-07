@@ -14,8 +14,8 @@
     <url>https://github.com/langchain4j/langchain4j</url>
 
     <properties>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>9</maven.compiler.source>
+        <maven.compiler.target>9</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
         <openai4j.version>0.17.0</openai4j.version>
@@ -42,7 +42,7 @@
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
         <opensearch-containers.version>2.0.1</opensearch-containers.version>
-        <elastic.version>8.9.0</elastic.version>
+        <elastic.version>8.12.1</elastic.version>
         <jackson.version>2.16.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
@@ -506,7 +506,7 @@
                 <jdk>[11,)</jdk>
             </activation>
             <properties>
-                <maven.compiler.release>8</maven.compiler.release>
+                <maven.compiler.release>11</maven.compiler.release>
             </properties>
         </profile>
         <profile>
