@@ -403,7 +403,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     /**
      * Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
      */
-    private double fromAzureScoreToRelevanceScore(SearchResult searchResult, QueryType queryType) {
+    static double fromAzureScoreToRelevanceScore(SearchResult searchResult, QueryType queryType) {
         if (queryType == QueryType.SIMILARITY) {
             // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
 
