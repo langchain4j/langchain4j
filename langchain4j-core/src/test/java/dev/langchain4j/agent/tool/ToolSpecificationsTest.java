@@ -18,6 +18,28 @@ class ToolSpecificationsTest implements WithAssertions {
                 .containsExactly(JsonSchemaProperty.STRING);
     }
 
+    public class SimpleClass {
+
+        private String name;
+        private boolean active;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
+
+        public void setActive(boolean active) {
+            this.active = active;
+        }
+    }
+
     public enum E {
         A, B, C
     }
@@ -56,7 +78,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 Set p26,
                 Collection p27,
                 E p28,
-                Object p29
+                SimpleClass p29
                 ) {
             return 42;
         }
@@ -102,7 +124,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 Set.class,
                 Collection.class,
                 E.class,
-                Object.class);
+                SimpleClass.class);
     }
 
     public static <K, V> Map<K, V> mapOf(K k1, V v1) {
@@ -179,7 +201,7 @@ class ToolSpecificationsTest implements WithAssertions {
                         .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
                         .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
                         .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg29", mapOf("type", "object"));
+                        .containsEntry("arg29", mapOf("type", "object", "schema", mapOf("name" , mapOf("type", "string"), "active", mapOf( "type","boolean" ))));
 
         assertThat(properties.get("arg28")).containsEntry("type", "string");
         assertThat(Arrays.equals((Object[]) properties.get("arg28").get("enum"), new E[]{E.A, E.B, E.C})).isTrue();
@@ -286,7 +308,7 @@ class ToolSpecificationsTest implements WithAssertions {
         }
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
-                .containsExactly(JsonSchemaProperty.OBJECT);
+                .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from("schema", mapOf( "name", mapOf("type","string"), "active", mapOf("type" ,"boolean"))));
     }
 
 }
