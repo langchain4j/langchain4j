@@ -77,9 +77,13 @@ public final class EmbeddingRequest {
         }
 
         public Builder input(List<String> input) {
-            if (input != null) {
-                this.input = unmodifiableList(input);
+            if (input == null || input.isEmpty()) {
+                throw new RuntimeException();
             }
+            if (input.size() > 1) {
+                throw new RuntimeException();
+            }
+            this.input = unmodifiableList(input);
             return this;
         }
 

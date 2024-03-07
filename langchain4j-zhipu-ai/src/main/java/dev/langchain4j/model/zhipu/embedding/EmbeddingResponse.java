@@ -1,12 +1,17 @@
 package dev.langchain4j.model.zhipu.embedding;
 
 import dev.langchain4j.model.zhipu.shared.Usage;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.util.List;
-import java.util.Objects;
 
 import static java.util.Collections.unmodifiableList;
 
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class EmbeddingResponse {
     private final String model;
     private final String object;
@@ -24,61 +29,11 @@ public final class EmbeddingResponse {
         return new Builder();
     }
 
-    public String getModel() {
-        return model;
-    }
-
-    public String getObject() {
-        return object;
-    }
-
-    public List<Embedding> getData() {
-        return data;
-    }
-
-    public Usage getUsage() {
-        return usage;
-    }
-
     /**
      * Convenience method to get the embedding from the first data.
      */
     public List<Float> getEmbedding() {
         return data.get(0).getEmbedding();
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof EmbeddingResponse
-                && equalTo((EmbeddingResponse) another);
-    }
-
-    private boolean equalTo(EmbeddingResponse another) {
-        return Objects.equals(model, another.model)
-                && Objects.equals(data, another.data)
-                && Objects.equals(object, another.object)
-                && Objects.equals(usage, another.usage);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(model);
-        h += (h << 5) + Objects.hashCode(object);
-        h += (h << 5) + Objects.hashCode(data);
-        h += (h << 5) + Objects.hashCode(usage);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "EmbeddingResponse{"
-                + "model=" + model
-                + ", object=" + object
-                + ", data=" + data
-                + ", usage=" + usage
-                + "}";
     }
 
     public static final class Builder {

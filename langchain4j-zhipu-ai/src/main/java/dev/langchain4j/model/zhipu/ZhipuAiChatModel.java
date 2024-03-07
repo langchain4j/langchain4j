@@ -10,7 +10,7 @@ import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
 import dev.langchain4j.model.zhipu.chat.ToolChoiceMode;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
+import lombok.Builder;
 
 import java.util.Collections;
 import java.util.List;
@@ -19,7 +19,12 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.aiMessageFrom;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.finishReasonFrom;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toTools;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toZhipuAiMessages;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents an ZhipuAi language model with a chat completion interface, such as glm-3-turbo and glm-4.
@@ -35,6 +40,7 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
     private final Integer maxToken;
     private final ZhipuAiClient client;
 
+    @Builder
     public ZhipuAiChatModel(
             String baseUrl,
             String apiKey,
@@ -61,10 +67,10 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
     }
 
     public static ZhipuAiChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                ZhipuAiChatModelBuilderFactory.class,
-                ZhipuAiChatModelBuilder::new
-        );
+        for (ZhipuAiChatModelBuilderFactory factories : loadFactories(ZhipuAiChatModelBuilderFactory.class)) {
+            return factories.get();
+        }
+        return new ZhipuAiChatModelBuilder();
     }
 
     @Override
@@ -103,76 +109,7 @@ public class ZhipuAiChatModel implements ChatLanguageModel {
     }
 
     public static class ZhipuAiChatModelBuilder {
-        private String baseUrl;
-        private String apiKey;
-        private Double temperature;
-        private Double topP;
-        private String model;
-        private Integer maxRetries;
-        private Integer maxToken;
-        private Boolean logRequests;
-        private Boolean logResponses;
-
         public ZhipuAiChatModelBuilder() {
-        }
-
-        public ZhipuAiChatModelBuilder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder apiKey(String apiKey) {
-            this.apiKey = apiKey;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder temperature(Double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder topP(Double topP) {
-            this.topP = topP;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder model(String model) {
-            this.model = model;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder maxToken(Integer maxToken) {
-            this.maxToken = maxToken;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
-            return this;
-        }
-
-        public ZhipuAiChatModelBuilder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
-        public ZhipuAiChatModel build() {
-            return new ZhipuAiChatModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.temperature,
-                    this.topP,
-                    this.model,
-                    this.maxRetries,
-                    this.maxToken,
-                    this.logRequests,
-                    this.logResponses
-            );
         }
     }
 }

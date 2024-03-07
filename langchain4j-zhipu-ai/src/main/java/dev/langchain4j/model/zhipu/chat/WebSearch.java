@@ -1,9 +1,13 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-import java.util.Objects;
-
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class WebSearch {
     private final Boolean enable;
     @SerializedName("search_query")
@@ -16,42 +20,6 @@ public final class WebSearch {
 
     public static WebSearchBuilder builder() {
         return new WebSearchBuilder();
-    }
-
-    public Boolean getEnable() {
-        return enable;
-    }
-
-    public String getSearchQuery() {
-        return searchQuery;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof WebSearch
-                && equalTo((WebSearch) another);
-    }
-
-    private boolean equalTo(WebSearch another) {
-        return Objects.equals(enable, another.enable)
-                && Objects.equals(searchQuery, another.searchQuery);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(enable);
-        h += (h << 5) + Objects.hashCode(searchQuery);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "WebSearch{" +
-                "enable=" + enable +
-                ", searchQuery='" + searchQuery + '\'' +
-                '}';
     }
 
     public static class WebSearchBuilder {

@@ -1,11 +1,14 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
+@ToString
+@EqualsAndHashCode
 public final class Function {
 
     private final String name;
@@ -32,39 +35,6 @@ public final class Function {
 
     public Parameters parameters() {
         return this.parameters;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) {
-            return true;
-        } else {
-            return another instanceof Function && this.equalTo((Function) another);
-        }
-    }
-
-    private boolean equalTo(Function another) {
-        return Objects.equals(this.name, another.name)
-                && Objects.equals(this.description, another.description)
-                && Objects.equals(this.parameters, another.parameters);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(this.name);
-        h += (h << 5) + Objects.hashCode(this.description);
-        h += (h << 5) + Objects.hashCode(this.parameters);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "Function{"
-                + "name=" + this.name
-                + ", description=" + this.description
-                + ", parameters=" + this.parameters
-                + "}";
     }
 
     public static final class Builder {

@@ -1,7 +1,12 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class FunctionCall {
 
     private final String name;
@@ -14,44 +19,6 @@ public final class FunctionCall {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getArguments() {
-        return arguments;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) {
-            return true;
-        } else {
-            return another instanceof FunctionCall && this.equalTo((FunctionCall) another);
-        }
-    }
-
-    private boolean equalTo(FunctionCall another) {
-        return Objects.equals(this.name, another.name)
-                && Objects.equals(this.arguments, another.arguments);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(this.name);
-        h += (h << 5) + Objects.hashCode(this.arguments);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "FunctionCall{"
-                + "name=" + this.name
-                + ", arguments=" + this.arguments
-                + "}";
     }
 
     public static final class Builder {

@@ -1,9 +1,13 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-import java.util.Objects;
-
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class ChatCompletionChoice {
 
     private final Integer index;
@@ -21,58 +25,6 @@ public final class ChatCompletionChoice {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public Integer getIndex() {
-        return index;
-    }
-
-    public Message getMessage() {
-        return message;
-    }
-
-    public Delta getDelta() {
-        return delta;
-    }
-
-    public String getFinishReason() {
-        return finishReason;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) {
-            return true;
-        } else {
-            return another instanceof ChatCompletionChoice && this.equalTo((ChatCompletionChoice) another);
-        }
-    }
-
-    private boolean equalTo(ChatCompletionChoice another) {
-        return Objects.equals(this.index, another.index)
-                && Objects.equals(this.message, another.message)
-                && Objects.equals(this.delta, another.delta)
-                && Objects.equals(this.finishReason, another.finishReason);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(this.index);
-        h += (h << 5) + Objects.hashCode(this.message);
-        h += (h << 5) + Objects.hashCode(this.delta);
-        h += (h << 5) + Objects.hashCode(this.finishReason);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "ChatCompletionChoice{"
-                + "index=" + this.index
-                + ", message=" + this.message
-                + ", delta=" + this.delta
-                + ", finishReason=" + this.finishReason
-                + "}";
     }
 
     public static final class Builder {

@@ -1,9 +1,13 @@
 package dev.langchain4j.model.zhipu.shared;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-import java.util.Objects;
-
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class Usage {
     @SerializedName("prompt_tokens")
     private Integer promptTokens;
@@ -20,49 +24,6 @@ public final class Usage {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public Integer getPromptTokens() {
-        return promptTokens;
-    }
-
-    public Integer getCompletionTokens() {
-        return completionTokens;
-    }
-
-    public Integer getTotalTokens() {
-        return totalTokens;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof Usage
-                && equalTo((Usage) another);
-    }
-
-    private boolean equalTo(Usage another) {
-        return Objects.equals(promptTokens, another.promptTokens)
-                && Objects.equals(completionTokens, another.completionTokens)
-                && Objects.equals(totalTokens, another.totalTokens);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(promptTokens);
-        h += (h << 5) + Objects.hashCode(completionTokens);
-        h += (h << 5) + Objects.hashCode(totalTokens);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "Usage{"
-                + "promptTokens=" + promptTokens
-                + ", completionTokens=" + completionTokens
-                + ", totalTokens=" + totalTokens
-                + "}";
     }
 
     public static final class Builder {

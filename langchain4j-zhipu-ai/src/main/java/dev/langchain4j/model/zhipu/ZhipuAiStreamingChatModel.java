@@ -10,7 +10,7 @@ import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
 import dev.langchain4j.model.zhipu.chat.ToolChoiceMode;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiStreamingChatModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
+import lombok.Builder;
 
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +20,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toTools;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toZhipuAiMessages;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
 
@@ -30,6 +31,7 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     private final Integer maxToken;
     private final ZhipuAiClient client;
 
+    @Builder
     public ZhipuAiStreamingChatModel(
             String baseUrl,
             String apiKey,
@@ -54,10 +56,10 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static ZhipuAiStreamingChatModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                ZhipuAiStreamingChatModelBuilderFactory.class,
-                ZhipuAiStreamingChatModelBuilder::new
-        );
+        for (ZhipuAiStreamingChatModelBuilderFactory factories : loadFactories(ZhipuAiStreamingChatModelBuilderFactory.class)) {
+            return factories.get();
+        }
+        return new ZhipuAiStreamingChatModelBuilder();
     }
 
     @Override
@@ -96,60 +98,8 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     }
 
     public static class ZhipuAiStreamingChatModelBuilder {
-        private String baseUrl;
-        private String apiKey;
-        private Double temperature;
-        private Double topP;
-        private String model;
-        private Integer maxToken;
-        private Boolean logRequests;
-        private Boolean logResponses;
-
         public ZhipuAiStreamingChatModelBuilder() {
-        }
 
-        public ZhipuAiStreamingChatModelBuilder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder apiKey(String apiKey) {
-            this.apiKey = apiKey;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder temperature(Double temperature) {
-            this.temperature = temperature;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder topP(Double topP) {
-            this.topP = topP;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder model(String model) {
-            this.model = model;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder maxToken(Integer maxToken) {
-            this.maxToken = maxToken;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModelBuilder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
-        public ZhipuAiStreamingChatModel build() {
-            return new ZhipuAiStreamingChatModel(this.baseUrl, this.apiKey, this.temperature, this.topP, this.model, this.maxToken, this.logRequests, this.logResponses);
         }
     }
 }

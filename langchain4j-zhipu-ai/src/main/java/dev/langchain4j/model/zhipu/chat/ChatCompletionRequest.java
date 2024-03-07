@@ -1,16 +1,19 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
 
+@ToString
+@EqualsAndHashCode
 public final class ChatCompletionRequest {
     private final String model;
     private final List<Message> messages;
@@ -81,61 +84,6 @@ public final class ChatCompletionRequest {
 
     public Object toolChoice() {
         return toolChoice;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof ChatCompletionRequest
-                && equalTo((ChatCompletionRequest) another);
-    }
-
-    private boolean equalTo(ChatCompletionRequest another) {
-        return Objects.equals(model, another.model)
-                && Objects.equals(messages, another.messages)
-                && Objects.equals(temperature, another.temperature)
-                && Objects.equals(topP, another.topP)
-                && Objects.equals(requestId, another.requestId)
-                && Objects.equals(stream, another.stream)
-                && Objects.equals(stop, another.stop)
-                && Objects.equals(maxTokens, another.maxTokens)
-                && Objects.equals(doSample, another.doSample)
-                && Objects.equals(tools, another.tools)
-                && Objects.equals(toolChoice, another.toolChoice);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(model);
-        h += (h << 5) + Objects.hashCode(messages);
-        h += (h << 5) + Objects.hashCode(temperature);
-        h += (h << 5) + Objects.hashCode(topP);
-        h += (h << 5) + Objects.hashCode(requestId);
-        h += (h << 5) + Objects.hashCode(stream);
-        h += (h << 5) + Objects.hashCode(stop);
-        h += (h << 5) + Objects.hashCode(maxTokens);
-        h += (h << 5) + Objects.hashCode(doSample);
-        h += (h << 5) + Objects.hashCode(tools);
-        h += (h << 5) + Objects.hashCode(toolChoice);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "ChatCompletionRequest{"
-                + "model=" + model
-                + ", messages=" + messages
-                + ", temperature=" + temperature
-                + ", topP=" + topP
-                + ", requestId=" + requestId
-                + ", stream=" + stream
-                + ", stop=" + stop
-                + ", maxTokens=" + maxTokens
-                + ", doSample=" + doSample
-                + ", tools=" + tools
-                + ", toolChoice=" + toolChoice
-                + "}";
     }
 
     public static final class Builder {

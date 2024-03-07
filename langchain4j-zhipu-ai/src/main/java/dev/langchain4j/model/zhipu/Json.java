@@ -10,8 +10,6 @@ class Json {
     public static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
             .registerTypeAdapterFactory(ASSISTANT_MESSAGE_TYPE_ADAPTER_FACTORY)
-//            .registerTypeHierarchyAdapter(Enum.class, new EnumSerializer())
-//            .registerTypeHierarchyAdapter(Enum.class, new EnumDeserializer())
             .setPrettyPrinting()
             .create();
 

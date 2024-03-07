@@ -7,13 +7,16 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiEmbeddingModelBuilderFactory;
-import dev.langchain4j.spi.ServiceHelper;
+import lombok.Builder;
 
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toEmbed;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toEmbedTexts;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.tokenUsageFrom;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents an ZhipuAI embedding model, such as embedding-2.
@@ -25,6 +28,7 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
     private final String model;
     private final ZhipuAiClient client;
 
+    @Builder
     public ZhipuAiEmbeddingModel(
             String baseUrl,
             String apiKey,
@@ -45,10 +49,10 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static ZhipuAiEmbeddingModelBuilder builder() {
-        return ServiceHelper.loadFactoryService(
-                ZhipuAiEmbeddingModelBuilderFactory.class,
-                ZhipuAiEmbeddingModelBuilder::new
-        );
+        for (ZhipuAiEmbeddingModelBuilderFactory factories : loadFactories(ZhipuAiEmbeddingModelBuilderFactory.class)) {
+            return factories.get();
+        }
+        return new ZhipuAiEmbeddingModelBuilder();
     }
 
     @Override
@@ -68,55 +72,7 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static class ZhipuAiEmbeddingModelBuilder {
-        private String baseUrl;
-        private String apiKey;
-        private String model;
-        private Integer maxRetries;
-        private Boolean logRequests;
-        private Boolean logResponses;
-
         public ZhipuAiEmbeddingModelBuilder() {
-        }
-
-        public ZhipuAiEmbeddingModelBuilder baseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-            return this;
-        }
-
-        public ZhipuAiEmbeddingModelBuilder apiKey(String apiKey) {
-            this.apiKey = apiKey;
-            return this;
-        }
-
-        public ZhipuAiEmbeddingModelBuilder model(String model) {
-            this.model = model;
-            return this;
-        }
-
-        public ZhipuAiEmbeddingModelBuilder maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
-            return this;
-        }
-
-        public ZhipuAiEmbeddingModelBuilder logRequests(Boolean logRequests) {
-            this.logRequests = logRequests;
-            return this;
-        }
-
-        public ZhipuAiEmbeddingModelBuilder logResponses(Boolean logResponses) {
-            this.logResponses = logResponses;
-            return this;
-        }
-
-        public ZhipuAiEmbeddingModel build() {
-            return new ZhipuAiEmbeddingModel(
-                    this.baseUrl,
-                    this.apiKey,
-                    this.model,
-                    this.maxRetries,
-                    this.logRequests,
-                    this.logResponses
-            );
         }
     }
 }

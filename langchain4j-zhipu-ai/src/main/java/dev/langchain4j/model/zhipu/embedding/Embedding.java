@@ -1,10 +1,16 @@
 package dev.langchain4j.model.zhipu.embedding;
 
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
+
 import java.util.List;
-import java.util.Objects;
 
 import static java.util.Collections.unmodifiableList;
 
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class Embedding {
 
     private final List<Float> embedding;
@@ -19,49 +25,6 @@ public final class Embedding {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public List<Float> getEmbedding() {
-        return embedding;
-    }
-
-    public String getObject() {
-        return object;
-    }
-
-    public Integer getIndex() {
-        return index;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof Embedding
-                && equalTo((Embedding) another);
-    }
-
-    private boolean equalTo(Embedding another) {
-        return Objects.equals(embedding, another.embedding)
-                && Objects.equals(object, another.object)
-                && Objects.equals(index, another.index);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(embedding);
-        h += (h << 5) + Objects.hashCode(object);
-        h += (h << 5) + Objects.hashCode(index);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "Embedding{"
-                + "embedding=" + embedding
-                + ", object=" + object
-                + ", index=" + index
-                + "}";
     }
 
     public static final class Builder {

@@ -1,9 +1,13 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-import java.util.Objects;
-
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class Retrieval {
     @SerializedName("knowledge_id")
     private final String knowledgeId;
@@ -17,41 +21,6 @@ public final class Retrieval {
 
     public static RetrievalBuilder builder() {
         return new RetrievalBuilder();
-    }
-
-    public String getKnowledgeId() {
-        return this.knowledgeId;
-    }
-
-    public String getPromptTemplate() {
-        return this.promptTemplate;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof Retrieval
-                && equalTo((Retrieval) another);
-    }
-
-    private boolean equalTo(Retrieval another) {
-        return Objects.equals(knowledgeId, another.knowledgeId)
-                && Objects.equals(promptTemplate, another.promptTemplate);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(knowledgeId);
-        h += (h << 5) + Objects.hashCode(promptTemplate);
-        return h;
-    }
-
-    public String toString() {
-        return "Retrieval("
-                + "knowledgeId=" + this.knowledgeId
-                + ", promptTemplate=" + this.promptTemplate
-                + ")";
     }
 
     public static class RetrievalBuilder {

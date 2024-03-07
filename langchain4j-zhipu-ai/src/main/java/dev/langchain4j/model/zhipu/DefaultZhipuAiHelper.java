@@ -4,14 +4,25 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.*;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.zhipu.chat.*;
+import dev.langchain4j.model.zhipu.chat.AssistantMessage;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
+import dev.langchain4j.model.zhipu.chat.Function;
+import dev.langchain4j.model.zhipu.chat.FunctionCall;
+import dev.langchain4j.model.zhipu.chat.Message;
+import dev.langchain4j.model.zhipu.chat.Parameters;
+import dev.langchain4j.model.zhipu.chat.Tool;
+import dev.langchain4j.model.zhipu.chat.ToolCall;
+import dev.langchain4j.model.zhipu.chat.ToolMessage;
+import dev.langchain4j.model.zhipu.chat.ToolType;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
 
@@ -21,7 +32,10 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.OTHER;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 class DefaultZhipuAiHelper {
 

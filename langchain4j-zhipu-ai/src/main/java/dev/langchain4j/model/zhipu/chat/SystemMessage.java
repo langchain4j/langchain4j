@@ -1,13 +1,19 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import static dev.langchain4j.model.zhipu.chat.Role.SYSTEM;
 
+@ToString
+@EqualsAndHashCode
 public final class SystemMessage implements Message {
 
     private final Role role = SYSTEM;
+    @Getter
     private final String content;
+    @Getter
     private final String name;
 
     private SystemMessage(Builder builder) {
@@ -28,45 +34,6 @@ public final class SystemMessage implements Message {
     @Override
     public Role getRole() {
         return role;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof SystemMessage
-                && equalTo((SystemMessage) another);
-    }
-
-    private boolean equalTo(SystemMessage another) {
-        return Objects.equals(role, another.role)
-                && Objects.equals(content, another.content)
-                && Objects.equals(name, another.name);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(role);
-        h += (h << 5) + Objects.hashCode(content);
-        h += (h << 5) + Objects.hashCode(name);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "SystemMessage{"
-                + "role=" + role
-                + ", content=" + content
-                + ", name=" + name
-                + "}";
     }
 
     public static final class Builder {

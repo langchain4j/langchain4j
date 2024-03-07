@@ -1,11 +1,16 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class Delta {
     private final String content;
     @SerializedName("tool_calls")
@@ -18,44 +23,6 @@ public final class Delta {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public List<ToolCall> getToolCalls() {
-        return toolCalls;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) {
-            return true;
-        } else {
-            return another instanceof Delta && this.equalTo((Delta) another);
-        }
-    }
-
-    private boolean equalTo(Delta another) {
-        return Objects.equals(this.content, another.content)
-                && Objects.equals(this.toolCalls, another.toolCalls);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(this.content);
-        h += (h << 5) + Objects.hashCode(this.toolCalls);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "Delta{"
-                + "content=" + this.content
-                + ", toolCalls=" + this.toolCalls
-                + "}";
     }
 
     public static final class Builder {

@@ -1,19 +1,26 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import java.util.List;
-import java.util.Objects;
 
 import static dev.langchain4j.model.zhipu.chat.Role.ASSISTANT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
+@ToString
+@EqualsAndHashCode
 public final class AssistantMessage implements Message {
 
     private final Role role = ASSISTANT;
+    @Getter
     private final String content;
+    @Getter
     private final String name;
+    @Getter
     @SerializedName("tool_calls")
     private final List<ToolCall> toolCalls;
 
@@ -36,52 +43,6 @@ public final class AssistantMessage implements Message {
     @Override
     public Role getRole() {
         return role;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public List<ToolCall> getToolCalls() {
-        return toolCalls;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof AssistantMessage
-                && equalTo((AssistantMessage) another);
-    }
-
-    private boolean equalTo(AssistantMessage another) {
-        return Objects.equals(role, another.role)
-                && Objects.equals(content, another.content)
-                && Objects.equals(name, another.name)
-                && Objects.equals(toolCalls, another.toolCalls);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(role);
-        h += (h << 5) + Objects.hashCode(content);
-        h += (h << 5) + Objects.hashCode(name);
-        h += (h << 5) + Objects.hashCode(toolCalls);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "AssistantMessage{"
-                + "role=" + role
-                + ", content=" + content
-                + ", name=" + name
-                + ", toolCalls=" + toolCalls
-                + "}";
     }
 
     public static final class Builder {

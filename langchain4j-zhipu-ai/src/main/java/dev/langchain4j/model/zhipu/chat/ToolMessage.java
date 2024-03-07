@@ -1,16 +1,21 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import com.google.gson.annotations.SerializedName;
-
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
 import static dev.langchain4j.model.zhipu.chat.Role.TOOL;
 
+@ToString
+@EqualsAndHashCode
 public final class ToolMessage implements Message {
 
     private final Role role = TOOL;
+    @Getter
     @SerializedName("tool_call_id")
     private final String toolCallId;
+    @Getter
     private final String content;
 
     private ToolMessage(Builder builder) {
@@ -32,45 +37,6 @@ public final class ToolMessage implements Message {
     @Override
     public Role getRole() {
         return role;
-    }
-
-    public String getToolCallId() {
-        return toolCallId;
-    }
-
-    public String getContent() {
-        return content;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) return true;
-        return another instanceof ToolMessage
-                && equalTo((ToolMessage) another);
-    }
-
-    private boolean equalTo(ToolMessage another) {
-        return Objects.equals(role, another.role)
-                && Objects.equals(toolCallId, another.toolCallId)
-                && Objects.equals(content, another.content);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(role);
-        h += (h << 5) + Objects.hashCode(toolCallId);
-        h += (h << 5) + Objects.hashCode(content);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "ToolMessage{"
-                + "role=" + role
-                + ", toolCallId=" + toolCallId
-                + ", content=" + content
-                + "}";
     }
 
     public static final class Builder {

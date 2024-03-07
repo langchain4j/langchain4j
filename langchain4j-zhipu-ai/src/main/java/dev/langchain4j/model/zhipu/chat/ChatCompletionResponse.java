@@ -1,11 +1,15 @@
 package dev.langchain4j.model.zhipu.chat;
 
 import dev.langchain4j.model.zhipu.shared.Usage;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class ChatCompletionResponse {
     private final String id;
     private final Integer created;
@@ -25,67 +29,8 @@ public final class ChatCompletionResponse {
         return new Builder();
     }
 
-    public String getId() {
-        return id;
-    }
-
-    public Integer getCreated() {
-        return created;
-    }
-
-    public String getModel() {
-        return model;
-    }
-
-    public List<ChatCompletionChoice> getChoices() {
-        return choices;
-    }
-
-    public Usage getUsage() {
-        return usage;
-    }
-
     public String content() {
-        return ((AssistantMessage) this.getChoices().get(0).getMessage()).getContent();
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) {
-            return true;
-        } else {
-            return another instanceof ChatCompletionResponse && this.equalTo((ChatCompletionResponse) another);
-        }
-    }
-
-    private boolean equalTo(ChatCompletionResponse another) {
-        return Objects.equals(this.id, another.id)
-                && Objects.equals(this.created, another.created)
-                && Objects.equals(this.model, another.model)
-                && Objects.equals(this.choices, another.choices)
-                && Objects.equals(this.usage, another.usage);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(this.id);
-        h += (h << 5) + Objects.hashCode(this.created);
-        h += (h << 5) + Objects.hashCode(this.model);
-        h += (h << 5) + Objects.hashCode(this.choices);
-        h += (h << 5) + Objects.hashCode(this.usage);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "ChatCompletionResponse{" +
-                "id=" + this.id
-                + ", created=" + this.created
-                + ", model=" + this.model
-                + ", choices=" + this.choices
-                + ", usage=" + this.usage
-                + "}";
+        return getChoices().get(0).getMessage().getContent();
     }
 
     public static final class Builder {
@@ -114,10 +59,7 @@ public final class ChatCompletionResponse {
         }
 
         public Builder choices(List<ChatCompletionChoice> choices) {
-            if (choices != null) {
-                this.choices = Collections.unmodifiableList(choices);
-            }
-
+            this.choices = choices;
             return this;
         }
 

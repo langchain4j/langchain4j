@@ -1,7 +1,12 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import java.util.Objects;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.ToString;
 
+@Getter
+@ToString
+@EqualsAndHashCode
 public final class ToolCall {
     private final String id;
     private final Integer index;
@@ -17,58 +22,6 @@ public final class ToolCall {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public Integer getIndex() {
-        return index;
-    }
-
-    public ToolType getType() {
-        return type;
-    }
-
-    public FunctionCall getFunction() {
-        return function;
-    }
-
-    @Override
-    public boolean equals(Object another) {
-        if (this == another) {
-            return true;
-        } else {
-            return another instanceof ToolCall && this.equalTo((ToolCall) another);
-        }
-    }
-
-    private boolean equalTo(ToolCall another) {
-        return Objects.equals(this.id, another.id)
-                && Objects.equals(this.index, another.index)
-                && Objects.equals(this.type, another.type)
-                && Objects.equals(this.function, another.function);
-    }
-
-    @Override
-    public int hashCode() {
-        int h = 5381;
-        h += (h << 5) + Objects.hashCode(this.id);
-        h += (h << 5) + Objects.hashCode(this.index);
-        h += (h << 5) + Objects.hashCode(this.type);
-        h += (h << 5) + Objects.hashCode(this.function);
-        return h;
-    }
-
-    @Override
-    public String toString() {
-        return "ToolCall{"
-                + "id=" + this.id
-                + ", index=" + this.index
-                + ", type=" + this.type
-                + ", function=" + this.function
-                + "}";
     }
 
     public static final class Builder {
