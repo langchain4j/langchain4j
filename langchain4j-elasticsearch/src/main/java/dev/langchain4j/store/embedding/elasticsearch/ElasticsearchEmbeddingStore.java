@@ -1,25 +1,15 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
-import co.elastic.clients.elasticsearch._types.InlineScript;
-import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
-import co.elastic.clients.elasticsearch._types.mapping.Property;
-import co.elastic.clients.elasticsearch._types.mapping.TextProperty;
-import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
-import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
+import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
-import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
-import co.elastic.clients.json.JsonData;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
-import co.elastic.clients.transport.endpoints.BooleanResponse;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -39,13 +29,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -99,8 +88,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
-
-        createIndexIfNotExist(indexName, dimension);
     }
 
     public ElasticsearchEmbeddingStore(RestClient restClient, String indexName, Integer dimension) {
@@ -110,8 +97,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
-
-        createIndexIfNotExist(indexName, dimension);
     }
 
     public static Builder builder() {
@@ -241,18 +226,26 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+        log.debug("findRelevant([...{}...], {}, {})", referenceEmbedding.vector().length, maxResults, minScore);
         try {
-            // Use Script Score and cosineSimilarity to calculate
-            // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
-            ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
-            SearchResponse<Document> response = client.search(
-                    SearchRequest.of(s -> s.index(indexName)
-                            .query(n -> n.scriptScore(scriptScoreQuery))
-                            .size(maxResults)),
-                    Document.class
-            );
-
-            return toEmbeddingMatch(response);
+            SearchResponse<Document> response = client.search(sr -> sr
+                            .index(indexName)
+                            .size(maxResults)
+                            .query(q -> q.matchAll(maq -> maq))
+                            .knn(kr -> kr
+                                    .field("vector")
+                                    .queryVector(referenceEmbedding.vectorAsList())
+                                    .k(maxResults)
+                                    .numCandidates(maxResults)
+                            )
+                            .minScore(minScore + 1)
+                    , Document.class);
+            List<EmbeddingMatch<TextSegment>> embeddingMatch = toEmbeddingMatch(response);
+            embeddingMatch.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
+            return embeddingMatch;
+        } catch (ElasticsearchException e) {
+            log.error("[ElasticSearch encounter exception] {}", e.response());
+            throw new ElasticsearchRequestFailedException(e.response().toString(), e);
         } catch (IOException e) {
             log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
@@ -279,28 +272,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
-    private void createIndexIfNotExist(String indexName, Integer dimension) {
-        try {
-            BooleanResponse response = client.indices().exists(c -> c.index(indexName));
-            if (!response.value()) {
-                ensureGreaterThanZero(dimension, "dimension");
-                client.indices().create(c -> c.index(indexName)
-                        .mappings(getDefaultMappings(dimension)));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private TypeMapping getDefaultMappings(int dimension) {
-        Map<String, Property> properties = new HashMap<>(4);
-        properties.put("text", Property.of(p -> p.text(TextProperty.of(t -> t))));
-        properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dimension)))));
-        return TypeMapping.of(c -> c.properties(properties));
-    }
-
     private void bulk(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) throws IOException {
         int size = ids.size();
+        log.debug("calling bulk with [{}] elements", size);
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
         for (int i = 0; i < size; i++) {
             int finalI = i;
@@ -319,35 +293,22 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
         BulkResponse response = client.bulk(bulkBuilder.build());
         if (response.errors()) {
+            log.warn("bulk done with [{}] errors", response.items().stream().filter(f -> f.error() != null).count());
             for (BulkResponseItem item : response.items()) {
                 if (item.error() != null) {
                     throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
                 }
             }
+        } else {
+            log.debug("bulk done with [0] errors");
         }
-    }
-
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
-        JsonData queryVector = toJsonData(vector);
-        return ScriptScoreQuery.of(q -> q
-                .minScore(minScore)
-                .query(Query.of(qu -> qu.matchAll(m -> m)))
-                .script(s -> s.inline(InlineScript.of(i -> i
-                        // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
-                        // divided by 2 to keep score in the range [0, 1]
-                        .source("(cosineSimilarity(params.query_vector, 'vector') + 1.0) / 2")
-                        .params("query_vector", queryVector)))));
-    }
-
-    private <T> JsonData toJsonData(T rawData) throws JsonProcessingException {
-        return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
     }
 
     private List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
                         .map(document -> new EmbeddingMatch<>(
-                                hit.score(),
+                                hit.score() - 1.0,
                                 hit.id(),
                                 new Embedding(document.getVector()),
                                 document.getText() == null
