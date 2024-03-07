@@ -33,9 +33,11 @@ import static java.util.stream.Collectors.toList;
 /**
  * Azure AI Search EmbeddingStore Implementation.
  *
- * This class implements 3 query types:
+ * This class implements 4 query types:
  * - Similarity: Uses the vector search algorithm to find the most similar embeddings.
  *   See https://learn.microsoft.com/en-us/azure/search/vector-search-overview for more information.
+ * - Full Text: Uses the full text search to find the most similar embeddings.
+ *   See https://learn.microsoft.com/en-us/azure/search/search-lucene-query-architecture for more information.
  * - Similarity Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-overview for more information.
  * - Semantic Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings, and uses the semantic re-ranker algorithm to rank the results.
