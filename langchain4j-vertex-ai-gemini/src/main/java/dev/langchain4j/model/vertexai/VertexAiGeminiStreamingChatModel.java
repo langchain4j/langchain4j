@@ -17,7 +17,6 @@ import lombok.Builder;
 import java.util.Collections;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -30,7 +29,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
-    private final Integer maxRetries;
 
     private String project;
     private String location;
@@ -47,8 +45,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Float temperature,
                                             Integer maxOutputTokens,
                                             Integer topK,
-                                            Float topP,
-                                            Integer maxRetries) {
+                                            Float topP) {
         try (VertexAI vertexAI = new VertexAI(
                 ensureNotBlank(project, "project"),
                 ensureNotBlank(location, "location"))
@@ -77,23 +74,12 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             this.topP = topP;
         }
         this.generationConfig = generationConfigBuilder.build();
-
-        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
                                             GenerationConfig generationConfig) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
-        this.maxRetries = 3;
-    }
-
-    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
-                                            GenerationConfig generationConfig,
-                                            Integer maxRetries) {
-        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
-        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
-        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override
@@ -118,7 +104,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private VertexAiGeminiStreamingChatModel copyModel() {
         return new VertexAiGeminiStreamingChatModel(
             this.project, this.location, this.modelName, this.temperature,
-            this.maxOutputTokens, this.topK, this.topP, this.maxRetries
+            this.maxOutputTokens, this.topK, this.topP
         );
     }
 
