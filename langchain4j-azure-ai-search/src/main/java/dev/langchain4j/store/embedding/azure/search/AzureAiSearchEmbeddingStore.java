@@ -73,16 +73,32 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private QueryType queryType;
 
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions) {
+        this.initialize(endpoint, keyCredential, null, dimensions, null, QueryType.VECTOR);
+    }
+
     public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions, QueryType queryType) {
         this.initialize(endpoint, keyCredential, null, dimensions, null, queryType);
+    }
+
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index) {
+        this.initialize(endpoint, keyCredential, null, 0, index, QueryType.VECTOR);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index, QueryType queryType) {
         this.initialize(endpoint, keyCredential, null, 0, index, queryType);
     }
 
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions) {
+        this.initialize(endpoint, null, tokenCredential, dimensions, null, QueryType.VECTOR);
+    }
+
     public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions, QueryType queryType) {
         this.initialize(endpoint, null, tokenCredential, dimensions, null, queryType);
+    }
+
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index) {
+        this.initialize(endpoint, null, tokenCredential, 0, index, QueryType.VECTOR);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index, QueryType queryType) {
