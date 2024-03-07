@@ -15,7 +15,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static dev.langchain4j.store.embedding.filter.Filter.*;
 import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;

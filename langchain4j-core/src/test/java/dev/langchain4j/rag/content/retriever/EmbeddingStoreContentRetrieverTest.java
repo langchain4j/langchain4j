@@ -14,7 +14,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static java.util.Arrays.asList;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -226,15 +226,15 @@ class EmbeddingStoreContentRetrieverTest {
     }
 
     @Test
-    void should_retrieve_with_custom_filter() {
+    void should_retrieve_with_custom_metadataFilter() {
 
         // given
-        Filter filter = key("key").eq("value");
+        Filter metadataFilter = key("key").eq("value");
 
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
-                .filter(filter)
+                .metadataFilter(metadataFilter)
                 .build();
 
         // when
@@ -245,21 +245,21 @@ class EmbeddingStoreContentRetrieverTest {
                 .queryEmbedding(EMBEDDING)
                 .maxResults(DEFAULT_MAX_RESULTS)
                 .minScore(DEFAULT_MIN_SCORE)
-                .filter(filter)
+                .metadataFilter(metadataFilter)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
     }
 
     @Test
-    void should_retrieve_with_custom_dynamicFilter() {
+    void should_retrieve_with_custom_dynamicMetadataFilter() {
 
         // given
-        Filter filter = key("key").eq("value");
+        Filter metadataFilter = key("key").eq("value");
 
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(EMBEDDING_STORE)
                 .embeddingModel(EMBEDDING_MODEL)
-                .dynamicFilter((query) -> filter)
+                .dynamicMetadataFilter((query) -> metadataFilter)
                 .build();
 
         // when
@@ -270,7 +270,7 @@ class EmbeddingStoreContentRetrieverTest {
                 .queryEmbedding(EMBEDDING)
                 .maxResults(DEFAULT_MAX_RESULTS)
                 .minScore(DEFAULT_MIN_SCORE)
-                .filter(filter)
+                .metadataFilter(metadataFilter)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
     }

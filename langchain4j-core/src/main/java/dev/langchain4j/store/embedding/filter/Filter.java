@@ -71,17 +71,17 @@ public interface Filter {
         return new Not(expression);
     }
 
-    class Key {
+    class MetadataKey {
 
         private final String key;
 
-        public Key(String key) {
+        public MetadataKey(String key) {
             this.key = ensureNotBlank(key, "key");
         }
 
         @Experimental
-        public static Key key(String key) {
-            return new Key(key);
+        public static MetadataKey key(String key) {
+            return new MetadataKey(key);
         }
 
         // eq

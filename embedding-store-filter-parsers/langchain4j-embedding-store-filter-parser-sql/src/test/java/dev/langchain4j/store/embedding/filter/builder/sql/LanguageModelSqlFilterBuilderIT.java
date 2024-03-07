@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.filter.builder.sql;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -11,7 +12,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.time.LocalDate;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 

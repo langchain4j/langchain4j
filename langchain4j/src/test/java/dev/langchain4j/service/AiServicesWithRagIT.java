@@ -20,7 +20,6 @@ import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.router.LanguageModelQueryRouter;
@@ -34,6 +33,7 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilterBuilder;
+import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,7 +53,7 @@ import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.load
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
-import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -428,10 +428,10 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_LLM_generated_filter(ChatLanguageModel model) {
+    void should_use_LLM_generated_metadataFilter(ChatLanguageModel model) {
 
         // given
-        TextSegment groundhogDay = TextSegment.from("Groundhog Day", metadata("genre", "comedy").put("year", 1993));
+        TextSegment groundhogDay = TextSegment.from("Groundhog Day", new dev.langchain4j.data.document.Metadata().put("genre", "comedy").put("year", 1993));
         TextSegment forrestGump = TextSegment.from("Forrest Gump", metadata("genre", "drama").put("year", 1994));
         TextSegment dieHard = TextSegment.from("Die Hard", metadata("genre", "action").put("year", 1998));
 
@@ -451,7 +451,7 @@ class AiServicesWithRagIT {
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .dynamicFilter(sqlFilterBuilder::build)
+                .dynamicMetadataFilter(sqlFilterBuilder::build)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -473,13 +473,13 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_dynamic_filter_by_user_id(ChatLanguageModel model) {
+    void should_use_dynamicMetadataFilter_by_user_id(ChatLanguageModel model) {
 
         // given
         TextSegment user1Info = TextSegment.from("My favorite color is green", metadata("userId", "1"));
         TextSegment user2Info = TextSegment.from("My favorite color is red", metadata("userId", "2"));
 
-        Function<Query, Filter> dynamicFilter = query -> key("userId").eq(query.metadata().chatMemoryId().toString());
+        Function<Query, Filter> dynamicMetadataFilter = query -> key("userId").eq(query.metadata().chatMemoryId().toString());
 
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
         embeddingStore.add(embeddingModel.embed(user1Info).content(), user1Info);
@@ -488,7 +488,7 @@ class AiServicesWithRagIT {
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .dynamicFilter(dynamicFilter)
+                .dynamicMetadataFilter(dynamicMetadataFilter)
                 .build();
 
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
@@ -511,13 +511,13 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_static_filter(ChatLanguageModel model) {
+    void should_use_static_metadataFilter(ChatLanguageModel model) {
 
         // given
         TextSegment catsArticle = TextSegment.from("cats", metadata("animal", "cat"));
         TextSegment dogsArticle = TextSegment.from("dogs", metadata("animal", "dog"));
 
-        Filter filter = key("animal").eq("dog");
+        Filter metadatafilter = key("animal").eq("dog");
 
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
         embeddingStore.add(embeddingModel.embed(catsArticle).content(), catsArticle);
@@ -526,7 +526,7 @@ class AiServicesWithRagIT {
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .filter(filter)
+                .metadataFilter(metadatafilter)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)

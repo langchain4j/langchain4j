@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static dev.langchain4j.store.embedding.filter.Filter.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -25,7 +25,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata(Filter filter,
+    void should_filter_by_metadata(Filter metadataFilter,
                                    List<Metadata> matchingMetadatas,
                                    List<Metadata> notMatchingMetadatas) {
         // given
@@ -59,7 +59,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
-                .filter(filter)
+                .metadataFilter(metadataFilter)
                 .maxResults(100)
                 .build();
 
@@ -1134,7 +1134,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_filter_by_metadata_not(Filter filter,
+    void should_filter_by_metadata_not(Filter metadataFilter,
                                        List<Metadata> matchingMetadatas,
                                        List<Metadata> notMatchingMetadatas) {
         // given
@@ -1164,7 +1164,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
-                .filter(filter)
+                .metadataFilter(metadataFilter)
                 .maxResults(100)
                 .build();
 

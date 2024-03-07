@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.filter;
 import dev.langchain4j.data.document.Metadata;
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.store.embedding.filter.Filter.Key.key;
+import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;

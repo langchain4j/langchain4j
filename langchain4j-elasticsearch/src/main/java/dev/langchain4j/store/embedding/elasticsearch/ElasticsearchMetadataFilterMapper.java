@@ -41,7 +41,7 @@ class ElasticsearchMetadataFilterMapper {
         } else if (filter instanceof Or) {
             return mapOr((Or) filter);
         } else {
-            throw new UnsupportedOperationException("Unsupported metadataFilter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
     }
 

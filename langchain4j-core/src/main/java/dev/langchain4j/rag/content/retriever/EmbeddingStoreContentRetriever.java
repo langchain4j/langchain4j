@@ -52,7 +52,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
-    public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
+    public static final Function<Query, Filter> DEFAULT_METADATA_FILTER = (query) -> null;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
@@ -68,7 +68,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER
+                DEFAULT_METADATA_FILTER
         );
     }
 
@@ -80,7 +80,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_FILTER
+                DEFAULT_METADATA_FILTER
         );
     }
 
@@ -93,7 +93,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 (query) -> minScore,
-                DEFAULT_FILTER
+                DEFAULT_METADATA_FILTER
         );
     }
 
@@ -102,12 +102,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                            EmbeddingModel embeddingModel,
                                            Function<Query, Integer> dynamicMaxResults,
                                            Function<Query, Double> dynamicMinScore,
-                                           Function<Query, Filter> dynamicFilter) {
+                                           Function<Query, Filter> dynamicMetadataFilter) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
-        this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
+        this.filterProvider = getOrDefault(dynamicMetadataFilter, DEFAULT_METADATA_FILTER);
     }
 
     public static class EmbeddingStoreContentRetrieverBuilder {
@@ -126,9 +126,9 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
-        public EmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
-            if (filter != null) {
-                dynamicFilter = (query) -> filter;
+        public EmbeddingStoreContentRetrieverBuilder metadataFilter(Filter metadataFilter) {
+            if (metadataFilter != null) {
+                dynamicMetadataFilter = (query) -> metadataFilter;
             }
             return this;
         }
@@ -143,7 +143,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 .queryEmbedding(embeddedQuery)
                 .maxResults(maxResultsProvider.apply(query))
                 .minScore(minScoreProvider.apply(query))
-                .filter(filterProvider.apply(query))
+                .metadataFilter(filterProvider.apply(query))
                 .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);
