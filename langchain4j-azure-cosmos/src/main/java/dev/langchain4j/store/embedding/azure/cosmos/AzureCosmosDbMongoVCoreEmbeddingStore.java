@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.azure.cosmos;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
 import com.mongodb.client.AggregateIterable;
@@ -51,9 +52,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbMongoVCoreEmbeddingStore.class);
-
-    private final MongoCollection<AzureCosmsoDbMongoVCoreDocument> collection;
-
+    private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
     private final String indexName;
     private final String kind;
     private final int numLists;
@@ -69,6 +68,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
      * @param databaseName            - databaseName for the mongoDb vCore
      * @param collectionName          - collection name for the mongoDB vCore
      * @param indexName               - index name for the mongoDB vCore collection
+     * @param applicationName         - application name for the client for tracking and logging
      * @param createCollectionOptions - options for creating a collection
      * @param createIndex             - set to true if you want the application to create an index, or false if you want to create
      *                                it manually.
@@ -104,6 +104,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             String databaseName,
             String collectionName,
             String indexName,
+            String applicationName,
             CreateCollectionOptions createCollectionOptions,
             Boolean createIndex,
             String kind,
@@ -117,6 +118,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         collectionName = ensureNotNull(collectionName, "collectionName");
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
+        applicationName = getOrDefault(applicationName, "JAVA_LANG_CHAIN");
         this.kind = getOrDefault(kind, "vector-hnsw");
         this.numLists = getOrDefault(numLists, 1);
         this.similarity = getOrDefault(similarity, "COS");
@@ -126,7 +128,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         this.efSearch = getOrDefault(efSearch, 40);
 
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(AzureCosmsoDbMongoVCoreDocument.class, BsonDocument.class)
+                .register(AzureCosmosDbMongoVCoreDocument.class, BsonDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
@@ -136,7 +138,11 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         if (mongoClient == null) {
-            mongoClient = MongoClients.create(endpoint);
+            mongoClient = MongoClients.create(
+                    MongoClientSettings.builder()
+                            .applyConnectionString(new ConnectionString(endpoint))
+                            .applicationName(applicationName)
+                            .build());
         }
 
         MongoDatabase database = mongoClient.getDatabase(databaseName);
@@ -144,7 +150,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         if (!isCollectionExist(database, collectionName)) {
             createCollection(database, collectionName, getOrDefault(createCollectionOptions, new CreateCollectionOptions()));
         }
-        this.collection = database.getCollection(collectionName, AzureCosmsoDbMongoVCoreDocument.class).withCodecRegistry(codecRegistry);
+        this.collection = database.getCollection(collectionName, AzureCosmosDbMongoVCoreDocument.class).withCodecRegistry(codecRegistry);
 
         // create index if not exist
         if (Boolean.TRUE.equals(createIndex) && !isIndexExist(this.indexName)) {
@@ -308,9 +314,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
-        List<AzureCosmsoDbMongoVCoreDocument> documents = new ArrayList<>(ids.size());
+        List<AzureCosmosDbMongoVCoreDocument> documents = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
-            AzureCosmsoDbMongoVCoreDocument document = toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
+            AzureCosmosDbMongoVCoreDocument document = toMongoDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i));
             documents.add(document);
         }
 
@@ -361,9 +367,20 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                         .append("similarity", this.similarity)
                         .append("dimensions", this.dimensions));
 
+//        return new Document()
+//                .append("createIndexes", collectionName)
+//                .append("indexes", List.of(indexDefinition)).toBsonDocument();
+        // Convert the index definition to a BsonDocument
+        BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
+
+        // Create a BsonArray containing the index definition
+        BsonArray bsonArray = new BsonArray();
+        bsonArray.add(bsonIndexDefinition);
+
+        // Create the final BsonDocument
         return new Document()
                 .append("createIndexes", collectionName)
-                .append("indexes", List.of(indexDefinition)).toBsonDocument();
+                .append("indexes", bsonArray).toBsonDocument();
     }
 
     private BsonDocument getIndexDefinitionVectorHNSW(String indexName, String collectionName) {
@@ -377,25 +394,30 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                         .append("similarity", this.similarity)
                         .append("dimensions", this.dimensions));
 
+//        return new Document()
+//                .append("createIndexes", collectionName)
+//                .append("indexes", List.of(indexDefinition)).toBsonDocument();
+        // Convert the index definition to a BsonDocument
+        BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
+
+        // Create a BsonArray containing the index definition
+        BsonArray bsonArray = new BsonArray();
+        bsonArray.add(bsonIndexDefinition);
+
+        // Create the final BsonDocument
         return new Document()
                 .append("createIndexes", collectionName)
-                .append("indexes", List.of(indexDefinition)).toBsonDocument();
+                .append("indexes", bsonArray).toBsonDocument();
     }
 
     public static class Builder {
-
         private MongoClient mongoClient;
         private String endpoint;
         private String databaseName;
         private String collectionName;
         private String indexName;
+        private String applicationName;
         private CreateCollectionOptions createCollectionOptions;
-        /**
-         * Whether MongoDB Atlas is deployed in cloud
-         *
-         * <p>if true, you need to create index in <a href="https://cloud.mongodb.com/">MongoDB Atlas</a></p>
-         * <p>if false, {@link AzureCosmosDbMongoVCoreEmbeddingStore} will create collection and index automatically</p>
-         */
         private Boolean createIndex;
         private String kind;
         private int numLists;
@@ -437,6 +459,11 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
         public Builder indexName(String indexName) {
             this.indexName = indexName;
+            return this;
+        }
+
+        public Builder applicationName(String applicationName) {
+            this.applicationName = applicationName;
             return this;
         }
 
@@ -539,7 +566,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         public AzureCosmosDbMongoVCoreEmbeddingStore build() {
-            return new AzureCosmosDbMongoVCoreEmbeddingStore(mongoClient, endpoint, databaseName, collectionName, indexName,
+            return new AzureCosmosDbMongoVCoreEmbeddingStore(mongoClient, endpoint, databaseName, collectionName, indexName, applicationName,
                     createCollectionOptions, createIndex, kind, numLists, similarity, dimensions, numberOfConnections,
                     efConstruction, efSearch);
         }

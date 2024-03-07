@@ -11,11 +11,11 @@ class MappingUtils {
         throw new InstantiationException("can't instantiate this class");
     }
 
-    static AzureCosmsoDbMongoVCoreDocument toMongoDbDocument(String id, Embedding embedding, TextSegment textSegment) {
+    static AzureCosmosDbMongoVCoreDocument toMongoDbDocument(String id, Embedding embedding, TextSegment textSegment) {
         if (textSegment == null) {
-            return new AzureCosmsoDbMongoVCoreDocument(id, embedding.vectorAsList(), null, null);
+            return new AzureCosmosDbMongoVCoreDocument(id, embedding.vectorAsList(), null, null);
         }
-        return new AzureCosmsoDbMongoVCoreDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
+        return new AzureCosmosDbMongoVCoreDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
     }
 
     static EmbeddingMatch<TextSegment> toEmbeddingMatch(AzureCosmosDbMongoVCoreMatchedDocument matchedDocument) {

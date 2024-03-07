@@ -13,7 +13,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AzureCosmsoDbMongoVCoreDocument {
+public class AzureCosmosDbMongoVCoreDocument {
 
     @BsonId
     private String id;

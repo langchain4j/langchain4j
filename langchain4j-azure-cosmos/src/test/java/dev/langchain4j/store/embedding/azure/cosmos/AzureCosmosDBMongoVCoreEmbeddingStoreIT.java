@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.azure.cosmos;
 
+import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -42,13 +43,19 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
-        client = MongoClients.create("YOUR Endpoint");
+        client = MongoClients.create(
+                MongoClientSettings.builder()
+//                        .applyConnectionString(new ConnectionString("YOUR_ENDPOINT"))
+                        .applyConnectionString(new ConnectionString("mongodb+srv://akataria3011:Basket24ball@akatarialangchaintesting.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"))
+                        .applicationName("JAVA_LANG_CHAIN")
+                        .build());
 
         embeddingStore = AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                 .fromClient(client)
                 .databaseName("test_database")
                 .collectionName("test_collection")
                 .indexName("test_index")
+                .applicationName("JAVA_LANG_CHAIN")
                 .createIndex(true)
                 .kind("vector-ivf")
                 .numLists(1)
@@ -113,12 +120,12 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         CodecRegistry pojoCodecRegistry = fromProviders(PojoCodecProvider.builder()
-                .register(AzureCosmsoDbMongoVCoreDocument.class, BsonDocument.class)
+                .register(AzureCosmosDbMongoVCoreDocument.class, BsonDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
-        MongoCollection<AzureCosmsoDbMongoVCoreDocument> collection = client.getDatabase("test_database")
-                .getCollection("test_collection", AzureCosmsoDbMongoVCoreDocument.class)
+        MongoCollection<AzureCosmosDbMongoVCoreDocument> collection = client.getDatabase("test_database")
+                .getCollection("test_collection", AzureCosmosDbMongoVCoreDocument.class)
                 .withCodecRegistry((codecRegistry));
 
         Bson filter = Filters.exists("embedding");
