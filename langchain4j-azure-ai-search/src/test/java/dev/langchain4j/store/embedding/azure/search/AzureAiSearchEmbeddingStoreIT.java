@@ -109,21 +109,25 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         log.info("Testing Vector Search");
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStoreWithSimilarity.findRelevant(relevantEmbedding, 1, 0);
         assertThat(relevant).hasSize(1);
+        assertThat(relevant.get(0).embedded().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
 
         log.info("Testing Full Text Search");
         relevant = embeddingStoreWithFullText.findRelevantWithFullText(content, 1, 0);
         assertThat(relevant).hasSize(1);
+        assertThat(relevant.get(0).embedded().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
 
         log.info("Testing Hybrid Search");
         relevant = embeddingStoreWithHybrid.findRelevant(relevantEmbedding, content, 1, 0);
         assertThat(relevant).hasSize(1);
+        assertThat(relevant.get(0).embedded().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
 
         log.info("Testing Semantic Search");
         relevant = embeddingStoreWithSemantic.findRelevant(relevantEmbedding, content, 1, 0);
         assertThat(relevant).hasSize(1);
+        assertThat(relevant.get(0).embedded().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
 
         log.info("Test complete");
