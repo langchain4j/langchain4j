@@ -37,31 +37,21 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
-        embeddingStoreWithSimilarity =  AzureAiSearchEmbeddingStore.builder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(dimensions)
-                .build();
+        embeddingStoreWithSimilarity =  createEmbeddingStore(QueryType.SIMILARITY);
 
-        embeddingStoreWithFullText =  AzureAiSearchEmbeddingStore.builder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(dimensions)
-                .queryType(QueryType.FULL_TEXT)
-                .build();
+        embeddingStoreWithFullText =  createEmbeddingStore(QueryType.FULL_TEXT);
 
-        embeddingStoreWithHybrid =  AzureAiSearchEmbeddingStore.builder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(dimensions)
-                .queryType(QueryType.SIMILARITY_HYBRID)
-                .build();
+        embeddingStoreWithHybrid =  createEmbeddingStore(QueryType.SIMILARITY_HYBRID);
 
-        embeddingStoreWithSemantic =  AzureAiSearchEmbeddingStore.builder()
+        embeddingStoreWithSemantic =  createEmbeddingStore(QueryType.SEMANTIC_HYBRID);
+    }
+
+    private AzureAiSearchEmbeddingStore createEmbeddingStore(QueryType queryType) {
+        return AzureAiSearchEmbeddingStore.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .dimensions(dimensions)
-                .queryType(QueryType.SEMANTIC_HYBRID)
+                .queryType(queryType)
                 .build();
     }
 
