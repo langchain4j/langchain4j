@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
 import static dev.langchain4j.model.vertexai.FunctionCallHelper.unwrapProtoValue;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,8 +104,9 @@ public class FunctionCallHelperTest {
             .build();
 
         // when
-        ToolExecutionRequest toolExecutionRequest = FunctionCallHelper.fromFunctionCall(functionCall);
-        FunctionCall sameFunctionCall = FunctionCallHelper.fromToolExecutionRequest(toolExecutionRequest);
+        List<ToolExecutionRequest> toolExecutionRequest =
+            FunctionCallHelper.fromFunctionCalls(Collections.singletonList(functionCall));
+        FunctionCall sameFunctionCall = FunctionCallHelper.fromToolExecutionRequest(toolExecutionRequest.get(0));
 
         // then
         assertThat(functionCall).isEqualTo(sameFunctionCall);
@@ -117,7 +119,8 @@ public class FunctionCallHelperTest {
 
         // when
         FunctionCall newFunctionCall = FunctionCallHelper.fromToolExecutionRequest(newExecutionRequest);
-        ToolExecutionRequest sameExecutionRequest = FunctionCallHelper.fromFunctionCall(newFunctionCall);
+        ToolExecutionRequest sameExecutionRequest =
+            FunctionCallHelper.fromFunctionCalls(Collections.singletonList(newFunctionCall)).get(0);
 
         // then
         assertThat(newExecutionRequest).isEqualTo(sameExecutionRequest);

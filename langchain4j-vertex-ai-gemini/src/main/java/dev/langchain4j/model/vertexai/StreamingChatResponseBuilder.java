@@ -7,14 +7,15 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 class StreamingChatResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
 
-    private volatile FunctionCall functionCall;
+    private final List<FunctionCall> functionCalls = new ArrayList<>();
 
     private volatile TokenUsage tokenUsage;
     private volatile FinishReason finishReason;
@@ -29,15 +30,16 @@ class StreamingChatResponseBuilder {
             return;
         }
 
-        Optional<Part> functionCallPart = candidates.stream()
+        List<FunctionCall> functionCalls = candidates.stream()
                 .map(Candidate::getContent)
                 .map(Content::getPartsList)
                 .flatMap(List::stream)
                 .filter(Part::hasFunctionCall)
-                .findFirst();
+                .map(Part::getFunctionCall)
+                .collect(Collectors.toList());
 
-        if (functionCallPart.isPresent()) {
-            functionCall = functionCallPart.get().getFunctionCall();
+        if (!functionCalls.isEmpty()) {
+            this.functionCalls.addAll(functionCalls);
         } else {
             contentBuilder.append(ResponseHandler.getText(partialResponse));
         }
@@ -53,9 +55,9 @@ class StreamingChatResponseBuilder {
     }
 
     Response<AiMessage> build() {
-        if (functionCall != null) {
+        if (!functionCalls.isEmpty()) {
             return Response.from(
-                AiMessage.from(FunctionCallHelper.fromFunctionCall(functionCall)),
+                AiMessage.from(FunctionCallHelper.fromFunctionCalls(functionCalls)),
                 tokenUsage,
                 finishReason
             );

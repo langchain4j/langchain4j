@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequestUtil;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,21 +53,25 @@ class FunctionCallHelper {
         return fnCallBuilder.build();
     }
 
-    static ToolExecutionRequest fromFunctionCall(FunctionCall functionCall) {
-        ToolExecutionRequest.Builder builder = ToolExecutionRequest.builder()
-            .name(functionCall.getName());
+    static List<ToolExecutionRequest> fromFunctionCalls(List<FunctionCall> functionCalls) {
+        List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
 
-        //TODO: can we make the mapping more transparently/automatically?
+        for (FunctionCall functionCall : functionCalls) {
+            ToolExecutionRequest.Builder builder = ToolExecutionRequest.builder()
+                .name(functionCall.getName());
 
-        Map<String, Object> callArgsMap = new HashMap<>();
-        Struct callArgs = functionCall.getArgs();
-        Map<String, Value> callArgsFieldsMap = callArgs.getFieldsMap();
-        callArgsFieldsMap.forEach((key, value) -> callArgsMap.put(key, unwrapProtoValue(value)));
+            Map<String, Object> callArgsMap = new HashMap<>();
+            Struct callArgs = functionCall.getArgs();
+            Map<String, Value> callArgsFieldsMap = callArgs.getFieldsMap();
+            callArgsFieldsMap.forEach((key, value) -> callArgsMap.put(key, unwrapProtoValue(value)));
 
-        String serializedArgsMap = ToolExecutionRequestUtil.GSON.toJson(callArgsMap);
-        builder.arguments(serializedArgsMap);
+            String serializedArgsMap = ToolExecutionRequestUtil.GSON.toJson(callArgsMap);
+            builder.arguments(serializedArgsMap);
 
-        return builder.build();
+            toolExecutionRequests.add(builder.build());
+        }
+
+        return toolExecutionRequests;
     }
 
     static Object unwrapProtoValue(Value value) {

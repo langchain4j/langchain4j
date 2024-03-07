@@ -15,7 +15,7 @@ import lombok.Builder;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -48,6 +48,14 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
     private final GenerationConfig generationConfig;
     private final Integer maxRetries;
 
+    private String project;
+    private String location;
+    private String modelName;
+    private Float temperature;
+    private Integer maxOutputTokens;
+    private Integer topK;
+    private Float topP;
+
     @Builder
     public VertexAiGeminiChatModel(String project,
                                    String location,
@@ -59,24 +67,31 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                                    Integer maxRetries) {
 
         try (VertexAI vertexAI = new VertexAI(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"))
+            ensureNotBlank(project, "project"),
+            ensureNotBlank(location, "location"))
         ) {
             this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
+            this.project = project;
+            this.location = location;
+            this.modelName = modelName;
         }
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
+            this.temperature = temperature;
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
+            this.maxOutputTokens = maxOutputTokens;
         }
         if (topK != null) {
             generationConfigBuilder.setTopK(topK);
+            this.topK = topK;
         }
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
+            this.topP = topP;
         }
         this.generationConfig = generationConfigBuilder.build();
 
@@ -89,6 +104,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.maxRetries = 3;
     }
+
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
                                    GenerationConfig generationConfig,
                                    Integer maxRetries) {
@@ -103,14 +119,17 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
         GenerateContentResponse response = withRetry(() -> generativeModel.generateContent(contents, generationConfig), maxRetries);
 
         Content content = ResponseHandler.getContent(response);
-        Optional<Part> containsFunctionCall = content.getPartsList().stream().filter(Part::hasFunctionCall).findFirst();
 
-        if (containsFunctionCall.isPresent()) {
-            FunctionCall functionCall = containsFunctionCall.get().getFunctionCall();
-            ToolExecutionRequest toolExecutionRequest = FunctionCallHelper.fromFunctionCall(functionCall);
+        List<FunctionCall> functionCalls = content.getPartsList().stream()
+            .filter(Part::hasFunctionCall)
+            .map(Part::getFunctionCall)
+            .collect(Collectors.toList());
+
+        if (!functionCalls.isEmpty()) {
+            List<ToolExecutionRequest> toolExecutionRequests = FunctionCallHelper.fromFunctionCalls(functionCalls);
 
             return Response.from(
-                AiMessage.from(toolExecutionRequest),
+                AiMessage.from(toolExecutionRequests),
                 TokenUsageMapper.map(response.getUsageMetadata()),
                 FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
             );
@@ -123,18 +142,19 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
         }
     }
 
+    private VertexAiGeminiChatModel copyModel() {
+        return new VertexAiGeminiChatModel(
+            this.project, this.location, this.modelName, this.temperature,
+            this.maxOutputTokens, this.topK, this.topP, this.maxRetries
+        );
+    }
+
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        try {
-            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-            //TODO: hack for now, till the next release that will have a tool param
-            // in the underlying generateContent() method
-            this.generativeModel.setTools(Collections.singletonList(tool));
-            return generate(messages);
-        } finally {
-            //TODO: remove the finally block (see above todo)
-            this.generativeModel.setTools(Collections.emptyList());
-        }
+        Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+        VertexAiGeminiChatModel copiedModel = copyModel();
+        copiedModel.generativeModel.setTools(Collections.singletonList(tool));
+        return copiedModel.generate(messages);
     }
 
     @Override

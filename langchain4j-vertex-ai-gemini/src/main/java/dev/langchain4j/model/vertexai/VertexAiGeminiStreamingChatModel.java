@@ -17,6 +17,7 @@ import lombok.Builder;
 import java.util.Collections;
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -29,6 +30,15 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
+    private final Integer maxRetries;
+
+    private String project;
+    private String location;
+    private String modelName;
+    private Float temperature;
+    private Integer maxOutputTokens;
+    private Integer topK;
+    private Float topP;
 
     @Builder
     public VertexAiGeminiStreamingChatModel(String project,
@@ -37,34 +47,53 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Float temperature,
                                             Integer maxOutputTokens,
                                             Integer topK,
-                                            Float topP) {
+                                            Float topP,
+                                            Integer maxRetries) {
         try (VertexAI vertexAI = new VertexAI(
                 ensureNotBlank(project, "project"),
                 ensureNotBlank(location, "location"))
         ) {
             this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
+            this.project = project;
+            this.location = location;
+            this.modelName = modelName;
         }
 
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
+            this.temperature = temperature;
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
+            this.maxOutputTokens = maxOutputTokens;
         }
         if (topK != null) {
             generationConfigBuilder.setTopK(topK);
+            this.topK = topK;
         }
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
+            this.topP = topP;
         }
         this.generationConfig = generationConfigBuilder.build();
+
+        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
                                             GenerationConfig generationConfig) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.maxRetries = 3;
+    }
+
+    public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
+                                            GenerationConfig generationConfig,
+                                            Integer maxRetries) {
+        this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
+        this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
     @Override
@@ -86,18 +115,19 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         }
     }
 
+    private VertexAiGeminiStreamingChatModel copyModel() {
+        return new VertexAiGeminiStreamingChatModel(
+            this.project, this.location, this.modelName, this.temperature,
+            this.maxOutputTokens, this.topK, this.topP, this.maxRetries
+        );
+    }
+
     @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        try {
-            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-            //TODO: hack for now, till the next release that will have a tool param
-            // in the underlying streamGenerateContent() method
-            this.generativeModel.setTools(Collections.singletonList(tool));
-            generate(messages, handler);
-        } finally {
-            //TODO: remove the finally block (see above todo)
-            this.generativeModel.setTools(Collections.emptyList());
-        }
+        Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+        VertexAiGeminiStreamingChatModel copiedModel = copyModel();
+        copiedModel.generativeModel.setTools(Collections.singletonList(tool));
+        copiedModel.generate(messages, handler);
     }
 
     @Override
