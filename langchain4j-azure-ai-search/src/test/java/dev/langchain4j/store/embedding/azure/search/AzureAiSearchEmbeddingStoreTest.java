@@ -15,7 +15,7 @@ public class AzureAiSearchEmbeddingStoreTest {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.6);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.SIMILARITY);
+        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.VECTOR);
 
         assertEquals(0.6666666666666666, result);
     }
@@ -35,7 +35,7 @@ public class AzureAiSearchEmbeddingStoreTest {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.7);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.SIMILARITY_HYBRID);
+        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.HYBRID);
 
         assertEquals(0.7, result);
     }
@@ -48,7 +48,7 @@ public class AzureAiSearchEmbeddingStoreTest {
         when(mockResult.getSemanticSearch()).thenReturn(mockSemanticSearchResult);
         when(mockSemanticSearchResult.getRerankerScore()).thenReturn(1.5);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.SEMANTIC_HYBRID);
+        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.HYBRID_WITH_RRF);
 
         assertEquals(0.375, result);
     }

@@ -2,5 +2,5 @@ package dev.langchain4j.store.embedding.azure.search;
 
 public enum QueryType {
 
-    SIMILARITY, FULL_TEXT, SIMILARITY_HYBRID, SEMANTIC_HYBRID;
+    VECTOR, FULL_TEXT, HYBRID, HYBRID_WITH_RRF;
 }

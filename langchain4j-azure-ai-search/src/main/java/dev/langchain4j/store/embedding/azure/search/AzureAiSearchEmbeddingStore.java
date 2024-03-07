@@ -122,7 +122,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         if (queryType == null) {
-            this.queryType = QueryType.SIMILARITY;
+            this.queryType = QueryType.VECTOR;
         } else {
             this.queryType = queryType;
         }
@@ -238,13 +238,13 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
-        if (queryType == QueryType.SIMILARITY) {
+        if (queryType == QueryType.VECTOR) {
             return findRelevantWithSimilarity(referenceEmbedding, maxResults, minScore);
         } else if (queryType == QueryType.FULL_TEXT) {
             return findRelevantWithFullText(content, maxResults, minScore);
-        } else if (queryType == QueryType.SIMILARITY_HYBRID) {
+        } else if (queryType == QueryType.HYBRID) {
             return findRelevantWithSimilarityHybrid(referenceEmbedding, content, maxResults, minScore);
-        } else if (queryType == QueryType.SEMANTIC_HYBRID) {
+        } else if (queryType == QueryType.HYBRID_WITH_RRF) {
             return findRelevantWithSemanticHybrid(referenceEmbedding, content, maxResults, minScore);
         } else {
             throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + queryType);
@@ -263,7 +263,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.SIMILARITY, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.VECTOR, minScore);
     }
 
     List<EmbeddingMatch<TextSegment>> findRelevantWithFullText(String content, int maxResults, double minScore) {
@@ -290,7 +290,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setTop(maxResults),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.SIMILARITY_HYBRID, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.HYBRID, minScore);
     }
 
     List<EmbeddingMatch<TextSegment>> findRelevantWithSemanticHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
@@ -309,7 +309,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setTop(maxResults),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.SEMANTIC_HYBRID, minScore);
+        return mapResultsToEmbeddingMatches(searchResults, QueryType.HYBRID_WITH_RRF, minScore);
     }
 
     private List<EmbeddingMatch<TextSegment>> mapResultsToEmbeddingMatches(SearchPagedIterable searchResults, QueryType queryType, double minScore) {
@@ -406,7 +406,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
      */
     static double fromAzureScoreToRelevanceScore(SearchResult searchResult, QueryType queryType) {
-        if (queryType == QueryType.SIMILARITY) {
+        if (queryType == QueryType.VECTOR) {
             // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
 
            //  Score in Azure AI Search is transformed into a cosine similarity as described here:
@@ -421,10 +421,10 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         } else if (queryType == QueryType.FULL_TEXT) {
             // Search score is into 0..1 range already
             return searchResult.getScore();
-        } else if (queryType == QueryType.SIMILARITY_HYBRID) {
+        } else if (queryType == QueryType.HYBRID) {
             // Search score is into 0..1 range already
             return searchResult.getScore();
-        } else if (queryType == QueryType.SEMANTIC_HYBRID) {
+        } else if (queryType == QueryType.HYBRID_WITH_RRF) {
             // Re-ranker score is into 0..4 range, so we need to divide the re-reranker score by 4 to fit in the 0..1 range.
             // The re-ranker score is a separate result from the original search score.
             // See https://azuresdkdocs.blob.core.windows.net/$web/java/azure-search-documents/11.6.2/com/azure/search/documents/models/SearchResult.html#getSemanticSearch()

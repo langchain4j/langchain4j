@@ -37,13 +37,13 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
-        embeddingStoreWithSimilarity =  createEmbeddingStore(QueryType.SIMILARITY);
+        embeddingStoreWithSimilarity =  createEmbeddingStore(QueryType.VECTOR);
 
         embeddingStoreWithFullText =  createEmbeddingStore(QueryType.FULL_TEXT);
 
-        embeddingStoreWithHybrid =  createEmbeddingStore(QueryType.SIMILARITY_HYBRID);
+        embeddingStoreWithHybrid =  createEmbeddingStore(QueryType.HYBRID);
 
-        embeddingStoreWithSemantic =  createEmbeddingStore(QueryType.SEMANTIC_HYBRID);
+        embeddingStoreWithSemantic =  createEmbeddingStore(QueryType.HYBRID_WITH_RRF);
     }
 
     private AzureAiSearchEmbeddingStore createEmbeddingStore(QueryType queryType) {
