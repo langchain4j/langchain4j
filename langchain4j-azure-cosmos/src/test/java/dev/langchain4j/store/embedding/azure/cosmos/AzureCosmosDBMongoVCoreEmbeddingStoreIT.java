@@ -45,8 +45,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
 
         client = MongoClients.create(
                 MongoClientSettings.builder()
-//                        .applyConnectionString(new ConnectionString("YOUR_ENDPOINT"))
-                        .applyConnectionString(new ConnectionString("mongodb+srv://akataria3011:Basket24ball@akatarialangchaintesting.mongocluster.cosmos.azure.com/?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false&maxIdleTimeMS=120000"))
+                        .applyConnectionString(new ConnectionString("YOUR_ENDPOINT"))
                         .applicationName("JAVA_LANG_CHAIN")
                         .build());
 
