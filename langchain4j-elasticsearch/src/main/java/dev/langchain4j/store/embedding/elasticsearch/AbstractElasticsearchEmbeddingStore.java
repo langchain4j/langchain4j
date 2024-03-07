@@ -166,7 +166,7 @@ abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingStore<Tex
             return this;
         }
 
-        abstract public AbstractElasticsearchEmbeddingStore build();
+        abstract AbstractElasticsearchEmbeddingStore build();
     }
 
     @Override

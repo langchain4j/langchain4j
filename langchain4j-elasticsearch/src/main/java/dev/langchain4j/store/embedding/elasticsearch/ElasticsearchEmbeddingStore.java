@@ -14,8 +14,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import org.elasticsearch.client.RestClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -28,9 +26,6 @@ import static java.util.stream.Collectors.toList;
  * Current implementation assumes the index uses the cosine distance metric.
  */
 public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingStore {
-
-    private static final Logger log = LoggerFactory.getLogger(ElasticsearchEmbeddingStore.class);
-
     private final ObjectMapper objectMapper;
 
     /**

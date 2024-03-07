@@ -129,7 +129,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreIT {
     /**
      * Create an Elasticsearch Rest Client and test that it's running.
      *
-     * @param address     the server url, like https://localhost:9200
+     * @param address     the server url, like <a href="https://localhost:9200">https://localhost:9200</a>
      * @param certificate the SSL certificate if any. If null, we won't check the certificate
      * @return null if no cluster is running
      */
