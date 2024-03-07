@@ -54,7 +54,7 @@ public class TextSegment {
      * @param key the key.
      * @return the metadata value, or null if not found.
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     public String metadata(String key) {
         return metadata.get(key);
     }

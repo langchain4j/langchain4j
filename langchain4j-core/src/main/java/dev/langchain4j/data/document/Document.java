@@ -77,7 +77,7 @@ public class Document {
      * @param key the key to look up.
      * @return the metadata value for the given key, or null if the key is not present.
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     public String metadata(String key) {
         return metadata.get(key);
     }

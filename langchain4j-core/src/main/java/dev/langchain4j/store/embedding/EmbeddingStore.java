@@ -83,7 +83,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return findRelevant(referenceEmbedding, maxResults, 0);
     }
@@ -99,7 +99,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(referenceEmbedding)
@@ -121,7 +121,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults) {
         return findRelevant(memoryId, referenceEmbedding, maxResults, 0);
@@ -139,7 +139,7 @@ public interface EmbeddingStore<Embedded> {
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore) {
         throw new RuntimeException("Not implemented");

@@ -85,7 +85,7 @@ public class Metadata {
      * @param key the key
      * @return the value associated with the given key, or {@code null} if the key is not present.
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     public String get(String key) {
         Object value = metadata.get(key);
         if (value != null) {
@@ -267,7 +267,7 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     public Metadata add(String key, Object value) {
         return put(key, value.toString());
     }
@@ -279,7 +279,7 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     public Metadata add(String key, String value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -381,7 +381,7 @@ public class Metadata {
      *
      * @return the metadata as a map of key-value pairs.
      */
-    // TODO deprecate later
+    // TODO deprecate once the new experimental API is settled
     public Map<String, String> asMap() {
         Map<String, String> map = new HashMap<>();
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
