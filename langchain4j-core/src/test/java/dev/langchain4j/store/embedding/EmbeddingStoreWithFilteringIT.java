@@ -11,8 +11,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static dev.langchain4j.store.embedding.filter.Filter.*;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,7 +59,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
-                .metadataFilter(metadataFilter)
+                .filter(metadataFilter)
                 .maxResults(100)
                 .build();
 
@@ -79,7 +79,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === Equal ===
 
                 .add(Arguments.of(
-                        key("key").eq("a"),
+                        metadataKey("key").isEqualTo("a"),
                         asList(
                                 new Metadata().put("key", "a"),
                                 new Metadata().put("key", "a").put("key2", "b")
@@ -93,7 +93,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(1),
+                        metadataKey("key").isEqualTo(1),
                         asList(
                                 new Metadata().put("key", 1),
                                 new Metadata().put("key", 1).put("key2", 0)
@@ -105,7 +105,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(1L),
+                        metadataKey("key").isEqualTo(1L),
                         asList(
                                 new Metadata().put("key", 1L),
                                 new Metadata().put("key", 1L).put("key2", 0L)
@@ -117,7 +117,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").eq(1.23f),
+                        metadataKey("key").isEqualTo(1.23f),
                         asList(
                                 new Metadata().put("key", 1.23f),
                                 new Metadata().put("key", 1.23f).put("key2", 0f)
@@ -129,7 +129,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("key2", 1.23f)
                         )
                 )).add(Arguments.of(
-                        key("key").eq(1.23d),
+                        metadataKey("key").isEqualTo(1.23d),
                         asList(
                                 new Metadata().put("key", 1.23d),
                                 new Metadata().put("key", 1.23d).put("key2", 0d)
@@ -146,7 +146,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === GreaterThan ==
 
                 .add(Arguments.of(
-                        key("key").gt("b"),
+                        metadataKey("key").isGreaterThan("b"),
                         asList(
                                 new Metadata().put("key", "c"),
                                 new Metadata().put("key", "c").put("key2", "a")
@@ -158,7 +158,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gt(1),
+                        metadataKey("key").isGreaterThan(1),
                         asList(
                                 new Metadata().put("key", 2),
                                 new Metadata().put("key", 2).put("key2", 0)
@@ -171,7 +171,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gt(1L),
+                        metadataKey("key").isGreaterThan(1L),
                         asList(
                                 new Metadata().put("key", 2L),
                                 new Metadata().put("key", 2L).put("key2", 0L)
@@ -184,7 +184,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gt(1.1f),
+                        metadataKey("key").isGreaterThan(1.1f),
                         asList(
                                 new Metadata().put("key", 1.2f),
                                 new Metadata().put("key", 1.2f).put("key2", 1.0f)
@@ -197,7 +197,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gt(1.1d),
+                        metadataKey("key").isGreaterThan(1.1d),
                         asList(
                                 new Metadata().put("key", 1.2d),
                                 new Metadata().put("key", 1.2d).put("key2", 1.0d)
@@ -214,7 +214,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === GreaterThanOrEqual ==
 
                 .add(Arguments.of(
-                        key("key").gte("b"),
+                        metadataKey("key").isGreaterThanOrEqualTo("b"),
                         asList(
                                 new Metadata().put("key", "b"),
                                 new Metadata().put("key", "c"),
@@ -226,7 +226,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gte(1),
+                        metadataKey("key").isGreaterThanOrEqualTo(1),
                         asList(
                                 new Metadata().put("key", 1),
                                 new Metadata().put("key", 2),
@@ -241,7 +241,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gte(1L),
+                        metadataKey("key").isGreaterThanOrEqualTo(1L),
                         asList(
                                 new Metadata().put("key", 1L),
                                 new Metadata().put("key", 2L),
@@ -256,7 +256,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gte(1.1f),
+                        metadataKey("key").isGreaterThanOrEqualTo(1.1f),
                         asList(
                                 new Metadata().put("key", 1.1f),
                                 new Metadata().put("key", 1.2f),
@@ -271,7 +271,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").gte(1.1d),
+                        metadataKey("key").isGreaterThanOrEqualTo(1.1d),
                         asList(
                                 new Metadata().put("key", 1.1d),
                                 new Metadata().put("key", 1.2d),
@@ -290,7 +290,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === LessThan ==
 
                 .add(Arguments.of(
-                        key("key").lt("b"),
+                        metadataKey("key").isLessThan("b"),
                         asList(
 
                                 new Metadata().put("key", "a"),
@@ -303,7 +303,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lt(1),
+                        metadataKey("key").isLessThan(1),
                         asList(
                                 new Metadata().put("key", -2),
                                 new Metadata().put("key", 0),
@@ -316,7 +316,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lt(1L),
+                        metadataKey("key").isLessThan(1L),
                         asList(
                                 new Metadata().put("key", -2L),
                                 new Metadata().put("key", 0L),
@@ -329,7 +329,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lt(1.1f),
+                        metadataKey("key").isLessThan(1.1f),
                         asList(
                                 new Metadata().put("key", -1.2f),
                                 new Metadata().put("key", 1.0f),
@@ -342,7 +342,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lt(1.1d),
+                        metadataKey("key").isLessThan(1.1d),
                         asList(
                                 new Metadata().put("key", -1.2d),
                                 new Metadata().put("key", 1.0d),
@@ -359,7 +359,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === LessThanOrEqual ==
 
                 .add(Arguments.of(
-                        key("key").lte("b"),
+                        metadataKey("key").isLessThanOrEqualTo("b"),
                         asList(
 
                                 new Metadata().put("key", "a"),
@@ -372,7 +372,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lte(1),
+                        metadataKey("key").isLessThanOrEqualTo(1),
                         asList(
                                 new Metadata().put("key", -2),
                                 new Metadata().put("key", 0),
@@ -385,7 +385,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lte(1L),
+                        metadataKey("key").isLessThanOrEqualTo(1L),
                         asList(
                                 new Metadata().put("key", -2L),
                                 new Metadata().put("key", 0L),
@@ -398,7 +398,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lte(1.1f),
+                        metadataKey("key").isLessThanOrEqualTo(1.1f),
                         asList(
                                 new Metadata().put("key", -1.2f),
                                 new Metadata().put("key", 1.0f),
@@ -411,7 +411,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").lte(1.1d),
+                        metadataKey("key").isLessThanOrEqualTo(1.1d),
                         asList(
                                 new Metadata().put("key", -1.2d),
                                 new Metadata().put("key", 1.0d),
@@ -429,7 +429,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // In: string
                 .add(Arguments.of(
-                        key("name").in("Klaus"),
+                        metadataKey("name").isIn("Klaus"),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42)
@@ -441,7 +441,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("name").in(singletonList("Klaus")),
+                        metadataKey("name").isIn(singletonList("Klaus")),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42)
@@ -453,7 +453,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("name").in("Klaus", "Alice"),
+                        metadataKey("name").isIn("Klaus", "Alice"),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -467,7 +467,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("name").in(asList("Klaus", "Alice")),
+                        metadataKey("name").isIn(asList("Klaus", "Alice")),
                         asList(
                                 new Metadata().put("name", "Klaus"),
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -483,7 +483,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // In: integer
                 .add(Arguments.of(
-                        key("age").in(42),
+                        metadataKey("age").isIn(42),
                         asList(
                                 new Metadata().put("age", 42),
                                 new Metadata().put("age", 42).put("name", "Klaus")
@@ -494,7 +494,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(singletonList(42)),
+                        metadataKey("age").isIn(singletonList(42)),
                         asList(
                                 new Metadata().put("age", 42),
                                 new Metadata().put("age", 42).put("name", "Klaus")
@@ -505,7 +505,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(42, 18),
+                        metadataKey("age").isIn(42, 18),
                         asList(
                                 new Metadata().put("age", 42),
                                 new Metadata().put("age", 18),
@@ -518,7 +518,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(asList(42, 18)),
+                        metadataKey("age").isIn(asList(42, 18)),
                         asList(
                                 new Metadata().put("age", 42),
                                 new Metadata().put("age", 18),
@@ -533,7 +533,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // In: long
                 .add(Arguments.of(
-                        key("age").in(42L),
+                        metadataKey("age").isIn(42L),
                         asList(
                                 new Metadata().put("age", 42L),
                                 new Metadata().put("age", 42L).put("name", "Klaus")
@@ -544,7 +544,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(singletonList(42L)),
+                        metadataKey("age").isIn(singletonList(42L)),
                         asList(
                                 new Metadata().put("age", 42L),
                                 new Metadata().put("age", 42L).put("name", "Klaus")
@@ -555,7 +555,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(42L, 18L),
+                        metadataKey("age").isIn(42L, 18L),
                         asList(
                                 new Metadata().put("age", 42L),
                                 new Metadata().put("age", 18L),
@@ -568,7 +568,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(asList(42L, 18L)),
+                        metadataKey("age").isIn(asList(42L, 18L)),
                         asList(
                                 new Metadata().put("age", 42L),
                                 new Metadata().put("age", 18L),
@@ -583,7 +583,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // In: float
                 .add(Arguments.of(
-                        key("age").in(42.0f),
+                        metadataKey("age").isIn(42.0f),
                         asList(
                                 new Metadata().put("age", 42.0f),
                                 new Metadata().put("age", 42.0f).put("name", "Klaus")
@@ -594,7 +594,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(singletonList(42.0f)),
+                        metadataKey("age").isIn(singletonList(42.0f)),
                         asList(
                                 new Metadata().put("age", 42.0f),
                                 new Metadata().put("age", 42.0f).put("name", "Klaus")
@@ -605,7 +605,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(42.0f, 18.0f),
+                        metadataKey("age").isIn(42.0f, 18.0f),
                         asList(
                                 new Metadata().put("age", 42.0f),
                                 new Metadata().put("age", 18.0f),
@@ -618,7 +618,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(asList(42.0f, 18.0f)),
+                        metadataKey("age").isIn(asList(42.0f, 18.0f)),
                         asList(
                                 new Metadata().put("age", 42.0f),
                                 new Metadata().put("age", 18.0f),
@@ -633,7 +633,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // In: double
                 .add(Arguments.of(
-                        key("age").in(42.0d),
+                        metadataKey("age").isIn(42.0d),
                         asList(
                                 new Metadata().put("age", 42.0d),
                                 new Metadata().put("age", 42.0d).put("name", "Klaus")
@@ -644,7 +644,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(singletonList(42.0d)),
+                        metadataKey("age").isIn(singletonList(42.0d)),
                         asList(
                                 new Metadata().put("age", 42.0d),
                                 new Metadata().put("age", 42.0d).put("name", "Klaus")
@@ -655,7 +655,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(42.0d, 18.0d),
+                        metadataKey("age").isIn(42.0d, 18.0d),
                         asList(
                                 new Metadata().put("age", 42.0d),
                                 new Metadata().put("age", 18.0d),
@@ -668,7 +668,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").in(asList(42.0d, 18.0d)),
+                        metadataKey("age").isIn(asList(42.0d, 18.0d)),
                         asList(
                                 new Metadata().put("age", 42.0d),
                                 new Metadata().put("age", 18.0d),
@@ -687,8 +687,8 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // Or: one key
                 .add(Arguments.of(
                         or(
-                                key("name").eq("Klaus"),
-                                key("name").eq("Alice")
+                                metadataKey("name").isEqualTo("Klaus"),
+                                metadataKey("name").isEqualTo("Alice")
                         ),
                         asList(
                                 new Metadata().put("name", "Klaus"),
@@ -702,8 +702,8 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 ))
                 .add(Arguments.of(
                         or(
-                                key("name").eq("Alice"),
-                                key("name").eq("Klaus")
+                                metadataKey("name").isEqualTo("Alice"),
+                                metadataKey("name").isEqualTo("Klaus")
                         ),
                         asList(
                                 new Metadata().put("name", "Alice"),
@@ -719,8 +719,8 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // Or: multiple keys
                 .add(Arguments.of(
                         or(
-                                key("name").eq("Klaus"),
-                                key("age").eq(42)
+                                metadataKey("name").isEqualTo("Klaus"),
+                                metadataKey("age").isEqualTo(42)
                         ),
                         asList(
                                 // only Or.left is present and true
@@ -749,8 +749,8 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 ))
                 .add(Arguments.of(
                         or(
-                                key("age").eq(42),
-                                key("name").eq("Klaus")
+                                metadataKey("age").isEqualTo(42),
+                                metadataKey("name").isEqualTo("Klaus")
                         ),
                         asList(
                                 // only Or.left is present and true
@@ -781,10 +781,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // Or: x2
                 .add(Arguments.of(
                         or(
-                                key("name").eq("Klaus"),
+                                metadataKey("name").isEqualTo("Klaus"),
                                 or(
-                                        key("age").eq(42),
-                                        key("city").eq("Munich")
+                                        metadataKey("age").isEqualTo(42),
+                                        metadataKey("city").isEqualTo("Munich")
                                 )
                         ),
                         asList(
@@ -830,10 +830,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 .add(Arguments.of(
                         or(
                                 or(
-                                        key("name").eq("Klaus"),
-                                        key("age").eq(42)
+                                        metadataKey("name").isEqualTo("Klaus"),
+                                        metadataKey("age").isEqualTo(42)
                                 ),
-                                key("city").eq("Munich")
+                                metadataKey("city").isEqualTo("Munich")
                         ),
                         asList(
                                 // only Or.left is present and true
@@ -879,8 +879,8 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 .add(Arguments.of(
                         and(
-                                key("name").eq("Klaus"),
-                                key("age").eq(42)
+                                metadataKey("name").isEqualTo("Klaus"),
+                                metadataKey("age").isEqualTo(42)
                         ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -905,8 +905,8 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 ))
                 .add(Arguments.of(
                         and(
-                                key("age").eq(42),
-                                key("name").eq("Klaus")
+                                metadataKey("age").isEqualTo(42),
+                                metadataKey("name").isEqualTo("Klaus")
                         ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42),
@@ -933,10 +933,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // And: x2
                 .add(Arguments.of(
                         and(
-                                key("name").eq("Klaus"),
+                                metadataKey("name").isEqualTo("Klaus"),
                                 and(
-                                        key("age").eq(42),
-                                        key("city").eq("Munich")
+                                        metadataKey("age").isEqualTo(42),
+                                        metadataKey("city").isEqualTo("Munich")
                                 )
                         ),
                         asList(
@@ -963,10 +963,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 .add(Arguments.of(
                         and(
                                 and(
-                                        key("name").eq("Klaus"),
-                                        key("age").eq(42)
+                                        metadataKey("name").isEqualTo("Klaus"),
+                                        metadataKey("age").isEqualTo(42)
                                 ),
-                                key("city").eq("Munich")
+                                metadataKey("city").isEqualTo("Munich")
                         ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("age", 42).put("city", "Munich"),
@@ -994,10 +994,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 .add(Arguments.of(
                         and(
-                                key("name").eq("Klaus"),
+                                metadataKey("name").isEqualTo("Klaus"),
                                 or(
-                                        key("age").eq(42),
-                                        key("city").eq("Munich")
+                                        metadataKey("age").isEqualTo(42),
+                                        metadataKey("city").isEqualTo("Munich")
                                 )
                         ),
                         asList(
@@ -1030,10 +1030,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 .add(Arguments.of(
                         and(
                                 or(
-                                        key("name").eq("Klaus"),
-                                        key("age").eq(42)
+                                        metadataKey("name").isEqualTo("Klaus"),
+                                        metadataKey("age").isEqualTo(42)
                                 ),
-                                key("city").eq("Munich")
+                                metadataKey("city").isEqualTo("Munich")
                         ),
                         asList(
                                 new Metadata().put("name", "Klaus").put("city", "Munich"),
@@ -1067,10 +1067,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === OR + nested AND ===
                 .add(Arguments.of(
                         or(
-                                key("name").eq("Klaus"),
+                                metadataKey("name").isEqualTo("Klaus"),
                                 and(
-                                        key("age").eq(42),
-                                        key("city").eq("Munich")
+                                        metadataKey("age").isEqualTo(42),
+                                        metadataKey("city").isEqualTo("Munich")
                                 )
                         ),
                         asList(
@@ -1100,10 +1100,10 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 .add(Arguments.of(
                         or(
                                 and(
-                                        key("name").eq("Klaus"),
-                                        key("age").eq(42)
+                                        metadataKey("name").isEqualTo("Klaus"),
+                                        metadataKey("age").isEqualTo(42)
                                 ),
-                                key("city").eq("Munich")
+                                metadataKey("city").isEqualTo("Munich")
                         ),
                         asList(
                                 // only Or.left is present and true
@@ -1164,7 +1164,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(queryEmbedding)
-                .metadataFilter(metadataFilter)
+                .filter(metadataFilter)
                 .maxResults(100)
                 .build();
 
@@ -1183,7 +1183,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === Not ===
                 .add(Arguments.of(
                         not(
-                                key("name").eq("Klaus")
+                                metadataKey("name").isEqualTo("Klaus")
                         ),
                         asList(
                                 new Metadata().put("name", "Alice"),
@@ -1199,7 +1199,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 // === NotEqual ===
 
                 .add(Arguments.of(
-                        key("key").ne("a"),
+                        metadataKey("key").isNotEqualTo("a"),
                         asList(
                                 new Metadata().put("key", "A"),
                                 new Metadata().put("key", "b"),
@@ -1213,7 +1213,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").ne(1),
+                        metadataKey("key").isNotEqualTo(1),
                         asList(
                                 new Metadata().put("key", -1),
                                 new Metadata().put("key", 0),
@@ -1227,7 +1227,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").ne(1L),
+                        metadataKey("key").isNotEqualTo(1L),
                         asList(
                                 new Metadata().put("key", -1L),
                                 new Metadata().put("key", 0L),
@@ -1241,7 +1241,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").ne(1.1f),
+                        metadataKey("key").isNotEqualTo(1.1f),
                         asList(
                                 new Metadata().put("key", -1.1f),
                                 new Metadata().put("key", 0.0f),
@@ -1255,7 +1255,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("key").ne(1.1),
+                        metadataKey("key").isNotEqualTo(1.1),
                         asList(
                                 new Metadata().put("key", -1.1),
                                 new Metadata().put("key", 0.0),
@@ -1274,7 +1274,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // NotIn: string
                 .add(Arguments.of(
-                        key("name").nin("Klaus"),
+                        metadataKey("name").isNotIn("Klaus"),
                         asList(
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Alice"),
@@ -1286,7 +1286,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("name").nin(singletonList("Klaus")),
+                        metadataKey("name").isNotIn(singletonList("Klaus")),
                         asList(
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Alice"),
@@ -1298,7 +1298,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("name").nin("Klaus", "Alice"),
+                        metadataKey("name").isNotIn("Klaus", "Alice"),
                         asList(
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Zoe"),
@@ -1312,7 +1312,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("name").nin(asList("Klaus", "Alice")),
+                        metadataKey("name").isNotIn(asList("Klaus", "Alice")),
                         asList(
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Zoe"),
@@ -1328,7 +1328,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // NotIn: int
                 .add(Arguments.of(
-                        key("age").nin(42),
+                        metadataKey("age").isNotIn(42),
                         asList(
                                 new Metadata().put("age", 666),
                                 new Metadata().put("age2", 42)
@@ -1339,7 +1339,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(singletonList(42)),
+                        metadataKey("age").isNotIn(singletonList(42)),
                         asList(
                                 new Metadata().put("age", 666),
                                 new Metadata().put("age2", 42)
@@ -1350,7 +1350,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(42, 18),
+                        metadataKey("age").isNotIn(42, 18),
                         asList(
                                 new Metadata().put("age", 666),
                                 new Metadata().put("age2", 42)
@@ -1363,7 +1363,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(asList(42, 18)),
+                        metadataKey("age").isNotIn(asList(42, 18)),
                         asList(
                                 new Metadata().put("age", 666),
                                 new Metadata().put("age2", 42)
@@ -1378,7 +1378,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // NotIn: long
                 .add(Arguments.of(
-                        key("age").nin(42L),
+                        metadataKey("age").isNotIn(42L),
                         asList(
                                 new Metadata().put("age", 666L),
                                 new Metadata().put("age2", 42L)
@@ -1389,7 +1389,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(singletonList(42L)),
+                        metadataKey("age").isNotIn(singletonList(42L)),
                         asList(
                                 new Metadata().put("age", 666L),
                                 new Metadata().put("age2", 42L)
@@ -1400,7 +1400,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(42L, 18L),
+                        metadataKey("age").isNotIn(42L, 18L),
                         asList(
                                 new Metadata().put("age", 666L),
                                 new Metadata().put("age2", 42L)
@@ -1413,7 +1413,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(asList(42L, 18L)),
+                        metadataKey("age").isNotIn(asList(42L, 18L)),
                         asList(
                                 new Metadata().put("age", 666L),
                                 new Metadata().put("age2", 42L)
@@ -1428,7 +1428,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // NotIn: float
                 .add(Arguments.of(
-                        key("age").nin(42.0f),
+                        metadataKey("age").isNotIn(42.0f),
                         asList(
                                 new Metadata().put("age", 666.0f),
                                 new Metadata().put("age2", 42.0f)
@@ -1439,7 +1439,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(singletonList(42.0f)),
+                        metadataKey("age").isNotIn(singletonList(42.0f)),
                         asList(
                                 new Metadata().put("age", 666.0f),
                                 new Metadata().put("age2", 42.0f)
@@ -1450,7 +1450,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(42.0f, 18.0f),
+                        metadataKey("age").isNotIn(42.0f, 18.0f),
                         asList(
                                 new Metadata().put("age", 666.0f),
                                 new Metadata().put("age2", 42.0f)
@@ -1463,7 +1463,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(asList(42.0f, 18.0f)),
+                        metadataKey("age").isNotIn(asList(42.0f, 18.0f)),
                         asList(
                                 new Metadata().put("age", 666.0f),
                                 new Metadata().put("age2", 42.0f)
@@ -1478,7 +1478,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
 
                 // NotIn: double
                 .add(Arguments.of(
-                        key("age").nin(42.0d),
+                        metadataKey("age").isNotIn(42.0d),
                         asList(
                                 new Metadata().put("age", 666.0d),
                                 new Metadata().put("age2", 42.0d)
@@ -1489,7 +1489,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(singletonList(42.0d)),
+                        metadataKey("age").isNotIn(singletonList(42.0d)),
                         asList(
                                 new Metadata().put("age", 666.0d),
                                 new Metadata().put("age2", 42.0d)
@@ -1500,7 +1500,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(42.0d, 18.0d),
+                        metadataKey("age").isNotIn(42.0d, 18.0d),
                         asList(
                                 new Metadata().put("age", 666.0d),
                                 new Metadata().put("age2", 42.0d)
@@ -1513,7 +1513,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
-                        key("age").nin(asList(42.0d, 18.0d)),
+                        metadataKey("age").isNotIn(asList(42.0d, 18.0d)),
                         asList(
                                 new Metadata().put("age", 666.0d),
                                 new Metadata().put("age2", 42.0d)

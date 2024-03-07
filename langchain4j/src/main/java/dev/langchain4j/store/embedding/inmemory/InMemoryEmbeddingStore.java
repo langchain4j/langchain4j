@@ -101,7 +101,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
-        Filter filter = embeddingSearchRequest.metadataFilter();
+        Filter filter = embeddingSearchRequest.filter();
 
         for (Entry<Embedded> entry : entries) {
 

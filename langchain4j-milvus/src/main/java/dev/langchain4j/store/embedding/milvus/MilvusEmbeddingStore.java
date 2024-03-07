@@ -131,7 +131,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     SearchParam searchParam = buildSearchRequest(
             collectionName,
             embeddingSearchRequest.queryEmbedding().vectorAsList(),
-            embeddingSearchRequest.metadataFilter(),
+            embeddingSearchRequest.filter(),
             embeddingSearchRequest.maxResults(),
             metricType,
             consistencyLevel

@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.filter.parser.sql;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.FilterParser;
-import dev.langchain4j.store.embedding.filter.comparison.GreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
@@ -45,14 +44,14 @@ import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
  * <br>
  * Currently, the following operations are supported:
  * <pre>
- * - {@link Equal}: {@code name = 'Klaus'}
- * - {@link NotEqual}: {@code id != 7}
- * - {@link GreaterThan}: {@code age > 18}
- * - {@link GreaterThanOrEqual}: {@code age >= 18}
- * - {@link LessThan}: {@code age < 18}
- * - {@link LessThanOrEqual}: {@code age <= 18}
- * - {@link In}: {@code name IN ('Klaus', 'Francine')}
- * - {@link NotIn}: {@code id NOT IN (1, 2, 3)}
+ * - {@link IsEqualTo}: {@code name = 'Klaus'}
+ * - {@link IsNotEqualTo}: {@code id != 7}
+ * - {@link IsGreaterThan}: {@code age > 18}
+ * - {@link IsGreaterThanOrEqualTo}: {@code age >= 18}
+ * - {@link IsLessThan}: {@code age < 18}
+ * - {@link IsLessThanOrEqualTo}: {@code age <= 18}
+ * - {@link IsIn}: {@code name IN ('Klaus', 'Francine')}
+ * - {@link IsNotIn}: {@code id NOT IN (1, 2, 3)}
  * - BETWEEN: {@code year BETWEEN 2000 AND 2020}: will be parsed into {@code key("year").gte(2000).and(key("year").lte(2020))}
  *
  * - {@link And}: {@code name = 'Klaus' AND age = 18}
@@ -114,23 +113,23 @@ public class SqlFilterParser implements FilterParser {
 
         try {
             PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sql);
-            return map(select.getWhere());
+            return mapParenthesis(select.getWhere());
         } catch (JSQLParserException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Filter map(Expression expression) {
+    private Filter mapParenthesis(Expression expression) {
         if (expression instanceof BinaryExpression) {
-            return map((BinaryExpression) expression);
+            return mapBinaryExpression((BinaryExpression) expression);
         } else if (expression instanceof NotExpression) {
-            return new Not(map(((NotExpression) expression).getExpression()));
+            return new Not(mapParenthesis(((NotExpression) expression).getExpression()));
         } else if (expression instanceof Parenthesis) {
-            return map(((Parenthesis) expression).getExpression());
+            return mapParenthesis(((Parenthesis) expression).getExpression());
         } else if (expression instanceof InExpression) {
-            return map(((InExpression) expression));
+            return mapInExpression(((InExpression) expression));
         } else if (expression instanceof Between) {
-            return map(((Between) expression));
+            return mapBetween(((Between) expression));
         } else {
             throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
         }
@@ -146,29 +145,29 @@ public class SqlFilterParser implements FilterParser {
         }
     }
 
-    private Filter map(BinaryExpression expression) {
-        if (expression instanceof AndExpression) {
-            return new And(map(expression.getLeftExpression()), map(expression.getRightExpression()));
-        } else if (expression instanceof OrExpression) {
-            return new Or(map(expression.getLeftExpression()), map(expression.getRightExpression()));
-        } else if (expression instanceof EqualsTo) {
-            return new Equal(getKey(expression), getValue(expression));
-        } else if (expression instanceof NotEqualsTo) {
-            return new NotEqual(getKey(expression), getValue(expression));
-        } else if (expression instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThan) {
-            return new GreaterThan(getKey(expression), getValue(expression));
-        } else if (expression instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals) {
-            return new GreaterThanOrEqual(getKey(expression), getValue(expression));
-        } else if (expression instanceof MinorThan) {
-            return new LessThan(getKey(expression), getValue(expression));
-        } else if (expression instanceof MinorThanEquals) {
-            return new LessThanOrEqual(getKey(expression), getValue(expression));
+    private Filter mapBinaryExpression(BinaryExpression exp) {
+        if (exp instanceof AndExpression) {
+            return new And(mapParenthesis(exp.getLeftExpression()), mapParenthesis(exp.getRightExpression()));
+        } else if (exp instanceof OrExpression) {
+            return new Or(mapParenthesis(exp.getLeftExpression()), mapParenthesis(exp.getRightExpression()));
+        } else if (exp instanceof EqualsTo) {
+            return new IsEqualTo(getKey(exp), getValue(exp));
+        } else if (exp instanceof NotEqualsTo) {
+            return new IsNotEqualTo(getKey(exp), getValue(exp));
+        } else if (exp instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThan) {
+            return new IsGreaterThan(getKey(exp), getValue(exp));
+        } else if (exp instanceof net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals) {
+            return new IsGreaterThanOrEqualTo(getKey(exp), getValue(exp));
+        } else if (exp instanceof MinorThan) {
+            return new IsLessThan(getKey(exp), getValue(exp));
+        } else if (exp instanceof MinorThanEquals) {
+            return new IsLessThanOrEqualTo(getKey(exp), getValue(exp));
         } else {
-            throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
+            throw illegalArgument("Unsupported expression: '%s'%s", exp, createGithubIssueLink(exp));
         }
     }
 
-    private Filter map(InExpression inExpression) {
+    private Filter mapInExpression(InExpression inExpression) {
         String key = ((Column) inExpression.getLeftExpression()).getColumnName();
 
         Collection<Object> comparisonValues = new ArrayList<>();
@@ -191,17 +190,17 @@ public class SqlFilterParser implements FilterParser {
         });
 
         if (inExpression.isNot()) {
-            return new NotIn(key, comparisonValues);
+            return new IsNotIn(key, comparisonValues);
         } else {
-            return new In(key, comparisonValues);
+            return new IsIn(key, comparisonValues);
         }
     }
 
-    private Filter map(Between between) {
+    private Filter mapBetween(Between between) {
         String key = ((Column) between.getLeftExpression()).getColumnName();
         Comparable<?> from = getValue(between.getBetweenExpressionStart());
         Comparable<?> to = getValue(between.getBetweenExpressionEnd());
-        return new GreaterThanOrEqual(key, from).and(new LessThanOrEqual(key, to));
+        return new IsGreaterThanOrEqualTo(key, from).and(new IsLessThanOrEqualTo(key, to));
     }
 
     private String getKey(BinaryExpression binaryExpression) {

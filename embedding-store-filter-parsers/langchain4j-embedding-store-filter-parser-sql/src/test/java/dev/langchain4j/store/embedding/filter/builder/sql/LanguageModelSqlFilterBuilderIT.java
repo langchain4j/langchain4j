@@ -2,7 +2,6 @@ package dev.langchain4j.store.embedding.filter.builder.sql;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
-import dev.langchain4j.model.vertexai.VertexAiGeminiChatModel;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,7 +11,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.time.LocalDate;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,7 +43,7 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(key("genre").eq("comedy"));
+        assertThat(filter).isEqualTo(metadataKey("genre").isEqualTo("comedy"));
     }
 
     @ParameterizedTest
@@ -63,7 +62,7 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(key("genre").eq("drama").and(key("year").eq((long) LocalDate.now().getYear())));
+        assertThat(filter).isEqualTo(metadataKey("genre").isEqualTo("drama").and(metadataKey("year").isEqualTo((long) LocalDate.now().getYear())));
     }
 
     @ParameterizedTest
@@ -79,7 +78,7 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(key("year").gte(1990L).and(key("year").lte(1999L)));
+        assertThat(filter).isEqualTo(metadataKey("year").isGreaterThanOrEqualTo(1990L).and(metadataKey("year").isLessThanOrEqualTo(1999L)));
     }
 
     @ParameterizedTest
@@ -95,7 +94,7 @@ class LanguageModelSqlFilterBuilderIT {
         Filter filter = sqlFilterBuilder.build(query);
 
         // then
-        assertThat(filter).isEqualTo(key("year").eq((long) LocalDate.now().getYear() - 1));
+        assertThat(filter).isEqualTo(metadataKey("year").isEqualTo((long) LocalDate.now().getYear() - 1));
     }
 
     static Stream<Arguments> models() {

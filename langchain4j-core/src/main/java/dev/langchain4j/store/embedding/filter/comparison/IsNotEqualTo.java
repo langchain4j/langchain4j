@@ -12,12 +12,12 @@ import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensu
 
 @ToString
 @EqualsAndHashCode
-public class Equal implements Filter {
+public class IsNotEqualTo implements Filter {
 
     private final String key;
     private final Object comparisonValue;
 
-    public Equal(String key, Object comparisonValue) {
+    public IsNotEqualTo(String key, Object comparisonValue) {
         this.key = ensureNotBlank(key, "key");
         this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
@@ -38,16 +38,16 @@ public class Equal implements Filter {
 
         Metadata metadata = (Metadata) object;
         if (!metadata.containsKey(key)) {
-            return false;
+            return true;
         }
 
         Object actualValue = metadata.toMap().get(key);
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) == 0;
+            return compareAsBigDecimals(actualValue, comparisonValue) != 0;
         }
 
-        return actualValue.equals(comparisonValue);
+        return !actualValue.equals(comparisonValue);
     }
 }

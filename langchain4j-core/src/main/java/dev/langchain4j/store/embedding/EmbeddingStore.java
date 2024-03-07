@@ -60,7 +60,7 @@ public interface EmbeddingStore<Embedded> {
      * <br>
      * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
      * <br>
-     * {@link EmbeddingSearchRequest#metadataFilter()} can be used to filter by user/memory ID.
+     * {@link EmbeddingSearchRequest#filter()} can be used to filter by user/memory ID.
      * Please note that not all {@link EmbeddingStore} implementations support {@link Filter}ing.
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.

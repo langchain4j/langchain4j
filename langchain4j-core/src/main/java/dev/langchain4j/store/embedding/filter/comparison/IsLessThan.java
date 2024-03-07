@@ -12,12 +12,12 @@ import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensu
 
 @ToString
 @EqualsAndHashCode
-public class GreaterThan implements Filter {
+public class IsLessThan implements Filter {
 
     private final String key;
     private final Comparable<?> comparisonValue;
 
-    public GreaterThan(String key, Comparable<?> comparisonValue) {
+    public IsLessThan(String key, Comparable<?> comparisonValue) {
         this.key = ensureNotBlank(key, "key");
         this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }
@@ -45,9 +45,9 @@ public class GreaterThan implements Filter {
         ensureTypesAreCompatible(actualValue, comparisonValue, key);
 
         if (actualValue instanceof Number) {
-            return compareAsBigDecimals(actualValue, comparisonValue) > 0;
+            return compareAsBigDecimals(actualValue, comparisonValue) < 0;
         }
 
-        return ((Comparable) actualValue).compareTo(comparisonValue) > 0;
+        return ((Comparable) actualValue).compareTo(comparisonValue) < 0;
     }
 }

@@ -53,7 +53,7 @@ import static dev.langchain4j.data.document.loader.FileSystemDocumentLoader.load
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.FAIL;
 import static dev.langchain4j.rag.query.router.LanguageModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
-import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -428,7 +428,7 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_LLM_generated_metadataFilter(ChatLanguageModel model) {
+    void should_use_LLM_generated_metadata_filter(ChatLanguageModel model) {
 
         // given
         TextSegment groundhogDay = TextSegment.from("Groundhog Day", new dev.langchain4j.data.document.Metadata().put("genre", "comedy").put("year", 1993));
@@ -451,7 +451,7 @@ class AiServicesWithRagIT {
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .dynamicMetadataFilter(sqlFilterBuilder::build)
+                .dynamicFilter(sqlFilterBuilder::build)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -473,13 +473,14 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_dynamicMetadataFilter_by_user_id(ChatLanguageModel model) {
+    void should_use_dynamicFilter_by_user_id(ChatLanguageModel model) {
 
         // given
         TextSegment user1Info = TextSegment.from("My favorite color is green", metadata("userId", "1"));
         TextSegment user2Info = TextSegment.from("My favorite color is red", metadata("userId", "2"));
 
-        Function<Query, Filter> dynamicMetadataFilter = query -> key("userId").eq(query.metadata().chatMemoryId().toString());
+        Function<Query, Filter> dynamicMetadataFilter =
+                (query) -> metadataKey("userId").isEqualTo(query.metadata().chatMemoryId().toString());
 
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
         embeddingStore.add(embeddingModel.embed(user1Info).content(), user1Info);
@@ -488,7 +489,7 @@ class AiServicesWithRagIT {
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .dynamicMetadataFilter(dynamicMetadataFilter)
+                .dynamicFilter(dynamicMetadataFilter)
                 .build();
 
         PersonalizedAssistant personalizedAssistant = AiServices.builder(PersonalizedAssistant.class)
@@ -511,13 +512,13 @@ class AiServicesWithRagIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_static_metadataFilter(ChatLanguageModel model) {
+    void should_use_static_metadata_filter(ChatLanguageModel model) {
 
         // given
         TextSegment catsArticle = TextSegment.from("cats", metadata("animal", "cat"));
         TextSegment dogsArticle = TextSegment.from("dogs", metadata("animal", "dog"));
 
-        Filter metadatafilter = key("animal").eq("dog");
+        Filter metadatafilter = metadataKey("animal").isEqualTo("dog");
 
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
         embeddingStore.add(embeddingModel.embed(catsArticle).content(), catsArticle);
@@ -526,7 +527,7 @@ class AiServicesWithRagIT {
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
                 .embeddingStore(embeddingStore)
                 .embeddingModel(embeddingModel)
-                .metadataFilter(metadatafilter)
+                .filter(metadatafilter)
                 .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)

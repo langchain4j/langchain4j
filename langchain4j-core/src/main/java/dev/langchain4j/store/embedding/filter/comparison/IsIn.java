@@ -16,12 +16,12 @@ import static java.util.Collections.unmodifiableSet;
 
 @ToString
 @EqualsAndHashCode
-public class NotIn implements Filter {
+public class IsIn implements Filter {
 
     private final String key;
     private final Collection<?> comparisonValues;
 
-    public NotIn(String key, Collection<?> comparisonValues) {
+    public IsIn(String key, Collection<?> comparisonValues) {
         this.key = ensureNotBlank(key, "key");
         Set<?> copy = new HashSet<>(ensureNotEmpty(comparisonValues, "comparisonValues with key '" + key + "'"));
         this.comparisonValues = unmodifiableSet(copy);
@@ -44,16 +44,16 @@ public class NotIn implements Filter {
 
         Metadata metadata = (Metadata) object;
         if (!metadata.containsKey(key)) {
-            return true;
+            return false;
         }
 
         Object actualValue = metadata.toMap().get(key);
         ensureTypesAreCompatible(actualValue, comparisonValues.iterator().next(), key);
 
         if (comparisonValues.iterator().next() instanceof Number) {
-            return !containsAsBigDecimals(actualValue, comparisonValues);
+            return containsAsBigDecimals(actualValue, comparisonValues);
         }
 
-        return !comparisonValues.contains(actualValue);
+        return comparisonValues.contains(actualValue);
     }
 }

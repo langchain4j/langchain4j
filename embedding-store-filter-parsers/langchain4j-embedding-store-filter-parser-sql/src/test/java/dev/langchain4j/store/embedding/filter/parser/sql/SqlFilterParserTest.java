@@ -15,8 +15,8 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static dev.langchain4j.store.embedding.filter.Filter.MetadataKey.key;
 import static dev.langchain4j.store.embedding.filter.Filter.*;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.time.ZoneOffset.UTC;
 import static java.time.temporal.IsoFields.WEEK_OF_WEEK_BASED_YEAR;
 import static java.util.Arrays.asList;
@@ -46,120 +46,120 @@ class SqlFilterParserTest {
                 // eq
                 .add(of(
                         "name = 'Klaus'",
-                        key("name").eq("Klaus")
+                        metadataKey("name").isEqualTo("Klaus")
                 ))
                 .add(of(
                         "age = 18",
-                        key("age").eq(18L)
+                        metadataKey("age").isEqualTo(18L)
                 ))
                 .add(of(
                         "weight = 67.8",
-                        key("weight").eq(67.8d)
+                        metadataKey("weight").isEqualTo(67.8d)
                 ))
 
 
                 // ne
                 .add(of(
                         "name != 'Klaus'",
-                        key("name").ne("Klaus")
+                        metadataKey("name").isNotEqualTo("Klaus")
                 ))
                 .add(of(
                         "age != 18",
-                        key("age").ne(18L)
+                        metadataKey("age").isNotEqualTo(18L)
                 ))
                 .add(of(
                         "weight != 67.8",
-                        key("weight").ne(67.8d)
+                        metadataKey("weight").isNotEqualTo(67.8d)
                 ))
 
 
                 // gt
                 .add(of(
                         "name > 'Klaus'",
-                        key("name").gt("Klaus")
+                        metadataKey("name").isGreaterThan("Klaus")
                 ))
                 .add(of(
                         "age > 18",
-                        key("age").gt(18L)
+                        metadataKey("age").isGreaterThan(18L)
                 ))
                 .add(of(
                         "weight > 67.8",
-                        key("weight").gt(67.8d)
+                        metadataKey("weight").isGreaterThan(67.8d)
                 ))
 
 
                 // gte
                 .add(of(
                         "name >= 'Klaus'",
-                        key("name").gte("Klaus")
+                        metadataKey("name").isGreaterThanOrEqualTo("Klaus")
                 ))
                 .add(of(
                         "age >= 18",
-                        key("age").gte(18L)
+                        metadataKey("age").isGreaterThanOrEqualTo(18L)
                 ))
                 .add(of(
                         "weight >= 67.8",
-                        key("weight").gte(67.8d)
+                        metadataKey("weight").isGreaterThanOrEqualTo(67.8d)
                 ))
 
 
                 // lt
                 .add(of(
                         "name < 'Klaus'",
-                        key("name").lt("Klaus")
+                        metadataKey("name").isLessThan("Klaus")
                 ))
                 .add(of(
                         "age < 18",
-                        key("age").lt(18L)
+                        metadataKey("age").isLessThan(18L)
                 ))
                 .add(of(
                         "weight < 67.8",
-                        key("weight").lt(67.8d)
+                        metadataKey("weight").isLessThan(67.8d)
                 ))
 
 
                 // lte
                 .add(of(
                         "name <= 'Klaus'",
-                        key("name").lte("Klaus")
+                        metadataKey("name").isLessThanOrEqualTo("Klaus")
                 ))
                 .add(of(
                         "age <= 18",
-                        key("age").lte(18L)
+                        metadataKey("age").isLessThanOrEqualTo(18L)
                 ))
                 .add(of(
                         "weight <= 67.8",
-                        key("weight").lte(67.8d)
+                        metadataKey("weight").isLessThanOrEqualTo(67.8d)
                 ))
 
 
                 // in
                 .add(of(
                         "name IN ('Klaus', 'Francine')",
-                        key("name").in("Klaus", "Francine")
+                        metadataKey("name").isIn("Klaus", "Francine")
                 ))
                 .add(of(
                         "age IN (18, 42)",
-                        key("age").in(18L, 42L)
+                        metadataKey("age").isIn(18L, 42L)
                 ))
                 .add(of(
                         "weight IN (67.8, 78.9)",
-                        key("weight").in(67.8d, 78.9d)
+                        metadataKey("weight").isIn(67.8d, 78.9d)
                 ))
 
 
                 // nin
                 .add(of(
                         "name NOT IN ('Klaus', 'Francine')",
-                        key("name").nin("Klaus", "Francine")
+                        metadataKey("name").isNotIn("Klaus", "Francine")
                 ))
                 .add(of(
                         "age NOT IN (18, 42)",
-                        key("age").nin(18L, 42L)
+                        metadataKey("age").isNotIn(18L, 42L)
                 ))
                 .add(of(
                         "weight NOT IN (67.8, 78.9)",
-                        key("weight").nin(67.8d, 78.9d)
+                        metadataKey("weight").isNotIn(67.8d, 78.9d)
                 ))
 
 
@@ -167,8 +167,8 @@ class SqlFilterParserTest {
                 .add(of(
                         "name = 'Klaus' AND age = 18",
                         and(
-                                key("name").eq("Klaus"),
-                                key("age").eq(18L)
+                                metadataKey("name").isEqualTo("Klaus"),
+                                metadataKey("age").isEqualTo(18L)
                         )
                 ))
 
@@ -176,11 +176,11 @@ class SqlFilterParserTest {
                 // not
                 .add(of(
                         "NOT name = 'Klaus'",
-                        not(key("name").eq("Klaus"))
+                        not(metadataKey("name").isEqualTo("Klaus"))
                 ))
                 .add(of(
                         "NOT (name = 'Klaus')",
-                        not(key("name").eq("Klaus"))
+                        not(metadataKey("name").isEqualTo("Klaus"))
                 ))
 
 
@@ -188,8 +188,8 @@ class SqlFilterParserTest {
                 .add(of(
                         "name = 'Klaus' OR age = 18",
                         or(
-                                key("name").eq("Klaus"),
-                                key("age").eq(18L)
+                                metadataKey("name").isEqualTo("Klaus"),
+                                metadataKey("age").isEqualTo(18L)
                         )
                 ))
 
@@ -199,29 +199,29 @@ class SqlFilterParserTest {
                         "color = 'white' OR color = 'black' OR color = 'red'",
                         or(
                                 or(
-                                        key("color").eq("white"),
-                                        key("color").eq("black")
+                                        metadataKey("color").isEqualTo("white"),
+                                        metadataKey("color").isEqualTo("black")
                                 ),
-                                key("color").eq("red")
+                                metadataKey("color").isEqualTo("red")
                         )
                 ))
                 .add(of(
                         "(color = 'white' OR color = 'black') OR color = 'red'",
                         or(
                                 or(
-                                        key("color").eq("white"),
-                                        key("color").eq("black")
+                                        metadataKey("color").isEqualTo("white"),
+                                        metadataKey("color").isEqualTo("black")
                                 ),
-                                key("color").eq("red")
+                                metadataKey("color").isEqualTo("red")
                         )
                 ))
                 .add(of(
                         "color = 'white' OR (color = 'black' OR color = 'red')",
                         or(
-                                key("color").eq("white"),
+                                metadataKey("color").isEqualTo("white"),
                                 or(
-                                        key("color").eq("black"),
-                                        key("color").eq("red")
+                                        metadataKey("color").isEqualTo("black"),
+                                        metadataKey("color").isEqualTo("red")
                                 )
                         )
                 ))
@@ -231,10 +231,10 @@ class SqlFilterParserTest {
                 .add(of(
                         "color = 'white' OR color = 'black' AND form = 'circle'",
                         or(
-                                key("color").eq("white"),
+                                metadataKey("color").isEqualTo("white"),
                                 and(
-                                        key("color").eq("black"),
-                                        key("form").eq("circle")
+                                        metadataKey("color").isEqualTo("black"),
+                                        metadataKey("form").isEqualTo("circle")
                                 )
                         )
                 ))
@@ -242,10 +242,10 @@ class SqlFilterParserTest {
                         "(color = 'white' OR color = 'black') AND form = 'circle'",
                         and(
                                 or(
-                                        key("color").eq("white"),
-                                        key("color").eq("black")
+                                        metadataKey("color").isEqualTo("white"),
+                                        metadataKey("color").isEqualTo("black")
                                 ),
-                                key("form").eq("circle")
+                                metadataKey("form").isEqualTo("circle")
                         )
                 ))
 
@@ -255,19 +255,19 @@ class SqlFilterParserTest {
                         "color = 'white' AND shape = 'circle' OR color = 'red'",
                         or(
                                 and(
-                                        key("color").eq("white"),
-                                        key("shape").eq("circle")
+                                        metadataKey("color").isEqualTo("white"),
+                                        metadataKey("shape").isEqualTo("circle")
                                 ),
-                                key("color").eq("red")
+                                metadataKey("color").isEqualTo("red")
                         )
                 ))
                 .add(of(
                         "color = 'white' AND (shape = 'circle' OR color = 'red')",
                         and(
-                                key("color").eq("white"),
+                                metadataKey("color").isEqualTo("white"),
                                 or(
-                                        key("shape").eq("circle"),
-                                        key("color").eq("red")
+                                        metadataKey("shape").isEqualTo("circle"),
+                                        metadataKey("color").isEqualTo("red")
                                 )
                         )
                 ))
@@ -278,25 +278,25 @@ class SqlFilterParserTest {
                         "color = 'white' AND form = 'circle' AND area > 7",
                         and(
                                 and(
-                                        key("color").eq("white"),
-                                        key("form").eq("circle")
+                                        metadataKey("color").isEqualTo("white"),
+                                        metadataKey("form").isEqualTo("circle")
                                 ),
-                                key("area").gt(7L)
+                                metadataKey("area").isGreaterThan(7L)
                         )
                 ))
 
                 // complete SQL statements
                 .add(of(
                         "SELECT * from fake_table WHERE id = 7",
-                        key("id").eq(7L)
+                        metadataKey("id").isEqualTo(7L)
                 ))
                 .add(of(
                         "select * from fake_table where id = 7",
-                        key("id").eq(7L)
+                        metadataKey("id").isEqualTo(7L)
                 ))
                 .add(of(
                         "Select * From fake_table Where id = 7",
-                        key("id").eq(7L)
+                        metadataKey("id").isEqualTo(7L)
                 ))
 
                 .build();
@@ -1570,65 +1570,65 @@ class SqlFilterParserTest {
     void should_support_CURDATE() {
 
         assertThat(parser.parse("year = YEAR(CURDATE())"))
-                .isEqualTo(key("year").eq(currentYear()));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear()));
         assertThat(parser.parse("month = MONTH(CURDATE())"))
-                .isEqualTo(key("month").eq(currentMonth()));
+                .isEqualTo(metadataKey("month").isEqualTo(currentMonth()));
     }
 
     @Test
     void should_support_EXTRACT() {
 
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE)"))
-                .isEqualTo(key("year").eq(currentYear()));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear()));
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_TIME)"))
-                .isEqualTo(key("year").eq(currentYear()));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear()));
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("year").eq(currentYear()));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear()));
 
         assertThat(parser.parse("month = EXTRACT(MONTH FROM CURRENT_DATE)"))
-                .isEqualTo(key("month").eq(currentMonth()));
+                .isEqualTo(metadataKey("month").isEqualTo(currentMonth()));
         assertThat(parser.parse("month = EXTRACT(MONTH FROM CURRENT_TIME)"))
-                .isEqualTo(key("month").eq(currentMonth()));
+                .isEqualTo(metadataKey("month").isEqualTo(currentMonth()));
         assertThat(parser.parse("month = EXTRACT(MONTH FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("month").eq(currentMonth()));
+                .isEqualTo(metadataKey("month").isEqualTo(currentMonth()));
 
         assertThat(parser.parse("week = EXTRACT(WEEK FROM CURRENT_DATE)"))
-                .isEqualTo(key("week").eq(currentWeek()));
+                .isEqualTo(metadataKey("week").isEqualTo(currentWeek()));
         assertThat(parser.parse("week = EXTRACT(WEEK FROM CURRENT_TIME)"))
-                .isEqualTo(key("week").eq(currentWeek()));
+                .isEqualTo(metadataKey("week").isEqualTo(currentWeek()));
         assertThat(parser.parse("week = EXTRACT(WEEK FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("week").eq(currentWeek()));
+                .isEqualTo(metadataKey("week").isEqualTo(currentWeek()));
 
         assertThat(parser.parse("day = EXTRACT(DAY FROM CURRENT_DATE)"))
-                .isEqualTo(key("day").eq(currentDayOfMonth()));
+                .isEqualTo(metadataKey("day").isEqualTo(currentDayOfMonth()));
         assertThat(parser.parse("day = EXTRACT(DAY FROM CURRENT_TIME)"))
-                .isEqualTo(key("day").eq(currentDayOfMonth()));
+                .isEqualTo(metadataKey("day").isEqualTo(currentDayOfMonth()));
         assertThat(parser.parse("day = EXTRACT(DAY FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("day").eq(currentDayOfMonth()));
+                .isEqualTo(metadataKey("day").isEqualTo(currentDayOfMonth()));
 
         assertThat(parser.parse("dow = EXTRACT(DOW FROM CURRENT_DATE)"))
-                .isEqualTo(key("dow").eq(currentDayOfWeek()));
+                .isEqualTo(metadataKey("dow").isEqualTo(currentDayOfWeek()));
         assertThat(parser.parse("dow = EXTRACT(DOW FROM CURRENT_TIME)"))
-                .isEqualTo(key("dow").eq(currentDayOfWeek()));
+                .isEqualTo(metadataKey("dow").isEqualTo(currentDayOfWeek()));
         assertThat(parser.parse("dow = EXTRACT(DOW FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("dow").eq(currentDayOfWeek()));
+                .isEqualTo(metadataKey("dow").isEqualTo(currentDayOfWeek()));
 
         assertThat(parser.parse("doy = EXTRACT(DOY FROM CURRENT_DATE)"))
-                .isEqualTo(key("doy").eq(currentDayOfYear()));
+                .isEqualTo(metadataKey("doy").isEqualTo(currentDayOfYear()));
         assertThat(parser.parse("doy = EXTRACT(DOY FROM CURRENT_TIME)"))
-                .isEqualTo(key("doy").eq(currentDayOfYear()));
+                .isEqualTo(metadataKey("doy").isEqualTo(currentDayOfYear()));
         assertThat(parser.parse("doy = EXTRACT(DOY FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("doy").eq(currentDayOfYear()));
+                .isEqualTo(metadataKey("doy").isEqualTo(currentDayOfYear()));
 
         assertThat(parser.parse("hour = EXTRACT(HOUR FROM CURRENT_TIME)"))
-                .isEqualTo(key("hour").eq(currentHour()));
+                .isEqualTo(metadataKey("hour").isEqualTo(currentHour()));
         assertThat(parser.parse("hour = EXTRACT(HOUR FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("hour").eq(currentHour()));
+                .isEqualTo(metadataKey("hour").isEqualTo(currentHour()));
 
         assertThat(parser.parse("minute = EXTRACT(MINUTE FROM CURRENT_TIME)"))
-                .isEqualTo(key("minute").eq(currentMinute()));
+                .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
         assertThat(parser.parse("minute = EXTRACT(MINUTE FROM CURRENT_TIMESTAMP)"))
-                .isEqualTo(key("minute").eq(currentMinute()));
+                .isEqualTo(metadataKey("minute").isEqualTo(currentMinute()));
     }
 
     private long currentYear() {
@@ -1667,13 +1667,13 @@ class SqlFilterParserTest {
     void should_support_arithmetics() {
 
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) + 1"))
-                .isEqualTo(key("year").eq(currentYear() + 1));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear() + 1));
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) - 1"))
-                .isEqualTo(key("year").eq(currentYear() - 1));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear() - 1));
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) * 2"))
-                .isEqualTo(key("year").eq(currentYear() * 2));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear() * 2));
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) / 2"))
-                .isEqualTo(key("year").eq(currentYear() / 2));
+                .isEqualTo(metadataKey("year").isEqualTo(currentYear() / 2));
     }
 
     @Test
@@ -1686,7 +1686,7 @@ class SqlFilterParserTest {
         Filter filter = parser.parse(sql);
 
         // then
-        assertThat(filter).isEqualTo(key("year").gte(1990L).and(key("year").lte(1999L)));
+        assertThat(filter).isEqualTo(metadataKey("year").isGreaterThanOrEqualTo(1990L).and(metadataKey("year").isLessThanOrEqualTo(1999L)));
     }
 
     // TODO SELECT * FROM movies WHERE YEAR(year) = 2024 AND genre IN ('comedy', 'drama') ORDER BY RAND() LIMIT 1

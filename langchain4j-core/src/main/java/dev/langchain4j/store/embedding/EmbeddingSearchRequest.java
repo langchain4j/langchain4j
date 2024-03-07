@@ -23,7 +23,7 @@ public class EmbeddingSearchRequest {
     private final Embedding queryEmbedding;
     private final int maxResults;
     private final double minScore;
-    private final Filter metadataFilter;
+    private final Filter filter;
 
     /**
      * Creates an instance of an EmbeddingSearchRequest.
@@ -34,7 +34,7 @@ public class EmbeddingSearchRequest {
      * @param minScore       The minimum score, ranging from 0 to 1 (inclusive).
      *                       Only embeddings with a score &gt;= minScore will be returned.
      *                       This is an optional parameter. Default: 0
-     * @param metadataFilter The filter to be applied to the {@link Metadata} during search.
+     * @param filter         The filter to be applied to the {@link Metadata} during search.
      *                       Only {@link TextSegment}s whose {@link Metadata}
      *                       matches the {@link Filter} will be returned.
      *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
@@ -42,11 +42,11 @@ public class EmbeddingSearchRequest {
      */
     @Builder
     @Experimental
-    public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter metadataFilter) {
+    public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, 0.0), 0.0, 1.0, "minScore");
-        this.metadataFilter = metadataFilter;
+        this.filter = filter;
     }
 
     @Experimental
@@ -65,7 +65,7 @@ public class EmbeddingSearchRequest {
     }
 
     @Experimental
-    public Filter metadataFilter() {
-        return metadataFilter;
+    public Filter filter() {
+        return filter;
     }
 }

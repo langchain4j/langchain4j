@@ -15,22 +15,22 @@ import static java.util.stream.Collectors.toList;
 class MilvusMetadataFilterMapper {
 
     static String map(Filter filter) {
-        if (filter instanceof Equal) {
-            return mapEqual((Equal) filter);
-        } else if (filter instanceof NotEqual) {
-            return mapNotEqual((NotEqual) filter);
-        } else if (filter instanceof GreaterThan) {
-            return mapGreaterThan((GreaterThan) filter);
-        } else if (filter instanceof GreaterThanOrEqual) {
-            return mapGreaterThanOrEqual((GreaterThanOrEqual) filter);
-        } else if (filter instanceof LessThan) {
-            return mapLessThan((LessThan) filter);
-        } else if (filter instanceof LessThanOrEqual) {
-            return mapLessThanOrEqual((LessThanOrEqual) filter);
-        } else if (filter instanceof In) {
-            return mapIn((In) filter);
-        } else if (filter instanceof NotIn) {
-            return mapNotIn((NotIn) filter);
+        if (filter instanceof IsEqualTo) {
+            return mapEqual((IsEqualTo) filter);
+        } else if (filter instanceof IsNotEqualTo) {
+            return mapNotEqual((IsNotEqualTo) filter);
+        } else if (filter instanceof IsGreaterThan) {
+            return mapGreaterThan((IsGreaterThan) filter);
+        } else if (filter instanceof IsGreaterThanOrEqualTo) {
+            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
+        } else if (filter instanceof IsLessThan) {
+            return mapLessThan((IsLessThan) filter);
+        } else if (filter instanceof IsLessThanOrEqualTo) {
+            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
+        } else if (filter instanceof IsIn) {
+            return mapIn((IsIn) filter);
+        } else if (filter instanceof IsNotIn) {
+            return mapNotIn((IsNotIn) filter);
         } else if (filter instanceof And) {
             return mapAnd((And) filter);
         } else if (filter instanceof Not) {
@@ -38,40 +38,40 @@ class MilvusMetadataFilterMapper {
         } else if (filter instanceof Or) {
             return mapOr((Or) filter);
         } else {
-            throw new UnsupportedOperationException("Unsupported metadataFilter type: " + filter.getClass().getName());
+            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
-    private static String mapEqual(Equal equal) {
-        return format("%s == %s", formatKey(equal.key()), formatValue(equal.comparisonValue()));
+    private static String mapEqual(IsEqualTo isEqualTo) {
+        return format("%s == %s", formatKey(isEqualTo.key()), formatValue(isEqualTo.comparisonValue()));
     }
 
-    private static String mapNotEqual(NotEqual notEqual) {
-        return format("%s != %s", formatKey(notEqual.key()), formatValue(notEqual.comparisonValue()));
+    private static String mapNotEqual(IsNotEqualTo isNotEqualTo) {
+        return format("%s != %s", formatKey(isNotEqualTo.key()), formatValue(isNotEqualTo.comparisonValue()));
     }
 
-    private static String mapGreaterThan(GreaterThan greaterThan) {
-        return format("%s > %s", formatKey(greaterThan.key()), formatValue(greaterThan.comparisonValue()));
+    private static String mapGreaterThan(IsGreaterThan isGreaterThan) {
+        return format("%s > %s", formatKey(isGreaterThan.key()), formatValue(isGreaterThan.comparisonValue()));
     }
 
-    private static String mapGreaterThanOrEqual(GreaterThanOrEqual greaterThanOrEqual) {
-        return format("%s >= %s", formatKey(greaterThanOrEqual.key()), formatValue(greaterThanOrEqual.comparisonValue()));
+    private static String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+        return format("%s >= %s", formatKey(isGreaterThanOrEqualTo.key()), formatValue(isGreaterThanOrEqualTo.comparisonValue()));
     }
 
-    private static String mapLessThan(LessThan lessThan) {
-        return format("%s < %s", formatKey(lessThan.key()), formatValue(lessThan.comparisonValue()));
+    private static String mapLessThan(IsLessThan isLessThan) {
+        return format("%s < %s", formatKey(isLessThan.key()), formatValue(isLessThan.comparisonValue()));
     }
 
-    private static String mapLessThanOrEqual(LessThanOrEqual lessThanOrEqual) {
-        return format("%s <= %s", formatKey(lessThanOrEqual.key()), formatValue(lessThanOrEqual.comparisonValue()));
+    private static String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
+        return format("%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
-    public static String mapIn(In in) {
-        return format("%s in %s", formatKey(in.key()), formatValues(in.comparisonValues()));
+    public static String mapIn(IsIn isIn) {
+        return format("%s in %s", formatKey(isIn.key()), formatValues(isIn.comparisonValues()));
     }
 
-    public static String mapNotIn(NotIn notIn) {
-        return format("%s not in %s", formatKey(notIn.key()), formatValues(notIn.comparisonValues()));
+    public static String mapNotIn(IsNotIn isNotIn) {
+        return format("%s not in %s", formatKey(isNotIn.key()), formatValues(isNotIn.comparisonValues()));
     }
 
     private static String mapAnd(And and) {

@@ -12,12 +12,12 @@ import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensu
 
 @ToString
 @EqualsAndHashCode
-public class GreaterThanOrEqual implements Filter {
+public class IsGreaterThanOrEqualTo implements Filter {
 
     private final String key;
     private final Comparable<?> comparisonValue;
 
-    public GreaterThanOrEqual(String key, Comparable<?> comparisonValue) {
+    public IsGreaterThanOrEqualTo(String key, Comparable<?> comparisonValue) {
         this.key = ensureNotBlank(key, "key");
         this.comparisonValue = ensureNotNull(comparisonValue, "comparisonValue with key '" + key + "'");
     }

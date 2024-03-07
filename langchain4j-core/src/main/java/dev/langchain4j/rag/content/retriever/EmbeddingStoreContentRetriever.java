@@ -44,7 +44,7 @@ import static java.util.stream.Collectors.toList;
  * - {@code filter}: The {@link Filter} that will be applied to a {@link dev.langchain4j.data.document.Metadata} in the
  * {@link Content#textSegment()}.
  * <br>
- * - {@code dynamicFilter}: It is a {@link Function} that accepts a {@link Query} and returns a {@code minScore} value.
+ * - {@code dynamicFilter}: It is a {@link Function} that accepts a {@link Query} and returns a {@code filter} value.
  * It can be used to dynamically define {@code filter} value, depending on factors such as the query,
  * the user (using Metadata#chatMemoryId()} from {@link Query#metadata()}), etc.
  */
@@ -52,7 +52,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     public static final Function<Query, Integer> DEFAULT_MAX_RESULTS = (query) -> 3;
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
-    public static final Function<Query, Filter> DEFAULT_METADATA_FILTER = (query) -> null;
+    public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
 
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
@@ -68,7 +68,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_METADATA_FILTER
+                DEFAULT_FILTER
         );
     }
 
@@ -80,7 +80,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 DEFAULT_MIN_SCORE,
-                DEFAULT_METADATA_FILTER
+                DEFAULT_FILTER
         );
     }
 
@@ -93,7 +93,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 embeddingModel,
                 (query) -> maxResults,
                 (query) -> minScore,
-                DEFAULT_METADATA_FILTER
+                DEFAULT_FILTER
         );
     }
 
@@ -102,12 +102,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                            EmbeddingModel embeddingModel,
                                            Function<Query, Integer> dynamicMaxResults,
                                            Function<Query, Double> dynamicMinScore,
-                                           Function<Query, Filter> dynamicMetadataFilter) {
+                                           Function<Query, Filter> dynamicFilter) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
-        this.filterProvider = getOrDefault(dynamicMetadataFilter, DEFAULT_METADATA_FILTER);
+        this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
     }
 
     public static class EmbeddingStoreContentRetrieverBuilder {
@@ -126,9 +126,9 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             return this;
         }
 
-        public EmbeddingStoreContentRetrieverBuilder metadataFilter(Filter metadataFilter) {
-            if (metadataFilter != null) {
-                dynamicMetadataFilter = (query) -> metadataFilter;
+        public EmbeddingStoreContentRetrieverBuilder filter(Filter filter) {
+            if (filter != null) {
+                dynamicFilter = (query) -> filter;
             }
             return this;
         }
@@ -143,7 +143,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 .queryEmbedding(embeddedQuery)
                 .maxResults(maxResultsProvider.apply(query))
                 .minScore(minScoreProvider.apply(query))
-                .metadataFilter(filterProvider.apply(query))
+                .filter(filterProvider.apply(query))
                 .build();
 
         EmbeddingSearchResult<TextSegment> searchResult = embeddingStore.search(searchRequest);

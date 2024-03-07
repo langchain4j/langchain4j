@@ -252,7 +252,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             ScriptScoreQuery scriptScoreQuery = buildScriptScoreQuery(
                     embeddingSearchRequest.queryEmbedding().vector(),
                     (float) embeddingSearchRequest.minScore(),
-                    embeddingSearchRequest.metadataFilter()
+                    embeddingSearchRequest.filter()
             );
             SearchResponse<Document> response = client.search(
                     co.elastic.clients.elasticsearch.core.SearchRequest.of(s -> s.index(indexName)

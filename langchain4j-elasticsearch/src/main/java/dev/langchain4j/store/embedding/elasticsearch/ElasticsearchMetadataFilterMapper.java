@@ -18,22 +18,22 @@ import static java.util.stream.Collectors.toList;
 class ElasticsearchMetadataFilterMapper {
 
     static Query map(Filter filter) {
-        if (filter instanceof Equal) {
-            return mapEqual((Equal) filter);
-        } else if (filter instanceof NotEqual) {
-            return mapNotEqual((NotEqual) filter);
-        } else if (filter instanceof GreaterThan) {
-            return mapGreaterThan((GreaterThan) filter);
-        } else if (filter instanceof GreaterThanOrEqual) {
-            return mapGreaterThanOrEqual((GreaterThanOrEqual) filter);
-        } else if (filter instanceof LessThan) {
-            return mapLessThan((LessThan) filter);
-        } else if (filter instanceof LessThanOrEqual) {
-            return mapLessThanOrEqual((LessThanOrEqual) filter);
-        } else if (filter instanceof In) {
-            return mapIn((In) filter);
-        } else if (filter instanceof NotIn) {
-            return mapNotIn((NotIn) filter);
+        if (filter instanceof IsEqualTo) {
+            return mapEqual((IsEqualTo) filter);
+        } else if (filter instanceof IsNotEqualTo) {
+            return mapNotEqual((IsNotEqualTo) filter);
+        } else if (filter instanceof IsGreaterThan) {
+            return mapGreaterThan((IsGreaterThan) filter);
+        } else if (filter instanceof IsGreaterThanOrEqualTo) {
+            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
+        } else if (filter instanceof IsLessThan) {
+            return mapLessThan((IsLessThan) filter);
+        } else if (filter instanceof IsLessThanOrEqualTo) {
+            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
+        } else if (filter instanceof IsIn) {
+            return mapIn((IsIn) filter);
+        } else if (filter instanceof IsNotIn) {
+            return mapNotIn((IsNotIn) filter);
         } else if (filter instanceof And) {
             return mapAnd((And) filter);
         } else if (filter instanceof Not) {
@@ -45,53 +45,53 @@ class ElasticsearchMetadataFilterMapper {
         }
     }
 
-    private static Query mapEqual(Equal equal) {
+    private static Query mapEqual(IsEqualTo isEqualTo) {
         return new Query.Builder().bool(b -> b.filter(f -> f.term(t ->
-                t.field(formatKey(equal.key(), equal.comparisonValue()))
-                        .value(v -> v.anyValue(JsonData.of(equal.comparisonValue())))
+                t.field(formatKey(isEqualTo.key(), isEqualTo.comparisonValue()))
+                        .value(v -> v.anyValue(JsonData.of(isEqualTo.comparisonValue())))
         ))).build();
     }
 
-    private static Query mapNotEqual(NotEqual notEqual) {
+    private static Query mapNotEqual(IsNotEqualTo isNotEqualTo) {
         return new Query.Builder().bool(b -> b.mustNot(mn -> mn.term(t ->
-                t.field(formatKey(notEqual.key(), notEqual.comparisonValue()))
-                        .value(v -> v.anyValue(JsonData.of(notEqual.comparisonValue())))
+                t.field(formatKey(isNotEqualTo.key(), isNotEqualTo.comparisonValue()))
+                        .value(v -> v.anyValue(JsonData.of(isNotEqualTo.comparisonValue())))
         ))).build();
     }
 
-    private static Query mapGreaterThan(GreaterThan greaterThan) {
+    private static Query mapGreaterThan(IsGreaterThan isGreaterThan) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + greaterThan.key())
-                        .gt(JsonData.of(greaterThan.comparisonValue()))
+                r.field("metadata." + isGreaterThan.key())
+                        .gt(JsonData.of(isGreaterThan.comparisonValue()))
         ))).build();
     }
 
-    private static Query mapGreaterThanOrEqual(GreaterThanOrEqual greaterThanOrEqual) {
+    private static Query mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + greaterThanOrEqual.key())
-                        .gte(JsonData.of(greaterThanOrEqual.comparisonValue()))
+                r.field("metadata." + isGreaterThanOrEqualTo.key())
+                        .gte(JsonData.of(isGreaterThanOrEqualTo.comparisonValue()))
         ))).build();
     }
 
-    private static Query mapLessThan(LessThan lessThan) {
+    private static Query mapLessThan(IsLessThan isLessThan) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + lessThan.key())
-                        .lt(JsonData.of(lessThan.comparisonValue()))
+                r.field("metadata." + isLessThan.key())
+                        .lt(JsonData.of(isLessThan.comparisonValue()))
         ))).build();
     }
 
-    private static Query mapLessThanOrEqual(LessThanOrEqual lessThanOrEqual) {
+    private static Query mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
         return new Query.Builder().bool(b -> b.filter(f -> f.range(r ->
-                r.field("metadata." + lessThanOrEqual.key())
-                        .lte(JsonData.of(lessThanOrEqual.comparisonValue()))
+                r.field("metadata." + isLessThanOrEqualTo.key())
+                        .lte(JsonData.of(isLessThanOrEqualTo.comparisonValue()))
         ))).build();
     }
 
-    public static Query mapIn(In in) {
+    public static Query mapIn(IsIn isIn) {
         return new Query.Builder().bool(b -> b.filter(f -> f.terms(t ->
-                t.field(formatKey(in.key(), in.comparisonValues()))
+                t.field(formatKey(isIn.key(), isIn.comparisonValues()))
                         .terms(terms -> {
-                            List<FieldValue> values = in.comparisonValues().stream()
+                            List<FieldValue> values = isIn.comparisonValues().stream()
                                     .map(it -> FieldValue.of(JsonData.of(it)))
                                     .collect(toList());
                             return terms.value(values);
@@ -99,11 +99,11 @@ class ElasticsearchMetadataFilterMapper {
         ))).build();
     }
 
-    public static Query mapNotIn(NotIn notIn) {
+    public static Query mapNotIn(IsNotIn isNotIn) {
         return new Query.Builder().bool(b -> b.mustNot(mn -> mn.terms(t ->
-                t.field(formatKey(notIn.key(), notIn.comparisonValues()))
+                t.field(formatKey(isNotIn.key(), isNotIn.comparisonValues()))
                         .terms(terms -> {
-                            List<FieldValue> values = notIn.comparisonValues().stream()
+                            List<FieldValue> values = isNotIn.comparisonValues().stream()
                                     .map(it -> FieldValue.of(JsonData.of(it)))
                                     .collect(toList());
                             return terms.value(values);
