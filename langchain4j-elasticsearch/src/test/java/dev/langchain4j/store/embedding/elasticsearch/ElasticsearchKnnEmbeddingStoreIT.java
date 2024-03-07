@@ -6,9 +6,9 @@ package dev.langchain4j.store.embedding.elasticsearch;
  * We try first to reach the local cluster and if not available, then start
  * a container with Testcontainers.
  */
-class ElasticsearchEmbeddingStoreIT extends AbstractElasticsearchEmbeddingStoreIT {
+class ElasticsearchKnnEmbeddingStoreIT extends AbstractElasticsearchEmbeddingStoreIT {
     AbstractElasticsearchEmbeddingStore internalCreateEmbeddingStore() {
-        return ElasticsearchEmbeddingStore.builder()
+        return ElasticsearchKnnEmbeddingStore.builder()
                 .restClient(restClient)
                 .indexName(indexName)
                 .build();
