@@ -212,8 +212,8 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         String test2 = "A philosopher who studied at the École Normale Supérieure";
         Embedding relevantEmbedding2 = embeddingModel.embed(test2).content();
         List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStoreWithSemantic.findRelevant(relevantEmbedding2, test2, 1, 0);
-        assertThat(relevant).hasSize(1);
-        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
+        assertThat(relevant2).hasSize(1);
+        log.info("#1 relevant item: {}", relevant2.get(0).embedded().text());
         assertThat(relevant2.get(0).embedded().text()).contains("Paul-Michel Foucault");
     }
 
