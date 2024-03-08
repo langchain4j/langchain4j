@@ -15,12 +15,12 @@ import static java.util.Collections.unmodifiableList;
  * Represents a message from a user, typically an end user of the application.
  * <br>
  * Depending on the supported modalities (text, image, audio, video, etc.) of the model,
- * user messages can contain either a single text or multiple {@link Content}s,
+ * user messages can contain either a single text (a {@code String}) or multiple {@link Content}s,
  * which can be either {@link TextContent} or {@link ImageContent}.
  * In the future, the list of {@link Content} types will expand to allow for more modalities (e.g. audio, video, etc.).
  * <br>
  * Optionally, user message can contain a {@link #name} of the user.
- * Be aware that not all models support named messages.
+ * Be aware that not all models support names in {@code UserMessage}.
  */
 public class UserMessage implements ChatMessage {
 
