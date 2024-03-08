@@ -61,7 +61,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * an SQL query like {@code SELECT * from documentation WHERE product = 'iPhone'}.
  * <br>
  * Then, {@link SqlFilterParser} will parse the generated SQL into the following {@link Filter} object:
- * {@code key("product").eq("iPhone")}.
+ * {@code metadataKey("product").isEqualTo("iPhone")}.
  * <br>
  * This filter will be applied during similarity search in the {@link EmbeddingStore}.
  * This means that only those {@link TextSegment}s with a {@link Metadata} entry {@code product = "iPhone"}
