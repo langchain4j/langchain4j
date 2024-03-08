@@ -82,7 +82,7 @@ public class ToolSpecifications {
         return removeNulls(OBJECT, schema(type), description);
     }
 
-    private static JsonSchemaProperty schema(Class<?> structured){
+    static JsonSchemaProperty schema(Class<?> structured){
         //TODO: Externalize the depth
         return schema(structured, new HashSet<>(), 3);
     }
@@ -110,7 +110,7 @@ public class ToolSpecifications {
         return from( "schema", properties );
     }
 
-    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited , int level) {
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited , int level) {
 
         Class<?> type = field.getType();
 
@@ -130,7 +130,7 @@ public class ToolSpecifications {
         return removeNulls(OBJECT, schema(type, visited, level - 1), description);
     }
 
-    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
 
         if (type == String.class) {
             return removeNulls(STRING, description);
