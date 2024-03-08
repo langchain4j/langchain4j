@@ -181,8 +181,9 @@ public class FileSystemDocumentLoader {
      *
      * @param directoryPath  The path to the directory with files.
      * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
-     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
-     *                       will load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:**.txt")</code>
+     *                       (please note that glob is <code>**.txt</code>, not <code>*.txt</code>) will load all files
+     *                       from {@code directoryPath} and its subdirectories with a {@code txt} extension.
      *                       When traversing the directory tree, each file path is converted from absolute to relative
      *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
      *                       Thus, {@code pathMatcher} should use relative patterns.
@@ -210,8 +211,9 @@ public class FileSystemDocumentLoader {
      *
      * @param directoryPath  The path to the directory with files.
      * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
-     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
-     *                       will load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:**.txt")</code>
+     *                       (please note that glob is <code>**.txt</code>, not <code>*.txt</code>) will load all files
+     *                       from {@code directoryPath} and its subdirectories with a {@code txt} extension.
      *                       When traversing the directory tree, each file path is converted from absolute to relative
      *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
      *                       Thus, {@code pathMatcher} should use relative patterns.
