@@ -31,9 +31,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
  * <p>
  * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
- * the following orphan {@link ToolExecutionRequest}(s) are also automatically evicted.
+ * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
+ * to avoid problems with some LLM providers (such as OpenAI)
+ * that prohibit sending orphan {@link ToolExecutionResultMessage}(s) in the request.
  * <p>
- * The state of chat memory is stored in {@link ChatMemoryStore}.
+ * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} by default).
  */
 public class TokenWindowChatMemory implements ChatMemory {
 
@@ -100,17 +102,17 @@ public class TokenWindowChatMemory implements ChatMemory {
 
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
             int tokenCountOfEvictedMessage = tokenizer.estimateTokenCountInMessage(evictedMessage);
-            log.trace("Evicting the following message ({} tokens) to comply with the capacity requirements: {}",
+            log.trace("Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
                     tokenCountOfEvictedMessage, evictedMessage);
             currentTokenCount -= tokenCountOfEvictedMessage;
 
             if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
-                    // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding
-                    // AiMessage, so we have to evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
+                    // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,
+                    // so we have to automatically evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
                     ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
-                    log.trace("Evicting orphan ToolExecutionResultMessage: {}", orphanToolExecutionResultMessage);
+                    log.trace("Evicting orphan {}", orphanToolExecutionResultMessage);
                     currentTokenCount -= tokenizer.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
                 }
             }
@@ -146,7 +148,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         /**
          * @param maxTokens The maximum number of tokens to retain.
          *                  Chat memory will retain as many of the most recent messages as can fit into {@code maxTokens}.
-         *                  Messages are indivisible. If a message doesn't fit, it is evicted completely.
+         *                  Messages are indivisible. If an old message doesn't fit, it is evicted completely.
          * @param tokenizer A {@link Tokenizer} responsible for counting tokens in the messages.
          * @return builder
          */
