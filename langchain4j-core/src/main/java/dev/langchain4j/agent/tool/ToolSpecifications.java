@@ -112,8 +112,8 @@ public class ToolSpecifications {
         Map<String,Object> properties = new HashMap<>();
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if (name.equals("__$hits$__") || name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                // Skip coverage instrumentation field.
+            if ( name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                // Skip inner class reference.
                 continue;
             }
             Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited, level);
