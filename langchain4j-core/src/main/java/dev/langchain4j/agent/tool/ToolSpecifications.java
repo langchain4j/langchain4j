@@ -203,7 +203,7 @@ public class ToolSpecifications {
         if (isNumber(clazz)) {
             return items(JsonSchemaProperty.NUMBER);
         }
-        return items(JsonSchemaProperty.OBJECT);
+        return objectItems(schema(clazz));
     }
 
     /**
