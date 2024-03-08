@@ -53,11 +53,11 @@ public class LanguageModelQueryRouter implements QueryRouter {
                     "User query: {{query}}"
     );
 
-    private final ChatLanguageModel chatLanguageModel;
-    private final PromptTemplate promptTemplate;
-    private final String options;
-    private final Map<Integer, ContentRetriever> idToRetriever;
-    private final FallbackStrategy fallbackStrategy;
+    protected final ChatLanguageModel chatLanguageModel;
+    protected final PromptTemplate promptTemplate;
+    protected final String options;
+    protected final Map<Integer, ContentRetriever> idToRetriever;
+    protected final FallbackStrategy fallbackStrategy;
 
     public LanguageModelQueryRouter(ChatLanguageModel chatLanguageModel,
                                     Map<ContentRetriever, String> retrieverToDescription) {
@@ -105,7 +105,7 @@ public class LanguageModelQueryRouter implements QueryRouter {
         }
     }
 
-    private Collection<ContentRetriever> fallback(Query query, Exception e) {
+    protected Collection<ContentRetriever> fallback(Query query, Exception e) {
         switch (fallbackStrategy) {
             case DO_NOT_ROUTE:
                 log.debug("Fallback: query '{}' will not be routed", query.text());

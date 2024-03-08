@@ -51,6 +51,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
     }
 
     @Test
@@ -71,6 +77,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isNull();
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
     }
 
     @Test
@@ -92,6 +104,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embeddingId()).isEqualTo(id);
         assertThat(match.embedding()).isEqualTo(embedding);
         assertThat(match.embedded()).isEqualTo(segment);
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
     }
 
     @Test
@@ -126,6 +144,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
                 .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
         assertThat(secondMatch.embedded()).isNull();
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
     }
 
     @Test
@@ -166,6 +190,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
                 .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
         assertThat(secondMatch.embedded()).isEqualTo(secondSegment);
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
     }
 
     @Test
@@ -192,6 +222,11 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build()).matches()).isEqualTo(relevant);
 
         List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStore().findRelevant(
                 firstEmbedding,
@@ -201,6 +236,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant2).hasSize(2);
         assertThat(relevant2.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(relevant2.get(1).embeddingId()).isEqualTo(secondId);
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score() - 0.01)
+                .build()).matches()).isEqualTo(relevant2);
 
         List<EmbeddingMatch<TextSegment>> relevant3 = embeddingStore().findRelevant(
                 firstEmbedding,
@@ -210,6 +251,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant3).hasSize(2);
         assertThat(relevant3.get(0).embeddingId()).isEqualTo(firstId);
         assertThat(relevant3.get(1).embeddingId()).isEqualTo(secondId);
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score())
+                .build()).matches()).isEqualTo(relevant3);
 
         List<EmbeddingMatch<TextSegment>> relevant4 = embeddingStore().findRelevant(
                 firstEmbedding,
@@ -218,6 +265,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         );
         assertThat(relevant4).hasSize(1);
         assertThat(relevant4.get(0).embeddingId()).isEqualTo(firstId);
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .minScore(secondMatch.score() + 0.01)
+                .build()).matches()).isEqualTo(relevant4);
     }
 
     @Test
@@ -240,6 +293,12 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
                 withPercentage(1)
         );
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(referenceEmbedding)
+                .maxResults(1)
+                .build()).matches()).isEqualTo(relevant);
     }
 
     protected void awaitUntilPersisted() {
