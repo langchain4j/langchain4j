@@ -217,9 +217,9 @@ public class JsonSchemaProperty {
     }
 
     public static JsonSchemaProperty objectItems(JsonSchemaProperty type) {
-        Map<Object,Object> map = new HashMap<>();
-        map.put(type.key, type.value);
+        Map<String,Object> map = new HashMap<>();
         map.put("type", "object");
+        map.put(type.key, type.value);
         return from("items", map);
     }
 }
