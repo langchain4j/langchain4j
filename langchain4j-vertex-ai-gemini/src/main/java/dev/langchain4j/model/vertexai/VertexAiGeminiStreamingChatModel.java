@@ -4,6 +4,7 @@ import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.api.Tool;
+import com.google.cloud.vertexai.generativeai.GenerateContentConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -30,14 +31,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private final GenerativeModel generativeModel;
     private final GenerationConfig generationConfig;
 
-    private String project;
-    private String location;
-    private String modelName;
-    private Float temperature;
-    private Integer maxOutputTokens;
-    private Integer topK;
-    private Float topP;
-
     @Builder
     public VertexAiGeminiStreamingChatModel(String project,
                                             String location,
@@ -46,34 +39,28 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Integer maxOutputTokens,
                                             Integer topK,
                                             Float topP) {
-        try (VertexAI vertexAI = new VertexAI(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"))
-        ) {
-            this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
-            this.project = project;
-            this.location = location;
-            this.modelName = modelName;
-        }
-
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
-            this.temperature = temperature;
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
-            this.maxOutputTokens = maxOutputTokens;
         }
         if (topK != null) {
             generationConfigBuilder.setTopK(topK);
-            this.topK = topK;
         }
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
-            this.topP = topP;
         }
         this.generationConfig = generationConfigBuilder.build();
+
+        try (VertexAI vertexAI = new VertexAI(
+            ensureNotBlank(project, "project"),
+            ensureNotBlank(location, "location"))
+        ) {
+            this.generativeModel = new GenerativeModel(
+                ensureNotBlank(modelName, "modelName"), generationConfig, vertexAI);
+        }
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
@@ -84,42 +71,41 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-
-        List<Content> contents = ContentsMapper.map(messages);
-        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
-
-        try {
-            generativeModel.generateContentStream(contents, generationConfig)
-                    .stream()
-                    .forEach(partialResponse -> {
-                        responseBuilder.append(partialResponse);
-                        handler.onNext(ResponseHandler.getText(partialResponse));
-                    });
-            handler.onComplete(responseBuilder.build());
-        } catch (Exception exception) {
-            handler.onError(exception);
-        }
-    }
-
-    private VertexAiGeminiStreamingChatModel copyModel() {
-        return new VertexAiGeminiStreamingChatModel(
-            this.project, this.location, this.modelName, this.temperature,
-            this.maxOutputTokens, this.topK, this.topP
-        );
+        generate(messages, Collections.emptyList(), handler);
     }
 
     @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-        VertexAiGeminiStreamingChatModel copiedModel = copyModel();
-        copiedModel.generativeModel.setTools(Collections.singletonList(tool));
-        copiedModel.generate(messages, handler);
+        List<Content> contents = ContentsMapper.map(messages);
+
+        GenerateContentConfig.Builder generateContentConfigBuilder = GenerateContentConfig.newBuilder()
+            .setGenerationConfig(generationConfig);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            generateContentConfigBuilder.setTools(Collections.singletonList(tool));
+        }
+        GenerateContentConfig generateContentConfig = generateContentConfigBuilder.build();
+        StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
+
+        try {
+            generativeModel.generateContentStream(contents, generateContentConfig)
+                .stream()
+                .forEach(partialResponse -> {
+                    responseBuilder.append(partialResponse);
+                    handler.onNext(ResponseHandler.getText(partialResponse));
+                });
+            handler.onComplete(responseBuilder.build());
+        } catch (Exception exception) {
+            handler.onError(exception);
+        }
+
     }
 
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         if (toolSpecification == null) {
-            generate(messages, handler);
+            generate(messages, Collections.emptyList(), handler);
         } else {
             generate(messages, Collections.singletonList(toolSpecification), handler);
         }

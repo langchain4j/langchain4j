@@ -73,7 +73,7 @@
                 <artifactId>libraries-bom</artifactId>
                 <scope>import</scope>
                 <type>pom</type>
-                <version>26.33.0</version>
+                <version>26.34.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
