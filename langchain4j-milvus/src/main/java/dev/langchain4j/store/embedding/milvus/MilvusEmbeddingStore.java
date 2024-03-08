@@ -90,6 +90,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
       createCollection(milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
       createIndex(milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
     }
+
+    loadCollectionInMemory(milvusClient, collectionName);
   }
 
   public void dropCollection(String collectionName) {
@@ -126,7 +128,6 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   @Override
   public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
-    loadCollectionInMemory(milvusClient, collectionName); // TODO improve
 
     SearchParam searchParam = buildSearchRequest(
             collectionName,
