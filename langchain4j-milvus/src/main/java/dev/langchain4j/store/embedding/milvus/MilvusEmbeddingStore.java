@@ -12,11 +12,15 @@ import static io.milvus.param.MetricType.COSINE;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
@@ -30,12 +34,17 @@ import java.util.List;
 
 /**
  * Represents an <a href="https://milvus.io/">Milvus</a> index as an embedding store.
- * Does not support storing {@link dev.langchain4j.data.document.Metadata} yet.
+ * <br>
+ * Supports both local and <a href="https://zilliz.com/">managed</a> Milvus instances.
+ * <br>
+ * Supports storing {@link Metadata} and filtering by it using a {@link Filter}
+ * (provided inside an {@link EmbeddingSearchRequest}).
  */
 public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   static final String ID_FIELD_NAME = "id";
   static final String TEXT_FIELD_NAME = "text";
+  static final String METADATA_FIELD_NAME = "metadata";
   static final String VECTOR_FIELD_NAME = "vector";
 
   private final MilvusServiceClient milvusClient;
@@ -83,6 +92,10 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
   }
 
+  public void dropCollection(String collectionName) {
+    CollectionOperationsExecutor.dropCollection(milvusClient, collectionName);
+  }
+
   public String add(Embedding embedding) {
     String id = Utils.randomUUID();
     add(id, embedding);
@@ -111,29 +124,34 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     return ids;
   }
 
-  public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-    loadCollectionInMemory(milvusClient, collectionName);
+  @Override
+  public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+    loadCollectionInMemory(milvusClient, collectionName); // TODO improve
 
-    SearchParam searchRequest = buildSearchRequest(
-      collectionName,
-      referenceEmbedding.vectorAsList(),
-      maxResults,
-      metricType,
-      consistencyLevel
+    SearchParam searchParam = buildSearchRequest(
+            collectionName,
+            embeddingSearchRequest.queryEmbedding().vectorAsList(),
+            embeddingSearchRequest.filter(),
+            embeddingSearchRequest.maxResults(),
+            metricType,
+            consistencyLevel
     );
-    SearchResultsWrapper resultsWrapper = search(milvusClient, searchRequest);
+
+    SearchResultsWrapper resultsWrapper = CollectionOperationsExecutor.search(milvusClient, searchParam);
 
     List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(
-      milvusClient,
-      resultsWrapper,
-      collectionName,
-      consistencyLevel,
-      retrieveEmbeddingsOnSearch
+            milvusClient,
+            resultsWrapper,
+            collectionName,
+            consistencyLevel,
+            retrieveEmbeddingsOnSearch
     );
 
-    return matches.stream()
-            .filter(match -> match.score() >= minScore)
+    List<EmbeddingMatch<TextSegment>> result = matches.stream()
+            .filter(match -> match.score() >= embeddingSearchRequest.minScore())
             .collect(toList());
+
+    return new EmbeddingSearchResult<>(result);
   }
 
   private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
@@ -148,6 +166,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     List<InsertParam.Field> fields = new ArrayList<>();
     fields.add(new InsertParam.Field(ID_FIELD_NAME, ids));
     fields.add(new InsertParam.Field(TEXT_FIELD_NAME, toScalars(textSegments, ids.size())));
+    fields.add(new InsertParam.Field(METADATA_FIELD_NAME, toMetadataJsons(textSegments, ids.size())));
     fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
     insert(milvusClient, collectionName, fields);

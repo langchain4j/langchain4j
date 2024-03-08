@@ -48,8 +48,8 @@ public class CompressingQueryTransformer implements QueryTransformer {
                     "Do not prepend a query with anything!"
     );
 
-    private final PromptTemplate promptTemplate;
-    private final ChatLanguageModel chatLanguageModel;
+    protected final PromptTemplate promptTemplate;
+    protected final ChatLanguageModel chatLanguageModel;
 
     public CompressingQueryTransformer(ChatLanguageModel chatLanguageModel) {
         this(chatLanguageModel, DEFAULT_PROMPT_TEMPLATE);
