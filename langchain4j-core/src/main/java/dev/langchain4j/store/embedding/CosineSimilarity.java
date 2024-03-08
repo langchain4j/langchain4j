@@ -17,6 +17,8 @@ public class CosineSimilarity {
     public static final float EPSILON = 1e-8f;
 
     /**
+     * Use {@link Embedding#cosineSimilarity(Embedding)} instead.
+     * <br>
      * Calculates cosine similarity between two vectors.
      * <p>
      * Cosine similarity measures the cosine of the angle between two vectors, indicating their directional similarity.
@@ -37,6 +39,7 @@ public class CosineSimilarity {
      * @param embeddingB second embedding vector
      * @return cosine similarity in the range [-1..1]
      */
+    @Deprecated
     public static double between(Embedding embeddingA, Embedding embeddingB) {
         ensureNotNull(embeddingA, "embeddingA");
         ensureNotNull(embeddingB, "embeddingB");

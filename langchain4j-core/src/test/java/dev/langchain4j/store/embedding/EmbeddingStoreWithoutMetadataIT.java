@@ -118,10 +118,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embedded()).isNull();
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
-                withPercentage(1)
-        );
+        assertThat(secondMatch.score()).isCloseTo(firstEmbedding.relevanceScore(secondEmbedding), withPercentage(1));
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
                 .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
@@ -158,10 +155,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embedded()).isEqualTo(firstSegment);
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
-                withPercentage(1)
-        );
+        assertThat(secondMatch.score()).isCloseTo(firstEmbedding.relevanceScore(secondEmbedding), withPercentage(1));
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
         assertThat(CosineSimilarity.between(secondMatch.embedding(), secondEmbedding))
                 .isCloseTo(1, withPercentage(0.01)); // TODO return strict check back once Qdrant fixes it
@@ -187,10 +181,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.score()).isCloseTo(1, withPercentage(1));
         assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
-        assertThat(secondMatch.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
-                withPercentage(1)
-        );
+        assertThat(secondMatch.score()).isCloseTo(firstEmbedding.relevanceScore(secondEmbedding), withPercentage(1));
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
 
         List<EmbeddingMatch<TextSegment>> relevant2 = embeddingStore().findRelevant(
@@ -236,10 +227,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(relevant).hasSize(1);
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
-        assertThat(match.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
-                withPercentage(1)
-        );
+        assertThat(match.score()).isCloseTo(embedding.relevanceScore(referenceEmbedding), withPercentage(1));
     }
 
     protected void awaitUntilPersisted() {

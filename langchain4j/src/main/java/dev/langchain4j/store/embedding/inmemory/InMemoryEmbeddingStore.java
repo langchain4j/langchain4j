@@ -3,10 +3,8 @@ package dev.langchain4j.store.embedding.inmemory;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.spi.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodecFactory;
-import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -103,8 +101,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         PriorityQueue<EmbeddingMatch<Embedded>> matches = new PriorityQueue<>(comparator);
 
         for (Entry<Embedded> entry : entries) {
-            double cosineSimilarity = CosineSimilarity.between(entry.embedding, referenceEmbedding);
-            double score = RelevanceScore.fromCosineSimilarity(cosineSimilarity);
+            double score = entry.embedding.relevanceScore(referenceEmbedding);
             if (score >= minScore) {
                 matches.add(new EmbeddingMatch<>(score, entry.id, entry.embedding, entry.embedded));
                 if (matches.size() > maxResults) {
