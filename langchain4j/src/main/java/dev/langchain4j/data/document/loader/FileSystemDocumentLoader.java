@@ -97,7 +97,7 @@ public class FileSystemDocumentLoader {
      *
      * @param directoryPath  The path to the directory with files.
      * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
-     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
+     *                       For example, using {@code FileSystems.getDefault().getPathMatcher("glob:*.txt")}
      *                       will load all files from {@code directoryPath} with a {@code txt} extension.
      *                       When traversing the directory, each file path is converted from absolute to relative
      *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
@@ -126,7 +126,7 @@ public class FileSystemDocumentLoader {
      *
      * @param directoryPath  The path to the directory with files.
      * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
-     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:*.txt")</code>
+     *                       For example, using {@code FileSystems.getDefault().getPathMatcher("glob:*.txt")}
      *                       will load all files from {@code directoryPath} with a {@code txt} extension.
      *                       When traversing the directory, each file path is converted from absolute to relative
      *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
@@ -181,12 +181,14 @@ public class FileSystemDocumentLoader {
      *
      * @param directoryPath  The path to the directory with files.
      * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
-     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:**.txt")</code>
-     *                       (please note that glob is <code>**.txt</code>, not <code>*.txt</code>) will load all files
-     *                       from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       For example, using {@code FileSystems.getDefault().getPathMatcher("glob:**.txt")} will
+     *                       load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
      *                       When traversing the directory tree, each file path is converted from absolute to relative
      *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
      *                       Thus, {@code pathMatcher} should use relative patterns.
+     *                       Please be aware that {@code *.txt} pattern (with a single asterisk) will match files
+     *                       only in the {@code directoryPath}, but it will not match files from the subdirectories
+     *                       of {@code directoryPath}.
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
@@ -211,12 +213,14 @@ public class FileSystemDocumentLoader {
      *
      * @param directoryPath  The path to the directory with files.
      * @param pathMatcher    Only files whose paths match the provided {@link PathMatcher} will be loaded.
-     *                       For example, using <code>FileSystems.getDefault().getPathMatcher("glob:**.txt")</code>
-     *                       (please note that glob is <code>**.txt</code>, not <code>*.txt</code>) will load all files
-     *                       from {@code directoryPath} and its subdirectories with a {@code txt} extension.
+     *                       For example, using {@code FileSystems.getDefault().getPathMatcher("glob:**.txt")} will
+     *                       load all files from {@code directoryPath} and its subdirectories with a {@code txt} extension.
      *                       When traversing the directory tree, each file path is converted from absolute to relative
      *                       (relative to {@code directoryPath}) before being matched by a {@code pathMatcher}.
      *                       Thus, {@code pathMatcher} should use relative patterns.
+     *                       Please be aware that {@code *.txt} pattern (with a single asterisk) will match files
+     *                       only in the {@code directoryPath}, but it will not match files from the subdirectories
+     *                       of {@code directoryPath}.
      * @param documentParser The parser to be used for parsing text from each file.
      * @return list of documents
      * @throws IllegalArgumentException If specified path is not a directory.
