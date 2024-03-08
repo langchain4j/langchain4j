@@ -68,32 +68,16 @@ public class ToolSpecifications {
         P annotation = parameter.getAnnotation(P.class);
         JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
 
-        if (type == String.class) {
-            return removeNulls(STRING, description);
+        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
+
+        if (simpleType != null) {
+            return simpleType;
         }
 
-        if (isBoolean(type)) {
-            return removeNulls(BOOLEAN, description);
-        }
-
-        if (isInteger(type)) {
-            return removeNulls(INTEGER, description);
-        }
-
-        if (isNumber(type)) {
-            return removeNulls(NUMBER, description);
-        }
-
-        if (type.isArray()) {
-            return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
-        }
         if (Collection.class.isAssignableFrom(type)) {
             return removeNulls(ARRAY, arrayTypeFrom(parameter.getParameterizedType()), description);
         }
 
-        if (type.isEnum()) {
-            return removeNulls(STRING, enums((Object[]) type.getEnumConstants()), description);
-        }
 
         return removeNulls(OBJECT, schema(type), description);
     }
@@ -133,6 +117,21 @@ public class ToolSpecifications {
         Description annotation = field.getAnnotation(Description.class);
         JsonSchemaProperty description = annotation == null ? null : description(String.join(" ", annotation.value()));
 
+        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
+
+        if (simpleType != null) {
+            return simpleType;
+        }
+
+        if (Collection.class.isAssignableFrom(type)) {
+            return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0]), description);
+        }
+
+        return removeNulls(OBJECT, schema(type, visited, level - 1), description);
+    }
+
+    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
+
         if (type == String.class) {
             return removeNulls(STRING, description);
         }
@@ -152,16 +151,14 @@ public class ToolSpecifications {
         if (type.isArray()) {
             return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
         }
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0]), description);
-        }
 
         if (type.isEnum()) {
             return removeNulls(STRING, enums((Object[]) type.getEnumConstants()), description);
         }
 
-        return removeNulls(OBJECT, schema(type, visited, level - 1), description);
+        return null;
     }
+
 
     private static JsonSchemaProperty arrayTypeFrom(Type type) {
         if (type instanceof ParameterizedType) {
