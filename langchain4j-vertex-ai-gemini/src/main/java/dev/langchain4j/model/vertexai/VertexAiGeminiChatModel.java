@@ -88,6 +88,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                                    GenerationConfig generationConfig) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.generativeModel.setGenerationConfig(this.generationConfig);
         this.maxRetries = 3;
     }
 
@@ -96,6 +97,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel {
                                    Integer maxRetries) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
+        this.generativeModel.setGenerationConfig(this.generationConfig);
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
