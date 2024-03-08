@@ -120,18 +120,44 @@ class InternalAzureOpenAiHelper {
 
     public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
-            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(message.text(), ""));
+            AiMessage aiMessage = (AiMessage) message;
+            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
         } else if (message instanceof SystemMessage) {
-            return new ChatRequestSystemMessage(message.text());
-        } else {
-            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(message.text());
+            SystemMessage systemMessage = (SystemMessage) message;
+            return new ChatRequestSystemMessage(systemMessage.text());
+        } else if (message instanceof UserMessage) {
+            UserMessage userMessage = (UserMessage) message;
+            ChatRequestUserMessage chatRequestUserMessage;
+            if (userMessage.hasSingleText()) {
+                chatRequestUserMessage = new ChatRequestUserMessage(((TextContent) userMessage.contents().get(0)).text());
+            } else {
+                chatRequestUserMessage = new ChatRequestUserMessage(userMessage.contents().stream()
+                        .map(content -> {
+                            if (content instanceof TextContent) {
+                                String text = ((TextContent) content).text();
+                                return new ChatMessageTextContentItem(text);
+                            } else if (content instanceof ImageContent) {
+                                ImageContent imageContent = (ImageContent) content;
+                                if (imageContent.image().url() == null) {
+                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                }
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
+                                return new ChatMessageImageContentItem(imageUrl);
+                            } else {
+                                throw new IllegalArgumentException("Unsupported content type: " + content.type());
+                            }
+                        })
+                        .collect(toList()));
+            }
             chatRequestUserMessage.setName(nameFrom(message));
             return chatRequestUserMessage;
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + message.type());
         }
     }
 
