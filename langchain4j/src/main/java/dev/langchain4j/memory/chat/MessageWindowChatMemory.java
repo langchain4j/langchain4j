@@ -33,7 +33,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * to avoid problems with some LLM providers (such as OpenAI)
  * that prohibit sending orphan {@link ToolExecutionResultMessage}(s) in the request.
  * <p>
- * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} by default).
+ * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} is used by default).
  */
 public class MessageWindowChatMemory implements ChatMemory {
 
