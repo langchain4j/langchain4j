@@ -12,7 +12,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static java.util.Arrays.asList;
+
 class ToolSpecificationsTest implements WithAssertions {
+
     @Test
     public void test_removeNulls() {
         assertThat(ToolSpecifications.removeNulls(null, JsonSchemaProperty.STRING, null))
@@ -162,7 +166,7 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
-    public void test_toolSpecificationFrom() throws NoSuchMethodException{
+    public void test_toolSpecificationFrom() throws NoSuchMethodException {
         Method method = getF();
 
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
@@ -206,7 +210,7 @@ class ToolSpecificationsTest implements WithAssertions {
                         .containsEntry("arg29", mapOf("type", "object", "schema", mapOf("name" , mapOf("description", "Name of the person", "type", "string"), "active", mapOf( "type","boolean" ))));
 
         assertThat(properties.get("arg28")).containsEntry("type", "string");
-        assertThat(Arrays.equals((Object[]) properties.get("arg28").get("enum"), new E[]{E.A, E.B, E.C})).isTrue();
+        assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
 
         assertThat(ts.parameters().required())
                 .containsExactly("arg0",
@@ -239,7 +243,7 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg27",
                         "arg28",
                         "arg29"
-                    );
+                );
     }
 
     @Test
@@ -257,7 +261,7 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[2]))
                 .containsExactly(JsonSchemaProperty.BOOLEAN,
                         JsonSchemaProperty.description("b2")
-                        );
+                );
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[3]))
                 .containsExactly(JsonSchemaProperty.INTEGER);
@@ -306,11 +310,10 @@ class ToolSpecificationsTest implements WithAssertions {
             assertThat(properties.get(0))
                     .isEqualTo(JsonSchemaProperty.STRING);
 
-            assertThat(Arrays.equals((Object[]) properties.get(1).value(), new E[]{E.A, E.B, E.C})).isTrue();
+            assertThat(properties.get(1).value()).isEqualTo(asList("A", "B", "C"));
         }
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
                 .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from("schema", mapOf( "name", mapOf("description","Name of the person","type","string"), "active", mapOf("type" ,"boolean"))));
     }
-
 }

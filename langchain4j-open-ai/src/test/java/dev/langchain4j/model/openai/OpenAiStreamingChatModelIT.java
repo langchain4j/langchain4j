@@ -153,7 +153,7 @@ class OpenAiStreamingChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isCloseTo(53, tokenizerPrecision);
-        assertThat(tokenUsage.outputTokenCount()).isCloseTo(22, tokenizerPrecision);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(14, tokenizerPrecision);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -194,7 +194,7 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(41, tokenizerPrecision);
+        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(33, tokenizerPrecision);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -247,7 +247,7 @@ class OpenAiStreamingChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isCloseTo(59, tokenizerPrecision);
-        assertThat(tokenUsage.outputTokenCount()).isCloseTo(16, tokenizerPrecision);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(9, tokenizerPrecision);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -288,7 +288,7 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(41, tokenizerPrecision);
+        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(33, tokenizerPrecision);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
