@@ -104,7 +104,7 @@
                 <artifactId>langchain4j-mistral-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
-          
+
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-cohere</artifactId>
@@ -200,6 +200,14 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-mongodb-atlas</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- embeddings -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

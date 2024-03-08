@@ -4,7 +4,8 @@ sidebar_position: 15
 
 # RAG (Retrieval-Augmented Generation)
 
-RAG can be split in 2 parst: ingestion and retrieval.
+[Great tutorial on RAG](https://www.sivalabs.in/langchain4j-retrieval-augmented-generation-tutorial/)
+by [Siva](https://www.sivalabs.in/).
 
 ## Ingestion
 
@@ -16,7 +17,8 @@ RAG can be split in 2 parst: ingestion and retrieval.
 
 ## Advanced Retrieval
 
-More [info here](https://github.com/langchain4j/langchain4j/pull/538).
+More info on advanced RAG can be found [here](https://github.com/langchain4j/langchain4j/pull/538).
+
 [![](/img/advanced-rag.png)](/tutorials/rag)
 
 ## Examples
