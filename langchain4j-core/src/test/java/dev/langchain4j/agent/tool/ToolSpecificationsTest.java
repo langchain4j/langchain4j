@@ -1,7 +1,5 @@
 package dev.langchain4j.agent.tool;
 
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +9,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static java.util.Arrays.asList;
+
 class ToolSpecificationsTest implements WithAssertions {
+
     @Test
     public void test_removeNulls() {
         assertThat(ToolSpecifications.removeNulls(null, JsonSchemaProperty.STRING, null))
@@ -57,7 +59,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 Collection p27,
                 E p28,
                 Object p29
-                ) {
+        ) {
             return 42;
         }
 
@@ -138,7 +140,7 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
-    public void test_toolSpecificationFrom() throws NoSuchMethodException{
+    public void test_toolSpecificationFrom() throws NoSuchMethodException {
         Method method = getF();
 
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
@@ -152,37 +154,37 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(properties).hasSize(30);
         assertThat(properties)
                 .containsEntry("arg0", mapOf("type", "string", "description", "foo"))
-                        .containsEntry("arg1", mapOf("type", "boolean"))
-                        .containsEntry("arg2", mapOf("type", "boolean", "description", "b2"))
-                        .containsEntry("arg3", mapOf("type", "integer"))
-                        .containsEntry("arg4", mapOf("type", "integer"))
-                        .containsEntry("arg5", mapOf("type", "integer"))
-                        .containsEntry("arg6", mapOf("type", "integer"))
-                        .containsEntry("arg7", mapOf("type", "integer"))
-                        .containsEntry("arg8", mapOf("type", "integer"))
-                        .containsEntry("arg9", mapOf("type", "integer"))
-                        .containsEntry("arg10", mapOf("type", "integer"))
-                        .containsEntry("arg11", mapOf("type", "integer", "description", "biggy"))
-                        .containsEntry("arg12", mapOf("type", "number"))
-                        .containsEntry("arg13", mapOf("type", "number"))
-                        .containsEntry("arg14", mapOf("type", "number"))
-                        .containsEntry("arg15", mapOf("type", "number"))
-                        .containsEntry("arg16", mapOf("type", "number", "description", "bigger"))
-                        .containsEntry("arg17", mapOf("type", "array", "items", mapOf("type", "string")))
-                        .containsEntry("arg18", mapOf("type", "array", "items", mapOf("type", "integer")))
-                        .containsEntry("arg19", mapOf("type", "array", "items", mapOf("type", "boolean")))
-                        .containsEntry("arg20", mapOf("type", "array", "items", mapOf("type", "integer")))
-                        .containsEntry("arg21", mapOf("type", "array", "items", mapOf("type", "boolean")))
-                        .containsEntry("arg22", mapOf("type", "array", "items", mapOf("type", "integer")))
-                        .containsEntry("arg23", mapOf("type", "array", "items", mapOf("type", "number")))
-                        .containsEntry("arg24", mapOf("type", "array", "items", mapOf("type", "string")))
-                        .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg29", mapOf("type", "object"));
+                .containsEntry("arg1", mapOf("type", "boolean"))
+                .containsEntry("arg2", mapOf("type", "boolean", "description", "b2"))
+                .containsEntry("arg3", mapOf("type", "integer"))
+                .containsEntry("arg4", mapOf("type", "integer"))
+                .containsEntry("arg5", mapOf("type", "integer"))
+                .containsEntry("arg6", mapOf("type", "integer"))
+                .containsEntry("arg7", mapOf("type", "integer"))
+                .containsEntry("arg8", mapOf("type", "integer"))
+                .containsEntry("arg9", mapOf("type", "integer"))
+                .containsEntry("arg10", mapOf("type", "integer"))
+                .containsEntry("arg11", mapOf("type", "integer", "description", "biggy"))
+                .containsEntry("arg12", mapOf("type", "number"))
+                .containsEntry("arg13", mapOf("type", "number"))
+                .containsEntry("arg14", mapOf("type", "number"))
+                .containsEntry("arg15", mapOf("type", "number"))
+                .containsEntry("arg16", mapOf("type", "number", "description", "bigger"))
+                .containsEntry("arg17", mapOf("type", "array", "items", mapOf("type", "string")))
+                .containsEntry("arg18", mapOf("type", "array", "items", mapOf("type", "integer")))
+                .containsEntry("arg19", mapOf("type", "array", "items", mapOf("type", "boolean")))
+                .containsEntry("arg20", mapOf("type", "array", "items", mapOf("type", "integer")))
+                .containsEntry("arg21", mapOf("type", "array", "items", mapOf("type", "boolean")))
+                .containsEntry("arg22", mapOf("type", "array", "items", mapOf("type", "integer")))
+                .containsEntry("arg23", mapOf("type", "array", "items", mapOf("type", "number")))
+                .containsEntry("arg24", mapOf("type", "array", "items", mapOf("type", "string")))
+                .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
+                .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
+                .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
+                .containsEntry("arg29", mapOf("type", "object"));
 
         assertThat(properties.get("arg28")).containsEntry("type", "string");
-        assertThat(Arrays.equals((Object[]) properties.get("arg28").get("enum"), new E[]{E.A, E.B, E.C})).isTrue();
+        assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
 
         assertThat(ts.parameters().required())
                 .containsExactly("arg0",
@@ -215,7 +217,7 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg27",
                         "arg28",
                         "arg29"
-                    );
+                );
     }
 
     @Test
@@ -233,7 +235,7 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[2]))
                 .containsExactly(JsonSchemaProperty.BOOLEAN,
                         JsonSchemaProperty.description("b2")
-                        );
+                );
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[3]))
                 .containsExactly(JsonSchemaProperty.INTEGER);
@@ -282,11 +284,10 @@ class ToolSpecificationsTest implements WithAssertions {
             assertThat(properties.get(0))
                     .isEqualTo(JsonSchemaProperty.STRING);
 
-            assertThat(Arrays.equals((Object[]) properties.get(1).value(), new E[]{E.A, E.B, E.C})).isTrue();
+            assertThat(properties.get(1).value()).isEqualTo(asList("A", "B", "C"));
         }
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
                 .containsExactly(JsonSchemaProperty.OBJECT);
     }
-
 }
