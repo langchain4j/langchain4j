@@ -104,7 +104,7 @@
                 <artifactId>langchain4j-mistral-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
-          
+
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-cohere</artifactId>
@@ -203,6 +203,14 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- embeddings -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- code execution engines -->
 
             <dependency>
@@ -251,6 +259,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- embedding store filter parsers -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>

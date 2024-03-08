@@ -58,9 +58,7 @@ Documentation can be found [here](https://docs.langchain4j.dev).
 Tutorials can be found [here](https://docs.langchain4j.dev/tutorials).
 
 ## Useful Materials
-- [Intro to Large Language Models](https://www.youtube.com/watch?v=zjkBMFhNj_g) by [Andrej Karpathy](https://www.youtube.com/@AndrejKarpathy)
-- [Short Courses](https://www.deeplearning.ai/short-courses/) by [DeepLearning.AI](https://www.deeplearning.ai/)
-- [An LLM Agent Reference Architecture](https://www.datastax.com/resources/whitepaper/an-llm-agent-reference-architecture-demystifying-llm-based-systems) by [DataStax](https://www.datastax.com/)
+[Useful Materials](https://docs.langchain4j.dev/useful-materials)
 
 ## Library Structure
 LangChain4j features a modular design, comprising:
@@ -180,7 +178,7 @@ Currently supported by [OpenAI](https://github.com/langchain4j/langchain4j-examp
 2 July:
 
 - [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
-- Added support for HuggingFace models
+- Added support for Hugging Face models
 
 1 July:
 
@@ -341,7 +339,7 @@ Please note that the library is in active development and:
     - [Chats](https://cloud.google.com/vertex-ai/docs/generative-ai/chat/chat-prompts)
     - [Completions](https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview)
     - [Embeddings](https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings)
-- Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
+- Integration with [Hugging Face Inference API](https://huggingface.co/docs/api-inference/index) for:
     - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
@@ -451,7 +449,7 @@ Here are some best practices for using LLMs:
   data or input from instructions.
 
 ## How to get an API key
-You will need an API key from OpenAI (paid) or HuggingFace (free) to use LLMs hosted by them.
+You will need an API key from OpenAI (paid) or Hugging Face (free) to use LLMs hosted by them.
 
 We recommend using OpenAI LLMs (`gpt-3.5-turbo` and `gpt-4`) as they are by far the most capable and are reasonably priced.
 
@@ -459,10 +457,10 @@ It will cost approximately $0.01 to generate 10 pages (A4 format) of text with `
 
 [How to get OpenAI API key](https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/).
 
-For embeddings, we recommend using one of the models from the [HuggingFace MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
+For embeddings, we recommend using one of the models from the [Hugging Face MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
 You'll have to find the best one for your specific use case.
 
-Here's how to get a HuggingFace API key:
+Here's how to get a Hugging Face API key:
 - Create an account on https://huggingface.co
 - Go to https://huggingface.co/settings/tokens
 - Generate a new access token

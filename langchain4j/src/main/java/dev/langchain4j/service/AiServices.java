@@ -72,7 +72,9 @@ import static java.util.stream.Collectors.toList;
  * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
  * - many default Java types: {@code Date}, {@code LocalDateTime}, {@code BigDecimal}, etc., if you want to use the LLM for data extraction
- * - any custom POJO, if you want to use the LLM for data extraction
+ * - any custom POJO, if you want to use the LLM for data extraction.
+ * For POJOs, it is advisable to use the "json mode" feature if the LLM provider supports it. For OpenAI, this can be enabled by calling {@code responseFormat("json_object")} during model construction.
+ *
  * </pre>
  * <p>
  * Let's see how we can classify the sentiment of a text:
@@ -115,6 +117,10 @@ public abstract class AiServices<T> {
     protected static final String DEFAULT = "default";
 
     protected final AiServiceContext context;
+
+    private boolean retrieverSet = false;
+    private boolean contentRetrieverSet = false;
+    private boolean retrievalAugmentorSet = false;
 
     protected AiServices(AiServiceContext context) {
         this.context = context;
@@ -309,7 +315,11 @@ public abstract class AiServices<T> {
      */
     @Deprecated
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
+        if(contentRetrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
         if (retriever != null) {
+            retrieverSet = true;
             return contentRetriever(retriever.toContentRetriever());
         }
         return this;
@@ -329,6 +339,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
+        if(retrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        contentRetrieverSet = true;
         context.retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .contentRetriever(ensureNotNull(contentRetriever, "contentRetriever"))
                 .build();
@@ -342,6 +356,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
+        if(retrieverSet || contentRetrieverSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
         return this;
     }
