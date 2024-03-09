@@ -69,6 +69,11 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     private final Integer maxRetries;
     private final Integer maxSegmentsPerBatch;
     private final Integer maxTokensPerBatch;
+    private final TaskType taskType;
+
+    public enum TaskType {
+        RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION, CLUSTERING
+    }
 
     public VertexAiEmbeddingModel(String endpoint,
                                   String project,
@@ -77,7 +82,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                                   String modelName,
                                   Integer maxRetries,
                                   Integer maxSegmentsPerBatch,
-                                  Integer maxTokensPerBatch) {
+                                  Integer maxTokensPerBatch,
+                                  TaskType taskType) {
 
         this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
             ensureNotBlank(project, "project"),
@@ -104,6 +110,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             getOrDefault(maxSegmentsPerBatch, DEFAULT_MAX_SEGMENTS_PER_BATCH), "maxSegmentsPerBatch");
         this.maxTokensPerBatch = ensureGreaterThanZero(
             getOrDefault(maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH), "maxTokensPerBatch");
+
+        this.taskType = taskType;
     }
 
     @Override
@@ -122,8 +130,16 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
 
                 List<Value> instances = new ArrayList<>();
                 for (TextSegment segment : batch) {
+                    VertexAiEmbeddingInstance embeddingInstance = new VertexAiEmbeddingInstance(segment.text());
+                    // Title metadata is used for calculating embeddings for document retrieval
+                    embeddingInstance.setTitle(segment.metadata("title"));
+                    // Specify the type of embedding task when specified
+                    if (this.taskType != null) {
+                        embeddingInstance.setTaskType(taskType);
+                    }
+
                     Value.Builder instanceBuilder = Value.newBuilder();
-                    JsonFormat.parser().merge(toJson(new VertexAiEmbeddingInstance(segment.text())), instanceBuilder);
+                    JsonFormat.parser().merge(toJson(embeddingInstance), instanceBuilder);
                     instances.add(instanceBuilder.build());
                 }
 
@@ -270,6 +286,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         private Integer maxRetries;
         private Integer maxSegmentsPerBatch;
         private Integer maxTokensPerBatch;
+        private TaskType taskType;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -311,6 +328,11 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             return this;
         }
 
+        public Builder taskType(TaskType taskType) {
+            this.taskType = taskType;
+            return this;
+        }
+
         public VertexAiEmbeddingModel build() {
             return new VertexAiEmbeddingModel(
                     endpoint,
@@ -320,7 +342,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                     modelName,
                     maxRetries,
                     maxSegmentsPerBatch,
-                    maxTokensPerBatch);
+                    maxTokensPerBatch,
+                    taskType);
         }
     }
 }
