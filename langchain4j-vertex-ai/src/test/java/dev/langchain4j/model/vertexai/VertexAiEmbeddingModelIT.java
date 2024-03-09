@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.*;
 
-import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.model.vertexai.VertexAiEmbeddingModel.TaskType.*;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
