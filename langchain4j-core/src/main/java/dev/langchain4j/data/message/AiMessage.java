@@ -27,7 +27,7 @@ public class AiMessage implements ChatMessage {
      * @param text the text of the message.
      */
     public AiMessage(String text) {
-        this.text = ensureNotBlank(text, "text");
+        this.text = ensureNotBlank("text", "text");
         this.toolExecutionRequests = null;
     }
 
