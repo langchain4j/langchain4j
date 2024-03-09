@@ -39,7 +39,7 @@ class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
                 .authentication()
                 .username(DEFAULT_USERNAME)
                 .password(DEFAULT_PASSWORD);
-        // jut to avoid docker 4 mac issues, don't use in production
+        // just to avoid docker 4 mac issues, don't use in production
         builder.clientIntelligence(ClientIntelligence.BASIC);
 
         InfinispanEmbeddingStore embeddingStoreInf = InfinispanEmbeddingStore.builder()
