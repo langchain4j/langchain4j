@@ -76,7 +76,7 @@ class AmazonS3DocumentLoaderIT {
 
         // then
         assertThat(document.text()).isEqualTo(TEST_CONTENT);
-        assertThat(document.metadata().asMap().size()).isEqualTo(1);
+        assertThat(document.metadata().asMap()).hasSize(1);
         assertThat(document.metadata("source")).isEqualTo("s3://test-bucket/test-file.txt");
     }
 

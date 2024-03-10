@@ -1,6 +1,6 @@
 package dev.langchain4j.rag;
 
-import dev.langchain4j.MightChangeInTheFuture;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.query.Metadata;
 
@@ -13,7 +13,7 @@ import dev.langchain4j.rag.query.Metadata;
  *
  * @see DefaultRetrievalAugmentor
  */
-@MightChangeInTheFuture("This is an experimental feature. Time will tell if this is the right abstraction.")
+@Experimental
 public interface RetrievalAugmentor {
 
     /**
