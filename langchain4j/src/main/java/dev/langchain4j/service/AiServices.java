@@ -118,6 +118,10 @@ public abstract class AiServices<T> {
 
     protected final AiServiceContext context;
 
+    private boolean retrieverSet = false;
+    private boolean contentRetrieverSet = false;
+    private boolean retrievalAugmentorSet = false;
+
     protected AiServices(AiServiceContext context) {
         this.context = context;
     }
@@ -311,7 +315,11 @@ public abstract class AiServices<T> {
      */
     @Deprecated
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
+        if(contentRetrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
         if (retriever != null) {
+            retrieverSet = true;
             return contentRetriever(retriever.toContentRetriever());
         }
         return this;
@@ -331,6 +339,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
+        if(retrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        contentRetrieverSet = true;
         context.retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .contentRetriever(ensureNotNull(contentRetriever, "contentRetriever"))
                 .build();
@@ -344,6 +356,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
+        if(retrieverSet || contentRetrieverSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
         return this;
     }

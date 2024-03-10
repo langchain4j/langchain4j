@@ -265,6 +265,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- embedding store filter parsers -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>

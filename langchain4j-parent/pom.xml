@@ -18,15 +18,15 @@
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
-        <openai4j.version>0.13.0</openai4j.version>
+        <openai4j.version>0.15.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.7</azure-ai-openai.version>
         <azure-ai-search.version>11.6.2</azure-ai-search.version>
         <azure.storage-blob.version>12.25.2</azure.storage-blob.version>
         <azure.storage-common.version>12.24.2</azure.storage-common.version>
-        <azure.identity.version>1.11.2</azure.identity.version>
+        <azure.identity.version>1.11.3</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
-        <jtokkit.version>0.6.1</jtokkit.version>
+        <jtokkit.version>1.0.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
@@ -125,6 +125,12 @@
             </dependency>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>retrofit</artifactId>
                 <version>${retrofit.version}</version>
@@ -139,6 +145,11 @@
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
+                <version>${okhttp.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-sse</artifactId>
                 <version>${okhttp.version}</version>
             </dependency>
 

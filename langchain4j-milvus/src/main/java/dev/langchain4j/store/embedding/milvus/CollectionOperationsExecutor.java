@@ -18,12 +18,13 @@ import io.milvus.param.index.CreateIndexParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 
+import java.lang.String;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
 import static dev.langchain4j.store.embedding.milvus.MilvusEmbeddingStore.*;
-import static io.milvus.grpc.DataType.FloatVector;
-import static io.milvus.grpc.DataType.VarChar;
+import static io.milvus.grpc.DataType.*;
+import static java.lang.String.format;
 
 class CollectionOperationsExecutor {
 
@@ -57,6 +58,10 @@ class CollectionOperationsExecutor {
                         .withMaxLength(65535)
                         .build())
                 .addFieldType(FieldType.newBuilder()
+                        .withName(METADATA_FIELD_NAME)
+                        .withDataType(JSON)
+                        .build())
+                .addFieldType(FieldType.newBuilder()
                         .withName(VECTOR_FIELD_NAME)
                         .withDataType(FloatVector)
                         .withDimension(dimension)
@@ -64,6 +69,12 @@ class CollectionOperationsExecutor {
                 .build();
 
         R<RpcStatus> response = milvusClient.createCollection(request);
+        checkResponseNotFailed(response);
+    }
+
+    static void dropCollection(MilvusServiceClient milvusClient, String collectionName) {
+        DropCollectionParam request = buildDropCollectionRequest(collectionName);
+        R<RpcStatus> response = milvusClient.dropCollection(request);
         checkResponseNotFailed(response);
     }
 
@@ -117,7 +128,7 @@ class CollectionOperationsExecutor {
         if (response == null) {
             throw new RequestToMilvusFailedException("Request to Milvus DB failed. Response is null");
         } else if (response.getStatus() != R.Status.Success.getCode()) {
-            String message = String.format("Request to Milvus DB failed. Response status:'%d'.%n", response.getStatus());
+            String message = format("Request to Milvus DB failed. Response status:'%d'.%n", response.getStatus());
             throw new RequestToMilvusFailedException(message, response.getException());
         }
     }
