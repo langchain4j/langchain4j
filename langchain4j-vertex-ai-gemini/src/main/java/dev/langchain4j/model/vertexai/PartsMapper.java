@@ -1,6 +1,10 @@
 package dev.langchain4j.model.vertexai;
 
+import com.google.cloud.vertexai.api.FunctionResponse;
 import com.google.cloud.vertexai.api.Part;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.Struct;
+import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 
@@ -10,7 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.cloud.vertexai.generativeai.preview.PartMaker.fromMimeTypeAndData;
+import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -36,14 +40,45 @@ class PartsMapper {
     }
 
     static List<Part> map(ChatMessage message) {
+        if (message instanceof AiMessage) {
+            AiMessage aiMessage = (AiMessage) message;
+
+            if (aiMessage.hasToolExecutionRequests()) {
+                return singletonList(Part.newBuilder()
+                    .setFunctionCall(
+                        //TODO: handling one function call, but can there be several?
+
+                        FunctionCallHelper.fromToolExecutionRequest(aiMessage.toolExecutionRequests().get(0))
+                    )
+                    .build());
+            } else {
+                return singletonList(Part.newBuilder()
+                    .setText(aiMessage.text())
+                    .build());
+            }
+        } else
         if (message instanceof UserMessage) {
             return ((UserMessage) message).contents().stream()
-                    .map(PartsMapper::map)
-                    .collect(toList());
-        } else if (message instanceof AiMessage) {
+                .map(PartsMapper::map)
+                .collect(toList());
+        } else if (message instanceof ToolExecutionResultMessage) {
+            ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
+            String functionResponseText = toolExecutionResultMessage.text();
+
+            Struct.Builder structBuilder = Struct.newBuilder();
+            try {
+                JsonFormat.parser().merge(functionResponseText, structBuilder);
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
+            }
+            Struct responseStruct = structBuilder.build();
+
             return singletonList(Part.newBuilder()
-                    .setText(((AiMessage) message).text())
-                    .build());
+                .setFunctionResponse(FunctionResponse.newBuilder()
+                    .setName(toolExecutionResultMessage.toolName())
+                    .setResponse(responseStruct)
+                    .build())
+                .build());
         } else {
             throw illegalArgument(message.type() + " message is not supported by Gemini");
         }

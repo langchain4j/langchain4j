@@ -2,16 +2,24 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import dev.langchain4j.data.message.*;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.util.Base64;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -24,16 +32,16 @@ class VertexAiGeminiChatModelIT {
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     ChatLanguageModel model = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro")
-            .build();
+        .project(System.getenv("GCP_PROJECT_ID"))
+        .location(System.getenv("GCP_LOCATION"))
+        .modelName("gemini-pro")
+        .build();
 
     ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro-vision")
-            .build();
+        .project(System.getenv("GCP_PROJECT_ID"))
+        .location(System.getenv("GCP_LOCATION"))
+        .modelName("gemini-pro-vision")
+        .build();
 
     @Test
     void should_generate_response() {
@@ -52,7 +60,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(7);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
@@ -66,8 +74,8 @@ class VertexAiGeminiChatModelIT {
 
         // when-then
         assertThatThrownBy(() -> model.generate(systemMessage, userMessage))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("SystemMessage is currently not supported by Gemini");
+            .isExactlyInstanceOf(IllegalArgumentException.class)
+            .hasMessage("SystemMessage is currently not supported by Gemini");
     }
 
     @Test
@@ -75,11 +83,11 @@ class VertexAiGeminiChatModelIT {
 
         // given
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
-                .project(System.getenv("GCP_PROJECT_ID"))
-                .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
-                .maxOutputTokens(1)
-                .build();
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-pro")
+            .maxOutputTokens(1)
+            .build();
 
         UserMessage userMessage = UserMessage.from("Tell me a joke");
 
@@ -94,13 +102,13 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(4);
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(1);
         assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+            .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     @Test
-    void should_allow_custom_generativeModel_and_generationConfig() throws IOException {
+    void should_allow_custom_generativeModel_and_generationConfig() {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
@@ -124,8 +132,8 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                TextContent.from("What do you see? Reply in one word.")
+            ImageContent.from(CAT_IMAGE_URL),
+            TextContent.from("What do you see? Reply in one word.")
         );
 
         // when
@@ -140,8 +148,8 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from("gs://langchain4j-test/cat.png"),
-                TextContent.from("What do you see? Reply in one word.")
+            ImageContent.from("gs://langchain4j-test/cat.png"),
+            TextContent.from("What do you see? Reply in one word.")
         );
 
         // when
@@ -157,8 +165,8 @@ class VertexAiGeminiChatModelIT {
         // given
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
-                TextContent.from("What do you see? Reply in one word.")
+            ImageContent.from(base64Data, "image/png"),
+            TextContent.from("What do you see? Reply in one word.")
         );
 
         // when
@@ -173,9 +181,9 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from(DICE_IMAGE_URL),
-                TextContent.from("What do you see? Reply with one word per image.")
+            ImageContent.from(CAT_IMAGE_URL),
+            ImageContent.from(DICE_IMAGE_URL),
+            TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
@@ -183,8 +191,8 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+            .containsIgnoringCase("cat")
+            .containsIgnoringCase("dice");
     }
 
     @Test
@@ -192,9 +200,9 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from("gs://langchain4j-test/cat.png"),
-                ImageContent.from("gs://langchain4j-test/dice.png"),
-                TextContent.from("What do you see? Reply with one word per image.")
+            ImageContent.from("gs://langchain4j-test/cat.png"),
+            ImageContent.from("gs://langchain4j-test/dice.png"),
+            TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
@@ -202,8 +210,8 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+            .containsIgnoringCase("cat")
+            .containsIgnoringCase("dice");
     }
 
     @Test
@@ -213,9 +221,9 @@ class VertexAiGeminiChatModelIT {
         String catBase64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         String diceBase64Data = Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL));
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(catBase64Data, "image/png"),
-                ImageContent.from(diceBase64Data, "image/png"),
-                TextContent.from("What do you see? Reply with one word per image.")
+            ImageContent.from(catBase64Data, "image/png"),
+            ImageContent.from(diceBase64Data, "image/png"),
+            TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
@@ -223,8 +231,8 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
+            .containsIgnoringCase("cat")
+            .containsIgnoringCase("dice");
     }
 
     @Test
@@ -232,10 +240,10 @@ class VertexAiGeminiChatModelIT {
 
         // given
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(CAT_IMAGE_URL),
-                ImageContent.from("gs://langchain4j-test/dog.jpg"),
-                ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
-                TextContent.from("What do you see? Reply with one word per image.")
+            ImageContent.from(CAT_IMAGE_URL),
+            ImageContent.from("gs://langchain4j-test/dog.jpg"),
+            ImageContent.from(Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL)), "image/png"),
+            TextContent.from("What do you see? Reply with one word per image.")
         );
 
         // when
@@ -243,8 +251,55 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dog")
-                .containsIgnoringCase("dice");
+            .containsIgnoringCase("cat")
+            .containsIgnoringCase("dog")
+            .containsIgnoringCase("dice");
+    }
+
+    @Test
+    void should_accept_tools_for_function_calling() {
+
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-pro")
+            .build();
+
+        ToolSpecification weatherToolSpec = ToolSpecification.builder()
+            .name("getWeatherForecast")
+            .description("Get the weather forecast for a location")
+            .addParameter("location", JsonSchemaProperty.STRING,
+                JsonSchemaProperty.description("the location to get the weather forecast for"))
+            .build();
+
+        List<ChatMessage> allMessages = new ArrayList<>();
+
+        UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
+        System.out.println("Question: " + weatherQuestion.text());
+        allMessages.add(weatherQuestion);
+
+        // when
+        Response<AiMessage> messageResponse = model.generate(allMessages, weatherToolSpec);
+
+        // then
+        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+        ToolExecutionRequest toolExecutionRequest = messageResponse.content().toolExecutionRequests().get(0);
+
+        assertThat(toolExecutionRequest.arguments()).contains("Paris");
+        assertThat(toolExecutionRequest.name()).isEqualTo("getWeatherForecast");
+
+        allMessages.add(messageResponse.content());
+
+        // when (feeding the function return value back)
+        ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(toolExecutionRequest,
+            "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
+        allMessages.add(toolExecResMsg);
+
+        Response<AiMessage> weatherResponse = model.generate(allMessages);
+
+        // then
+        System.out.println("Answer: " + weatherResponse.content().text());
+        assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 }
