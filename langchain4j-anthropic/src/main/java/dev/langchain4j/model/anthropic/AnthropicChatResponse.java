@@ -7,7 +7,7 @@ import java.util.List;
 
 @Getter
 @Builder
-public class AnthropicChatResponse {
+class AnthropicChatResponse {
 
     private List<Content> content;
     private String id;
@@ -20,14 +20,14 @@ public class AnthropicChatResponse {
 
     @Getter
     @Builder
-    public static class Content {
+    static class Content {
         private String text;
         private String type;
     }
 
     @Getter
     @Builder
-    public static class Usage {
+    static class Usage {
         private int inputTokens;
         private int outputTokens;
     }

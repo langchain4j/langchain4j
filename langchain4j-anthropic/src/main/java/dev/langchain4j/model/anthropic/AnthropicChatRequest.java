@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AnthropicChatRequest {
+class AnthropicChatRequest {
 
     private String model;
     private int maxTokens;
@@ -19,5 +19,4 @@ public class AnthropicChatRequest {
     private Double topP;
     private List<AnthropicChatMessage> messages;
     private boolean stream;
-
 }

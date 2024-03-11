@@ -6,12 +6,11 @@ import retrofit2.http.Header;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
-public interface AnthropicApi {
+interface AnthropicApi {
 
     @POST("messages")
     @Headers({"content-type: application/json"})
     Call<AnthropicChatResponse> chatCompletion(@Header("anthropic-version") String anthropicVersion,
                                                @Header("x-api-key") String apiKey,
                                                @Body AnthropicChatRequest request);
-
 }

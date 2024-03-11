@@ -5,11 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+// TODO check all annotations, everywhere
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class AnthropicChatMessage {
+class AnthropicChatMessage {
+
     private AnthropicRole role;
     private String content;
 }

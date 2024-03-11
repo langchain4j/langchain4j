@@ -21,7 +21,7 @@ import static dev.langchain4j.model.anthropic.AnthropicHelper.tokenUsageFrom;
 import static java.util.stream.Collectors.joining;
 
 /**
- * Represents an Anthropic Chat Model with a chat completion interface.
+ * Represents an Anthropic language model with a chat completion interface.
  * You can find description of parameters <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
  */
 public class AnthropicChatModel implements ChatLanguageModel {

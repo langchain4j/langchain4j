@@ -13,7 +13,7 @@ import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
-public class AnthropicClient {
+class AnthropicClient {
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
@@ -26,10 +26,10 @@ public class AnthropicClient {
     private final String version;
 
     @Builder
-    public AnthropicClient(String baseUrl,
-                           String apiKey,
-                           Duration timeout,
-                           String version) {
+    AnthropicClient(String baseUrl,
+                    String apiKey,
+                    Duration timeout,
+                    String version) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)

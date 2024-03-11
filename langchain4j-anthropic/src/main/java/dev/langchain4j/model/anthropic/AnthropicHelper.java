@@ -14,7 +14,7 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
-public class AnthropicHelper {
+class AnthropicHelper {
 
     static final String ANTHROPIC_API_URL = "https://api.anthropic.com/v1/";
 
