@@ -91,12 +91,12 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     public static class AnthropicChatModelBuilder {
 
-        AnthropicChatModelBuilder modelName(String modelName) {
+        public AnthropicChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
             return this;
         }
 
-        AnthropicChatModelBuilder modelName(AnthropicChatModelName modelName) {
+        public AnthropicChatModelBuilder modelName(AnthropicChatModelName modelName) {
             this.modelName = modelName.toString();
             return this;
         }
