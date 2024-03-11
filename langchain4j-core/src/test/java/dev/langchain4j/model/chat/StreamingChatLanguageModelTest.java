@@ -8,6 +8,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -87,5 +88,17 @@ class StreamingChatLanguageModelTest implements WithAssertions {
             assertThat(response.tokenUsage()).isNull();
             assertThat(response.finishReason()).isNull();
         }
+
+        {
+            List<ChatMessage> messages = new ArrayList<>();
+            messages.add(new UserMessage("Hello"));
+            messages.add(new AiMessage("Hi"));
+            messages.add(new UserMessage("How are you?"));
+
+            StepVerifier.create(model.generate(messages))
+                    .expectNext(new AiMessage("HOW ARE YOU?"))
+                    .verifyComplete();
+        }
+
     }
 }

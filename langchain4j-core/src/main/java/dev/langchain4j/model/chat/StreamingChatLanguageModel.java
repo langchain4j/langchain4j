@@ -5,6 +5,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.output.Response;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -34,6 +36,26 @@ public interface StreamingChatLanguageModel {
      * @param handler  The handler for streaming the response.
      */
     void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler);
+
+    default Flux<AiMessage> generate(List<ChatMessage> messages) {
+        return Flux.create(sink -> generate(messages, new StreamingResponseHandler<AiMessage>() {
+            @Override
+            public void onNext(String token) {
+                sink.next(AiMessage.from(token));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                sink.error(error);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                sink.next(response.content());
+                sink.complete();
+            }
+        }));
+    }
 
     /**
      * Generates a response from the model based on a list of messages and a list of tool specifications.
