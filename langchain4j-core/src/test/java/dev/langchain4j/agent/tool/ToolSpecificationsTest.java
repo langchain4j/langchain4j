@@ -9,7 +9,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+import static java.util.Arrays.asList;
+
 class ToolSpecificationsTest implements WithAssertions {
+
     @Test
     public void test_removeNulls() {
         assertThat(ToolSpecifications.removeNulls(null, JsonSchemaProperty.STRING, null))
@@ -43,11 +47,19 @@ class ToolSpecificationsTest implements WithAssertions {
                 Double p15,
                 @P("bigger") BigDecimal p16,
                 String[] p17,
-                List<String> p18,
-                Set<String> p19,
-                E p20,
-                Object p21
-                ) {
+                Integer[] p18,
+                Boolean[] p19,
+                int[] p20,
+                boolean[] p21,
+                List<Integer> p22,
+                Set<BigDecimal> p23,
+                Collection<String> p24,
+                List p25,
+                Set p26,
+                Collection p27,
+                E p28,
+                Object p29
+        ) {
             return 42;
         }
 
@@ -63,26 +75,34 @@ class ToolSpecificationsTest implements WithAssertions {
 
     private static Method getF() throws NoSuchMethodException {
         return Wrapper.class.getMethod("f",
-                String.class,
+                String.class,//0
                 boolean.class,
                 Boolean.class,
                 byte.class,
                 Byte.class,
-                short.class,
+                short.class,//5
                 Short.class,
                 int.class,
                 Integer.class,
                 long.class,
-                Long.class,
+                Long.class, //10
                 BigInteger.class,
                 float.class,
                 Float.class,
                 double.class,
-                Double.class,
+                Double.class, //15
                 BigDecimal.class,
                 String[].class,
+                Integer[].class,
+                Boolean[].class,
+                int[].class,//20
+                boolean[].class,
                 List.class,
                 Set.class,
+                Collection.class,
+                List.class,//25
+                Set.class,
+                Collection.class,
                 E.class,
                 Object.class);
     }
@@ -120,7 +140,7 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
-    public void test_toolSpecificationFrom() throws NoSuchMethodException{
+    public void test_toolSpecificationFrom() throws NoSuchMethodException {
         Method method = getF();
 
         ToolSpecification ts = ToolSpecifications.toolSpecificationFrom(method);
@@ -131,32 +151,40 @@ class ToolSpecificationsTest implements WithAssertions {
 
         Map<String, Map<String, Object>> properties = ts.parameters().properties();
 
-        assertThat(properties).hasSize(22);
+        assertThat(properties).hasSize(30);
         assertThat(properties)
                 .containsEntry("arg0", mapOf("type", "string", "description", "foo"))
-                        .containsEntry("arg1", mapOf("type", "boolean"))
-                        .containsEntry("arg2", mapOf("type", "boolean", "description", "b2"))
-                        .containsEntry("arg3", mapOf("type", "integer"))
-                        .containsEntry("arg4", mapOf("type", "integer"))
-                        .containsEntry("arg5", mapOf("type", "integer"))
-                        .containsEntry("arg6", mapOf("type", "integer"))
-                        .containsEntry("arg7", mapOf("type", "integer"))
-                        .containsEntry("arg8", mapOf("type", "integer"))
-                        .containsEntry("arg9", mapOf("type", "integer"))
-                        .containsEntry("arg10", mapOf("type", "integer"))
-                        .containsEntry("arg11", mapOf("type", "integer", "description", "biggy"))
-                        .containsEntry("arg12", mapOf("type", "number"))
-                        .containsEntry("arg13", mapOf("type", "number"))
-                        .containsEntry("arg14", mapOf("type", "number"))
-                        .containsEntry("arg15", mapOf("type", "number"))
-                        .containsEntry("arg16", mapOf("type", "number", "description", "bigger"))
-                        .containsEntry("arg17", mapOf("type", "array"))
-                        .containsEntry("arg18", mapOf("type", "array"))
-                        .containsEntry("arg19", mapOf("type", "array"))
-                        .containsEntry("arg21", mapOf("type", "object"));
+                .containsEntry("arg1", mapOf("type", "boolean"))
+                .containsEntry("arg2", mapOf("type", "boolean", "description", "b2"))
+                .containsEntry("arg3", mapOf("type", "integer"))
+                .containsEntry("arg4", mapOf("type", "integer"))
+                .containsEntry("arg5", mapOf("type", "integer"))
+                .containsEntry("arg6", mapOf("type", "integer"))
+                .containsEntry("arg7", mapOf("type", "integer"))
+                .containsEntry("arg8", mapOf("type", "integer"))
+                .containsEntry("arg9", mapOf("type", "integer"))
+                .containsEntry("arg10", mapOf("type", "integer"))
+                .containsEntry("arg11", mapOf("type", "integer", "description", "biggy"))
+                .containsEntry("arg12", mapOf("type", "number"))
+                .containsEntry("arg13", mapOf("type", "number"))
+                .containsEntry("arg14", mapOf("type", "number"))
+                .containsEntry("arg15", mapOf("type", "number"))
+                .containsEntry("arg16", mapOf("type", "number", "description", "bigger"))
+                .containsEntry("arg17", mapOf("type", "array", "items", mapOf("type", "string")))
+                .containsEntry("arg18", mapOf("type", "array", "items", mapOf("type", "integer")))
+                .containsEntry("arg19", mapOf("type", "array", "items", mapOf("type", "boolean")))
+                .containsEntry("arg20", mapOf("type", "array", "items", mapOf("type", "integer")))
+                .containsEntry("arg21", mapOf("type", "array", "items", mapOf("type", "boolean")))
+                .containsEntry("arg22", mapOf("type", "array", "items", mapOf("type", "integer")))
+                .containsEntry("arg23", mapOf("type", "array", "items", mapOf("type", "number")))
+                .containsEntry("arg24", mapOf("type", "array", "items", mapOf("type", "string")))
+                .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
+                .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
+                .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
+                .containsEntry("arg29", mapOf("type", "object"));
 
-        assertThat(properties.get("arg20")).containsEntry("type", "string");
-        assertThat(Arrays.equals((Object[]) properties.get("arg20").get("enum"), new E[]{E.A, E.B, E.C})).isTrue();
+        assertThat(properties.get("arg28")).containsEntry("type", "string");
+        assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
 
         assertThat(ts.parameters().required())
                 .containsExactly("arg0",
@@ -180,7 +208,16 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg18",
                         "arg19",
                         "arg20",
-                        "arg21");
+                        "arg21",
+                        "arg22",
+                        "arg23",
+                        "arg24",
+                        "arg25",
+                        "arg26",
+                        "arg27",
+                        "arg28",
+                        "arg29"
+                );
     }
 
     @Test
@@ -198,7 +235,7 @@ class ToolSpecificationsTest implements WithAssertions {
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[2]))
                 .containsExactly(JsonSchemaProperty.BOOLEAN,
                         JsonSchemaProperty.description("b2")
-                        );
+                );
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[3]))
                 .containsExactly(JsonSchemaProperty.INTEGER);
@@ -234,24 +271,23 @@ class ToolSpecificationsTest implements WithAssertions {
                         JsonSchemaProperty.description("bigger"));
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[17]))
-                .containsExactly(JsonSchemaProperty.ARRAY);
+                .containsExactly(JsonSchemaProperty.ARRAY, items(JsonSchemaProperty.STRING));
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[18]))
-                .containsExactly(JsonSchemaProperty.ARRAY);
+                .containsExactly(JsonSchemaProperty.ARRAY, items(JsonSchemaProperty.INTEGER));
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[19]))
-                .containsExactly(JsonSchemaProperty.ARRAY);
+                .containsExactly(JsonSchemaProperty.ARRAY, items(JsonSchemaProperty.BOOLEAN));
 
         {
             List<JsonSchemaProperty> properties = new ArrayList<>();
-            ToolSpecifications.toJsonSchemaProperties(ps[20]).forEach(properties::add);
+            ToolSpecifications.toJsonSchemaProperties(ps[28]).forEach(properties::add);
 
             assertThat(properties.get(0))
                     .isEqualTo(JsonSchemaProperty.STRING);
 
-            assertThat(Arrays.equals((Object[]) properties.get(1).value(), new E[]{E.A, E.B, E.C})).isTrue();
+            assertThat(properties.get(1).value()).isEqualTo(asList("A", "B", "C"));
         }
 
-        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[21]))
+        assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
                 .containsExactly(JsonSchemaProperty.OBJECT);
     }
-
 }

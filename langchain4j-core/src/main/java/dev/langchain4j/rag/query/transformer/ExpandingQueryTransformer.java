@@ -46,9 +46,9 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     );
     public static final int DEFAULT_N = 3;
 
-    private final ChatLanguageModel chatLanguageModel;
-    private final PromptTemplate promptTemplate;
-    private final int n;
+    protected final ChatLanguageModel chatLanguageModel;
+    protected final PromptTemplate promptTemplate;
+    protected final int n;
 
     public ExpandingQueryTransformer(ChatLanguageModel chatLanguageModel) {
         this(chatLanguageModel, DEFAULT_PROMPT_TEMPLATE, DEFAULT_N);
@@ -73,8 +73,7 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     public Collection<Query> transform(Query query) {
         Prompt prompt = createPrompt(query);
         String response = chatLanguageModel.generate(prompt.text());
-        List<Query> queries = parse(response);
-        return queries;
+        return parse(response);
     }
 
     protected Prompt createPrompt(Query query) {

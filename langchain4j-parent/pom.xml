@@ -14,34 +14,34 @@
     <url>https://github.com/langchain4j/langchain4j</url>
 
     <properties>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>8</maven.compiler.source>
+        <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
-        <openai4j.version>0.13.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.6</azure-ai-openai.version>
-        <azure-ai-search.version>11.6.1</azure-ai-search.version>
-        <azure.storage-blob.version>12.25.1</azure.storage-blob.version>
-        <azure.storage-common.version>12.24.1</azure.storage-common.version>
-        <azure.identity.version>1.11.2</azure.identity.version>
+        <openai4j.version>0.15.0</openai4j.version>
+        <azure-ai-openai.version>1.0.0-beta.7</azure-ai-openai.version>
+        <azure-ai-search.version>11.6.2</azure-ai-search.version>
+        <azure.storage-blob.version>12.25.2</azure.storage-blob.version>
+        <azure.storage-common.version>12.24.2</azure.storage-common.version>
+        <azure.identity.version>1.11.3</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
-        <okhttp.version>4.10.0</okhttp.version>
-        <jtokkit.version>0.6.1</jtokkit.version>
+        <okhttp.version>4.12.0</okhttp.version>
+        <jtokkit.version>1.0.0</jtokkit.version>
         <lombok.version>1.18.30</lombok.version>
         <jsoup.veresion>1.16.1</jsoup.veresion>
         <slf4j-api.version>2.0.7</slf4j-api.version>
         <gson.version>2.10.1</gson.version>
         <junit.version>5.10.0</junit.version>
-        <testcontainers.version>1.19.2</testcontainers.version>
+        <testcontainers.version>1.19.6</testcontainers.version>
         <bytebuddy.version>1.14.10</bytebuddy.version>
         <mockito.version>4.11.0</mockito.version>
         <assertj.version>3.24.2</assertj.version>
         <tinylog.version>2.6.2</tinylog.version>
         <httpclient5.version>5.2.1</httpclient5.version>
-        <opensearch-java.version>2.6.0</opensearch-java.version>
+        <opensearch-java.version>2.9.0</opensearch-java.version>
         <aws-java-sdk-core.version>1.12.564</aws-java-sdk-core.version>
         <aws-opensearch.version>2.20.161</aws-opensearch.version>
-        <opensearch-containers.version>2.0.0</opensearch-containers.version>
+        <opensearch-containers.version>2.0.1</opensearch-containers.version>
         <elastic.version>8.9.0</elastic.version>
         <jackson.version>2.16.1</jackson.version>
         <jedis.version>5.0.0</jedis.version>
@@ -50,7 +50,7 @@
         <netty.version>4.1.104.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
-        <infinispan.version>15.0.0.Dev07</infinispan.version>
+        <infinispan.version>15.0.0.Dev09</infinispan.version>
         <project.reactor.version>3.6.3</project.reactor.version>
     </properties>
 
@@ -126,6 +126,12 @@
             </dependency>
 
             <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>retrofit</artifactId>
                 <version>${retrofit.version}</version>
@@ -140,6 +146,11 @@
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
+                <version>${okhttp.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okhttp3</groupId>
+                <artifactId>okhttp-sse</artifactId>
                 <version>${okhttp.version}</version>
             </dependency>
 
@@ -493,6 +504,15 @@
     </distributionManagement>
 
     <profiles>
+        <profile>
+            <id>java11+</id>
+            <activation>
+                <jdk>[11,)</jdk>
+            </activation>
+            <properties>
+                <maven.compiler.release>8</maven.compiler.release>
+            </properties>
+        </profile>
         <profile>
             <id>sign</id>
             <activation>

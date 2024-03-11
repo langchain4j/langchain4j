@@ -135,6 +135,11 @@
                             <rules>
                                 <rule>
                                     <excludes>
+                                        <exclude>dev.langchain4j.data.document</exclude>
+                                        <exclude>dev.langchain4j.store.embedding</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter.logical</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter.comparison</exclude>
                                         <exclude>dev.langchain4j.rag</exclude>
                                         <exclude>dev.langchain4j.rag.content</exclude>
                                         <exclude>dev.langchain4j.rag.content.aggregator</exclude>
@@ -170,6 +175,23 @@
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.data.document</include>
+                                        <include>dev.langchain4j.store.embedding</include>
+                                        <include>dev.langchain4j.store.embedding.filter</include>
+                                        <include>dev.langchain4j.store.embedding.filter.logical</include>
+                                        <include>dev.langchain4j.store.embedding.filter.comparison</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
