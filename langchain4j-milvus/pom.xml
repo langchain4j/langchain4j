@@ -14,6 +14,10 @@
     <artifactId>langchain4j-milvus</artifactId>
     <name>LangChain4j :: Integration :: Milvus</name>
 
+    <properties>
+        <skipMilvusITs>false</skipMilvusITs>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -91,5 +95,17 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipMilvusITs}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
