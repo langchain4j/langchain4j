@@ -257,5 +257,21 @@ class VertexAiEmbeddingModelIT {
         Response<Embedding> embeddedSegForRetrievalWithCustomKey = model.embed(segmentForRetrievalWithCustomKey);
 
         assertThat(embeddedSegForRetrievalWithCustomKey.content().dimension()).isEqualTo(768);
+
+        // Check we can use "title" metadata when not using RETRIEVAL_DOCUMENT task
+
+        model = VertexAiEmbeddingModel.builder()
+            .endpoint(System.getenv("GCP_VERTEXAI_ENDPOINT"))
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .publisher("google")
+            .modelName("textembedding-gecko@003")
+            .maxRetries(3)
+            .titleMetadataKey("customTitle")
+            .build();
+
+        Response<Embedding> embeddedSegTitleKeyNoRetrieval = model.embed(segmentForRetrieval);
+
+        assertThat(embeddedSegTitleKeyNoRetrieval.content().dimension()).isEqualTo(768);
     }
 }

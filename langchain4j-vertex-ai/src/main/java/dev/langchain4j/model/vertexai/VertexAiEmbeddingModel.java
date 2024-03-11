@@ -134,11 +134,13 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 List<Value> instances = new ArrayList<>();
                 for (TextSegment segment : batch) {
                     VertexAiEmbeddingInstance embeddingInstance = new VertexAiEmbeddingInstance(segment.text());
-                    // Title metadata is used for calculating embeddings for document retrieval
-                    embeddingInstance.setTitle(segment.metadata(titleMetadataKey));
                     // Specify the type of embedding task when specified
                     if (this.taskType != null) {
                         embeddingInstance.setTaskType(taskType);
+                        if (this.taskType.equals(TaskType.RETRIEVAL_DOCUMENT)) {
+                            // Title metadata is used for calculating embeddings for document retrieval
+                            embeddingInstance.setTitle(segment.metadata(titleMetadataKey));
+                        }
                     }
 
                     Value.Builder instanceBuilder = Value.newBuilder();
