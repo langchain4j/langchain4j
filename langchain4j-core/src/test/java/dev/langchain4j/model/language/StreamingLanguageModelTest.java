@@ -49,7 +49,7 @@ class StreamingLanguageModelTest implements WithAssertions {
     @Test
     public void test_generate_flux() {
         StreamingLanguageModel model = new EchoStreamingLanguageModel();
-        StepVerifier.create(model.generate(new Prompt("text")).log())
+        StepVerifier.create(model.generate(new Prompt("text")))
                 .expectNext("text")
                 .verifyComplete();
     }
