@@ -15,6 +15,8 @@ public class AnthropicChatRequest {
 
     private String model;
     private int maxTokens;
+    private Double temperature;
+    private Double topP;
     private List<AnthropicChatMessage> messages;
     private boolean stream;
 

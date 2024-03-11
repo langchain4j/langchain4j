@@ -23,11 +23,13 @@ public class AnthropicClient {
     private final AnthropicApi anthropicApi;
     private final String apiKey;
     private final OkHttpClient okHttpClient;
+    private final String version;
 
     @Builder
     public AnthropicClient(String baseUrl,
                            String apiKey,
-                           Duration timeout) {
+                           Duration timeout,
+                           String version) {
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -42,6 +44,7 @@ public class AnthropicClient {
             this.apiKey = apiKey;
         }
 
+        this.version = version;
         this.okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -56,7 +59,7 @@ public class AnthropicClient {
     AnthropicChatResponse chatCompletion(AnthropicChatRequest request) {
         try {
             retrofit2.Response<AnthropicChatResponse> retrofitResponse
-                    = anthropicApi.chatCompletion("2023-06-01", apiKey, request).execute(); //TODO get version from model
+                    = anthropicApi.chatCompletion(version, apiKey, request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {

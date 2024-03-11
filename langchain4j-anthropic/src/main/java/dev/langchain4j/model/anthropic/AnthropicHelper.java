@@ -76,7 +76,7 @@ public class AnthropicHelper {
         }
         switch (anthropicAiFinishReason) {
             case "end_turn":
-            case "stop_sequence":
+            case "stop_sequence": //TODO
                 return STOP;
             case "max_tokens":
                 return LENGTH;
