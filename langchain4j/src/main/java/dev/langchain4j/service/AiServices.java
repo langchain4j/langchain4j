@@ -319,8 +319,9 @@ public abstract class AiServices<T> {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         if (retriever != null) {
+            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
             retrieverSet = true;
-            return contentRetriever(retriever.toContentRetriever());
+            return withContentRetriever;
         }
         return this;
     }
