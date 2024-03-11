@@ -51,6 +51,7 @@
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Dev07</infinispan.version>
+        <project.reactor.version>3.6.3</project.reactor.version>
     </properties>
 
     <dependencyManagement>
@@ -336,6 +337,19 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-core</artifactId>
+                <version>${project.reactor.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.projectreactor</groupId>
+                <artifactId>reactor-test</artifactId>
+                <version>${project.reactor.version}</version>
+                <scope>test</scope>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>

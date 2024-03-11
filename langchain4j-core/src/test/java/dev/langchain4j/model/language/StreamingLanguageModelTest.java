@@ -5,6 +5,7 @@ import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import reactor.test.StepVerifier;
 
 
 class StreamingLanguageModelTest implements WithAssertions {
@@ -43,6 +44,14 @@ class StreamingLanguageModelTest implements WithAssertions {
 
         assertThat(handler.response)
                 .isEqualTo(new Response<>("text"));
+    }
+
+    @Test
+    public void test_generate_flux() {
+        StreamingLanguageModel model = new EchoStreamingLanguageModel();
+        StepVerifier.create(model.generate(new Prompt("text")).log())
+                .expectNext("text")
+                .verifyComplete();
     }
 
 }
