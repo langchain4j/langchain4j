@@ -1,6 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
-import dev.langchain4j.MightChangeInTheFuture;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
@@ -23,7 +23,7 @@ import java.util.Map;
  * @see DefaultContentAggregator
  * @see ReRankingContentAggregator
  */
-@MightChangeInTheFuture("This is an experimental feature. Time will tell if this is the right abstraction.")
+@Experimental
 public interface ContentAggregator {
 
     /**

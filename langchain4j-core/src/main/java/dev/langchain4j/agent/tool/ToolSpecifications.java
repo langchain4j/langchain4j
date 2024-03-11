@@ -19,10 +19,13 @@ import static java.util.stream.Collectors.toList;
  * Utility methods for {@link ToolSpecification}s.
  */
 public class ToolSpecifications {
-    private ToolSpecifications() {}
+
+    private ToolSpecifications() {
+    }
 
     /**
      * Get the {@link ToolSpecification}s for each {@link Tool} method of the given object.
+     *
      * @param objectWithTools the object.
      * @return the {@link ToolSpecification}s.
      */
@@ -35,6 +38,7 @@ public class ToolSpecifications {
 
     /**
      * Get the {@link ToolSpecification} for the given {@link Tool} method.
+     *
      * @param method the method.
      * @return the {@link ToolSpecification}.
      */
@@ -42,7 +46,7 @@ public class ToolSpecifications {
         Tool annotation = method.getAnnotation(Tool.class);
 
         String name = isNullOrBlank(annotation.name()) ? method.getName() : annotation.name();
-        String description = String.join("\n", annotation.value());
+        String description = String.join("\n", annotation.value()); // TODO provide null instead of "" ?
 
         ToolSpecification.Builder builder = ToolSpecification.builder()
                 .name(name)
@@ -95,7 +99,7 @@ public class ToolSpecifications {
         }
 
         if (type.isEnum()) {
-            return removeNulls(STRING, enums((Object[]) type.getEnumConstants()), description);
+            return removeNulls(STRING, enums((Class<?>) type), description);
         }
 
         return removeNulls(OBJECT, description); // TODO provide internals
@@ -103,8 +107,8 @@ public class ToolSpecifications {
 
     private static JsonSchemaProperty arrayTypeFrom(Type type) {
         if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType  = (ParameterizedType) type;
-            Type[] actualTypeArguments = parameterizedType .getActualTypeArguments();
+            ParameterizedType parameterizedType = (ParameterizedType) type;
+            Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
             if (actualTypeArguments.length == 1) {
                 return arrayTypeFrom((Class<?>) actualTypeArguments[0]);
             }
@@ -115,16 +119,16 @@ public class ToolSpecifications {
     // TODO put constraints on min and max?
     private static boolean isNumber(Class<?> type) {
         return type == float.class || type == Float.class
-            || type == double.class || type == Double.class
-            || type == BigDecimal.class;
+                || type == double.class || type == Double.class
+                || type == BigDecimal.class;
     }
 
     private static boolean isInteger(Class<?> type) {
         return type == byte.class || type == Byte.class
-            || type == short.class || type == Short.class
-            || type == int.class || type == Integer.class
-            || type == long.class || type == Long.class
-            || type == BigInteger.class;
+                || type == short.class || type == Short.class
+                || type == int.class || type == Integer.class
+                || type == long.class || type == Long.class
+                || type == BigInteger.class;
     }
 
     private static boolean isBoolean(Class<?> type) {
@@ -149,6 +153,7 @@ public class ToolSpecifications {
 
     /**
      * Remove nulls from the given array.
+     *
      * @param items the array
      * @return an iterable of the non-null items.
      */

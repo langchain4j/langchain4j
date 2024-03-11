@@ -24,5 +24,6 @@ class Options {
     private Double repeatPenalty;
     private Integer seed;
     private Integer numPredict;
+    private Integer numCtx;
     private List<String> stop;
 }

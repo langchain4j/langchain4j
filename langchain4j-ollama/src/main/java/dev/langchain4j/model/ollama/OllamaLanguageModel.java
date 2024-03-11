@@ -37,6 +37,7 @@ public class OllamaLanguageModel implements LanguageModel {
                                Double repeatPenalty,
                                Integer seed,
                                Integer numPredict,
+                               Integer numCtx,
                                List<String> stop,
                                String format,
                                Duration timeout,
@@ -53,6 +54,7 @@ public class OllamaLanguageModel implements LanguageModel {
                 .repeatPenalty(repeatPenalty)
                 .seed(seed)
                 .numPredict(numPredict)
+                .numCtx(numCtx)
                 .stop(stop)
                 .build();
         this.format = format;
