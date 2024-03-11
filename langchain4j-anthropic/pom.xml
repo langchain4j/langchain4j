@@ -10,8 +10,6 @@
     </parent>
 
     <artifactId>langchain4j-anthropic</artifactId>
-    <packaging>jar</packaging>
-
     <name>LangChain4j :: Integration :: Anthropic</name>
 
     <dependencies>

@@ -9,20 +9,15 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.anthropic.AnthropicHelper.ANTHROPIC_API_URL;
-import static dev.langchain4j.model.anthropic.AnthropicHelper.finishReasonFrom;
-import static dev.langchain4j.model.anthropic.AnthropicHelper.toAnthropicAiMessages;
-import static dev.langchain4j.model.anthropic.AnthropicHelper.tokenUsageFrom;
-import static java.util.stream.Collectors.joining;
+import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
 
 /**
- * Represents an Anthropic language model with a chat completion interface.
- * You can find description of parameters <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
+ * Represents an Anthropic language model with Messages API.
+ * <br>
+ * You can find more details <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
  */
 public class AnthropicChatModel implements ChatLanguageModel {
 
@@ -30,50 +25,77 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final String modelName;
     private final Double temperature;
     private final Double topP;
+    private final Integer topK;
     private final Integer maxTokens;
+    private final List<String> stopSequences;
     private final Integer maxRetries;
 
     /**
-     * Constructs an AnthropicChatModel with the specified parameters.
+     * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
      *
-     * @param baseUrl     the base URL of the Anthropic API. If not specified, the default ANTHROPIC_API_URL is used.
-     * @param apiKey      the API key for authentication with the Anthropic service.
-     * @param timeout     the timeout duration for API requests. If not specified, the default value is 60 seconds.
-     * @param modelName   the name of the Anthropic model to use for generating responses.
-     * @param version     the version of the Anthropic API. We always recommend using the latest API version whenever possible.
-     * @param temperature the temperature parameter for generating chat responses
-     * @param topP        the top-p parameter for generating chat responses
-     * @param maxTokens   the maximum number of new tokens to generate in a chat response.
-     * @param maxRetries  the maximum number of retries for API requests. If not specified, the default value is 3.
+     * @param baseUrl       The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
+     * @param apiKey        The API key for authentication with the Anthropic API.
+     * @param version       The version of the Anthropic API. Default: "2023-06-01"
+     * @param modelName     The name of the Anthropic model to use. Default: "claude-3-sonnet-20240229"
+     * @param temperature   The temperature
+     * @param topP          The top-P
+     * @param topK          The top-K
+     * @param maxTokens     The maximum number of tokens to generate. Default: 1024
+     * @param stopSequences The custom text sequences that will cause the model to stop generating
+     * @param timeout       The timeout for API requests. Default: 60 seconds
+     * @param maxRetries    The maximum number of retries for API requests. Default: 3
+     * @param logRequests   Whether to log the content of API requests using SLF4J. Default: false
+     * @param logResponses  Whether to log the content of API responses using SLF4J. Default: false
      */
     @Builder
-    public AnthropicChatModel(String baseUrl,
-                              String apiKey,
-                              Duration timeout,
-                              String modelName,
-                              String version,
-                              Double temperature,
-                              Double topP,
-                              Integer maxTokens,
-                              Integer maxRetries) {
+    private AnthropicChatModel(String baseUrl,
+                               String apiKey,
+                               String version,
+                               String modelName,
+                               Double temperature,
+                               Double topP,
+                               Integer topK,
+                               Integer maxTokens,
+                               List<String> stopSequences,
+                               Duration timeout,
+                               Integer maxRetries,
+                               Boolean logRequests,
+                               Boolean logResponses) {
         this.client = AnthropicClient.builder()
-                .baseUrl(getOrDefault(baseUrl, ANTHROPIC_API_URL))
-                .apiKey(ensureNotBlank(apiKey, "apiKey"))
+                .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
+                .apiKey(apiKey)
+                .version(getOrDefault(version, "2023-06-01"))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
-                .version(ensureNotBlank(version, "version"))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = modelName;
+        this.modelName = getOrDefault(modelName, "claude-3-sonnet-20240229");
         this.temperature = temperature;
         this.topP = topP;
-        this.maxTokens = maxTokens;
+        this.topK = topK;
+        this.maxTokens = getOrDefault(maxTokens, 1024);
+        this.stopSequences = stopSequences;
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    public static class AnthropicChatModelBuilder {
+
+        AnthropicChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        AnthropicChatModelBuilder modelName(AnthropicChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
+    }
+
     /**
-     * Creates a AnthropicChatModel with the specified API key.
+     * Creates an instance of {@code AnthropicChatModel} with the specified API key.
      *
      * @param apiKey the API key for authentication
-     * @return a AnthropicChatModel instance
+     * @return an {@code AnthropicChatModel} instance
      */
     public static AnthropicChatModel withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
@@ -81,24 +103,25 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ensureNotEmpty(messages, "messages");
 
-        AnthropicChatRequest anthropicChatRequest = AnthropicChatRequest.builder()
+        AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
+                .messages(toAnthropicMessages(ensureNotEmpty(messages, "messages")))
+                .system(toAnthropicSystemPrompt(messages))
                 .maxTokens(maxTokens)
+                .stopSequences(stopSequences)
+                .stream(false)
                 .temperature(temperature)
                 .topP(topP)
-                .messages(toAnthropicAiMessages(messages))
-                .stream(false)
+                .topK(topK)
                 .build();
 
-        AnthropicChatResponse response = withRetry(() -> client.chatCompletion(anthropicChatRequest), maxRetries);
+        AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
 
         return Response.from(
-                aiMessage(response.getContent().stream().map(AnthropicChatResponse.Content::getText).collect(joining(","))),
-                tokenUsageFrom(response.getUsage()),
-                finishReasonFrom(response.getStopReason())
+                toAiMessage(response.getContent()),
+                toTokenUsage(response.getUsage()),
+                toFinishReason(response.getStopReason())
         );
     }
-
 }

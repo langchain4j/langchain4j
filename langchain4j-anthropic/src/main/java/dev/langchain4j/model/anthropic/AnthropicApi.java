@@ -8,9 +8,11 @@ import retrofit2.http.POST;
 
 interface AnthropicApi {
 
+    String X_API_KEY = "x-api-key";
+
     @POST("messages")
     @Headers({"content-type: application/json"})
-    Call<AnthropicChatResponse> chatCompletion(@Header("anthropic-version") String anthropicVersion,
-                                               @Header("x-api-key") String apiKey,
-                                               @Body AnthropicChatRequest request);
+    Call<AnthropicCreateMessageResponse> createMessage(@Header(X_API_KEY) String apiKey,
+                                                       @Header("anthropic-version") String version,
+                                                       @Body AnthropicCreateMessageRequest request);
 }
