@@ -124,7 +124,7 @@ class AiServicesWithRagIT {
                 .chatMemory(chatMemory)
                 .build();
 
-        String query = "Can I cancel my booking?";
+        String query = "In which cases can I cancel my booking?";
 
         // when
         String answer = assistant.answer(query);
