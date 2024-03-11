@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.anthropic.AnthropicApi.X_API_KEY;
 
 @Slf4j
@@ -43,11 +44,15 @@ class AnthropicRequestLoggingInterceptor implements Interceptor {
         }).collect(Collectors.joining(", "));
     }
 
-    private static String maskApiKey(String apiKey) {
+    static String maskApiKey(String apiKey) {
+        if (isNullOrBlank(apiKey)) {
+            return apiKey;
+        }
+
         if (apiKey.length() >= 7) {
             return apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length() - 2);
         } else {
-            return "API key is too short to be masked";
+            return "..."; // to short to be masked
         }
     }
 

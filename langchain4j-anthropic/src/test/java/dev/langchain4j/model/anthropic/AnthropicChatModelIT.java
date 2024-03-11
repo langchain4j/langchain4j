@@ -236,7 +236,7 @@ class AnthropicChatModelIT {
                 .timeout(Duration.ofSeconds(30))
                 .maxRetries(1)
                 .logRequests(true)
-                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("Hi");
@@ -259,7 +259,7 @@ class AnthropicChatModelIT {
                 .modelName(modelName)
                 .maxTokens(3)
                 .logRequests(true)
-                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("Hi");
@@ -284,7 +284,7 @@ class AnthropicChatModelIT {
                 .modelName(modelNameString)
                 .maxTokens(3)
                 .logRequests(true)
-                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("Hi");

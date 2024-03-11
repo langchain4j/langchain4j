@@ -17,7 +17,7 @@ sidebar_position: 5
 ```java
 ChatLanguageModel model = AnthropicChatModel.withApiKey(System.getenv("ANTHROPIC_API_KEY"));
 
-Streing answer = model.generate("What is the capital of Germany?");
+String answer = model.generate("What is the capital of Germany?");
 
 System.out.println(answer); // Berlin
 ```
