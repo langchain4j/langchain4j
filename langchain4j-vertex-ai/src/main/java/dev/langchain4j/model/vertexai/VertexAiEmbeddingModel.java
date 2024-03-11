@@ -70,6 +70,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     private final Integer maxSegmentsPerBatch;
     private final Integer maxTokensPerBatch;
     private final TaskType taskType;
+    private final String titleMetadataKey;
 
     public enum TaskType {
         RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION, CLUSTERING
@@ -83,7 +84,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                                   Integer maxRetries,
                                   Integer maxSegmentsPerBatch,
                                   Integer maxTokensPerBatch,
-                                  TaskType taskType) {
+                                  TaskType taskType,
+                                  String titleMetadataKey) {
 
         this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
             ensureNotBlank(project, "project"),
@@ -112,6 +114,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             getOrDefault(maxTokensPerBatch, DEFAULT_MAX_TOKENS_PER_BATCH), "maxTokensPerBatch");
 
         this.taskType = taskType;
+        this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
     }
 
     @Override
@@ -132,7 +135,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                 for (TextSegment segment : batch) {
                     VertexAiEmbeddingInstance embeddingInstance = new VertexAiEmbeddingInstance(segment.text());
                     // Title metadata is used for calculating embeddings for document retrieval
-                    embeddingInstance.setTitle(segment.metadata("title"));
+                    embeddingInstance.setTitle(segment.metadata(titleMetadataKey));
                     // Specify the type of embedding task when specified
                     if (this.taskType != null) {
                         embeddingInstance.setTaskType(taskType);
@@ -287,6 +290,7 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         private Integer maxSegmentsPerBatch;
         private Integer maxTokensPerBatch;
         private TaskType taskType;
+        private String titleMetadataKey;
 
         public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
@@ -333,6 +337,11 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
             return this;
         }
 
+        public Builder titleMetadataKey(String titleMetadataKey) {
+            this.titleMetadataKey = titleMetadataKey;
+            return this;
+        }
+
         public VertexAiEmbeddingModel build() {
             return new VertexAiEmbeddingModel(
                     endpoint,
@@ -343,7 +352,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
                     maxRetries,
                     maxSegmentsPerBatch,
                     maxTokensPerBatch,
-                    taskType);
+                    taskType,
+                    titleMetadataKey);
         }
     }
 }
