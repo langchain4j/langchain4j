@@ -69,7 +69,13 @@ class PartsMapper {
             try {
                 JsonFormat.parser().merge(functionResponseText, structBuilder);
             } catch (InvalidProtocolBufferException e) {
-                throw new RuntimeException(e);
+                // TODO do a proper fix
+                String functionResponseTextAsMap = "{\"result\":" + functionResponseText + "}";
+                try {
+                    JsonFormat.parser().merge(functionResponseTextAsMap, structBuilder);
+                } catch (InvalidProtocolBufferException e2) {
+                    throw new RuntimeException(e);
+                }
             }
             Struct responseStruct = structBuilder.build();
 
