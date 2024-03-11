@@ -116,7 +116,7 @@ or maybe we just want to use `UserMessage` for that purpose.
 ```java
 interface Friend {
 
-    @SystemMessage("You are a good friend of mine. Answer using slang. {{it}}")
+    @UserMessage("You are a good friend of mine. Answer using slang. {{it}}")
     String chat(String userMessage);
 }
 
