@@ -14,8 +14,7 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
-    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules
-    </description>
+    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <dependencyManagement>
         <dependencies>

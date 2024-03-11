@@ -10,6 +10,7 @@ import java.util.List;
 import static dev.langchain4j.data.message.ChatMessageType.SYSTEM;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -38,9 +39,9 @@ class AnthropicMapper {
 
         if (isNullOrBlank(systemPrompt)) {
             return null;
+        } else {
+            return systemPrompt;
         }
-
-        return systemPrompt;
     }
 
     private static AnthropicRole toAnthropicRole(ChatMessageType chatMessageType) {
@@ -70,7 +71,10 @@ class AnthropicMapper {
                                 throw illegalArgument("Anthropic does not support images as URLs, " +
                                         "only as Base64-encoded strings");
                             }
-                            return new AnthropicImageContent(image.mimeType(), image.base64Data());
+                            return new AnthropicImageContent(
+                                    ensureNotBlank(image.mimeType(), "mimeType"),
+                                    ensureNotBlank(image.base64Data(), "base64Data")
+                            );
                         } else {
                             throw illegalArgument("Unknown content type: " + content);
                         }

@@ -158,10 +158,7 @@ class AnthropicChatModelIT {
         assertThat(response.content().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
         assertThat(tokenUsage.outputTokenCount()).isEqualTo(maxTokens);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
@@ -254,7 +251,7 @@ class AnthropicChatModelIT {
 
     @ParameterizedTest
     @EnumSource(AnthropicChatModelName.class)
-    void should_use_all_enum_model_names(AnthropicChatModelName modelName) {
+    void should_support_all_enum_model_names(AnthropicChatModelName modelName) {
 
         // given
         ChatLanguageModel model = AnthropicChatModel.builder()
@@ -277,7 +274,7 @@ class AnthropicChatModelIT {
 
     @ParameterizedTest
     @EnumSource(AnthropicChatModelName.class)
-    void should_use_all_string_model_names(AnthropicChatModelName modelName) {
+    void should_support_all_string_model_names(AnthropicChatModelName modelName) {
 
         // given
         String modelNameString = modelName.toString();

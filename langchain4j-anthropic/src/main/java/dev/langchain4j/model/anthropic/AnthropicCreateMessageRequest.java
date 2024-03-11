@@ -12,7 +12,7 @@ class AnthropicCreateMessageRequest {
     private final String system;
     private final int maxTokens;
     private final List<String> stopSequences;
-    private final Boolean stream;
+    private final boolean stream;
     private final Double temperature;
     private final Double topP;
     private final Integer topK;

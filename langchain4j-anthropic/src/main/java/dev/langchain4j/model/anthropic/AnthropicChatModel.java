@@ -1,7 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -15,9 +15,20 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
 
 /**
- * Represents an Anthropic language model with Messages API.
+ * Represents an Anthropic language model with a Messages API.
  * <br>
- * You can find more details <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
+ * More details are available <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
+ * <br>
+ * <br>
+ * It supports {@link Image}s as inputs. {@link UserMessage}s can contain one or multiple {@link ImageContent}s.
+ * {@link Image}s must not be represented as URLs; they should be Base64-encoded strings and include a {@code mimeType}.
+ * <br>
+ * <br>
+ * The content of {@link SystemMessage}s is sent using the "system" parameter.
+ * If there are multiple {@link SystemMessage}s, they are concatenated with a double newline (\n\n).
+ * <br>
+ * <br>
+ * Does not support tools.
  */
 public class AnthropicChatModel implements ChatLanguageModel {
 
@@ -26,9 +37,9 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private final Double temperature;
     private final Double topP;
     private final Integer topK;
-    private final Integer maxTokens;
+    private final int maxTokens;
     private final List<String> stopSequences;
-    private final Integer maxRetries;
+    private final int maxRetries;
 
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.

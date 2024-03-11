@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.lang.String.format;
 
 class AnthropicClient {
@@ -39,7 +40,7 @@ class AnthropicClient {
         }
 
         this.apiKey = apiKey;
-        this.version = version;
+        this.version = ensureNotBlank(version, "version");
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
@@ -55,7 +56,7 @@ class AnthropicClient {
         }
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
