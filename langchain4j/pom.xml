@@ -7,17 +7,13 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.28.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j</artifactId>
-    <packaging>jar</packaging>
-
     <name>LangChain4j</name>
-    <description>Java implementation of LangChain: Integrate your Java application with countless AI tools and services
-        smoothly
-    </description>
+    <description>Java implementation of LangChain: Integrate your Java application with countless AI tools and services smoothly</description>
 
     <dependencies>
 
