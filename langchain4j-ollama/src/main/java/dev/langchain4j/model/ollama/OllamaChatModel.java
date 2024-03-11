@@ -41,6 +41,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                            Double repeatPenalty,
                            Integer seed,
                            Integer numPredict,
+                           Integer numCtx,
                            List<String> stop,
                            String format,
                            Duration timeout,
@@ -57,6 +58,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .repeatPenalty(repeatPenalty)
                 .seed(seed)
                 .numPredict(numPredict)
+                .numCtx(numCtx)
                 .stop(stop)
                 .build();
         this.format = format;
