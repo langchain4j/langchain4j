@@ -6,7 +6,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.28.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -14,8 +14,7 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
-    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules
-    </description>
+    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
 
     <dependencyManagement>
         <dependencies>
@@ -84,6 +83,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-zhipu-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-ollama</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -115,6 +120,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-nomic</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-anthropic</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -204,6 +215,14 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- embeddings -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
             <!-- code execution engines -->
 
             <dependency>
@@ -251,9 +270,18 @@
                 <artifactId>langchain4j-document-parser-apache-poi</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-document-parser-apache-tika</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- embedding store filter parsers -->
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

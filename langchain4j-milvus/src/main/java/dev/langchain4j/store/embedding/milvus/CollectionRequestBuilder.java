@@ -1,7 +1,9 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.MetricType;
+import io.milvus.param.collection.DropCollectionParam;
 import io.milvus.param.collection.FlushParam;
 import io.milvus.param.collection.HasCollectionParam;
 import io.milvus.param.collection.LoadCollectionParam;
@@ -31,6 +33,12 @@ class CollectionRequestBuilder {
                 .build();
     }
 
+    static DropCollectionParam buildDropCollectionRequest(String collectionName) {
+        return DropCollectionParam.newBuilder()
+                .withCollectionName(collectionName)
+                .build();
+    }
+
     static InsertParam buildInsertRequest(String collectionName, List<InsertParam.Field> fields) {
         return InsertParam.newBuilder()
                 .withCollectionName(collectionName)
@@ -46,18 +54,24 @@ class CollectionRequestBuilder {
 
     static SearchParam buildSearchRequest(String collectionName,
                                           List<Float> vector,
+                                          Filter filter,
                                           int maxResults,
                                           MetricType metricType,
                                           ConsistencyLevelEnum consistencyLevel) {
-        return SearchParam.newBuilder()
+        SearchParam.Builder builder = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withVectors(singletonList(vector))
                 .withVectorFieldName(VECTOR_FIELD_NAME)
                 .withTopK(maxResults)
                 .withMetricType(metricType)
                 .withConsistencyLevel(consistencyLevel)
-                .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME))
-                .build();
+                .withOutFields(asList(ID_FIELD_NAME, TEXT_FIELD_NAME, METADATA_FIELD_NAME));
+
+        if (filter != null) {
+            builder.withExpr(MilvusMetadataFilterMapper.map(filter));
+        }
+
+        return builder.build();
     }
 
     static QueryParam buildQueryRequest(String collectionName,

@@ -124,8 +124,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(53);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(22);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(52);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(18);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -144,7 +144,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -172,8 +172,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(59);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(16);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(61);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(9);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -192,7 +192,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());

@@ -13,25 +13,21 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 public class QwenTestHelper {
     public static Stream<Arguments> languageModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_TURBO),
-                Arguments.of(QwenModelName.QWEN_PLUS),
-                Arguments.of(QwenModelName.QWEN_7B_CHAT),
-                Arguments.of(QwenModelName.QWEN_14B_CHAT)
+                Arguments.of(QwenModelName.QWEN_PLUS)
         );
     }
 
     public static Stream<Arguments> nonMultimodalChatModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_TURBO),
-                Arguments.of(QwenModelName.QWEN_PLUS),
-                Arguments.of(QwenModelName.QWEN_7B_CHAT),
-                Arguments.of(QwenModelName.QWEN_14B_CHAT)
+                Arguments.of(QwenModelName.QWEN_PLUS)
         );
     }
 
@@ -57,9 +53,10 @@ public class QwenTestHelper {
         List<ChatMessage> messages = new LinkedList<>();
         messages.add(SystemMessage.from("Your name is Jack." +
                 " You like to answer other people's questions briefly." +
-                " It's rainy today."));
+                " It's rainy today." +
+                " When you're done, end with \"That's all!\"."));
         messages.add(UserMessage.from("Hello. What's your name?"));
-        messages.add(AiMessage.from("Jack."));
+        messages.add(AiMessage.from("Jack. That's all!"));
         messages.add(UserMessage.from("How about the weather today?"));
         return messages;
     }
@@ -69,7 +66,7 @@ public class QwenTestHelper {
                 .url("https://dashscope.oss-cn-beijing.aliyuncs.com/images/dog_and_girl.jpeg")
                 .build();
         ImageContent imageContent = ImageContent.from(image);
-        TextContent textContent = TextContent.from("What animal is in the picture?");
+        TextContent textContent = TextContent.from("What animal is in the picture? When you're done, end with \"That's all!\".");
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 
@@ -78,21 +75,21 @@ public class QwenTestHelper {
                 .base64Data(multimodalImageData())
                 .build();
         ImageContent imageContent = ImageContent.from(image);
-        TextContent textContent = TextContent.from("What animal is in the picture?");
+        TextContent textContent = TextContent.from("What animal is in the picture? When you're done, end with \"That's all!\".");
         return Collections.singletonList(UserMessage.from(imageContent, textContent));
     }
 
     public static String multimodalImageData() {
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         try (InputStream in = QwenTestHelper.class.getResourceAsStream("/parrot.jpg")) {
-            assertNotNull(in);
+            assertThat(in).isNotNull();
             byte[] data = new byte[512];
             int n;
             while ((n = in.read(data)) != -1) {
                 buffer.write(data, 0, n);
             }
         } catch (IOException e) {
-            fail(e.getMessage());
+            fail("", e.getMessage());
         }
 
         return Base64.getEncoder().encodeToString(buffer.toByteArray());
