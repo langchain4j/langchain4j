@@ -87,12 +87,11 @@ public class ToolSpecifications {
     }
 
     static JsonSchemaProperty schema(Class<?> structured){
-        //TODO: Externalize the depth
-        return schema(structured, new HashSet<>(), 3);
+        return schema(structured, new HashSet<>());
     }
 
-    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited, int level) {
-        if (level < 0 || visited.contains(structured)) {
+    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited) {
+        if (visited.contains(structured)) {
             return null;
         }
 
@@ -104,7 +103,7 @@ public class ToolSpecifications {
                 // Skip inner class reference.
                 continue;
             }
-            Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited, level);
+            Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
             Map<Object,Object> objectMap = new HashMap<>();
             for(JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
                 objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
@@ -114,7 +113,7 @@ public class ToolSpecifications {
         return from( "schema", properties );
     }
 
-    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited , int level) {
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {
 
         Class<?> type = field.getType();
 
@@ -131,7 +130,7 @@ public class ToolSpecifications {
             return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0]), description);
         }
 
-        return removeNulls(OBJECT, schema(type, visited, level - 1), description);
+        return removeNulls(OBJECT, schema(type, visited), description);
     }
 
     private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
