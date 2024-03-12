@@ -113,5 +113,11 @@
         </plugins>
     </reporting>
 
+    <distributionManagement>
+        <snapshotRepository>
+            <id>maven-snapshots</id>
+            <url>http://nex-dvo.tmtec.sh:8081/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
 </project>
