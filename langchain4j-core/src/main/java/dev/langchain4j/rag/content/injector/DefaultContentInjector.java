@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -78,6 +79,9 @@ public class DefaultContentInjector implements ContentInjector {
         }
 
         Prompt prompt = createPrompt(userMessage, contents);
+        if (isNotNullOrBlank(userMessage.name())) {
+            return userMessage(userMessage.name(), prompt.text());
+        }
         return prompt.toUserMessage();
     }
 

@@ -26,6 +26,7 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
 import static java.util.Collections.singletonMap;
@@ -102,7 +103,12 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // TODO give user ability to provide custom OutputParser
                         String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
+                        String text = userMessage.singleText() + outputFormatInstructions;
+                        if (isNotNullOrBlank(userMessage.name())) {
+                            userMessage = UserMessage.from(userMessage.name(), text);
+                        } else {
+                            userMessage = UserMessage.from(text);
+                        }
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -234,7 +240,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
 
             Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            if (userName != null) {
+            if (isNotNullOrBlank(userName)) {
                 return userMessage(userName, prompt.text());
             } else {
                 return prompt.toUserMessage();

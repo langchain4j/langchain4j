@@ -61,6 +61,28 @@ class DefaultContentInjectorTest {
     }
 
     @Test
+    void should_inject_single_content_with_userName() {
+        // given
+        UserMessage userMessage = UserMessage.from("ape", "Tell me about bananas.");
+
+        List<Content> contents = singletonList(Content.from("Bananas are awesome!"));
+
+        ContentInjector injector = new DefaultContentInjector();
+
+        // when
+        UserMessage injected = injector.inject(contents, userMessage);
+
+        // then
+        assertThat(injected.text()).isEqualTo(
+                "Tell me about bananas.\n" +
+                        "\n" +
+                        "Answer using the following information:\n" +
+                        "Bananas are awesome!"
+        );
+        assertThat(injected.name()).isEqualTo("ape");
+    }
+
+    @Test
     void should_inject_single_content_with_metadata() {
 
         // given
