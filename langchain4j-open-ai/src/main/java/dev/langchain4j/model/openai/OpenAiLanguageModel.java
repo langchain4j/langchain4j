@@ -60,6 +60,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
