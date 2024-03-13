@@ -6,6 +6,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import static dev.langchain4j.model.dashscope.DashScopeMetadata.REQUEST_ID;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.apiKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -22,5 +23,6 @@ public class QwenLanguageModelIT {
         System.out.println(response);
 
         assertThat(response.content()).containsIgnoringCase("hello");
+        assertThat(response.metadata().get(REQUEST_ID)).asString().isNotBlank();
     }
 }

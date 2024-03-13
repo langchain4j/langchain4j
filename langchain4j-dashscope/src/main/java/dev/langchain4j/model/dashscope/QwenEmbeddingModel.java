@@ -5,6 +5,7 @@ import com.alibaba.dashscope.exception.NoApiKeyException;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.dashscope.spi.QwenEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
@@ -16,6 +17,8 @@ import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.DOCUMENT;
 import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.QUERY;
+import static dev.langchain4j.model.dashscope.DashScopeMetadata.REQUEST_ID;
+import static dev.langchain4j.model.dashscope.QwenHelper.metadataFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
@@ -43,7 +46,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
         return textSegments.stream()
                 .map(TextSegment::metadata)
                 .map(metadata -> metadata.get(TYPE_KEY))
-                .anyMatch(TYPE_DOCUMENT::equalsIgnoreCase);
+                .anyMatch(key -> !TYPE_QUERY.equalsIgnoreCase(key));
     }
 
     private boolean containsQueries(List<TextSegment> textSegments) {
@@ -76,7 +79,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                     .map(doubleList -> doubleList.stream().map(Double::floatValue).collect(Collectors.toList()))
                     .map(Embedding::from)
                     .collect(Collectors.toList());
-            return Response.from(embeddings, usage);
+            return Response.from(embeddings, usage, null, metadataFrom(generationResult));
         } catch (NoApiKeyException e) {
             throw new RuntimeException(e);
         }
@@ -97,6 +100,7 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                 // This is a mixed collection of queries and documents. Embed one by one.
                 List<Embedding> embeddings = new ArrayList<>(textSegments.size());
                 Integer tokens = null;
+                List<Object> metadataList = new ArrayList<>(textSegments.size());
                 for (TextSegment textSegment : textSegments) {
                     Response<List<Embedding>> result;
                     if (TYPE_QUERY.equalsIgnoreCase(textSegment.metadata(TYPE_KEY))) {
@@ -113,10 +117,21 @@ public class QwenEmbeddingModel implements EmbeddingModel {
                     } else {
                         tokens += result.tokenUsage().inputTokenCount();
                     }
+                    metadataList.add(result.metadata().get(REQUEST_ID));
                 }
-                return Response.from(embeddings, new TokenUsage(tokens));
+                return Response.from(embeddings, new TokenUsage(tokens),
+                        null, Collections.singletonMap(REQUEST_ID, metadataList));
             }
         }
+    }
+
+    @Override
+    public Response<Embedding> embed(TextSegment textSegment) {
+        Response<List<Embedding>> response = embedAll(singletonList(textSegment));
+        ValidationUtils.ensureEq(response.content().size(), 1,
+                "Expected a single embedding, but got %d", response.content().size());
+        return Response.from(response.content().get(0), response.tokenUsage(),
+                response.finishReason(), response.metadata());
     }
 
     public static QwenEmbeddingModelBuilder builder() {
