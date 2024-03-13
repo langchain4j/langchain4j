@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import lombok.Builder;
 import lombok.Getter;
+import okhttp3.internal.ws.RealWebSocket;
 
 import java.util.List;
 
@@ -17,6 +18,8 @@ class AnthropicCreateMessageResponse {
     private final String stopReason;
     private final String stopSequence;
     private final Usage usage;
+    private final Message message;
+    private final Delta delta;
 
     @Getter
     @Builder
@@ -32,5 +35,18 @@ class AnthropicCreateMessageResponse {
 
         private final int inputTokens;
         private final int outputTokens;
+    }
+
+    @Getter
+    @Builder
+    static class Delta {
+        private final String type;
+        private final String  text;
+    }
+
+    @Getter
+    @Builder
+    static class Message {
+        private final Usage usage;
     }
 }

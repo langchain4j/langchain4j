@@ -3,12 +3,23 @@ package dev.langchain4j.model.anthropic;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import lombok.SneakyThrows;
 import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
+import retrofit2.Call;
+import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -78,7 +89,39 @@ class AnthropicClient {
         }
     }
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
+    @SneakyThrows
+    void streamingMessages(AnthropicCreateMessageRequest request, StreamingResponseHandler<AiMessage> handler) {
+        StringBuilder sb = new StringBuilder();
+        int inputTokens = 0;
+        Call<ResponseBody> call = anthropicApi.streamingMessages(apiKey, version, request);
+        try (InputStream bodyStream = call.execute().body().byteStream()) {
+            BufferedReader input = new BufferedReader(new InputStreamReader(bodyStream));
+            String line;
+            while ((line = input.readLine()) != null) {
+                if (line.startsWith("data:")) {
+                    String json = line.substring(5);
+                    AnthropicCreateMessageResponse response = GSON.fromJson(json, AnthropicCreateMessageResponse.class);
+                    if ("message_start".equals(response.getType())) {
+                        inputTokens = response.getMessage().getUsage().getInputTokens();
+                    }
+                    else if ("content_block_delta".equals(response.getType()) && !response.getDelta().getText().isEmpty())  {
+                        String next = response.getDelta().getText();
+                        sb.append(next);
+                        handler.onNext(next);
+                    }
+                    else if ("error".equals(response.getType())) {
+                        handler.onError(new RuntimeException(response.getDelta().getText()));
+                    } else if ("message_delta".equals(response.getType()) && response.getUsage() != null) {
+                        TokenUsage tokenUsage = new TokenUsage(inputTokens, response.getUsage().getOutputTokens());
+                        AiMessage aiMessage = AiMessage.aiMessage(sb.toString());
+                        handler.onComplete(new dev.langchain4j.model.output.Response<>(aiMessage, tokenUsage, FinishReason.STOP));
+                    }
+                }
+            }
+        }
+    }
+
+    private static RuntimeException toException(Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
         String errorMessage = format("status code: %s; body: %s", code, body);
