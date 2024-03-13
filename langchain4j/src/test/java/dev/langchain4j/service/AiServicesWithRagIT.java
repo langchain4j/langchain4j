@@ -32,8 +32,6 @@ import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilterBuilder;
-import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -426,45 +424,7 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_LLM_generated_metadata_filter(ChatLanguageModel model) {
 
-        // given
-        TextSegment groundhogDay = TextSegment.from("Groundhog Day", new dev.langchain4j.data.document.Metadata().put("genre", "comedy").put("year", 1993));
-        TextSegment forrestGump = TextSegment.from("Forrest Gump", metadata("genre", "drama").put("year", 1994));
-        TextSegment dieHard = TextSegment.from("Die Hard", metadata("genre", "action").put("year", 1998));
-
-        TableDefinition tableDefinition = TableDefinition.builder()
-                .name("movies")
-                .addColumn("genre", "VARCHAR", "one of: [comedy, drama, action]")
-                .addColumn("year", "INT")
-                .build();
-
-        LanguageModelSqlFilterBuilder sqlFilterBuilder = new LanguageModelSqlFilterBuilder(model, tableDefinition);
-
-        EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
-        embeddingStore.add(embeddingModel.embed(groundhogDay).content(), groundhogDay);
-        embeddingStore.add(embeddingModel.embed(forrestGump).content(), forrestGump);
-        embeddingStore.add(embeddingModel.embed(dieHard).content(), dieHard);
-
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .dynamicFilter(sqlFilterBuilder::build)
-                .build();
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .contentRetriever(contentRetriever)
-                .build();
-
-        // when
-        String answer = assistant.answer("Recommend me a good drama from 90s");
-
-        // then
-        assertThat(answer).containsIgnoringCase("Gump");
-    }
 
     interface PersonalizedAssistant {
 

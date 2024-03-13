@@ -23,18 +23,49 @@ class EasyRAGTest {
             .logResponses(true)
             .build();
 
-    InMemoryEmbeddingStore<TextSegment> embeddingStore;
+    ;
 
     interface Assistant {
 
         String answer(String query);
     }
 
-    @BeforeEach
-    void beforeEach() {
+    @Test
+    void RAG_should_be_easy() {
+
+        // 1
+        String filePath = toAbsolutePath("story-about-happy-carrot.txt");
+
+        // 2
+        InMemoryEmbeddingStore<TextSegment> embeddingStore = EasyRAG.ingestFile(filePath);
+        // or
+        InMemoryEmbeddingStore<TextSegment> embeddingStore2 = EasyRAG.ingestFile(filePath, new IngestionConfig(100, 10));
+        // or
+        InMemoryEmbeddingStore<TextSegment> es3 = EasyRAG.ingestDirectory("C:\\dev", "*.pdf");
+        // or
+        InMemoryEmbeddingStore<TextSegment> es4 = EasyRAG.ingestDirectoryRecursively("C:\\dev", "**.pdf");
+
+        //
+        // embeddingStore.serializeToFile(EMBEDDING_STORE_PATH);
+        // InMemoryEmbeddingStore<TextSegment> embeddingStore = InMemoryEmbeddingStore.fromFile(EMBEDDING_STORE_PATH);
 
 
+        // 3
+        ContentRetriever contentRetriever = EasyRAG.createContentRetriever(embeddingStore);
+        // or
+        ContentRetriever contentRetriever2 = EasyRAG.createContentRetriever(embeddingStore, new RetrievalConfig(3, 0.5));
+
+        // 4
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .contentRetriever(contentRetriever)
+                .build();
+
+        String answer = assistant.answer("Who is Charlie?");
+
+        assertThat(answer).containsIgnoringCase("carrot");
     }
+
 
     // TODO decisions:
 
@@ -51,39 +82,6 @@ class EasyRAGTest {
     // TODO - how much to retrieve (in the number of segments or the number of tokens) <= make configurable!
     // TODO - re-rank automatically? (maybe in the future, with local cross-encoders)
     // TODO
-
-    @Test
-    void RAG_should_be_easy() {
-
-        String filePath = toAbsolutePath("story-about-happy-carrot.txt");
-        embeddingStore = EasyRAG.ingestFile(filePath);
-        embeddingStore.serializeToFile(EMBEDDING_STORE_PATH);
-
-
-        // or
-        IngestionConfig config = new IngestionConfig(100, 10);
-        InMemoryEmbeddingStore<TextSegment> es2 = EasyRAG.ingestFile(filePath, config);
-        // or
-        InMemoryEmbeddingStore<TextSegment> es3 = EasyRAG.ingestDirectory("C:\\dev", "*.pdf");
-        // or
-        InMemoryEmbeddingStore<TextSegment> es4 = EasyRAG.ingestDirectoryRecursively("C:\\dev", "**.pdf");
-
-
-        InMemoryEmbeddingStore<TextSegment> embeddingStore = InMemoryEmbeddingStore.fromFile(EMBEDDING_STORE_PATH);
-
-        ContentRetriever contentRetriever = EasyRAG.createContentRetriever(embeddingStore);
-        // or
-        ContentRetriever contentRetriever2 = EasyRAG.createContentRetriever(embeddingStore, new RetrievalConfig(3, 0.5));
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .contentRetriever(contentRetriever)
-                .build();
-
-        String answer = assistant.answer("Who is Charlie?");
-
-        assertThat(answer).containsIgnoringCase("carrot");
-    }
 
     private String toAbsolutePath(String fileName) {
         try {
