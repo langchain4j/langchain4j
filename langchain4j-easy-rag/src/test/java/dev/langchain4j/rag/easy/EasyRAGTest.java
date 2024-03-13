@@ -23,8 +23,6 @@ class EasyRAGTest {
             .logResponses(true)
             .build();
 
-    ;
-
     interface Assistant {
 
         String answer(String query);
