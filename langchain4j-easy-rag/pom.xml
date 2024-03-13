@@ -10,7 +10,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-rag-easy</artifactId>
+    <artifactId>langchain4j-easy-rag</artifactId>
     <packaging>jar</packaging>
 
     <name>LangChain4j :: Easy RAG</name>
@@ -31,7 +31,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-            <version>0.27.1</version>
+            <version>${project.version}</version>
             <!--            TODO-->
         </dependency>
 
