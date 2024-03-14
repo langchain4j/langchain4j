@@ -84,15 +84,15 @@ class AnthropicMapper {
         }
     }
 
-    static AiMessage toAiMessage(List<AnthropicCreateMessageResponse.Content> contents) {
+    static AiMessage toAiMessage(List<AnthropicContent> contents) {
         String text = contents.stream()
                 .filter(content -> "text".equals(content.getType()))
-                .map(AnthropicCreateMessageResponse.Content::getText)
+                .map(AnthropicContent::getText)
                 .collect(joining("\n"));
         return AiMessage.from(text);
     }
 
-    static TokenUsage toTokenUsage(AnthropicCreateMessageResponse.Usage anthropicUsage) {
+    static TokenUsage toTokenUsage(AnthropicUsage anthropicUsage) {
         if (anthropicUsage == null) {
             return null;
         }

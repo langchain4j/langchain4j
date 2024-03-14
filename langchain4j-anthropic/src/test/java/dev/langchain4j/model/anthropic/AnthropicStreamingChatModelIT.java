@@ -162,7 +162,7 @@ class AnthropicStreamingChatModelIT {
             for (int i = 0; i < 100; i++) {
                 TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
                 model.generate("Hi", handler);
-                handler.get(); // TODO try to remove
+                handler.get();
             }
         })
                 .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)

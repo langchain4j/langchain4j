@@ -12,25 +12,9 @@ class AnthropicCreateMessageResponse {
     private final String id;
     private final String type;
     private final String role;
-    private final List<Content> content;
+    private final List<AnthropicContent> content;
     private final String model;
     private final String stopReason;
     private final String stopSequence;
-    private final Usage usage;
-
-    @Getter
-    @Builder
-    static class Content {
-
-        private final String type;
-        private final String text;
-    }
-
-    @Getter
-    @Builder
-    static class Usage {
-
-        private final Integer inputTokens;
-        private final Integer outputTokens;
-    }
+    private final AnthropicUsage usage;
 }

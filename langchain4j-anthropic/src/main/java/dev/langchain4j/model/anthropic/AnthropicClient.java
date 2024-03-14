@@ -5,8 +5,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.anthropic.AnthropicStreamingData.Delta;
-import dev.langchain4j.model.anthropic.AnthropicStreamingData.Usage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -161,18 +159,18 @@ class AnthropicClient {
                 }
             }
 
-            private void handleUsage(Usage delta) {
-                if (delta.inputTokens != null) {
-                    this.inputTokenCount.addAndGet(delta.inputTokens);
+            private void handleUsage(AnthropicUsage usage) {
+                if (usage.getInputTokens() != null) {
+                    this.inputTokenCount.addAndGet(usage.getInputTokens());
                 }
-                if (delta.outputTokens != null) {
-                    this.outputTokenCount.addAndGet(delta.outputTokens);
+                if (usage.getOutputTokens() != null) {
+                    this.outputTokenCount.addAndGet(usage.getOutputTokens());
                 }
             }
 
             private void handleContentBlockStart(AnthropicStreamingData data) {
-                if (data.contentBlock != null && "text".equals(data.contentBlock.type)) {
-                    String text = data.contentBlock.text;
+                if (data.contentBlock != null && "text".equals(data.contentBlock.getType())) {
+                    String text = data.contentBlock.getText();
                     if (isNotNullOrEmpty(text)) {
                         currentContentBuilder.append(text);
                         handler.onNext(text);
@@ -199,7 +197,7 @@ class AnthropicClient {
 
             private void handleMessageDelta(AnthropicStreamingData data) {
                 if (data.delta != null) {
-                    Delta delta = data.delta;
+                    AnthropicDelta delta = data.delta;
                     if (delta.stopReason != null) {
                         this.stopReason = delta.stopReason;
                     }
