@@ -4,7 +4,9 @@ import dev.langchain4j.graph.neo4j.Neo4jGraph;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -12,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
+import org.neo4j.driver.Session;
 import org.testcontainers.containers.Neo4jContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.utility.DockerImageName;
@@ -33,14 +36,28 @@ class Neo4jContentRetrieverTest {
     private static Neo4jContentRetriever retriever;
 
     @Mock
-    private static ChatLanguageModel chatLanguageModel;
+    private ChatLanguageModel chatLanguageModel;
 
     @BeforeAll
     static void beforeAll() {
 
         neo4jContainer.start();
+    }
+
+    @AfterAll
+    static void afterAll() {
+
+        neo4jContainer.stop();
+    }
+
+    @BeforeEach
+    void setUp() {
+
         Driver driver = GraphDatabase.driver(neo4jContainer.getBoltUrl(), AuthTokens.none());
         Neo4jGraph graph = Neo4jGraph.builder().driver(driver).build();
+        try (Session session = driver.session()) {
+            session.run("CREATE (book:Book {title: 'Dune'})<-[:WROTE]-(author:Person {name: 'Frank Herbert'})");
+        }
         retriever = Neo4jContentRetriever.builder()
                 .graph(graph)
                 .chatLanguageModel(chatLanguageModel)
