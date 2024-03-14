@@ -2,8 +2,12 @@ package dev.langchain4j.graph.neo4j;
 
 import lombok.Builder;
 import lombok.Getter;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Query;
 import org.neo4j.driver.Record;
-import org.neo4j.driver.*;
+import org.neo4j.driver.Result;
+import org.neo4j.driver.Session;
+import org.neo4j.driver.Value;
 import org.neo4j.driver.exceptions.ClientException;
 import org.neo4j.driver.summary.ResultSummary;
 
@@ -53,7 +57,7 @@ public class Neo4jGraph implements AutoCloseable {
             refreshSchema();
         } catch (ClientException e) {
             if ("Neo.ClientError.Procedure.ProcedureNotFound".equals(e.code())) {
-                throw new RuntimeException("Please ensure the APOC plugin is installed in Neo4j", e);
+                throw new Neo4jException("Please ensure the APOC plugin is installed in Neo4j", e);
             }
             throw e;
         }
@@ -63,6 +67,8 @@ public class Neo4jGraph implements AutoCloseable {
 
         try (Session session = this.driver.session()) {
             return session.executeWrite(tx -> tx.run(queryString).consume());
+        } catch (ClientException e) {
+            throw new Neo4jException("Error executing query: " + queryString, e);
         }
     }
 
@@ -74,6 +80,8 @@ public class Neo4jGraph implements AutoCloseable {
                 Result result = tx.run(query);
                 return result.list();
             });
+        } catch (ClientException e) {
+            throw new Neo4jException("Error executing query: " + queryString, e);
         }
     }
 

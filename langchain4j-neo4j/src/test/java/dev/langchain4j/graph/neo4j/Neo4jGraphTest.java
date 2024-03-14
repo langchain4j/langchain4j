@@ -48,7 +48,7 @@ class Neo4jGraphTest {
 
     @Test
     @Order(1)
-    public void refreshSchemaShouldReturnEmptySchema() {
+    void refreshSchemaShouldReturnEmptySchema() {
 
         neo4jGraph.refreshSchema();
         String expectedSchema = "Node properties are the following:\n\n\nRelationship properties are the following:\n\n\nThe relationships are the following:\n";
@@ -57,7 +57,7 @@ class Neo4jGraphTest {
 
     @Test
     @Order(2)
-    public void executeWriteShouldExecuteQuery() {
+    void executeWriteShouldExecuteQuery() {
 
         String query = "CREATE (n:Person {name: 'John'})";
         ResultSummary resultSummary = neo4jGraph.executeWrite(query);
@@ -67,7 +67,7 @@ class Neo4jGraphTest {
 
     @Test
     @Order(3)
-    public void executeReadShouldReturnRecords() {
+    void executeReadShouldReturnRecords() {
 
         String query = "MATCH (n:Person) RETURN n";
         List<Record> records = neo4jGraph.executeRead(query);
@@ -77,7 +77,7 @@ class Neo4jGraphTest {
 
     @Test
     @Order(4)
-    public void refreshSchemaShouldReturnUpdatedSchema() {
+    void refreshSchemaShouldReturnUpdatedSchema() {
 
         neo4jGraph.refreshSchema();
         String expectedSchema = """

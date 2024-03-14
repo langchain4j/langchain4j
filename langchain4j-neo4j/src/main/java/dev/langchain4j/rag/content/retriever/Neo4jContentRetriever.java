@@ -17,6 +17,10 @@ import java.util.regex.Pattern;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+/**
+ * A {@link ContentRetriever} that retrieves from an {@link Neo4jGraph}.
+ * It converts a natural language question into a Neo4j cypher query and then retrieves relevant {@link Content}s by executing the query on Neo4j.
+ */
 public class Neo4jContentRetriever implements ContentRetriever {
 
     private static final PromptTemplate CYPHER_PROMPT_TEMPLATE = PromptTemplate.from("""
