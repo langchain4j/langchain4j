@@ -3,8 +3,11 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
-import com.google.cloud.vertexai.generativeai.preview.ResponseHandler;
+import com.google.cloud.vertexai.api.Tool;
+import com.google.cloud.vertexai.generativeai.GenerateContentConfig;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.cloud.vertexai.generativeai.ResponseHandler;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -12,7 +15,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
 import lombok.Builder;
 
-import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -36,15 +39,6 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Integer maxOutputTokens,
                                             Integer topK,
                                             Float topP) {
-        try (VertexAI vertexAI = new VertexAI(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"))
-        ) {
-            this.generativeModel = new GenerativeModel(ensureNotBlank(modelName, "modelName"), vertexAI);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -59,6 +53,14 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             generationConfigBuilder.setTopP(topP);
         }
         this.generationConfig = generationConfigBuilder.build();
+
+        try (VertexAI vertexAI = new VertexAI(
+            ensureNotBlank(project, "project"),
+            ensureNotBlank(location, "location"))
+        ) {
+            this.generativeModel = new GenerativeModel(
+                ensureNotBlank(modelName, "modelName"), generationConfig, vertexAI);
+        }
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
@@ -69,20 +71,43 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        generate(messages, Collections.emptyList(), handler);
+    }
 
+    @Override
+    public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
         List<Content> contents = ContentsMapper.map(messages);
+
+        GenerateContentConfig.Builder generateContentConfigBuilder = GenerateContentConfig.newBuilder()
+            .setGenerationConfig(generationConfig);
+
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            generateContentConfigBuilder.setTools(Collections.singletonList(tool));
+        }
+        GenerateContentConfig generateContentConfig = generateContentConfigBuilder.build();
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
 
         try {
-            generativeModel.generateContentStream(contents, generationConfig)
-                    .stream()
-                    .forEach(partialResponse -> {
-                        responseBuilder.append(partialResponse);
-                        handler.onNext(ResponseHandler.getText(partialResponse));
-                    });
+            generativeModel.generateContentStream(contents, generateContentConfig)
+                .stream()
+                .forEach(partialResponse -> {
+                    responseBuilder.append(partialResponse);
+                    handler.onNext(ResponseHandler.getText(partialResponse));
+                });
             handler.onComplete(responseBuilder.build());
         } catch (Exception exception) {
             handler.onError(exception);
+        }
+
+    }
+
+    @Override
+    public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
+        if (toolSpecification == null) {
+            generate(messages, Collections.emptyList(), handler);
+        } else {
+            generate(messages, Collections.singletonList(toolSpecification), handler);
         }
     }
 

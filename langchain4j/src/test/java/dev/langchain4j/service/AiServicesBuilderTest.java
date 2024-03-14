@@ -5,6 +5,7 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -18,6 +19,9 @@ public class AiServicesBuilderTest {
     @Test
     public void testRetrieverAndContentRetriever() {
         Retriever retriever = mock(Retriever.class);
+        Mockito.when(retriever.toContentRetriever()).thenReturn((query) -> {
+            throw new RuntimeException("Should not be called");
+        });
         ContentRetriever contentRetriever = mock(ContentRetriever.class);
 
         assertThrows(IllegalConfigurationException.class, () -> {
@@ -31,6 +35,9 @@ public class AiServicesBuilderTest {
     @Test
     public void testRetrieverAndRetrievalAugmentor() {
         Retriever retriever = mock(Retriever.class);
+        Mockito.when(retriever.toContentRetriever()).thenReturn((query) -> {
+            throw new RuntimeException("Should not be called");
+        });
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
         assertThrows(IllegalConfigurationException.class, () -> {
