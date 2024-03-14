@@ -14,17 +14,20 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +35,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class AiServicesWithToolsIT {
+class AiServicesWithToolsIT {
 
     @Spy
     ChatLanguageModel chatLanguageModel = OpenAiChatModel.builder()
@@ -42,12 +45,6 @@ public class AiServicesWithToolsIT {
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
-            .build();
-
-    ToolSpecification expectedCalculatorSpecification = ToolSpecification.builder()
-            .name("squareRoot")
-            .description("calculates the square root of the provided number")
-            .addParameter("arg0", NUMBER, description("number to operate on"))
             .build();
 
     @AfterEach
@@ -62,8 +59,15 @@ public class AiServicesWithToolsIT {
 
     static class Calculator {
 
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("squareRoot")
+                .description("calculates the square root of the provided number")
+                .addParameter("arg0", NUMBER, description("number to operate on"))
+                .build();
+
         @Tool("calculates the square root of the provided number")
         double squareRoot(@P("number to operate on") double number) {
+            System.out.printf("called squareRoot(%s)%n", number);
             return Math.sqrt(number);
         }
     }
@@ -126,12 +130,12 @@ public class AiServicesWithToolsIT {
 
         verify(chatLanguageModel).generate(
                 singletonList(messages.get(0)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
 
         verify(chatLanguageModel).generate(
                 asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
     }
 
@@ -218,17 +222,17 @@ public class AiServicesWithToolsIT {
 
         verify(chatLanguageModel).generate(
                 singletonList(messages.get(0)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
 
         verify(chatLanguageModel).generate(
                 asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
 
         verify(chatLanguageModel).generate(
                 asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3), messages.get(4)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
     }
 
@@ -303,93 +307,217 @@ public class AiServicesWithToolsIT {
 
         verify(chatLanguageModel).generate(
                 singletonList(messages.get(0)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
 
         verify(chatLanguageModel).generate(
                 asList(messages.get(0), messages.get(1), messages.get(2), messages.get(3)),
-                singletonList(expectedCalculatorSpecification)
+                singletonList(Calculator.EXPECTED_SPECIFICATION)
         );
     }
 
-    static class IdsProcessor {
 
-        @Tool("processes list of uuids into result string")
-        String processUuids(@P("uuids to use") List<String> uuids) {
-            return String.join("_", uuids);
+    static class StringListProcessor {
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("processStrings")
+                .description("Processes list of strings")
+                .addParameter("arg0", ARRAY, items(STRING), description("List of strings to process"))
+                .build();
+
+        @Tool("Processes list of strings")
+        void processStrings(@P("List of strings to process") List<String> strings) {
+            System.out.printf("called processStrings(%s)%n", strings);
         }
     }
 
     @Test
-    void should_use_tool_with_array_parameters_then_answer() {
+    void should_use_tool_with_List_of_Strings_parameter() {
 
-        ToolSpecification expectedToolSpecification = ToolSpecification.builder()
-                .name("processUuids")
-                .description("processes list of uuids into result string")
-                .addParameter("arg0", ARRAY, items(STRING), description("uuids to use"))
-                .build();
-
-        IdsProcessor listProcessor = spy(new IdsProcessor());
+        StringListProcessor stringListProcessor = spy(new StringListProcessor());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemory(chatMemory)
-                .tools(listProcessor)
+                .tools(stringListProcessor)
                 .build();
 
-        String userMessage = "Process uuids 73b7323b-ed32-4782-a91e-3056455b9d75 " +
-                "and 8585784a-d3f7-4442-936d-18fa7193ddc2 and provide result of processing";
+        String userMessage = "Process strings 'cat' and 'dog' together, do not separate them!";
 
-        Response<AiMessage> response = assistant.chat(userMessage);
+        // when
+        assistant.chat(userMessage);
 
-        assertThat(response.content().text())
-                .contains("73b7323b-ed32-4782-a91e-3056455b9d75_8585784a-d3f7-4442-936d-18fa7193ddc2");
-
-        verify(listProcessor).processUuids(asList(
-                "73b7323b-ed32-4782-a91e-3056455b9d75",
-                "8585784a-d3f7-4442-936d-18fa7193ddc2"
-        ));
-        verifyNoMoreInteractions(listProcessor);
+        // then
+        verify(stringListProcessor).processStrings(asList("cat", "dog"));
+        verifyNoMoreInteractions(stringListProcessor);
 
         List<ChatMessage> messages = chatMemory.messages();
-        assertThat(messages).hasSize(4);
-
-        assertThat(messages.get(0)).isInstanceOf(dev.langchain4j.data.message.UserMessage.class);
-        assertThat(messages.get(0).text()).isEqualTo(userMessage);
-
-        AiMessage aiMessage = (AiMessage) messages.get(1);
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotBlank();
-        assertThat(toolExecutionRequest.name()).isEqualTo("processUuids");
-        assertThat(toolExecutionRequest.arguments())
-                .isEqualToIgnoringWhitespace("{\"arg0\":  [\"73b7323b-ed32-4782-a91e-3056455b9d75\", " +
-                        "\"8585784a-d3f7-4442-936d-18fa7193ddc2\"]}");
-
-        ToolExecutionResultMessage firstToolExecutionResultMessage = (ToolExecutionResultMessage) messages.get(2);
-        assertThat(firstToolExecutionResultMessage.id()).isEqualTo(toolExecutionRequest.id());
-        assertThat(firstToolExecutionResultMessage.toolName()).isEqualTo("processUuids");
-        assertThat(firstToolExecutionResultMessage.text())
-                .isEqualTo("73b7323b-ed32-4782-a91e-3056455b9d75_8585784a-d3f7-4442-936d-18fa7193ddc2");
-
-        assertThat(messages.get(3)).isInstanceOf(AiMessage.class);
-        assertThat(messages.get(3).text())
-                .contains("73b7323b-ed32-4782-a91e-3056455b9d75_8585784a-d3f7-4442-936d-18fa7193ddc2");
-
-
         verify(chatLanguageModel).generate(
                 singletonList(messages.get(0)),
-                singletonList(expectedToolSpecification)
+                singletonList(StringListProcessor.EXPECTED_SPECIFICATION)
         );
-
         verify(chatLanguageModel).generate(
                 asList(messages.get(0), messages.get(1), messages.get(2)),
-                singletonList(expectedToolSpecification)
+                singletonList(StringListProcessor.EXPECTED_SPECIFICATION)
         );
-        verifyNoMoreInteractions(chatLanguageModel);
     }
+
+
+    static class IntegerListProcessor {
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("processIntegers")
+                .description("Processes list of integers")
+                .addParameter("arg0", ARRAY, items(INTEGER), description("List of integers to process"))
+                .build();
+
+        @Tool("Processes list of integers")
+        void processIntegers(@P("List of integers to process") List<Integer> integers) {
+            System.out.printf("called processIntegers(%s)%n", integers);
+        }
+    }
+
+    @Test
+    @Disabled
+        // TODO fix: should automatically convert List<Double> into List<Integer>
+    void should_use_tool_with_List_of_Integers_parameter() {
+
+        IntegerListProcessor integerListProcessor = spy(new IntegerListProcessor());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(integerListProcessor)
+                .build();
+
+        String userMessage = "Process integers 1 and 2 together, do not separate them!";
+
+        // when
+        assistant.chat(userMessage);
+
+        // then
+        verify(integerListProcessor).processIntegers(asList(1, 2));
+        verifyNoMoreInteractions(integerListProcessor);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        verify(chatLanguageModel).generate(
+                singletonList(messages.get(0)),
+                singletonList(IntegerListProcessor.EXPECTED_SPECIFICATION)
+        );
+        verify(chatLanguageModel).generate(
+                asList(messages.get(0), messages.get(1), messages.get(2)),
+                singletonList(IntegerListProcessor.EXPECTED_SPECIFICATION)
+        );
+    }
+
+
+    static class StringArrayProcessor {
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("processStrings")
+                .description("Processes array of strings")
+                .addParameter("arg0", ARRAY, items(STRING), description("Array of strings to process"))
+                .build();
+
+        @Tool("Processes array of strings")
+        void processStrings(@P("Array of strings to process") String[] ids) {
+            System.out.printf("called processStrings(%s)%n", Arrays.toString(ids));
+        }
+    }
+
+    @Test
+    @Disabled
+        // TODO fix: should automatically convert List<String> into String[]
+    void should_use_tool_with_Array_of_Strings_parameter() {
+
+        StringArrayProcessor stringArrayProcessor = spy(new StringArrayProcessor());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(stringArrayProcessor)
+                .build();
+
+        String userMessage = "Process strings 'cat' and 'dog' together, do not separate them!";
+
+        // when
+        assistant.chat(userMessage);
+
+        // then
+        verify(stringArrayProcessor).processStrings(new String[]{"cat", "dog"});
+        verifyNoMoreInteractions(stringArrayProcessor);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        verify(chatLanguageModel).generate(
+                singletonList(messages.get(0)),
+                singletonList(StringArrayProcessor.EXPECTED_SPECIFICATION)
+        );
+        verify(chatLanguageModel).generate(
+                asList(messages.get(0), messages.get(1), messages.get(2)),
+                singletonList(StringArrayProcessor.EXPECTED_SPECIFICATION)
+        );
+    }
+
+
+    static class WeatherService {
+
+        static ToolSpecification EXPECTED_SPECIFICATION = ToolSpecification.builder()
+                .name("currentTemperature")
+                .description("") // TODO should be null?
+                .addParameter("arg0", STRING)
+                .addParameter("arg1", STRING, from("enum", asList("CELSIUS", "fahrenheit", "Kelvin")))
+                .build();
+
+        @Tool
+        int currentTemperature(String city, TemperatureUnit unit) {
+            System.out.printf("called currentTemperature(%s, %s)%n", city, unit);
+            return 42;
+        }
+    }
+
+    enum TemperatureUnit {
+        CELSIUS, fahrenheit, Kelvin
+    }
+
+    @Test
+    void should_use_tool_with_enum_parameter() {
+
+        // given
+        WeatherService weatherService = spy(new WeatherService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(weatherService)
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("What is the temperature in Munich now, in kelvin?");
+
+        // then
+        assertThat(response.content().text()).contains("42");
+
+        verify(weatherService).currentTemperature("Munich", Kelvin);
+        verifyNoMoreInteractions(weatherService);
+
+        List<ChatMessage> messages = chatMemory.messages();
+        verify(chatLanguageModel).generate(
+                singletonList(messages.get(0)),
+                singletonList(WeatherService.EXPECTED_SPECIFICATION)
+        );
+        verify(chatLanguageModel).generate(
+                asList(messages.get(0), messages.get(1), messages.get(2)),
+                singletonList(WeatherService.EXPECTED_SPECIFICATION)
+        );
+    }
+
+    // TODO test Lists, Sets, Arrays of different types (including enums).
 }

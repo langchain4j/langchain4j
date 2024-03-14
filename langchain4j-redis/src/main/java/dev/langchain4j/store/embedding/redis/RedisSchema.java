@@ -7,10 +7,7 @@ import redis.clients.jedis.search.schemafields.TextField;
 import redis.clients.jedis.search.schemafields.VectorField;
 import redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static dev.langchain4j.store.embedding.redis.MetricType.COSINE;
 import static redis.clients.jedis.search.schemafields.VectorField.VectorAlgorithm.HNSW;
@@ -37,7 +34,7 @@ class RedisSchema {
     @Builder.Default
     private String scalarFieldName = "text";
     @Builder.Default
-    private List<String> metadataFieldsName = new ArrayList<>();
+    private Collection<String> metadataKeys = new ArrayList<>();
 
     /* Vector field settings */
 
@@ -47,11 +44,11 @@ class RedisSchema {
     @Builder.Default
     private MetricType metricType = DEFAULT_METRIC_TYPE;
 
-    public RedisSchema(int dimension) {
+    RedisSchema(int dimension) {
         this.dimension = dimension;
     }
 
-    public SchemaField[] toSchemaFields() {
+    SchemaField[] toSchemaFields() {
         Map<String, Object> vectorAttrs = new HashMap<>();
         vectorAttrs.put("DIM", dimension);
         vectorAttrs.put("DISTANCE_METRIC", metricType.name());
@@ -66,31 +63,31 @@ class RedisSchema {
                 .as(vectorFieldName)
                 .build());
 
-        if (metadataFieldsName != null && !metadataFieldsName.isEmpty()) {
-            for (String metadataFieldName : metadataFieldsName) {
-                fields.add(TextField.of(JSON_PATH_PREFIX + metadataFieldName).as(metadataFieldName).weight(1.0));
+        if (metadataKeys != null) {
+            for (String metadataKey : metadataKeys) {
+                fields.add(TextField.of(JSON_PATH_PREFIX + metadataKey).as(metadataKey).weight(1.0));
             }
         }
         return fields.toArray(new SchemaField[0]);
     }
 
-    public String getIndexName() {
+    String indexName() {
         return indexName;
     }
 
-    public String getPrefix() {
+    String prefix() {
         return prefix;
     }
 
-    public String getVectorFieldName() {
+    String vectorFieldName() {
         return vectorFieldName;
     }
 
-    public String getScalarFieldName() {
+    String scalarFieldName() {
         return scalarFieldName;
     }
 
-    public List<String> getMetadataFieldsName() {
-        return metadataFieldsName;
+    Collection<String> metadataKeys() {
+        return metadataKeys;
     }
 }

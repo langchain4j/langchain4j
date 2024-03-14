@@ -33,6 +33,9 @@ public class InternalOpenAiHelper {
     static final String OPENAI_DEMO_API_KEY = "demo";
     static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
 
+
+    static final String DEFAULT_USER_AGENT = "langchain4j-openai";
+
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(InternalOpenAiHelper::toOpenAiMessage)
@@ -166,6 +169,9 @@ public class InternalOpenAiHelper {
         return Tool.from(function);
     }
 
+    /**
+     * @deprecated Functions are deprecated by OpenAI, use {@link #toTools(Collection)} instead
+     */
     @Deprecated
     public static List<Function> toFunctions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
@@ -173,6 +179,9 @@ public class InternalOpenAiHelper {
                 .collect(toList());
     }
 
+    /**
+     * @deprecated Functions are deprecated by OpenAI, use {@link #toTool(ToolSpecification)} ()} instead
+     */
     @Deprecated
     private static Function toFunction(ToolSpecification toolSpecification) {
         return Function.builder()
