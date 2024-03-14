@@ -2,7 +2,10 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
-import com.google.cloud.vertexai.generativeai.preview.GenerativeModel;
+import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -10,7 +13,9 @@ import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -335,5 +340,56 @@ class VertexAiGeminiStreamingChatModelIT {
                 .containsIgnoringCase("cat")
                 .containsIgnoringCase("dog")
                 .containsIgnoringCase("dice");
+    }
+
+    @Test
+    void should_accept_function_call() {
+
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-pro")
+            .build();
+
+        ToolSpecification weatherToolSpec = ToolSpecification.builder()
+            .name("getWeatherForecast")
+            .description("Get the weather forecast for a location")
+            .addParameter("location", JsonSchemaProperty.STRING,
+                JsonSchemaProperty.description("the location to get the weather forecast for"))
+            .build();
+
+        List<ChatMessage> allMessages = new ArrayList<>();
+
+        UserMessage weatherQuestion = UserMessage.from("What is the weather in Paris?");
+        System.out.println("Question: " + weatherQuestion.text());
+        allMessages.add(weatherQuestion);
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(allMessages, weatherToolSpec, handler);
+        Response<AiMessage> messageResponse = handler.get();
+
+        // then
+        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+        ToolExecutionRequest toolExecutionRequest = messageResponse.content().toolExecutionRequests().get(0);
+
+        assertThat(toolExecutionRequest.arguments()).contains("Paris");
+        assertThat(toolExecutionRequest.name()).isEqualTo("getWeatherForecast");
+
+        allMessages.add(messageResponse.content());
+
+        // when (feeding the function return value back)
+        ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(toolExecutionRequest,
+            "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
+        allMessages.add(toolExecResMsg);
+
+        handler = new TestStreamingResponseHandler<>();
+        model.generate(allMessages, handler);
+        Response<AiMessage> weatherResponse = handler.get();
+
+        // then
+        System.out.println("Answer: " + weatherResponse.content().text());
+        assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
     }
 }
