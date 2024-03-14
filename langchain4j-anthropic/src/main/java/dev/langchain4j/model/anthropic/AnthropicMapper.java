@@ -96,18 +96,14 @@ class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new TokenUsage(
-                anthropicUsage.getInputTokens(),
-                anthropicUsage.getOutputTokens(),
-                anthropicUsage.getInputTokens() + anthropicUsage.getOutputTokens()
-        );
+        return new TokenUsage(anthropicUsage.getInputTokens(), anthropicUsage.getOutputTokens());
     }
 
-    static FinishReason toFinishReason(String anthropicFinishReason) {
-        if (anthropicFinishReason == null) {
+    static FinishReason toFinishReason(String anthropicStopReason) {
+        if (anthropicStopReason == null) {
             return null;
         }
-        switch (anthropicFinishReason) {
+        switch (anthropicStopReason) {
             case "end_turn":
                 return STOP;
             case "max_tokens":

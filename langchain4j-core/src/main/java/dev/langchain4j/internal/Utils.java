@@ -53,12 +53,30 @@ public class Utils {
   }
 
   /**
+   * Is the given string {@code null} or empty ("")?
+   * @param string The string to check.
+   * @return true if the string is {@code null} or empty.
+   */
+  public static boolean isNullOrEmpty(String string) {
+    return string == null || string.isEmpty();
+  }
+
+  /**
    * Is the given string not {@code null} and not blank?
    * @param string The string to check.
    * @return true if there's something in the string.
    */
   public static boolean isNotNullOrBlank(String string) {
     return !isNullOrBlank(string);
+  }
+
+  /**
+   * Is the given string not {@code null} and not empty ("")?
+   * @param string The string to check.
+   * @return true if the given string is not {@code null} and not empty ("")?
+   */
+  public static boolean isNotNullOrEmpty(String string) {
+    return !isNullOrEmpty(string);
   }
 
   /**

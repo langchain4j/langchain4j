@@ -30,7 +30,7 @@ class AnthropicCreateMessageResponse {
     @Builder
     static class Usage {
 
-        private final int inputTokens;
-        private final int outputTokens;
+        private final Integer inputTokens;
+        private final Integer outputTokens;
     }
 }

@@ -1,10 +1,8 @@
 package dev.langchain4j.model.anthropic;
 
+import okhttp3.ResponseBody;
 import retrofit2.Call;
-import retrofit2.http.Body;
-import retrofit2.http.Header;
-import retrofit2.http.Headers;
-import retrofit2.http.POST;
+import retrofit2.http.*;
 
 interface AnthropicApi {
 
@@ -15,4 +13,11 @@ interface AnthropicApi {
     Call<AnthropicCreateMessageResponse> createMessage(@Header(X_API_KEY) String apiKey,
                                                        @Header("anthropic-version") String version,
                                                        @Body AnthropicCreateMessageRequest request);
+
+    @Streaming
+    @POST("messages")
+    @Headers({"content-type: application/json"})
+    Call<ResponseBody> streamCreateMessage(@Header(X_API_KEY) String apiKey,
+                                           @Header("anthropic-version") String version,
+                                           @Body AnthropicCreateMessageRequest request);
 }

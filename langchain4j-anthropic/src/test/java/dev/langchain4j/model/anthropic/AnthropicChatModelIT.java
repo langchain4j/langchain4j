@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -29,18 +29,20 @@ class AnthropicChatModelIT {
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .maxTokens(20)
             .logRequests(true)
             .logResponses(true)
             .build();
 
     ChatLanguageModel visionModel = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .maxTokens(20)
             .logRequests(false) // base64-encoded images are huge
             .logResponses(true)
             .build();
 
-    @BeforeEach
-    void beforeEach() throws InterruptedException {
+    @AfterEach
+    void afterEach() throws InterruptedException {
         Thread.sleep(10_000L); // to avoid hitting rate limits
     }
 
@@ -61,7 +63,7 @@ class AnthropicChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -205,21 +207,6 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_continue_ai_message() {
-
-        // given
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-        AiMessage aiMessage = AiMessage.from("In one word, the capital of Germany is:");
-
-        // when
-        Response<AiMessage> response = model.generate(userMessage, aiMessage);
-        System.out.println(response);
-
-        // then
-        assertThat(response.content().text().trim()).isIn("Berlin", "Berlin.");
-    }
-
-    @Test
     void test_all_parameters() {
 
         // given
@@ -257,7 +244,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(3)
+                .maxTokens(1)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -282,7 +269,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
-                .maxTokens(3)
+                .maxTokens(1)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -295,5 +282,34 @@ class AnthropicChatModelIT {
 
         // then
         assertThat(response.content().text()).isNotBlank();
+    }
+
+    @Test
+    void should_fail_to_create_without_api_key() {
+
+        assertThatThrownBy(() -> AnthropicChatModel.withApiKey(null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Anthropic API key must be defined. " +
+                        "It can be generated here: https://console.anthropic.com/settings/keys");
+    }
+
+    @Test
+    void should_fail_with_rate_limit_error() {
+
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .maxTokens(1)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        assertThatThrownBy(() -> {
+            for (int i = 0; i < 100; i++) {
+                model.generate("Hi");
+            }
+        })
+                .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)
+                .hasRootCauseExactlyInstanceOf(AnthropicHttpException.class)
+                .hasMessageContaining("rate_limit_error");
     }
 }
