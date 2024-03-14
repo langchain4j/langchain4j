@@ -169,6 +169,7 @@
     <profiles>
         <profile>
             <id>openrewrite</id>
+            <!-- `mvn -P openrewrite org.openrewrite.maven:rewrite-maven-plugin:run` -->
             <build>
                 <plugins>
                     <plugin>
@@ -177,7 +178,7 @@
                         <version>5.23.1</version>
                         <configuration>
                             <activeRecipes>
-                                <recipe>org.openrewrite.java.OrderImports</recipe>
+                                <!--<recipe>org.openrewrite.java.OrderImports</recipe>-->
                                 <recipe>org.openrewrite.java.testing.assertj.Assertj</recipe>
                             </activeRecipes>
                             <failOnDryRunResults>true</failOnDryRunResults>
