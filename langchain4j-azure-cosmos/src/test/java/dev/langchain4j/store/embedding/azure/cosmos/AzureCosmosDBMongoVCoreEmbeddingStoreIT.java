@@ -45,7 +45,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
 
         client = MongoClients.create(
                 MongoClientSettings.builder()
-                        .applyConnectionString(new ConnectionString("YOUR_ENDPOINT"))
+                        .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
                         .applicationName("JAVA_LANG_CHAIN")
                         .build());
 
