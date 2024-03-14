@@ -34,7 +34,6 @@ import java.util.stream.StreamSupport;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.azure.cosmos.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.cosmos.MappingUtils.toMongoDbDocument;
@@ -114,8 +113,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             int numberOfConnections,
             int efConstruction,
             int efSearch) {
-        databaseName = ensureNotNull(databaseName, "databaseName");
-        collectionName = ensureNotNull(collectionName, "collectionName");
+        databaseName = getOrDefault(databaseName, "databaseName");
+        collectionName = getOrDefault(collectionName, "collectionName");
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
         applicationName = getOrDefault(applicationName, "JAVA_LANG_CHAIN");
@@ -220,6 +219,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             AggregateIterable<BsonDocument> results = collection.aggregate(pipeline, BsonDocument.class);
 
             return StreamSupport.stream(results.spliterator(), false)
+                    .filter(doc -> doc.getDouble("similarityScore") != null && doc.getDouble("similarityScore").getValue() < minScore)
                     .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(doc.getDocument("document"), doc.getDouble("similarityScore").getValue())))
                     .collect(Collectors.toList());
 
@@ -367,9 +367,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                         .append("similarity", this.similarity)
                         .append("dimensions", this.dimensions));
 
-//        return new Document()
-//                .append("createIndexes", collectionName)
-//                .append("indexes", List.of(indexDefinition)).toBsonDocument();
         // Convert the index definition to a BsonDocument
         BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
 
@@ -394,9 +391,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                         .append("similarity", this.similarity)
                         .append("dimensions", this.dimensions));
 
-//        return new Document()
-//                .append("createIndexes", collectionName)
-//                .append("indexes", List.of(indexDefinition)).toBsonDocument();
         // Convert the index definition to a BsonDocument
         BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
 
