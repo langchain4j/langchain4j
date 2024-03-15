@@ -11,7 +11,6 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -175,5 +174,10 @@ public class MistralAiChatModel implements ChatLanguageModel {
             return factory.get();
         }
         return new MistralAiChatModelBuilder();
+    }
+
+    public static class MistralAiChatModelBuilder {
+        public MistralAiChatModelBuilder() {
+        }
     }
 }

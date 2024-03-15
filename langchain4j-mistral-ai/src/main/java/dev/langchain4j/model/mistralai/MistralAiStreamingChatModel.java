@@ -163,4 +163,9 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         }
         return new MistralAiStreamingChatModelBuilder();
     }
+
+    public static class MistralAiStreamingChatModelBuilder {
+        public MistralAiStreamingChatModelBuilder() {
+        }
+    }
 }

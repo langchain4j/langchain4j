@@ -74,4 +74,10 @@ public class MistralAiModels {
         }
         return new MistralAiModelsBuilder();
     }
+
+    public static class MistralAiModelsBuilder {
+        public MistralAiModelsBuilder(){
+
+        }
+    }
 }

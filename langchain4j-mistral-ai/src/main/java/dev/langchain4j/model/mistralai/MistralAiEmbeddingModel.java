@@ -101,4 +101,9 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
         }
         return new MistralAiEmbeddingModelBuilder();
     }
+
+    public static class MistralAiEmbeddingModelBuilder {
+        public MistralAiEmbeddingModelBuilder() {
+        }
+    }
 }
