@@ -116,7 +116,7 @@ or maybe we just want to use `UserMessage` for that purpose.
 ```java
 interface Friend {
 
-    @SystemMessage("You are a good friend of mine. Answer using slang. {{it}}")
+    @UserMessage("You are a good friend of mine. Answer using slang. {{it}}")
     String chat(String userMessage);
 }
 
@@ -137,7 +137,7 @@ interface Friend {
 }
 ```
 
-## Output Parsing
+## Output Parsing (aka Structured Outputs)
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
 Currently, AI Services support the following return types:
@@ -145,20 +145,9 @@ Currently, AI Services support the following return types:
 - `AiMessage`
 - `Response<AiMessage>` (if you need to access `TokenUsage` or `FinishReason`)
 - `boolean`/`Boolean` (if you need to get "yes" or "no" answer)
-- `byte`/`Byte`
-- `short`/`Short`
-- `int`/`Integer`
-- `long`/`Long`
-- `BigInteger`
-- `float`/`Float`
-- `double`/`Double`
-- `BigDecimal`
-- `Date`
-- `LocalDate`
-- `LocalTime`
-- `LocalDateTime`
-- `List<String>` (if you want to get the answer in the form of a list of bullet points)
-- `Set<String>`
+- `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
+- `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
+- `List<String>`/`Set<String>` (if you want to get the answer in the form of a list of bullet points)
 - Any `Enum` (if you want to classify text, e.g. sentiment, user intent, etc)
 - Any custom POJO
 
@@ -239,10 +228,34 @@ Person person = personExtractor.extractPersonFrom(text);
 System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
+## JSON mode
+
 When extracting custom POJOs (actually JSON, which is then parsed into the POJO),
-it is recommended to set a "json mode" in the model configuration.
+it is recommended to enable a "JSON mode" in the model configuration.
 This way, the LLM will be forced to produce valid JSON.
 
+:::note
+Please note that JSON mode and tools/function calling are similar features
+but have different APIs and are used for distinct purposes.
+
+JSON mode is useful when you _always_ need a response from the LLM in a structured format (valid JSON).
+The schema for the expected JSON can be defined in a free form inside a `SystemMessage` or `UserMessage`.
+In this scenario, the LLM must _always_ output valid JSON.
+Additionally, there is usually no state/memory required,
+so each interaction with the LLM is independent of others.
+For instance, you might want to extract information from a text, such as the list of people mentioned in this text
+or convert a free-form product review into a structured form with fields like
+`String productName`, `Sentiment sentiment`, `List<String> claimedProblems`, etc.
+
+On the other hand, the use of tool/function calling is useful when enabling the LLM to call or execute tools,
+but only as necessary. In this case, a list of tools is provided to the LLM, and it autonomously decides
+whether to call the tool.
+
+Function calling is often used for structured data extraction,
+but now we have the JSON mode feature, which is more suitable for this purpose.
+:::
+
+Here is how to enable JSON mode:
 - For OpenAI:
 ```java
 OpenAiChatModel.builder()
@@ -264,8 +277,8 @@ OllamaChatModel.builder()
         .format("json")
         .build();
 ```
-- For other model providers: if the underlying model provider does not support "json mode",
-try lowering the `temperature` and see if that helps.
+- For other model providers: if the underlying model provider does not support JSON mode,
+prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
 
 [More examples](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 
@@ -278,9 +291,8 @@ try lowering the `temperature` and see if that helps.
 [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
 [Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 
-## Tools
-[Example with Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
-[Example with dynamic Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java)
+## Tools (Function Calling)
+[Tools](/tutorials/tools)
 
 ## RAG
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
@@ -300,7 +312,7 @@ This principle also applies to tools, RAG, and model parameters such as `tempera
 
 Your chatbot likely doesn't need to be aware of every tool you have at all times.
 For example, when a user simply greets the chatbot or says goodbye,
-it's costly and sometimes risky to provide information on the dozens or hundreds of tools available
+it is costly and sometimes even dangerous to give the LLM access to the dozens or hundreds of tools
 (each tool included in the LLM call consumes a significant number of tokens)
 and might lead to unintended results (LLMs can hallucinate or be manipulated to invoke a tool with unintended inputs).
 
@@ -311,15 +323,15 @@ and increases response times (more context = higher latency).
 Concerning model parameters: in certain situations, you may need LLM to be highly deterministic,
 so you would set a low `temperature`. In other cases, you might opt for a higher `temperature`, and so on.
 
-The point is that smaller, more specific components are easier and less expensive to develop, test, maintain, and understand.
+The point is, smaller and more specific components are easier and cheaper to develop, test, maintain, and understand.
 
 Another aspect to consider involves two extremes:
-- Do you prefer your application to be highly deterministic with minimal LLM input,
-where the application controls the flow and the LLM is just one of components?
+- Do you prefer your application to be highly deterministic,
+where the application controls the flow and the LLM is just one of the components?
 - Or do you want the LLM to have complete autonomy and drive your application?
 
 Or perhaps a mix of both, depending on the situation?
-All these options are possible when you decompose your app into smaller, more manageable parts.
+All these options are possible when you decompose your application into smaller, more manageable parts.
 
 AI Services can be used as and combined with regular (deterministic) software components:
 - You can call one AI Service after another (aka chaining).
@@ -334,10 +346,10 @@ AI Services can be used as and combined with regular (deterministic) software co
 Let's consider a simple example.
 I want to build a chatbot for my company.
 If a user greets the chatbot,
-I want it to respond with one of the approved greetings without relying on an LLM to generate the greeting.
+I want it to respond with the pre-defined greeting without relying on an LLM to generate the greeting.
 If a user asks a question, I want the LLM to generate the response using internal knowledge base of the company (aka RAG).
 
-Here is how this can be done with 2 AI Services:
+Here is how this task can be decomposed into 2 separate AI Services:
 ```java
 interface GreetingExpert {
 
@@ -351,13 +363,8 @@ interface ChatBot {
     String reply(String userMessage);
 }
 
-class ChatBotService {
+class MilesOfSmiles {
 
-    private static final List<String> GREETINGS_APPROVED_BY_MANAGEMENT = asList(
-            "Hello and welcome to Miles of Smiles! How can I assist you today?",
-            "Greetings from Miles of Smiles! How can I make your day better?"
-    );
-    
     private final GreetingExpert greetingExpert;
     private final ChatBot chatBot;
     
@@ -365,7 +372,7 @@ class ChatBotService {
     
     public String handle(String userMessage) {
         if (greetingExpert.isGreeting(userMessage)) {
-            return GREETINGS_APPROVED_BY_MANAGEMENT.get(RANDOM.nextInt(GREETINGS_APPROVED_BY_MANAGEMENT.size()));
+            return "Greetings from Miles of Smiles! How can I make your day better?";
         } else {
             return chatBot.reply(userMessage);
         }
@@ -379,16 +386,26 @@ ChatBot chatBot = AiServices.builder(ChatBot.class)
     .contentRetriever(milesOfSmilesContentRetriever)
     .build();
 
-ChatBotService chatBotService = new ChatBotService(greetingExpert, chatBot);
+MilesOfSmiles milesOfSmiles = new MilesOfSmiles(greetingExpert, chatBot);
 
-String greeting = chatBotService.handle("Hello");
+String greeting = milesOfSmiles.handle("Hello");
 System.out.println(greeting); // Greetings from Miles of Smiles! How can I make your day better?
 
-String answer = chatBotService.handle("Which services do you provide?");
+String answer = milesOfSmiles.handle("Which services do you provide?");
 System.out.println(answer); // At Miles of Smiles, we provide a wide range of services ...
 ```
 
-Notice how we used Llama2 for the simple task of identifying whether the text is a greeting or not,
-and GPT-4 for a more complicated task.
+Notice how we used the cheaper Llama2 for the simple task of identifying whether the text is a greeting or not,
+and the more expensive GPT-4 with a content retriever (RAG) for a more complex task.
+
+This is a very simple and somewhat naive example, but hopefully, it demonstrates the idea.
+
+Now, I can mock both `GreetingExpert` and `ChatBot` and test `MilesOfSmiles` in isolation
+Also, I can integration test `GreetingExpert` and `ChatBot` separately.
+I can evaluate both of them separately and find the most optimal parameters for each subtask,
+or, in the long run, even fine-tune a small specialized model for each specific subtask.
 
 TODO
+
+## Related Tutorials
+- [LangChain4j AiServices Tutorial](https://www.sivalabs.in/langchain4j-ai-services-tutorial/) by [Siva](https://www.sivalabs.in/)

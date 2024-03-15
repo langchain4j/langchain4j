@@ -13,7 +13,6 @@ import redis.clients.jedis.JedisPooled;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_IMAGE_NAME;
 import static com.redis.testcontainers.RedisStackContainer.DEFAULT_TAG;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.util.Collections.singletonList;
 
 class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
 
@@ -44,7 +43,7 @@ class RedisEmbeddingStoreIT extends EmbeddingStoreIT {
                 .port(redis.getFirstMappedPort())
                 .indexName(randomUUID())
                 .dimension(384)
-                .metadataFieldsName(singletonList("test-key"))
+                .metadataKeys(createMetadata().toMap().keySet())
                 .build();
     }
 
