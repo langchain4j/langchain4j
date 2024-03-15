@@ -4,14 +4,21 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
+import java.util.Map;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.imageFrom;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
@@ -45,6 +52,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiImageModel implements ImageModel {
+
+    Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -150,9 +159,29 @@ public class AzureOpenAiImageModel implements ImageModel {
                 .setStyle(style)
                 .setResponseFormat(responseFormat);
 
-        ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
-        Image image = imageFrom(imageGenerations.getData().get(0));
-        return Response.from(image);
+        try {
+            ImageGenerations imageGenerations = client.getImageGenerations(deploymentName, options);
+            Image image = imageFrom(imageGenerations.getData().get(0));
+            return Response.from(image);
+        } catch (HttpResponseException httpResponseException) {
+            logger.info("Error generating image, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = FinishReason.OTHER;
+            if (httpResponseException.getValue() instanceof Map) {
+                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
+                Object errorMap = error.get("error");
+                if (errorMap instanceof Map) {
+                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
+                    Object errorCode = errorDetails.get("code");
+                    if (errorCode instanceof String) {
+                        String code = (String) errorCode;
+                        if ("content_policy_violation".equals(code)) {
+                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                        }
+                    }
+                }
+            }
+            return Response.from(Image.builder().build(), new TokenUsage(), exceptionFinishReason);
+        }
     }
 
     public static Builder builder() {

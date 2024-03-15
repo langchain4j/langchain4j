@@ -4,6 +4,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -12,12 +13,15 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -244,13 +248,36 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
         }
 
-        ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);
-
-        return Response.from(
-                aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
-                tokenUsageFrom(chatCompletions.getUsage()),
-                finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
-        );
+        try {
+            ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);
+            return Response.from(
+                    aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
+                    tokenUsageFrom(chatCompletions.getUsage()),
+                    finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
+            );
+        } catch (HttpResponseException httpResponseException) {
+            String exceptionMessage = httpResponseException.getMessage();
+            FinishReason exceptionFinishReason = FinishReason.OTHER;
+            if (httpResponseException.getValue() instanceof Map) {
+                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
+                Object errorMap = error.get("error");
+                if (errorMap instanceof Map) {
+                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
+                    Object errorCode = errorDetails.get("code");
+                    if (errorCode instanceof String) {
+                        String code = (String) errorCode;
+                        if ("content_filter".equals(code)) {
+                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                        }
+                    }
+                }
+            }
+            return Response.from(
+                    aiMessage(exceptionMessage),
+                    new TokenUsage(),
+                    exceptionFinishReason
+            );
+        }
     }
 
     @Override

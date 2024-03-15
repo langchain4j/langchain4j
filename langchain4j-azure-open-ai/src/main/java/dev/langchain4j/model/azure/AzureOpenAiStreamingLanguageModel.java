@@ -4,6 +4,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -11,13 +12,16 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
@@ -223,6 +227,28 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                     response.content().text(),
                     response.tokenUsage(),
                     response.finishReason()
+            ));
+        } catch (HttpResponseException httpResponseException) {
+            String exceptionMessage = httpResponseException.getMessage();
+            FinishReason exceptionFinishReason = FinishReason.OTHER;
+            if (httpResponseException.getValue() instanceof Map) {
+                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
+                Object errorMap = error.get("error");
+                if (errorMap instanceof Map) {
+                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
+                    Object errorCode = errorDetails.get("code");
+                    if (errorCode instanceof String) {
+                        String code = (String) errorCode;
+                        if ("content_filter".equals(code)) {
+                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                        }
+                    }
+                }
+            }
+            handler.onComplete(Response.from(
+                    exceptionMessage,
+                    new TokenUsage(),
+                    exceptionFinishReason
             ));
         } catch (Exception exception) {
             handler.onError(exception);
