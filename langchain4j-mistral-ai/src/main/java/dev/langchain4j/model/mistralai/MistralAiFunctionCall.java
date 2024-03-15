@@ -5,15 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiDeltaMessage {
+class MistralAiFunctionCall {
 
-    private MistralAiRole role;
-    private String content;
-    private List<MistralAiToolCall> toolCalls;
+    private String name;
+    private String arguments;
+
 }

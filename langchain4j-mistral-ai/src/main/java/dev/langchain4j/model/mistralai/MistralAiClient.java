@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
@@ -21,10 +22,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.tokenUsageFrom;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
 
 class MistralAiClient {
 
@@ -99,6 +101,7 @@ class MistralAiClient {
     void streamingChatCompletion(MistralAiChatCompletionRequest request, StreamingResponseHandler<AiMessage> handler) {
         EventSourceListener eventSourceListener = new EventSourceListener() {
             final StringBuffer contentBuilder = new StringBuffer();
+            List<ToolExecutionRequest> toolExecutionRequests;
             TokenUsage tokenUsage;
             FinishReason finishReason;
 
@@ -115,8 +118,15 @@ class MistralAiClient {
                     LOGGER.debug("onEvent() {}", data);
                 }
                 if ("[DONE]".equals(data)) {
+                    AiMessage aiMessage;
+                    if (!isNullOrEmpty(toolExecutionRequests)){
+                        aiMessage = AiMessage.from(toolExecutionRequests);
+                    } else {
+                        aiMessage = AiMessage.from(contentBuilder.toString());
+                    }
+
                     Response<AiMessage> response = Response.from(
-                            AiMessage.from(contentBuilder.toString()),
+                            aiMessage,
                             tokenUsage,
                             finishReason
                     );
@@ -125,9 +135,17 @@ class MistralAiClient {
                     try {
                         MistralAiChatCompletionResponse chatCompletionResponse = GSON.fromJson(data, MistralAiChatCompletionResponse.class);
                         MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
+
                         String chunk = choice.getDelta().getContent();
-                        contentBuilder.append(chunk);
-                        handler.onNext(chunk);
+                        if (chunk != null){
+                            contentBuilder.append(chunk);
+                            handler.onNext(chunk);
+                        }
+
+                        List<MistralAiToolCall> toolCalls = choice.getDelta().getToolCalls();
+                        if (!isNullOrEmpty(toolCalls)) {
+                            toolExecutionRequests = toToolExecutionRequests(toolCalls);
+                        }
 
                         MistralAiUsage usageInfo = chatCompletionResponse.getUsage();
                         if (usageInfo != null) {

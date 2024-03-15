@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import dev.langchain4j.model.mistralai.spi.MistralAiModelsBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -9,6 +10,7 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.MISTRALAI_API_URL;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * Represents a collection of Mistral AI models.
@@ -64,5 +66,12 @@ public class MistralAiModels {
     public Response<List<MistralAiModelCard>> availableModels() {
         MistralAiModelResponse response = withRetry(client::listModels, maxRetries);
         return Response.from(response.getData());
+    }
+
+    public static MistralAiModelsBuilder builder() {
+        for (MistralAiModelsBuilderFactory factory : loadFactories(MistralAiModelsBuilderFactory.class)){
+            return factory.get();
+        }
+        return new MistralAiModelsBuilder();
     }
 }
