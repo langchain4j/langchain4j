@@ -11,7 +11,7 @@ We are making a great effort to have most of the functions enabled according to 
 ## Capabilities
 1. **Native image:** You can use this LLM integration for AOT compilation using GraalVM CE or GraalVM Oracle for [native image](https://www.graalvm.org/latest/reference-manual/native-image/) generation.
 2. **Sync Completion:** Supports the implementation of `text-completion` and `chat-completion` models in a synchronous way. This is the most common usage. View examples [here](/tutorials/connect-to-llm)
-3. **Streaming Completion:** Supports `streaming` the model response back for `text-completion` or `chat-completion` models handling each event in `StreamingResponseHandler<AiMessage>` class. View examples [here](/tutorials/response-streaming)
+3. **Streaming Completion:** Supports `streaming` the model response back for `text-completion` or `chat-completion` models, handling each event in `StreamingResponseHandler<AiMessage>` class. View examples [here](/tutorials/response-streaming)
 4. **Embeddings:** Supports the implementation of `text-embedding` models. Embeddings make it easy to add custom data without fine-tuning. Generally used with Retrieval-Augmented Generation (`RAG`) tools, `Vector Stores` and `Search`. View examples [here](/tutorials/embedding-store)
 5. **Image Generation:** Supports the implementation of `text-to-image` models to create realistic and coherent images from scratch. View examples [here](/tutorials/image-models)
 6. **Scoring:** Understands the implementation of scoring models to improve created models by re-organizing their results based on certain parameters. View examples [here](/tutorials/reranking-models)
