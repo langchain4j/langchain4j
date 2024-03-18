@@ -40,6 +40,15 @@ class EasyRagTest {
         EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 
         EmbeddingStoreIngestor.ingest(document, embeddingStore);
+        // or
+        EmbeddingStoreIngestor.builder()
+                //.documentTransformer(...)
+                //.documentTransformer(...)
+                //.textSegmentTransformer(...)
+                //.embeddingModel(...)
+                .embeddingStore(embeddingStore)
+                .build()
+                .ingest(document);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(model)
