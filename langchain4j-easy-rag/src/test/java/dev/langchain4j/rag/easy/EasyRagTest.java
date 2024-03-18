@@ -43,7 +43,7 @@ class EasyRagTest {
         // or
         EmbeddingStoreIngestor.builder()
                 //.documentTransformer(...)
-                //.documentTransformer(...)
+                //.documentSplitter(...)
                 //.textSegmentTransformer(...)
                 //.embeddingModel(...)
                 .embeddingStore(embeddingStore)
