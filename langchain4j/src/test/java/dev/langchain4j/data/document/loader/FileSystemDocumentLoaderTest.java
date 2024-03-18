@@ -25,7 +25,15 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                 .withMessageContaining("bad_file is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> loadDocument(Paths.get("bad_file")))
+                .withMessageContaining("bad_file is not a file");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("/"), new TextDocumentParser()))
+                .withMessageContaining("is not a file");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> loadDocument(Paths.get("/")))
                 .withMessageContaining("is not a file");
     }
 
@@ -39,6 +47,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         assertThat(Paths.get(document.metadata("absolute_directory_path"))).isAbsolute();
 
         assertThat(loadDocument(path.toString(), new TextDocumentParser())).isEqualTo(document);
+
+        assertThat(loadDocument(path)).isEqualTo(document);
+        assertThat(loadDocument(path.toString())).isEqualTo(document);
     }
 
     @Test
@@ -46,6 +57,11 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
                         Paths.get("bad_directory"), new TextDocumentParser()))
+                .withMessageContaining("bad_directory is not a directory");
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> loadDocuments(
+                        Paths.get("bad_directory")))
                 .withMessageContaining("bad_directory is not a directory");
     }
 
@@ -72,6 +88,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // when-then
         assertThat(loadDocuments(resourceDirectory.toString(), new TextDocumentParser()))
                 .isEqualTo(documents);
+
+        assertThat(loadDocuments(resourceDirectory)).isEqualTo(documents);
+        assertThat(loadDocuments(resourceDirectory.toString())).isEqualTo(documents);
 
         // Silently skips documents that fail to load.
         DocumentParser failFirstParser = new DocumentParser() {
@@ -116,6 +135,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // when-then
         assertThat(loadDocuments(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
+
+        assertThat(loadDocuments(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocuments(resourceDirectory.toString(), pathMatcher)).isEqualTo(documents);
     }
 
     @Test
@@ -144,6 +166,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), new TextDocumentParser()))
                 .isEqualTo(documents);
+
+        assertThat(loadDocumentsRecursively(resourceDirectory)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(resourceDirectory.toString())).isEqualTo(documents);
     }
 
     @Test
@@ -165,6 +190,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
+
+        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher)).isEqualTo(documents);
     }
 
     @Test
@@ -186,6 +214,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
+
+        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher)).isEqualTo(documents);
     }
 
     @Test
@@ -207,6 +238,9 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher, new TextDocumentParser()))
                 .isEqualTo(documents);
+
+        assertThat(loadDocumentsRecursively(resourceDirectory, pathMatcher)).isEqualTo(documents);
+        assertThat(loadDocumentsRecursively(resourceDirectory.toString(), pathMatcher)).isEqualTo(documents);
     }
 
     private static Path resourceDirectory() {
