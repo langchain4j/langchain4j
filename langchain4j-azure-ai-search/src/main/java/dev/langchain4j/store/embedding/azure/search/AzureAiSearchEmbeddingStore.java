@@ -2,8 +2,6 @@ package dev.langchain4j.store.embedding.azure.search;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.http.policy.HttpLogDetailLevel;
-import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.util.Context;
 import com.azure.search.documents.SearchClient;
 import com.azure.search.documents.SearchClientBuilder;
@@ -31,81 +29,53 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Azure AI Search EmbeddingStore Implementation.
- *
- * This class implements 4 query types:
- * - Similarity: Uses the vector search algorithm to find the most similar embeddings.
- *   See https://learn.microsoft.com/en-us/azure/search/vector-search-overview for more information.
- * - Full Text: Uses the full text search to find the most similar embeddings.
- *   See https://learn.microsoft.com/en-us/azure/search/search-lucene-query-architecture for more information.
- * - Similarity Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings.
- *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-overview for more information.
- * - Semantic Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings, and uses the semantic re-ranker algorithm to rank the results.
- *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking for more information.
+ * Azure AI Search EmbeddingStore Implementation
  */
 public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStore.class);
 
-    private static final String INDEX_NAME = "vectorsearch";
+    static final String INDEX_NAME = "vectorsearch";
 
-    private static final String DEFAULT_FIELD_ID = "id";
+    static final String DEFAULT_FIELD_ID = "id";
 
-    private static final String DEFAULT_FIELD_CONTENT = "content";
+    static final String DEFAULT_FIELD_CONTENT = "content";
 
-    private static final String DEFAULT_FIELD_CONTENT_VECTOR = "content_vector";
+    final String DEFAULT_FIELD_CONTENT_VECTOR = "content_vector";
 
-    private static final String DEFAULT_FIELD_METADATA = "metadata";
+    static final String DEFAULT_FIELD_METADATA = "metadata";
 
-    private static final String DEFAULT_FIELD_METADATA_SOURCE = "source";
+    static final String DEFAULT_FIELD_METADATA_SOURCE = "source";
 
-    private static final String DEFAULT_FIELD_METADATA_ATTRS = "attributes";
+    static final String DEFAULT_FIELD_METADATA_ATTRS = "attributes";
 
-    private static final String SEMANTIC_SEARCH_CONFIG_NAME = "semantic-search-config";
+    static final String SEMANTIC_SEARCH_CONFIG_NAME = "semantic-search-config";
 
-    private static final String VECTOR_ALGORITHM_NAME = "vector-search-algorithm";
+    static final String VECTOR_ALGORITHM_NAME = "vector-search-algorithm";
 
-    private static final String VECTOR_SEARCH_PROFILE_NAME = "vector-search-profile";
+    static final String VECTOR_SEARCH_PROFILE_NAME = "vector-search-profile";
 
     private SearchIndexClient searchIndexClient;
 
-    private SearchClient searchClient;
-
-    private QueryType queryType;
+    SearchClient searchClient;
 
     public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions) {
-        this.initialize(endpoint, keyCredential, null, dimensions, null, QueryType.VECTOR);
-    }
-
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions, QueryType queryType) {
-        this.initialize(endpoint, keyCredential, null, dimensions, null, queryType);
+        this.initialize(endpoint, keyCredential, null, dimensions, null);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index) {
-        this.initialize(endpoint, keyCredential, null, 0, index, QueryType.VECTOR);
-    }
-
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index, QueryType queryType) {
-        this.initialize(endpoint, keyCredential, null, 0, index, queryType);
+        this.initialize(endpoint, keyCredential, null, 0, index);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions) {
-        this.initialize(endpoint, null, tokenCredential, dimensions, null, QueryType.VECTOR);
-    }
-
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions, QueryType queryType) {
-        this.initialize(endpoint, null, tokenCredential, dimensions, null, queryType);
+        this.initialize(endpoint, null, tokenCredential, dimensions, null);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index) {
-        this.initialize(endpoint, null, tokenCredential, 0, index, QueryType.VECTOR);
+        this.initialize(endpoint, null, tokenCredential, 0, index);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index, QueryType queryType) {
-        this.initialize(endpoint, null, tokenCredential, 0, index, queryType);
-    }
-
-    private void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index, QueryType queryType) {
+    private void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
         if (keyCredential != null) {
             searchIndexClient = new SearchIndexClientBuilder()
                     .endpoint(endpoint)
@@ -116,7 +86,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     .endpoint(endpoint)
                     .credential(keyCredential)
                     .indexName(INDEX_NAME)
-                    .httpLogOptions(new HttpLogOptions().setLogLevel(HttpLogDetailLevel.BODY_AND_HEADERS))
                     .buildClient();
         } else {
             searchIndexClient = new SearchIndexClientBuilder()
@@ -136,19 +105,13 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         } else {
             createOrUpdateIndex(index);
         }
-
-        if (queryType == null) {
-            this.queryType = QueryType.VECTOR;
-        } else {
-            this.queryType = queryType;
-        }
     }
 
     /**
      * Creates or updates the index using a ready-made index.
      * @param dimensions The number of dimensions of the embeddings.
      */
-     void createOrUpdateIndex(int dimensions) {
+    void createOrUpdateIndex(int dimensions) {
         List<SearchField> fields = new ArrayList<>();
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
                 .setKey(true)
@@ -250,24 +213,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        return findRelevant(referenceEmbedding, maxResults, minScore);
-    }
-
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
-        if (queryType == QueryType.VECTOR) {
-            return findRelevantWithSimilarity(referenceEmbedding, maxResults, minScore);
-        } else if (queryType == QueryType.FULL_TEXT) {
-            return findRelevantWithFullText(content, maxResults, minScore);
-        } else if (queryType == QueryType.HYBRID) {
-            return findRelevantWithSimilarityHybrid(referenceEmbedding, content, maxResults, minScore);
-        } else if (queryType == QueryType.HYBRID_WITH_RRF) {
-            return findRelevantWithSemanticHybrid(referenceEmbedding, content, maxResults, minScore);
-        } else {
-            throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + queryType);
-        }
-    }
-
-    List<EmbeddingMatch<TextSegment>> findRelevantWithSimilarity(Embedding referenceEmbedding, int maxResults, double minScore) {
         List<Float> vector = referenceEmbedding.vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
@@ -279,59 +224,9 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.VECTOR, minScore);
-    }
-
-    List<EmbeddingMatch<TextSegment>> findRelevantWithFullText(String content, int maxResults, double minScore) {
-        SearchPagedIterable searchResults =
-                searchClient.search(content,
-                        new SearchOptions()
-                                .setTop(maxResults),
-                        Context.NONE);
-
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.FULL_TEXT, minScore);
-    }
-
-    List<EmbeddingMatch<TextSegment>> findRelevantWithSimilarityHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
-        List<Float> vector = referenceEmbedding.vectorAsList();
-
-        VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
-                .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
-
-        SearchPagedIterable searchResults =
-                searchClient.search(content,
-                        new SearchOptions()
-                                .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                                .setTop(maxResults),
-                        Context.NONE);
-
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.HYBRID, minScore);
-    }
-
-    List<EmbeddingMatch<TextSegment>> findRelevantWithSemanticHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
-        List<Float> vector = referenceEmbedding.vectorAsList();
-
-        VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
-                .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
-
-        SearchPagedIterable searchResults =
-                searchClient.search(content,
-                        new SearchOptions()
-                                .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                                .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
-                                .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
-                                .setTop(maxResults),
-                        Context.NONE);
-
-        return mapResultsToEmbeddingMatches(searchResults, QueryType.HYBRID_WITH_RRF, minScore);
-    }
-
-    private List<EmbeddingMatch<TextSegment>> mapResultsToEmbeddingMatches(SearchPagedIterable searchResults, QueryType queryType, double minScore) {
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
-            Double score = fromAzureScoreToRelevanceScore(searchResult, queryType);
+            Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
             if (score < minScore) {
                 continue;
             }
@@ -410,7 +305,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
-    private float[] doublesListToFloatArray(List<Double> doubles) {
+    float[] doublesListToFloatArray(List<Double> doubles) {
         float[] array = new float[doubles.size()];
         for (int i = 0; i < doubles.size(); ++i) {
             array[i] = doubles.get(i).floatValue();
@@ -420,34 +315,17 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     /**
      * Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
+     *
+     * Score in Azure AI Search is transformed into a cosine similarity as described here:
+     * https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
+     *
+     * RelevanceScore in LangChain4j is a derivative of cosine similarity,
+     * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
      */
-    static double fromAzureScoreToRelevanceScore(SearchResult searchResult, QueryType queryType) {
-        if (queryType == QueryType.VECTOR) {
-            // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
-
-           //  Score in Azure AI Search is transformed into a cosine similarity as described here:
-           // https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
-
-           // RelevanceScore in LangChain4j is a derivative of cosine similarity,
-           // but it compresses it into 0..1 range (instead of -1..1) for ease of use.
-            double score = searchResult.getScore();
-            double cosineDistance = (1 - score) / score;
-            double cosineSimilarity = -cosineDistance + 1;
-            return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
-        } else if (queryType == QueryType.FULL_TEXT) {
-            // Search score is into 0..1 range already
-            return searchResult.getScore();
-        } else if (queryType == QueryType.HYBRID) {
-            // Search score is into 0..1 range already
-            return searchResult.getScore();
-        } else if (queryType == QueryType.HYBRID_WITH_RRF) {
-            // Re-ranker score is into 0..4 range, so we need to divide the re-reranker score by 4 to fit in the 0..1 range.
-            // The re-ranker score is a separate result from the original search score.
-            // See https://azuresdkdocs.blob.core.windows.net/$web/java/azure-search-documents/11.6.2/com/azure/search/documents/models/SearchResult.html#getSemanticSearch()
-            return searchResult.getSemanticSearch().getRerankerScore() / 4.0;
-        } else {
-            throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + queryType);
-        }
+    static double fromAzureScoreToRelevanceScore(double score) {
+        double cosineDistance = (1 - score) / score;
+        double cosineSimilarity = -cosineDistance + 1;
+        return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
     }
 
     public static Builder builder() {
@@ -465,8 +343,6 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private int dimensions;
 
         private SearchIndex index;
-
-        private QueryType queryType;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -524,32 +400,21 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return this;
         }
 
-        /**
-         * Sets the Azure AI Search Query Type.
-         *
-         * @param queryType The Azure AI Search Query Type.
-         * @return builder
-         */
-        public Builder queryType(QueryType queryType) {
-            this.queryType = queryType;
-            return this;
-        }
-
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
             ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
             if (keyCredential == null) {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions, queryType);
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, index, queryType);
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, index);
                 }
             } else {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, dimensions, queryType);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, dimensions);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, index, queryType);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, index);
                 }
             }
         }

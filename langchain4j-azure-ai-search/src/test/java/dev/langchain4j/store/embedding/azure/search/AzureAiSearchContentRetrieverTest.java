@@ -8,14 +8,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-public class AzureAiSearchEmbeddingStoreTest {
+public class AzureAiSearchContentRetrieverTest {
 
     @Test
     public void testFromAzureScoreToRelevanceScore_SIMILARITY() {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.6);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.VECTOR);
+        double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.VECTOR);
 
         assertEquals(0.6666666666666666, result);
     }
@@ -25,7 +25,7 @@ public class AzureAiSearchEmbeddingStoreTest {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.4);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.FULL_TEXT);
+        double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.FULL_TEXT);
 
         assertEquals(0.4, result);
     }
@@ -35,7 +35,7 @@ public class AzureAiSearchEmbeddingStoreTest {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.7);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.HYBRID);
+        double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.HYBRID);
 
         assertEquals(0.7, result);
     }
@@ -48,7 +48,7 @@ public class AzureAiSearchEmbeddingStoreTest {
         when(mockResult.getSemanticSearch()).thenReturn(mockSemanticSearchResult);
         when(mockSemanticSearchResult.getRerankerScore()).thenReturn(1.5);
 
-        double result = AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(mockResult, QueryType.HYBRID_WITH_RRF);
+        double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.HYBRID_WITH_RRF);
 
         assertEquals(0.375, result);
     }
