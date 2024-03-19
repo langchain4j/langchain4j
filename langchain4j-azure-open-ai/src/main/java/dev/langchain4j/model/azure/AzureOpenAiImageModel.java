@@ -167,17 +167,21 @@ public class AzureOpenAiImageModel implements ImageModel {
             logger.info("Error generating image, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = FinishReason.OTHER;
             if (httpResponseException.getValue() instanceof Map) {
-                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
-                Object errorMap = error.get("error");
-                if (errorMap instanceof Map) {
-                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
-                    Object errorCode = errorDetails.get("code");
-                    if (errorCode instanceof String) {
-                        String code = (String) errorCode;
-                        if ("content_policy_violation".equals(code)) {
-                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                try {
+                    Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
+                    Object errorMap = error.get("error");
+                    if (errorMap instanceof Map) {
+                        Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
+                        Object errorCode = errorDetails.get("code");
+                        if (errorCode instanceof String) {
+                            String code = (String) errorCode;
+                            if ("content_policy_violation".equals(code)) {
+                                exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                            }
                         }
                     }
+                } catch (ClassCastException classCastException) {
+                    logger.error("Error parsing error response from Azure OpenAI", classCastException);
                 }
             }
             return Response.from(Image.builder().build(), new TokenUsage(), exceptionFinishReason);

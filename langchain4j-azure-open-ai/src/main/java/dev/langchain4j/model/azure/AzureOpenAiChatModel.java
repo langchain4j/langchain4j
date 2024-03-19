@@ -16,6 +16,8 @@ import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
@@ -53,6 +55,8 @@ import static java.util.Collections.singletonList;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -259,17 +263,21 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             String exceptionMessage = httpResponseException.getMessage();
             FinishReason exceptionFinishReason = FinishReason.OTHER;
             if (httpResponseException.getValue() instanceof Map) {
-                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
-                Object errorMap = error.get("error");
-                if (errorMap instanceof Map) {
-                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
-                    Object errorCode = errorDetails.get("code");
-                    if (errorCode instanceof String) {
-                        String code = (String) errorCode;
-                        if ("content_filter".equals(code)) {
-                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                try {
+                    Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
+                    Object errorMap = error.get("error");
+                    if (errorMap instanceof Map) {
+                        Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
+                        Object errorCode = errorDetails.get("code");
+                        if (errorCode instanceof String) {
+                            String code = (String) errorCode;
+                            if ("content_filter".equals(code)) {
+                                exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                            }
                         }
                     }
+                } catch (ClassCastException classCastException) {
+                    logger.error("Error parsing error response from Azure OpenAI", classCastException);
                 }
             }
             return Response.from(
