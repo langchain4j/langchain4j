@@ -49,7 +49,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
     }
 
     private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
-        return AzureAiSearchContentRetriever.contentRetrieverBuilder()
+        return AzureAiSearchContentRetriever.builder()
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .dimensions(dimensions)
@@ -78,18 +78,20 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
         awaitUntilPersisted();
 
-        Embedding relevantEmbedding = embeddingModel.embed("fruit").content();
-        List<EmbeddingMatch<TextSegment>> relevant = contentRetrieverWithSimilarity.findRelevant(relevantEmbedding, 3);
+        String content = "fruit";
+        Query query = Query.from(content);
+
+        List<Content> relevant = contentRetrieverWithSimilarity.retrieve(query);
         assertThat(relevant).hasSize(3);
-        assertThat(relevant.get(0).embedding()).isNotNull();
-        assertThat(relevant.get(0).embedded().text()).isIn(content1, content3, content5);
-        log.info("#1 relevant item: {}", relevant.get(0).embedded().text());
-        assertThat(relevant.get(1).embedding()).isNotNull();
-        assertThat(relevant.get(1).embedded().text()).isIn(content1, content3, content5);
-        log.info("#2 relevant item: {}", relevant.get(1).embedded().text());
-        assertThat(relevant.get(2).embedding()).isNotNull();
-        assertThat(relevant.get(2).embedded().text()).isIn(content1, content3, content5);
-        log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
+        assertThat(relevant.get(0).textSegment()).isNotNull();
+        assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3, content5);
+        log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
+        assertThat(relevant.get(1).textSegment()).isNotNull();
+        assertThat(relevant.get(1).textSegment().text()).isIn(content1, content3, content5);
+        log.info("#2 relevant item: {}", relevant.get(1).textSegment().text());
+        assertThat(relevant.get(2).textSegment()).isNotNull();
+        assertThat(relevant.get(2).textSegment().text()).isIn(content1, content3, content5);
+        log.info("#3 relevant item: {}", relevant.get(2).textSegment().text());
     }
 
     @Test

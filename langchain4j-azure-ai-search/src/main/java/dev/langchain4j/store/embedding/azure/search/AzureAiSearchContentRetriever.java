@@ -4,10 +4,9 @@ import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.Context;
 import com.azure.search.documents.SearchDocument;
-import com.azure.search.documents.indexes.models.*;
+import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.*;
 import com.azure.search.documents.util.SearchPagedIterable;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -19,9 +18,9 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
-import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.stream.Collectors.toList;
@@ -39,7 +38,7 @@ import static java.util.stream.Collectors.toList;
  * - Semantic Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings, and uses the semantic re-ranker algorithm to rank the results.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking for more information.
  */
-public class AzureAiSearchContentRetriever extends AzureAiSearchEmbeddingStore implements ContentRetriever {
+public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddingStore implements ContentRetriever {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetriever.class);
 
@@ -51,26 +50,31 @@ public class AzureAiSearchContentRetriever extends AzureAiSearchEmbeddingStore i
     private double minScore;
 
     public AzureAiSearchContentRetriever(String endpoint, AzureKeyCredential keyCredential, int dimensions, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        super(endpoint, keyCredential, dimensions);
-        initialize(embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+        this.initialize(endpoint, keyCredential, null, dimensions, null);
+        this.embeddingModel = embeddingModel;
+        this.azureAiSearchQueryType = azureAiSearchQueryType;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
     }
 
     public AzureAiSearchContentRetriever(String endpoint, AzureKeyCredential keyCredential, SearchIndex index, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        super(endpoint, keyCredential, index);
-        initialize(embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+        this.initialize(endpoint, keyCredential, null, 0, index);
+        this.embeddingModel = embeddingModel;
+        this.azureAiSearchQueryType = azureAiSearchQueryType;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
     }
 
     public AzureAiSearchContentRetriever(String endpoint, TokenCredential tokenCredential, int dimensions, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        super(endpoint, tokenCredential, dimensions);
-        initialize(embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+        this.initialize(endpoint, null, tokenCredential, dimensions, null);
+        this.embeddingModel = embeddingModel;
+        this.azureAiSearchQueryType = azureAiSearchQueryType;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
     }
 
     public AzureAiSearchContentRetriever(String endpoint, TokenCredential tokenCredential, SearchIndex index, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        super(endpoint, tokenCredential, index);
-        initialize(embeddingModel, maxResults, minScore, azureAiSearchQueryType);
-    }
-
-    private void initialize(EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
+        this.initialize(endpoint, null, tokenCredential, 0, index);
         this.embeddingModel = embeddingModel;
         this.azureAiSearchQueryType = azureAiSearchQueryType;
         this.maxResults = maxResults;
@@ -152,7 +156,7 @@ public class AzureAiSearchContentRetriever extends AzureAiSearchEmbeddingStore i
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
         List<Content> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
-            Double score = fromAzureScoreToRelevanceScore(searchResult, azureAiSearchQueryType);
+            double score = fromAzureScoreToRelevanceScore(searchResult, azureAiSearchQueryType);
             if (score < minScore) {
                 continue;
             }
@@ -164,43 +168,8 @@ public class AzureAiSearchContentRetriever extends AzureAiSearchEmbeddingStore i
         return result;
     }
 
-    private List<EmbeddingMatch<TextSegment>> mapResultsToEmbeddingMatches(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
-        List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
-        for (SearchResult searchResult : searchResults) {
-            Double score = fromAzureScoreToRelevanceScore(searchResult, azureAiSearchQueryType);
-            if (score < minScore) {
-                continue;
-            }
-            SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
-            String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
-            List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
-            float[] embeddingArray = doublesListToFloatArray(embeddingList);
-            Embedding embedding = Embedding.from(embeddingArray);
-            String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
-            EmbeddingMatch<TextSegment> embeddingMatch;
-            if (isNotNullOrBlank(embeddedContent)) {
-                LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);
-                List attributes = (List) metadata.get(DEFAULT_FIELD_METADATA_ATTRS);
-                Map<String, String> attributesMap = new HashMap<>();
-                for (Object attribute : attributes) {
-                    LinkedHashMap innerAttribute = (LinkedHashMap) attribute;
-                    String key = (String) innerAttribute.get("key");
-                    String value = (String) innerAttribute.get("value");
-                    attributesMap.put(key, value);
-                }
-                Metadata langChainMetadata = Metadata.from(attributesMap);
-                TextSegment embedded = TextSegment.textSegment(embeddedContent, langChainMetadata);
-                embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, embedded);
-            } else {
-                embeddingMatch = new EmbeddingMatch<>(score, embeddingId, embedding, null);
-            }
-            result.add(embeddingMatch);
-        }
-        return result;
-    }
-
     /**
-     * Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
+     * Calculates LangChain4j's RelevanceScore from Azure AI Search's score, for the 4 types of search.
      */
     static double fromAzureScoreToRelevanceScore(SearchResult searchResult, AzureAiSearchQueryType azureAiSearchQueryType) {
         if (azureAiSearchQueryType == AzureAiSearchQueryType.VECTOR) {
@@ -212,7 +181,7 @@ public class AzureAiSearchContentRetriever extends AzureAiSearchEmbeddingStore i
            // RelevanceScore in LangChain4j is a derivative of cosine similarity,
            // but it compresses it into 0..1 range (instead of -1..1) for ease of use.
             double score = searchResult.getScore();
-            return AzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(score);
+            return AbstractAzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(score);
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
             // Search score is into 0..1 range already
             return searchResult.getScore();
@@ -229,7 +198,7 @@ public class AzureAiSearchContentRetriever extends AzureAiSearchEmbeddingStore i
         }
     }
 
-    public static AzureAiSearchContentRetrieverBuilder contentRetrieverBuilder() {
+    public static AzureAiSearchContentRetrieverBuilder builder() {
         return new AzureAiSearchContentRetrieverBuilder();
     }
 
