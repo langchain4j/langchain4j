@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
 
     LanguageModel model = OllamaLanguageModel.builder()
-            .baseUrl(getBaseUrl())
-            .modelName(MODEL)
+            .baseUrl(ollama.getEndpoint())
+            .modelName(OllamaImage.PHI_MODEL)
             .temperature(0.0)
             .build();
 
@@ -44,8 +44,8 @@ class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
         int numPredict = 1; // max output tokens
 
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(OllamaImage.PHI_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
                 .build();
@@ -66,8 +66,8 @@ class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
 
         // given
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(OllamaImage.PHI_MODEL)
                 .format("json")
                 .temperature(0.0)
                 .build();
