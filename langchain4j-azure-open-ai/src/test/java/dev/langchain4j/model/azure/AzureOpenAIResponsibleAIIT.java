@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class AzureOpenAIResponsibleAIIT {
 
-    Logger logger = LoggerFactory.getLogger(AzureOpenAIResponsibleAIIT.class);
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAIResponsibleAIIT.class);
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
