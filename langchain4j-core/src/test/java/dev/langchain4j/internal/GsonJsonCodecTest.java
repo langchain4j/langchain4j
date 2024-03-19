@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 class GsonJsonCodecTest implements WithAssertions {
     public static class Example {
@@ -29,6 +30,11 @@ class GsonJsonCodecTest implements WithAssertions {
             Example example = (Example) o;
             return age == example.age &&
                     name.equals(example.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, age);
         }
     }
 
@@ -99,6 +105,11 @@ class GsonJsonCodecTest implements WithAssertions {
             DateExample that = (DateExample) o;
             return localDate.equals(that.localDate) &&
                     localDateTime.equals(that.localDateTime);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(localDate, localDateTime);
         }
     }
 
