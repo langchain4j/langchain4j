@@ -53,7 +53,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  */
 public class AzureOpenAiImageModel implements ImageModel {
 
-    Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiImageModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
