@@ -68,6 +68,7 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
         this.dimensions = dimensions;
