@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiDeltaMessage {
+public class MistralAiDeltaMessage {
 
     private MistralAiRole role;
     private String content;
