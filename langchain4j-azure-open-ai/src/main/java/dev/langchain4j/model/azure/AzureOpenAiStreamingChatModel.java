@@ -290,6 +290,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         if (errorCode instanceof String) {
                             String code = (String) errorCode;
                             if ("content_filter".equals(code)) {
+                                // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
                                 exceptionFinishReason = FinishReason.CONTENT_FILTER;
                             }
                         }
