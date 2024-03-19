@@ -93,6 +93,8 @@ public class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextS
      * @param dimensions The number of dimensions of the embeddings.
      */
     void createOrUpdateIndex(int dimensions) {
+        ensureTrue(dimensions > 0, "Dimensions must be greater than 0");
+
         List<SearchField> fields = new ArrayList<>();
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
                 .setKey(true)
