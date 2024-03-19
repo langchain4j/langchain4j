@@ -250,7 +250,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        return findRelevantWithSimilarity(referenceEmbedding, maxResults, minScore);
+        return findRelevant(referenceEmbedding, maxResults, minScore);
     }
 
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
