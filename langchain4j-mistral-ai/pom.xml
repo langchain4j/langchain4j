@@ -5,13 +5,11 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.29.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <packaging>jar</packaging>
-
     <name>LangChain4j :: Integration :: MistralAI</name>
 
     <dependencies>

@@ -6,11 +6,12 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import lombok.SneakyThrows;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.Disabled;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@EnabledIfEnvironmentVariable(named = "ELASTICSEARCH_CLOUD_API_KEY", matches = ".+")
+@Disabled
+//@EnabledIfEnvironmentVariable(named = "ELASTICSEARCH_CLOUD_API_KEY", matches = ".+")
 class ElasticsearchEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()

@@ -84,6 +84,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);

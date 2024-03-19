@@ -5,12 +5,16 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.29.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-anthropic</artifactId>
     <name>LangChain4j :: Integration :: Anthropic</name>
+
+    <properties>
+        <skipAnthropicITs>false</skipAnthropicITs>
+    </properties>
 
     <dependencies>
 
@@ -96,6 +100,18 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <skipTests>${skipAnthropicITs}</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
     <licenses>
         <license>
