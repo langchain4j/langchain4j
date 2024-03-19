@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.azure.cosmos;
+package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

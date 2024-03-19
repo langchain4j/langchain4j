@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.azure.cosmos;
+package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -50,17 +50,17 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
                         .build());
 
         embeddingStore = AzureCosmosDbMongoVCoreEmbeddingStore.builder()
-                .fromClient(client)
+                .mongoclient(client)
                 .databaseName("test_database")
                 .collectionName("test_collection")
                 .indexName("test_index")
                 .applicationName("JAVA_LANG_CHAIN")
                 .createIndex(true)
-                .kind("vector-ivf")
+                .kind("vector-hnsw")
                 .numLists(1)
                 .similarity("COS")
                 .dimensions(dimensions)
-                .numberOfConnections(16)
+                .m(16)
                 .efConstruction(64)
                 .efSearch(40)
                 .build();

@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.azure.cosmos;
+package dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore;
 
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
@@ -25,6 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +37,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.azure.cosmos.MappingUtils.toEmbeddingMatch;
-import static dev.langchain4j.store.embedding.azure.cosmos.MappingUtils.toMongoDbDocument;
+import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toEmbeddingMatch;
+import static dev.langchain4j.store.embedding.azure.cosmos.mongo.vcore.MappingUtils.toMongoDbDocument;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -53,17 +55,17 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbMongoVCoreEmbeddingStore.class);
     private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
     private final String indexName;
-    private final String kind;
-    private final int numLists;
-    private final String similarity;
-    private final int dimensions;
-    private final int numberOfConnections;
-    private final int efConstruction;
-    private final int efSearch;
+    private final AzureCosmosDBVectorSearchType kind;
+    private final Integer numLists;
+    private final AzureCosmosDBSimilarityType similarity;
+    private final Integer dimensions;
+    private final Integer m;
+    private final Integer efConstruction;
+    private final Integer efSearch;
 
     /**
      * @param mongoClient             - mongoClient for the Azure CosmosDB Mongo vCore
-     * @param endpoint                - connection string required to connect to Azure Cosmos Mongo vCore
+     * @param connectionString        - connection string required to connect to Azure Cosmos Mongo vCore
      * @param databaseName            - databaseName for the mongoDb vCore
      * @param collectionName          - collection name for the mongoDB vCore
      * @param indexName               - index name for the mongoDB vCore collection
@@ -87,19 +89,19 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
      *                                - IP (inner product).
      * @param dimensions              - Number of dimensions for vector similarity. The maximum number of supported dimensions
      *                                is 2000.
-     * @param numberOfConnections     - The max number of connections per layer (16 by default, minimum value is 2, maximum
+     * @param m                       - used only for vector -hnsw. The max number of connections per layer (16 by default, minimum value is 2, maximum
      *                                value is 100). Higher m is suitable for datasets with high dimensionality and/or high
      *                                accuracy requirements.
-     * @param efConstruction          - the size of the dynamic candidate list for constructing the graph (64 by default, minimum
+     * @param efConstruction          - used only for vector -hnsw. The size of the dynamic candidate list for constructing the graph (64 by default, minimum
      *                                value is 4, maximum value is 1000). Higher ef_construction will result in better index
      *                                quality and higher accuracy, but it will also increase the time required to build the index.
      *                                ef_construction has to be at least 2 * m.
-     * @param efSearch                - The size of the dynamic candidate list for search (40 by default). A higher value provides
+     * @param efSearch                - used only for vector -hnsw. The size of the dynamic candidate list for search (40 by default). A higher value provides
      *                                better recall at the cost of speed.
      */
     public AzureCosmosDbMongoVCoreEmbeddingStore(
             MongoClient mongoClient,
-            String endpoint,
+            String connectionString,
             String databaseName,
             String collectionName,
             String indexName,
@@ -107,22 +109,22 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             CreateCollectionOptions createCollectionOptions,
             Boolean createIndex,
             String kind,
-            int numLists,
+            Integer numLists,
             String similarity,
-            int dimensions,
-            int numberOfConnections,
-            int efConstruction,
-            int efSearch) {
-        databaseName = getOrDefault(databaseName, "databaseName");
-        collectionName = getOrDefault(collectionName, "collectionName");
+            Integer dimensions,
+            Integer m,
+            Integer efConstruction,
+            Integer efSearch) {
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
         applicationName = getOrDefault(applicationName, "JAVA_LANG_CHAIN");
-        this.kind = getOrDefault(kind, "vector-hnsw");
+        this.kind = AzureCosmosDBVectorSearchType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
-        this.similarity = getOrDefault(similarity, "COS");
-        this.dimensions = getOrDefault(dimensions, 3);
-        this.numberOfConnections = getOrDefault(numberOfConnections, 16);
+        // TODO: update this value as a user input once LangChain4J only
+        //  supports other similarity types other than Cosine.
+        this.similarity = AzureCosmosDBSimilarityType.COS;
+        this.dimensions = getOrDefault(dimensions, 1536);
+        this.m = getOrDefault(m, 16);
         this.efConstruction = getOrDefault(efConstruction, 64);
         this.efSearch = getOrDefault(efSearch, 40);
 
@@ -131,15 +133,19 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
 
-        if (mongoClient == null && endpoint.isEmpty()) {
-            throw new IllegalArgumentException("You need to pass either the MongoClient or " +
-                    "the Azure CosmosDB Mongo vCore connection string");
+        if (mongoClient == null && connectionString.isEmpty()) {
+            throw new IllegalArgumentException("You need to pass either the mongoClient or " +
+                    "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
+        }
+
+        if (databaseName == null || collectionName == null) {
+            throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
         }
 
         if (mongoClient == null) {
             mongoClient = MongoClients.create(
                     MongoClientSettings.builder()
-                            .applyConnectionString(new ConnectionString(endpoint))
+                            .applyConnectionString(new ConnectionString(connectionString))
                             .applicationName(applicationName)
                             .build());
         }
@@ -200,43 +206,42 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Double> queryVector = referenceEmbedding.vectorAsList().stream()
-                .map(Float::doubleValue)
-                .collect(toList());
+//        List<Double> queryVector = referenceEmbedding.vectorAsList().stream()
+//                .map(Float::doubleValue)
+//                .collect(toList());
 
         List<Bson> pipeline = new ArrayList<>();
 
         switch (this.kind) {
-            case "vector-ivf":
-                pipeline = getPipelineDefinitionVectorIVF(queryVector, maxResults);
+            case VECTOR_IVF:
+                pipeline = getPipelineDefinitionVectorIVF(referenceEmbedding, maxResults);
                 break;
-            case "vector-hnsw":
-                pipeline = getPipelineDefinitionVectorHNSW(queryVector, maxResults);
+            case VECTOR_HNSW:
+                pipeline = getPipelineDefinitionVectorHNSW(referenceEmbedding, maxResults);
                 break;
         }
 
         try {
             AggregateIterable<BsonDocument> results = collection.aggregate(pipeline, BsonDocument.class);
+            List<BsonDocument> abc = StreamSupport.stream(results.spliterator(), false).
+                    collect(Collectors.toList());
 
             return StreamSupport.stream(results.spliterator(), false)
-                    .filter(doc -> doc.getDouble("similarityScore") != null && doc.getDouble("similarityScore").getValue() < minScore)
+                    .filter(doc -> doc.getDouble("similarityScore").getValue() >= minScore)
                     .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(doc.getDocument("document"), doc.getDouble("similarityScore").getValue())))
                     .collect(Collectors.toList());
 
         } catch (MongoCommandException e) {
-            if (log.isErrorEnabled()) {
-                log.error("Error in AzureCosmosDbMongoVCoreEmbeddingStore.findRelevant", e);
-            }
-            throw new RuntimeException(e);
+            throw new RuntimeException("Error in AzureCosmosDbMongoVCoreEmbeddingStore.findRelevant", e);
         }
     }
 
-    private List<Bson> getPipelineDefinitionVectorIVF(List<Double> queryVector, int maxResults) {
+    private List<Bson> getPipelineDefinitionVectorIVF(Embedding queryVector, int maxResults) {
         List<Bson> pipeline = new ArrayList<>();
 
         // First stage: $search
         Document searchStage = new Document("$search", new Document("cosmosSearch",
-                new Document("vector", queryVector)
+                new Document("vector", queryVector.vectorAsList())
                         .append("path", "embedding")
                         .append("k", maxResults))
                 .append("returnStoredSource", true));
@@ -251,12 +256,12 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         return pipeline;
     }
 
-    private List<Bson> getPipelineDefinitionVectorHNSW(List<Double> queryVector, int maxResults) {
+    private List<Bson> getPipelineDefinitionVectorHNSW(Embedding queryVector, int maxResults) {
         List<Bson> pipeline = new ArrayList<>();
 
         // First stage: $search
         Document searchStage = new Document("$search", new Document("cosmosSearch",
-                new Document("vector", queryVector)
+                new Document("vector", queryVector.vectorAsList())
                         .append("path", "embedding")
                         .append("k", maxResults)
                         .append("efSearch", this.efSearch)));
@@ -286,15 +291,20 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         document.setEmbedding(embedding);
 
         // Extract text
-        document.setText(bsonDocument.getString("text").getValue());
+        if (bsonDocument.containsKey("text")) {
+            document.setText(bsonDocument.getString("text").getValue());
+        }
 
         // Extract metadata
-        Map<String, String> metadata = new HashMap<>();
-        BsonDocument metadataDocument = bsonDocument.getDocument("metadata");
-        for (String key : metadataDocument.keySet()) {
-            metadata.put(key, metadataDocument.getString(key).getValue());
+        if (bsonDocument.containsKey("metadata")) {
+            Map<String, String> metadata = new HashMap<>();
+            BsonDocument metadataDocument = bsonDocument.getDocument("metadata");
+            for (String key : metadataDocument.keySet()) {
+                metadata.put(key, metadataDocument.getString(key).getValue());
+            }
+            document.setMetadata(metadata);
         }
-        document.setMetadata(metadata);
+
 
         // Set score
         document.setScore(score);
@@ -321,9 +331,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         InsertManyResult result = collection.insertMany(documents);
-        if (!result.wasAcknowledged() && log.isWarnEnabled()) {
+        if (!result.wasAcknowledged()) {
             String errMsg = String.format("[AzureCosmosDbMongoVCoreEmbeddingStore] Add document failed, Document=%s", documents);
-            log.warn(errMsg);
             throw new RuntimeException(errMsg);
         }
     }
@@ -345,10 +354,10 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     private void createIndex(String indexName, String collectionName, MongoDatabase database) {
         Bson commandDocument = new Document();
         switch (this.kind) {
-            case "vector-ivf":
+            case VECTOR_IVF:
                 commandDocument = getIndexDefinitionVectorIVF(indexName, collectionName);
                 break;
-            case "vector-hnsw":
+            case VECTOR_HNSW:
                 commandDocument = getIndexDefinitionVectorHNSW(indexName, collectionName);
                 break;
         }
@@ -362,7 +371,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 .append("name", indexName)
                 .append("key", new Document("embedding", "cosmosSearch"))
                 .append("cosmosSearchOptions", new Document()
-                        .append("kind", this.kind)
+                        .append("kind", this.kind.getValue())
                         .append("numLists", this.numLists)
                         .append("similarity", this.similarity)
                         .append("dimensions", this.dimensions));
@@ -385,8 +394,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 .append("name", indexName)
                 .append("key", new Document("embedding", "cosmosSearch"))
                 .append("cosmosSearchOptions", new Document()
-                        .append("kind", this.kind)
-                        .append("m", this.numberOfConnections)
+                        .append("kind", this.kind.getValue())
+                        .append("m", this.m)
                         .append("efConstruction", this.efConstruction)
                         .append("similarity", this.similarity)
                         .append("dimensions", this.dimensions));
@@ -406,7 +415,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
     public static class Builder {
         private MongoClient mongoClient;
-        private String endpoint;
+        private String connectionString;
         private String databaseName;
         private String collectionName;
         private String indexName;
@@ -414,30 +423,30 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         private CreateCollectionOptions createCollectionOptions;
         private Boolean createIndex;
         private String kind;
-        private int numLists;
+        private Integer numLists;
         private String similarity;
-        private int dimensions;
-        private int numberOfConnections;
-        private int efConstruction;
-        private int efSearch;
+        private Integer dimensions;
+        private Integer m;
+        private Integer efConstruction;
+        private Integer efSearch;
 
         /**
          * Build Mongo Client, Please close the client to release resources after usage.
-         * This is a mandatory parameter if not providing the endpoint.
+         * This is a mandatory parameter if not providing the connectionString.
          */
-        public Builder fromClient(MongoClient mongoClient) {
+        public Builder mongoclient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
             return this;
         }
 
         /**
-         * Sets the Azure CosmosDB Mongo vCore endpoint. This is a mandatory parameter if not providing the Mongo Client.
+         * Sets the Azure CosmosDB Mongo vCore connectionString. This is a mandatory parameter if not providing the Mongo Client.
          *
-         * @param endpoint The Azure AI Search endpoint in the format: https://{resource}.search.windows.net
+         * @param connectionString The Azure CosmosDB Mongo vCore connectionString.
          * @return builder
          */
-        public Builder fromEndpoint(String endpoint) {
-            this.endpoint = endpoint;
+        public Builder connectionString(String connectionString) {
+            this.connectionString = connectionString;
             return this;
         }
 
@@ -498,7 +507,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *                 of 1 is akin to performing brute-force search, which has limited performance.
          * @return
          */
-        public Builder numLists(int numLists) {
+        public Builder numLists(Integer numLists) {
             this.numLists = numLists;
             return this;
         }
@@ -521,19 +530,19 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *                   is 2000.
          * @return
          */
-        public Builder dimensions(int dimensions) {
+        public Builder dimensions(Integer dimensions) {
             this.dimensions = dimensions;
             return this;
         }
 
         /**
-         * @param numberOfConnections - The max number of connections per layer (16 by default, minimum value is 2, maximum
-         *                            value is 100). Higher m is suitable for datasets with high dimensionality and/or high
-         *                            accuracy requirements.
+         * @param m - The max number of connections per layer (16 by default, minimum value is 2, maximum
+         *          value is 100). Higher m is suitable for datasets with high dimensionality and/or high
+         *          accuracy requirements.
          * @return
          */
-        public Builder numberOfConnections(int numberOfConnections) {
-            this.numberOfConnections = numberOfConnections;
+        public Builder m(Integer m) {
+            this.m = m;
             return this;
         }
 
@@ -544,7 +553,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *                       ef_construction has to be at least 2 * m.
          * @return
          */
-        public Builder efConstruction(int efConstruction) {
+        public Builder efConstruction(Integer efConstruction) {
             this.efConstruction = efConstruction;
             return this;
         }
@@ -554,15 +563,60 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          *                 better recall at the cost of speed.
          * @return
          */
-        public Builder efSearch(int efSearch) {
+        public Builder efSearch(Integer efSearch) {
             this.efSearch = efSearch;
             return this;
         }
 
         public AzureCosmosDbMongoVCoreEmbeddingStore build() {
-            return new AzureCosmosDbMongoVCoreEmbeddingStore(mongoClient, endpoint, databaseName, collectionName, indexName, applicationName,
-                    createCollectionOptions, createIndex, kind, numLists, similarity, dimensions, numberOfConnections,
+            return new AzureCosmosDbMongoVCoreEmbeddingStore(mongoClient, connectionString, databaseName, collectionName, indexName, applicationName,
+                    createCollectionOptions, createIndex, kind, numLists, similarity, dimensions, m,
                     efConstruction, efSearch);
+        }
+    }
+
+    public enum AzureCosmosDBSimilarityType {
+        COS("COS"),
+        IP("IP"),
+        L2("L2");
+
+        private final String value;
+
+        AzureCosmosDBSimilarityType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static AzureCosmosDBSimilarityType fromString(String kindString) {
+            return Arrays.stream(AzureCosmosDBSimilarityType.values())
+                    .filter(k -> k.getValue().equals(kindString))
+                    .findFirst()
+                    .orElse(AzureCosmosDBSimilarityType.COS); // Default value
+        }
+    }
+
+    public enum AzureCosmosDBVectorSearchType {
+        VECTOR_IVF("vector-ivf"),
+        VECTOR_HNSW("vector-hnsw");
+
+        private final String value;
+
+        AzureCosmosDBVectorSearchType(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        public static AzureCosmosDBVectorSearchType fromString(String kindString) {
+            return Arrays.stream(AzureCosmosDBVectorSearchType.values())
+                    .filter(k -> k.getValue().equals(kindString))
+                    .findFirst()
+                    .orElse(AzureCosmosDBVectorSearchType.VECTOR_HNSW); // Default value
         }
     }
 }
