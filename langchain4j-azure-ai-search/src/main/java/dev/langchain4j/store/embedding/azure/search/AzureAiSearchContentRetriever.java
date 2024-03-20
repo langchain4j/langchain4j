@@ -97,11 +97,11 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID) {
             Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
             String content = query.text();
-            return findRelevantWithSimilarityHybrid(referenceEmbedding, content, maxResults, minScore);
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RRF) {
+            return findRelevantWithHybrid(referenceEmbedding, content, maxResults, minScore);
+        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RERANKING) {
             Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
             String content = query.text();
-            return findRelevantWithSemanticHybrid(referenceEmbedding, content, maxResults, minScore);
+            return findRelevantWithHybridAndReranking(referenceEmbedding, content, maxResults, minScore);
         } else {
             throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + azureAiSearchQueryType);
         }
@@ -150,7 +150,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                 .setTop(maxResults),
                         Context.NONE);
 
-        return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RRF, minScore);
+        return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
     }
 
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
@@ -188,7 +188,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID) {
             // Search score is into 0..1 range already
             return searchResult.getScore();
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RRF) {
+        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RERANKING) {
             // Re-ranker score is into 0..4 range, so we need to divide the re-reranker score by 4 to fit in the 0..1 range.
             // The re-ranker score is a separate result from the original search score.
             // See https://azuresdkdocs.blob.core.windows.net/$web/java/azure-search-documents/11.6.2/com/azure/search/documents/models/SearchResult.html#getSemanticSearch()
