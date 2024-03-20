@@ -45,7 +45,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
         contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID);
 
-        contentRetrieverWithSemantic =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RRF);
+        contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RRF);
     }
 
     private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
