@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 public class AzureAiSearchContentRetrieverTest {
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_SIMILARITY() {
+    public void testFromAzureScoreToRelevanceScore_VECTOR() {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.6);
 
