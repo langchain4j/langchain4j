@@ -57,32 +57,26 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     private int maxResults;
     private double minScore;
 
-    public AzureAiSearchContentRetriever(String endpoint, AzureKeyCredential keyCredential, int dimensions, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        this.initialize(endpoint, keyCredential, null, dimensions, null);
-        this.embeddingModel = embeddingModel;
-        this.azureAiSearchQueryType = azureAiSearchQueryType;
-        this.maxResults = maxResults;
-        this.minScore = minScore;
-    }
-
-    public AzureAiSearchContentRetriever(String endpoint, AzureKeyCredential keyCredential, SearchIndex index, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        this.initialize(endpoint, keyCredential, null, 0, index);
-        this.embeddingModel = embeddingModel;
-        this.azureAiSearchQueryType = azureAiSearchQueryType;
-        this.maxResults = maxResults;
-        this.minScore = minScore;
-    }
-
-    public AzureAiSearchContentRetriever(String endpoint, TokenCredential tokenCredential, int dimensions, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        this.initialize(endpoint, null, tokenCredential, dimensions, null);
-        this.embeddingModel = embeddingModel;
-        this.azureAiSearchQueryType = azureAiSearchQueryType;
-        this.maxResults = maxResults;
-        this.minScore = minScore;
-    }
-
-    public AzureAiSearchContentRetriever(String endpoint, TokenCredential tokenCredential, SearchIndex index, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
-        this.initialize(endpoint, null, tokenCredential, 0, index);
+    public AzureAiSearchContentRetriever(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
+        ensureNotNull(endpoint, "endpoint");
+        ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
+        ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+        if (!AzureAiSearchQueryType.FULL_TEXT.equals(azureAiSearchQueryType)) {
+            ensureNotNull(embeddingModel, "embeddingModel");
+        }
+        if (keyCredential == null) {
+            if (index == null) {
+                this.initialize(endpoint, null, tokenCredential, dimensions, null);
+            } else {
+                this.initialize(endpoint, null, tokenCredential, 0, index);
+            }
+        } else {
+            if (index == null) {
+                this.initialize(endpoint, keyCredential, null, dimensions, null);
+            } else {
+                this.initialize(endpoint, keyCredential, null, 0, index);
+            }
+        }
         this.embeddingModel = embeddingModel;
         this.azureAiSearchQueryType = azureAiSearchQueryType;
         this.maxResults = maxResults;
@@ -366,25 +360,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
 
         public AzureAiSearchContentRetriever build() {
-            ensureNotNull(endpoint, "endpoint");
-            ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
-            ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
-            if (!AzureAiSearchQueryType.FULL_TEXT.equals(azureAiSearchQueryType)) {
-                ensureNotNull(embeddingModel, "embeddingModel");
-            }
-            if (keyCredential == null) {
-                if (index == null) {
-                    return new AzureAiSearchContentRetriever(endpoint, tokenCredential, dimensions, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
-                } else {
-                    return new AzureAiSearchContentRetriever(endpoint, tokenCredential, index, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
-                }
-            } else {
-                if (index == null) {
-                    return new AzureAiSearchContentRetriever(endpoint, keyCredential, dimensions, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
-                } else {
-                    return new AzureAiSearchContentRetriever(endpoint, keyCredential, index, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
-                }
-            }
+            return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, dimensions, index, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
         }
     }
 }

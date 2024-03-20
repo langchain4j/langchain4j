@@ -56,7 +56,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected SearchClient searchClient;
 
-     protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
         if (keyCredential != null) {
             searchIndexClient = new SearchIndexClientBuilder()
                     .endpoint(endpoint)
@@ -90,6 +90,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     /**
      * Creates or updates the index using a ready-made index.
+     *
      * @param dimensions The number of dimensions of the embeddings.
      */
     public void createOrUpdateIndex(int dimensions) {
@@ -151,6 +152,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     /**
      * Creates or updates the index, with full control on its configuration.
+     *
      * @param index The index to be created or updated.
      */
     void createOrUpdateIndex(SearchIndex index) {
@@ -313,10 +315,10 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     /**
      * Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
-     *
+     * <p>
      * Score in Azure AI Search is transformed into a cosine similarity as described here:
      * https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
-     *
+     * <p>
      * RelevanceScore in LangChain4j is a derivative of cosine similarity,
      * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
      */
