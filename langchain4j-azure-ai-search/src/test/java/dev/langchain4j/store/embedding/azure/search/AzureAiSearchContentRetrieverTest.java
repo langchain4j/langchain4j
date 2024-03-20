@@ -31,7 +31,7 @@ public class AzureAiSearchContentRetrieverTest {
     }
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_SIMILARITY_HYBRID() {
+    public void testFromAzureScoreToRelevanceScore_HYBRID() {
         SearchResult mockResult = mock(SearchResult.class);
         when(mockResult.getScore()).thenReturn(0.7);
 
