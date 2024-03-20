@@ -121,18 +121,21 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
 
         log.info("Testing Full Text Search");
+        // This uses the same storage as the vector search, so we don't need to add the content again
         List<Content> relevant2 = contentRetrieverWithFullText.retrieve(query);
         assertThat(relevant2).hasSizeGreaterThan(0);
         assertThat(relevant2.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
+        // This uses the same storage as the vector search, so we don't need to add the content again
         List<Content> relevant3 = contentRetrieverWithHybrid.retrieve(query);
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
+        // This uses the same storage as the vector search, so we don't need to add the content again
         List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
