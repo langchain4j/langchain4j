@@ -7,20 +7,15 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
 
-public class AbstractOllamaInfrastructure {
+public class OllamaImage {
 
-    private static final String LOCAL_OLLAMA_IMAGE = String.format("tc-%s-%s", OllamaImage.OLLAMA_IMAGE, OllamaImage.PHI_MODEL);
+    static final String OLLAMA_IMAGE = "ollama/ollama:latest";
 
-    static LangChain4jOllamaContainer ollama;
+    static final String BAKLLAVA_MODEL = "bakllava";
 
-    static {
-        ollama = new LangChain4jOllamaContainer(resolveImage(OllamaImage.OLLAMA_IMAGE, LOCAL_OLLAMA_IMAGE))
-                .withModel(OllamaImage.PHI_MODEL);
-        ollama.start();
-        ollama.commitToImage(LOCAL_OLLAMA_IMAGE);
-    }
+    static final String PHI_MODEL = "phi";
 
-    static DockerImageName resolveImage(String baseImage, String localImageName) {
+    static DockerImageName resolve(String baseImage, String localImageName) {
         DockerImageName dockerImageName = DockerImageName.parse(baseImage);
         DockerClient dockerClient = DockerClientFactory.instance().client();
         List<Image> images = dockerClient.listImagesCmd().withReferenceFilter(localImageName).exec();

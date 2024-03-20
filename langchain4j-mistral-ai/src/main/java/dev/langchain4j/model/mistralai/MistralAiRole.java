@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 @Getter
-enum MistralAiRole {
+public enum MistralAiRole {
 
     @SerializedName("system") SYSTEM,
     @SerializedName("user") USER,

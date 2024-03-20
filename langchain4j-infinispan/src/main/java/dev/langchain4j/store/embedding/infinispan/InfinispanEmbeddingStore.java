@@ -12,16 +12,25 @@ import org.infinispan.commons.api.query.Query;
 import org.infinispan.commons.marshall.ProtoStreamMarshaller;
 import org.infinispan.protostream.FileDescriptorSource;
 import org.infinispan.protostream.SerializationContext;
+import org.infinispan.protostream.schema.Schema;
+import org.infinispan.protostream.schema.Type;
 import org.infinispan.query.remote.client.ProtobufMetadataManagerConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -35,21 +44,21 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final RemoteCache<String, LangChainInfinispanItem> remoteCache;
 
     private final LangChainItemMarshaller itemMarshaller;
+    private final LangChainMetadataMarshaller metadataMarshaller;
 
     private static final String DEFAULT_CACHE_CONFIG =
             "<distributed-cache name=\"CACHE_NAME\">\n"
                     + "<indexing storage=\"local-heap\">\n"
                     + "<indexed-entities>\n"
                     + "<indexed-entity>LANGCHAINITEM</indexed-entity>\n"
+                    + "<indexed-entity>LANGCHAIN_METADATA</indexed-entity>\n"
                     + "</indexed-entities>\n"
                     + "</indexing>\n"
                     + "</distributed-cache>";
 
-    private static final String PROTO = "syntax = \"proto2\";\n" + "\n" + "/**\n" + " * @Indexed\n" + " */\n"
-            + "message LangChainItemDIMENSION {\n" + "   \n" + "   /**\n" + "    * @Keyword\n" + "    */\n"
-            + "   optional string id = 1;\n" + "   \n" + "   /**\n" + "    * @Vector(dimension=DIMENSION, similarity=COSINE)\n"
-            + "    */\n" + "   repeated float embedding = 2;\n" + "   \n" + "   optional string text = 3;\n" + "   \n"
-            + "   repeated string metadataKeys = 4;\n" + "   \n" + "   repeated string metadataValues = 5;\n" + "}\n";
+    public static final String ITEM_PACKAGE = "dev.langchain4j";
+    public static final String LANGCHAIN_ITEM = "LangChainItem";
+    public static final String METADATA_ITEM = "LangChainMetadata";
 
     /**
      * Creates an instance of InfinispanEmbeddingStore
@@ -64,28 +73,55 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotNull(builder, "builder");
         ensureNotBlank(name, "name");
         ensureNotNull(dimension, "dimension");
-        itemMarshaller = new LangChainItemMarshaller(dimension);
+        String langchainType = LANGCHAIN_ITEM + dimension;
+        String metadataType = METADATA_ITEM + dimension;
+        itemMarshaller = new LangChainItemMarshaller(computeTypeWithPackage(langchainType));
+        metadataMarshaller = new LangChainMetadataMarshaller(computeTypeWithPackage(metadataType));
         builder.remoteCache(name)
                 .configuration(DEFAULT_CACHE_CONFIG.replace("CACHE_NAME", name)
-                        .replace("LANGCHAINITEM", itemMarshaller.getTypeName()));
+                        .replace("LANGCHAINITEM", itemMarshaller.getTypeName())
+                        .replace("LANGCHAIN_METADATA", metadataMarshaller.getTypeName()));
 
         // Registers the schema on the client
         ProtoStreamMarshaller marshaller = new ProtoStreamMarshaller();
         SerializationContext serializationContext = marshaller.getSerializationContext();
-        FileDescriptorSource fileDescriptorSource = new FileDescriptorSource();
-        String fileName = "langchain_dimension_" + dimension + ".proto";
-        String fileContent = PROTO.replace("DIMENSION", dimension.toString());
-        fileDescriptorSource.addProtoFile(fileName, fileContent);
+        String fileName = ITEM_PACKAGE + "." + "dimension." + dimension + ".proto";
+        Schema schema =  new Schema.Builder("magazine.proto")
+              .packageName(ITEM_PACKAGE)
+              .addMessage(metadataType)
+                .addComment("@Indexed")
+                .addField(Type.Scalar.STRING, "name", 1)
+                    .addComment("@Text")
+                .addField(Type.Scalar.STRING, "value", 2)
+                    .addComment("@Text")
+              .addMessage(langchainType)
+                .addComment("@Indexed")
+                .addField(Type.Scalar.STRING, "id", 1)
+                    .addComment("@Text")
+                .addField(Type.Scalar.STRING, "text", 2)
+                    .addComment("@Keyword")
+                .addRepeatedField(Type.Scalar.FLOAT, "embedding", 3)
+                    .addComment("@Vector(dimension=" + dimension + ", similarity=COSINE)")
+                .addRepeatedField(Type.create(metadataType), "metadata", 4)
+              .build();
+
+        String schemaContent =  schema.toString();
+        FileDescriptorSource fileDescriptorSource = FileDescriptorSource.fromString(fileName, schemaContent);
         serializationContext.registerProtoFiles(fileDescriptorSource);
+        serializationContext.registerMarshaller(metadataMarshaller);
         serializationContext.registerMarshaller(itemMarshaller);
         builder.marshaller(marshaller);
         // Uploads the schema to the server
         RemoteCacheManager rmc = new RemoteCacheManager(builder.build());
         RemoteCache<String, String> metadataCache = rmc
                 .getCache(ProtobufMetadataManagerConstants.PROTOBUF_METADATA_CACHE_NAME);
-        metadataCache.put(fileName, fileContent);
+        metadataCache.put(fileName, schemaContent);
 
         this.remoteCache = rmc.getCache(name);
+    }
+
+    private static String computeTypeWithPackage(String langchainType) {
+        return ITEM_PACKAGE + "." + langchainType;
     }
 
     @Override
@@ -137,17 +173,15 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
                 return null;
             }
             TextSegment embedded = null;
-            if (item.getText() != null) {
+            if (item.text() != null) {
                 Map<String, String> map = new HashMap<>();
-                List<String> metadataKeys = item.getMetadataKeys();
-                List<String> metadataValues = item.getMetadataValues();
-                for (int i = 0; i < metadataKeys.size(); i++) {
-                    map.put(metadataKeys.get(i), metadataValues.get(i));
+                for (LangChainMetadata metadata : item.metadata()) {
+                    map.put(metadata.name(), metadata.value());
                 }
-                embedded = new TextSegment(item.getText(), new Metadata(map));
+                embedded = new TextSegment(item.text(), new Metadata(map));
             }
-            Embedding embedding = new Embedding(item.getEmbedding());
-            return new EmbeddingMatch<>(score.doubleValue(), item.getId(), embedding, embedded);
+            Embedding embedding = new Embedding(item.embedding());
+            return new EmbeddingMatch<>(score.doubleValue(), item.id(), embedding, embedded);
         }).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
@@ -170,16 +204,11 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
             Embedding embedding = embeddings.get(i);
             TextSegment textSegment = embedded == null ? null : embedded.get(i);
             if (textSegment != null) {
-                Map<String, String> map = textSegment.metadata().asMap();
-                final List<String> metadataKeys = new ArrayList<>(map.size());
-                final List<String> metadataValues = new ArrayList<>(map.size());
-                map.entrySet().forEach(e -> {
-                    metadataKeys.add(e.getKey());
-                    metadataValues.add(e.getValue());
-                });
-                elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), textSegment.text(), metadataKeys, metadataValues));
+                Set<LangChainMetadata> metadata = textSegment.metadata().asMap().entrySet().stream()
+                      .map(e -> new LangChainMetadata(e.getKey(), e.getValue())).collect(Collectors.toSet());
+                elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), textSegment.text(), metadata));
             } else {
-                elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), null, null, null));
+                elements.put(id, new LangChainInfinispanItem(id, embedding.vector(), null, null));
             }
         }
         // blocking call

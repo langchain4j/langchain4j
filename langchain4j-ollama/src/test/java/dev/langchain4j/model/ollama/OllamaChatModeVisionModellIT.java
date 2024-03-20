@@ -21,9 +21,9 @@ class OllamaChatModeVisionModellIT extends AbstractOllamaInfrastructureVisionMod
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(getBaseUrl())
+                .baseUrl(ollama.getEndpoint())
                 .timeout(Duration.ofMinutes(3))
-                .modelName(MODEL)
+                .modelName(OllamaImage.BAKLLAVA_MODEL)
                 .temperature(0.0)
                 .build();
 
@@ -43,9 +43,9 @@ class OllamaChatModeVisionModellIT extends AbstractOllamaInfrastructureVisionMod
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(getBaseUrl())
+                .baseUrl(ollama.getEndpoint())
                 .timeout(Duration.ofMinutes(3))
-                .modelName(MODEL)
+                .modelName(OllamaImage.BAKLLAVA_MODEL)
                 .temperature(0.0)
                 .build();
 

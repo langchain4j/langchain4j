@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaModelsIT extends AbstractOllamaInfrastructure {
 
     OllamaModels ollamaModels = OllamaModels.builder()
-            .baseUrl(getBaseUrl())
+            .baseUrl(ollama.getEndpoint())
             .build();
 
     @Test

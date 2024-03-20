@@ -15,7 +15,7 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
-class DefaultMistralAiHelper {
+public class DefaultMistralAiHelper {
 
     static final String MISTRALAI_API_URL = "https://api.mistral.ai/v1";
     static final String MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT = "float";
@@ -64,7 +64,7 @@ class DefaultMistralAiHelper {
         throw new IllegalArgumentException("Unknown message type: " + message.type());
     }
 
-    static TokenUsage tokenUsageFrom(MistralAiUsage mistralAiUsage) {
+    public static TokenUsage tokenUsageFrom(MistralAiUsage mistralAiUsage) {
         if (mistralAiUsage == null) {
             return null;
         }
@@ -75,7 +75,7 @@ class DefaultMistralAiHelper {
         );
     }
 
-    static FinishReason finishReasonFrom(String mistralAiFinishReason) {
+    public static FinishReason finishReasonFrom(String mistralAiFinishReason) {
         if (mistralAiFinishReason == null) {
             return null;
         }

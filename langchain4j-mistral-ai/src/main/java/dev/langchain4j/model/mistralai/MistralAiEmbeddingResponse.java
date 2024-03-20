@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiEmbeddingResponse {
+public class MistralAiEmbeddingResponse {
 
     private String id;
     private String object;

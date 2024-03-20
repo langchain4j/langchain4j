@@ -9,15 +9,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 public class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreIT {
 
     @Container
-    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>(
-            DockerImageName.parse("ankane/pgvector:v0.5.1").asCompatibleSubstituteFor("postgres")
-    );
+    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
 
     EmbeddingStore<TextSegment> embeddingStore;
 

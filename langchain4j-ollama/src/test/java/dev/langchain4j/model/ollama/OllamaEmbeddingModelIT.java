@@ -10,8 +10,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OllamaEmbeddingModelIT extends AbstractOllamaInfrastructure {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()
-            .baseUrl(getBaseUrl())
-            .modelName(MODEL)
+            .baseUrl(ollama.getEndpoint())
+            .modelName(OllamaImage.PHI_MODEL)
             .build();
 
     @Test

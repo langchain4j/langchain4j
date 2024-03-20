@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiChatCompletionChoice {
+public class MistralAiChatCompletionChoice {
 
     private Integer index;
     private MistralAiChatMessage message;

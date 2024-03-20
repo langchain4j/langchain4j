@@ -16,12 +16,7 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.testcontainers.containers.DockerComposeContainer;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.shaded.com.google.common.collect.Sets;
-
-import java.io.File;
-import java.time.Duration;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
@@ -32,13 +27,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
  */
 class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
 
-    static final String MONGO_SERVICE_NAME = "mongo";
-    static final Integer MONGO_SERVICE_PORT = 27778;
-    static DockerComposeContainer<?> mongodb = new DockerComposeContainer<>(new File("src/test/resources/docker-compose.yml"))
-            .withExposedService(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT, new LogMessageWaitStrategy()
-                    .withRegEx(".*Deployment created!.*\\n")
-                    .withTimes(1)
-                    .withStartupTimeout(Duration.ofMinutes(30)));
+    static MongoDBAtlasContainer mongodb = new MongoDBAtlasContainer();
 
     static MongoClient client;
 
@@ -68,8 +57,7 @@ class MongoDbEmbeddingStoreLocalIT extends EmbeddingStoreIT {
                 MongoClientSettings.builder()
                         .credential(credential)
                         .serverApi(ServerApi.builder().version(ServerApiVersion.V1).build())
-                        .applyConnectionString(new ConnectionString(String.format("mongodb://%s:%s/?directConnection=true",
-                                mongodb.getServiceHost(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT), mongodb.getServicePort(MONGO_SERVICE_NAME, MONGO_SERVICE_PORT))))
+                        .applyConnectionString(new ConnectionString(mongodb.getConnectionString()))
                         .build());
     }
 
