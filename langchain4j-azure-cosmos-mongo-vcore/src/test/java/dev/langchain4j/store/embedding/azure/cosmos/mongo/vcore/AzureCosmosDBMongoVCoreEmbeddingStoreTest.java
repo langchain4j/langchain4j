@@ -13,9 +13,14 @@ import org.junit.jupiter.api.Test;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.in;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
+
+    private static final String DATABASE_NAME = "test_db";
+    private static final String COLLECTION_NAME = "test_coll";
+    private static final String INDEX_NAME = "test_index";
     @Test
     void should_fail_if_mongoClient_missing() {
         assertThrows(IllegalArgumentException.class, () -> {
@@ -93,25 +98,22 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
                         .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
                         .applicationName("JAVA_LANG_CHAIN")
                         .build());
-        String databaseName = "test_database";
-        String collectionName = "test_collection";
-        String indexName = "test_index";
 
-        MongoDatabase database = client.getDatabase(databaseName);
-        assertThat(isCollectionExist(database, collectionName)).isEqualTo(Boolean.FALSE);
+        MongoDatabase database = client.getDatabase(DATABASE_NAME);
+        assertThat(isCollectionExist(database, COLLECTION_NAME)).isEqualTo(Boolean.FALSE);
 
         EmbeddingStore embeddingStore = AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                 .mongoClient(client)
-                .databaseName(databaseName)
-                .collectionName(collectionName)
-                .indexName(indexName)
+                .databaseName(DATABASE_NAME)
+                .collectionName(COLLECTION_NAME)
+                .indexName(INDEX_NAME)
                 .applicationName("JAVA_LANG_CHAIN")
                 .createIndex(true)
                 .kind("vector-hnsw")
                 .build();
-        assertThat(isCollectionExist(database, collectionName)).isEqualTo(Boolean.TRUE);
-        MongoCollection<Document> collection = database.getCollection(collectionName);
-        assertThat(isIndexExist(indexName, collection)).isEqualTo(Boolean.TRUE);
+        assertThat(isCollectionExist(database, COLLECTION_NAME)).isEqualTo(Boolean.TRUE);
+        MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
+        assertThat(isIndexExist(INDEX_NAME, collection)).isEqualTo(Boolean.TRUE);
 
         database.drop();
         client.close();
@@ -124,23 +126,20 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
                         .applyConnectionString(new ConnectionString(System.getenv("AZURE_COSMOS_ENDPOINT")))
                         .applicationName("JAVA_LANG_CHAIN")
                         .build());
-        String databaseName = "test_database";
-        String collectionName = "test_collection";
-        String indexName = "test_index";
 
-        MongoDatabase database = client.getDatabase(databaseName);
+        MongoDatabase database = client.getDatabase(DATABASE_NAME);
 
         EmbeddingStore embeddingStore = AzureCosmosDbMongoVCoreEmbeddingStore.builder()
                 .mongoClient(client)
-                .databaseName(databaseName)
-                .collectionName(collectionName)
-                .indexName(indexName)
+                .databaseName(DATABASE_NAME)
+                .collectionName(COLLECTION_NAME)
+                .indexName(INDEX_NAME)
                 .applicationName("JAVA_LANG_CHAIN")
                 .createIndex(false)
                 .kind("vector-hnsw")
                 .build();
-        MongoCollection<Document> collection = database.getCollection(collectionName);
-        assertThat(isIndexExist(indexName, collection)).isEqualTo(Boolean.FALSE);
+        MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
+        assertThat(isIndexExist(INDEX_NAME, collection)).isEqualTo(Boolean.FALSE);
 
         database.drop();
         client.close();
