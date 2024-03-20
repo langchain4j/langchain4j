@@ -161,6 +161,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         searchIndexClient.deleteIndex(INDEX_NAME);
     }
 
+    /**
+     * Add an embedding to the store.
+     */
     @Override
     public String add(Embedding embedding) {
         String id = randomUUID();
@@ -168,11 +171,17 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         return id;
     }
 
+    /**
+     * Add an embedding to the store.
+     */
     @Override
     public void add(String id, Embedding embedding) {
         addInternal(id, embedding, null);
     }
 
+    /**
+     * Add an embedding and the related content to the store.
+     */
     @Override
     public String add(Embedding embedding, TextSegment textSegment) {
         String id = randomUUID();
@@ -180,6 +189,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         return id;
     }
 
+    /**
+     * Add a list of embeddings to the store.
+     */
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
@@ -187,6 +199,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         return ids;
     }
 
+    /**
+     * Add a list of embeddings, and the list of related content, to the store.
+     */
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());

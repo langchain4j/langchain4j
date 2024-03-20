@@ -128,20 +128,44 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
-        // This uses the same storage as the vector search, so we don't need to add the content again
         List<Content> relevant3 = contentRetrieverWithHybrid.retrieve(query);
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
-        // This uses the same storage as the vector search, so we don't need to add the content again
         List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant4.get(0).textSegment().text());
 
         log.info("Test complete");
+    }
+
+    @Test
+    void testFullTextSearch() {
+        String content1 = "Émile-Auguste Chartier (3 March 1868 – 2 June 1951), commonly known as Alain, was a French philosopher, journalist, essayist, pacifist, and teacher of philosophy. He adopted his pseudonym as the most banal he could find. There is no evidence he ever thought in so doing of the 15th century Norman poet Alain Chartier.";
+        String content2 = "Emmanuel Levinas (12 January 1906 – 25 December 1995) was a French philosopher of Lithuanian Jewish ancestry who is known for his work within Jewish philosophy, existentialism, and phenomenology, focusing on the relationship of ethics to metaphysics and ontology.";
+        String content3 = "Maurice Jean Jacques Merleau-Ponty (14 March 1908 – 3 May 1961) was a French phenomenological philosopher, strongly influenced by Edmund Husserl and Martin Heidegger. The constitution of meaning in human experience was his main interest and he wrote on perception, art, politics, religion, biology, psychology, psychoanalysis, language, nature, and history. He was the lead editor of Les Temps modernes, the leftist magazine he established with Jean-Paul Sartre and Simone de Beauvoir in 1945.";
+        List<String> contents = asList(content1, content2, content3);
+
+        for (String content : contents) {
+            contentRetrieverWithFullText.add(content);
+        }
+
+        awaitUntilPersisted();
+
+        Query query = Query.from("Alain");
+        List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
+        assertThat(relevant).hasSizeGreaterThan(0);
+        log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
+        assertThat(relevant.get(0).textSegment().text()).contains("Émile-Auguste Chartier");
+
+        Query query2 = Query.from("Heidegger");
+        List<Content> relevant2 = contentRetrieverWithHybrid.retrieve(query2);
+        assertThat(relevant2).hasSizeGreaterThan(0);
+        log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
+        assertThat(relevant2.get(0).textSegment().text()).contains("Maurice Jean Jacques Merleau-Ponty");
     }
 
     @Test

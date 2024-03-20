@@ -18,14 +18,19 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore;
 import dev.langchain4j.store.embedding.azure.search.AzureAiSearchQueryType;
 import dev.langchain4j.store.embedding.azure.search.AzureAiSearchRuntimeException;
+import dev.langchain4j.store.embedding.azure.search.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -82,6 +87,40 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         this.azureAiSearchQueryType = azureAiSearchQueryType;
         this.maxResults = maxResults;
         this.minScore = minScore;
+    }
+
+    /**
+     * Add content to the full text search engine.
+     */
+    public void add(String content) {
+        add(singletonList(content));
+    }
+
+    /**
+     * Add a list of content to the full text search engine.
+     */
+    public void add(List<String> contents) {
+        if (isNullOrEmpty(contents)) {
+            log.info("Empty embeddings - no ops");
+            return;
+        }
+
+        List<Document> documents = new ArrayList<>();
+        for (String content : contents) {
+            Document document = new Document();
+            document.setId(randomUUID());
+            document.setContent(content);
+            documents.add(document);
+        }
+
+        List<IndexingResult> indexingResults = searchClient.uploadDocuments(documents).getResults();
+        for (IndexingResult indexingResult : indexingResults) {
+            if (!indexingResult.isSucceeded()) {
+                throw new AzureAiSearchRuntimeException("Failed to add content: " + indexingResult.getErrorMessage());
+            } else {
+                log.debug("Added content: {}", indexingResult.getKey());
+            }
+        }
     }
 
     @Override
