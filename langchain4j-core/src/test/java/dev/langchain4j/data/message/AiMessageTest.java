@@ -117,7 +117,7 @@ class AiMessageTest implements WithAssertions {
     }
 
     @Test
-    void should_allow_empty_content() {
+    void should_allow_blank_content() {
         assertThat(AiMessage.from("").text()).isEqualTo("");
         assertThat(AiMessage.from(" ").text()).isEqualTo(" ");
     }
