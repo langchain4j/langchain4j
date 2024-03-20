@@ -293,7 +293,7 @@ public class AiServicesIT {
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
-                        "\"street\": (type: string),\n" +
+                        "\"st reet\": (type: string),\n" +
                         "\"city\": (type: string),\n" +
                         "}),\n" +
                         "}")));
