@@ -41,7 +41,7 @@ public class AzureAiSearchContentRetrieverTest {
     }
 
     @Test
-    public void testFromAzureScoreToRelevanceScore_SEMANTIC_HYBRID() {
+    public void testFromAzureScoreToRelevanceScore_HYBRID_WITH_RERANKING() {
         SearchResult mockResult = mock(SearchResult.class);
         SemanticSearchResult mockSemanticSearchResult = mock(SemanticSearchResult.class);
 
