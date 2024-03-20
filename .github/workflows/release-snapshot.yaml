@@ -1,0 +1,32 @@
+name: release_snapshot
+
+# Only run on pushes to main:
+# Replace with 'on: [push]' if you need to run tests on your PR
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release_snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+        # Modules specify the oldest java version that they support:
+        # even if we build with version 21, produced jars should be compatible with
+        # JVMs running the version specified in each module's maven.compiler.target property
+          java-version: '21'
+          distribution: 'temurin'
+          server-id: ossrh
+          server-username: OSSRH_USERNAME
+          server-password: OSSRH_PASSWORD
+      - name: release_snapshot
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+        # Notes:
+        #  - tests already run in a separate action (main)
+        run: mvn -B -U --fail-at-end -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs clean deploy

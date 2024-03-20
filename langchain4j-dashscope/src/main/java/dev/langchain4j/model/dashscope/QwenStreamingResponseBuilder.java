@@ -9,8 +9,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import static dev.langchain4j.model.dashscope.QwenHelper.answerFrom;
-import static dev.langchain4j.model.dashscope.QwenHelper.finishReasonFrom;
+import static dev.langchain4j.model.dashscope.QwenHelper.*;
 
 public class QwenStreamingResponseBuilder {
     private final StringBuilder generatedContent = new StringBuilder();
@@ -37,7 +36,9 @@ public class QwenStreamingResponseBuilder {
         FinishReason finishReason = finishReasonFrom(partialResponse);
         if (finishReason != null) {
             this.finishReason = finishReason;
-            return null;
+            if (!hasAnswer(partialResponse)) {
+                return null;
+            }
         }
 
         String partialContent = answerFrom(partialResponse);
@@ -60,7 +61,9 @@ public class QwenStreamingResponseBuilder {
         FinishReason finishReason = finishReasonFrom(partialResponse);
         if (finishReason != null) {
             this.finishReason = finishReason;
-            return null;
+            if (!hasAnswer(partialResponse)) {
+                return null;
+            }
         }
 
         String partialContent = answerFrom(partialResponse);

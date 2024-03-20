@@ -9,7 +9,7 @@ import java.util.UUID;
 
 import static com.dtsx.astra.sdk.utils.TestUtils.TEST_REGION;
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Test Cassandra Chat Memory Store with a Saas DB.
@@ -25,9 +25,9 @@ class CassandraChatMemoryStoreAstraIT extends CassandraChatMemoryStoreTestSuppor
     @Override
     void createDatabase() {
         token = getAstraToken();
-        assertNotNull(token);
+        assertThat(token).isNotNull();
         dbId = new AstraDBAdmin(token).createDatabase(DB, CloudProviderType.GCP, "us-east1");
-        assertNotNull(dbId);
+        assertThat(dbId).isNotNull();
     }
 
     @Override

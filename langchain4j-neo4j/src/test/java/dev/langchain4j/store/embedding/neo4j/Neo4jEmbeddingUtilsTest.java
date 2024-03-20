@@ -2,45 +2,45 @@ package dev.langchain4j.store.embedding.neo4j;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class Neo4jEmbeddingUtilsTest {
 
     @Test
     void test_sanitize() {
-        assertEquals("````", sanitize("``"));
-        assertEquals("``````", sanitize("\\u0060\\u0060\\u0060"));
-        assertEquals("`Hello```", sanitize("Hello`"));
-        assertEquals("`Hi````there`", sanitize("Hi````there"));
-        assertEquals("`Hi``````there`", sanitize("Hi`````there"));
-        assertEquals("```a``b``c```", sanitize("`a`b`c`"));
-        assertEquals("```a``b``c``d```", sanitize("\u0060a`b`c\u0060d\u0060"));
-        assertEquals("```a``b``c``d```", sanitize("\\u0060a`b`c\\u0060d\\u0060"));
-        assertEquals("`Foo ```", sanitize("Foo \\u0060"));
-        assertEquals("ABC", sanitize("ABC"));
-        assertEquals("`A C`", sanitize("A C"));
-        assertEquals("`A`` C`", sanitize("A` C"));
-        assertEquals("ALabel", sanitize("ALabel"));
-        assertEquals("`A Label`", sanitize("A Label"));
-        assertEquals("`A ``Label`", sanitize("A `Label"));
-        assertEquals("```A ``Label`", sanitize("`A `Label"));
-        assertEquals("```A ``Label`", sanitize("`A `Label"));
-        assertEquals("`Emoticon ⚡️sanitize`", sanitize("Emoticon ⚡️sanitize"));
-        assertEquals("`Foo ```", sanitize("Foo \u0060"));
-        assertEquals("`Foo``bar`", sanitize("Foo\\`bar"));
-        assertEquals("`Foo\\``bar`", sanitize("Foo\\\\`bar"));
-        assertEquals("ᑖ", sanitize("ᑖ"));
-        assertEquals("`⚡️`", sanitize("⚡️"));
-        assertEquals("uᑖ", sanitize("\\u0075\\u1456"));
-        assertEquals("ᑖ", sanitize("\u1456"));
-        assertEquals("`something\\u005C\\u00751456`", sanitize("something\\u005C\\u00751456"));
-        assertEquals("`\\u005C\\u00750060`", sanitize("\\u005Cu0060"));
-        assertEquals("`\\```", sanitize("\\u005C\\u0060"));
-        assertEquals("`x\\y`", sanitize("x\\y"));
-        assertEquals("`x\\y`", sanitize("x\\\\y"));
-        assertEquals("`x\\\\y`", sanitize("x\\\\\\\\y"));
-        assertEquals("`x``y`", sanitize("x\\`y"));
-        assertEquals("`Foo ```", sanitize("Foo \\u0060"));
+        assertThat(sanitize("``")).isEqualTo("````");
+        assertThat(sanitize("\\u0060\\u0060\\u0060")).isEqualTo("``````");
+        assertThat(sanitize("Hello`")).isEqualTo("`Hello```");
+        assertThat(sanitize("Hi````there")).isEqualTo("`Hi````there`");
+        assertThat(sanitize("Hi`````there")).isEqualTo("`Hi``````there`");
+        assertThat(sanitize("`a`b`c`")).isEqualTo("```a``b``c```");
+        assertThat(sanitize("\u0060a`b`c\u0060d\u0060")).isEqualTo("```a``b``c``d```");
+        assertThat(sanitize("\\u0060a`b`c\\u0060d\\u0060")).isEqualTo("```a``b``c``d```");
+        assertThat(sanitize("Foo \\u0060")).isEqualTo("`Foo ```");
+        assertThat(sanitize("ABC")).isEqualTo("ABC");
+        assertThat(sanitize("A C")).isEqualTo("`A C`");
+        assertThat(sanitize("A` C")).isEqualTo("`A`` C`");
+        assertThat(sanitize("ALabel")).isEqualTo("ALabel");
+        assertThat(sanitize("A Label")).isEqualTo("`A Label`");
+        assertThat(sanitize("A `Label")).isEqualTo("`A ``Label`");
+        assertThat(sanitize("`A `Label")).isEqualTo("```A ``Label`");
+        assertThat(sanitize("`A `Label")).isEqualTo("```A ``Label`");
+        assertThat(sanitize("Emoticon ⚡️sanitize")).isEqualTo("`Emoticon ⚡️sanitize`");
+        assertThat(sanitize("Foo \u0060")).isEqualTo("`Foo ```");
+        assertThat(sanitize("Foo\\`bar")).isEqualTo("`Foo``bar`");
+        assertThat(sanitize("Foo\\\\`bar")).isEqualTo("`Foo\\``bar`");
+        assertThat(sanitize("ᑖ")).isEqualTo("ᑖ");
+        assertThat(sanitize("⚡️")).isEqualTo("`⚡️`");
+        assertThat(sanitize("\\u0075\\u1456")).isEqualTo("uᑖ");
+        assertThat(sanitize("\u1456")).isEqualTo("ᑖ");
+        assertThat(sanitize("something\\u005C\\u00751456")).isEqualTo("`something\\u005C\\u00751456`");
+        assertThat(sanitize("\\u005Cu0060")).isEqualTo("`\\u005C\\u00750060`");
+        assertThat(sanitize("\\u005C\\u0060")).isEqualTo("`\\```");
+        assertThat(sanitize("x\\y")).isEqualTo("`x\\y`");
+        assertThat(sanitize("x\\\\y")).isEqualTo("`x\\y`");
+        assertThat(sanitize("x\\\\\\\\y")).isEqualTo("`x\\\\y`");
+        assertThat(sanitize("x\\`y")).isEqualTo("`x``y`");
+        assertThat(sanitize("Foo \\u0060")).isEqualTo("`Foo ```");
     }
 
     private String sanitize(String value) {

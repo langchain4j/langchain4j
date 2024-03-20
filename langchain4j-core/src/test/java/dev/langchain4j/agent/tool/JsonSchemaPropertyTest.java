@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
 
 class JsonSchemaPropertyTest implements WithAssertions {
@@ -84,8 +85,8 @@ class JsonSchemaPropertyTest implements WithAssertions {
         assertThat(prop.value()).isEqualTo("value");
     }
 
-        @Test
-        public void test_property() {
+    @Test
+    public void test_property() {
         assertThat(JsonSchemaProperty.property("key", "value"))
                 .isEqualTo(JsonSchemaProperty.from("key", "value"));
     }
@@ -97,7 +98,7 @@ class JsonSchemaPropertyTest implements WithAssertions {
     }
 
     public enum EnumTest {
-        VALUE1, VALUE2
+        VALUE1, value2, Value3
     }
 
     @Test
@@ -109,15 +110,15 @@ class JsonSchemaPropertyTest implements WithAssertions {
         }
 
         {
-            JsonSchemaProperty prop = JsonSchemaProperty.enums(EnumTest.VALUE1, EnumTest.VALUE2);
+            JsonSchemaProperty prop = JsonSchemaProperty.enums(EnumTest.VALUE1, EnumTest.value2, EnumTest.Value3);
             assertThat(prop.key()).isEqualTo("enum");
-            assertThat(Arrays.equals((Object[]) prop.value(), new EnumTest[]{EnumTest.VALUE1, EnumTest.VALUE2})).isTrue();
+            assertThat(prop.value()).isEqualTo(asList("VALUE1", "value2", "Value3"));
         }
 
         {
             JsonSchemaProperty prop = JsonSchemaProperty.enums(EnumTest.class);
             assertThat(prop.key()).isEqualTo("enum");
-            assertThat(Arrays.equals((Object[]) prop.value(), new EnumTest[]{EnumTest.VALUE1, EnumTest.VALUE2})).isTrue();
+            assertThat(prop.value()).isEqualTo(asList("VALUE1", "value2", "Value3"));
         }
 
         assertThatExceptionOfType(RuntimeException.class)

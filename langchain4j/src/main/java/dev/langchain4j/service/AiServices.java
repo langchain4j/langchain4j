@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -22,10 +23,7 @@ import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -69,12 +67,14 @@ import static java.util.stream.Collectors.toList;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@code String} or an {@link AiMessage}, if you want to get the answer from the LLM as-is
+ * - a {@link String}, an {@link AiMessage} or a {@code Response<AiMessage>}, if you want to get the answer from the LLM as-is
  * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
- * - any {@code Enum} or a {@code boolean}, if you want to use the LLM for classification
+ * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
  * - many default Java types: {@code Date}, {@code LocalDateTime}, {@code BigDecimal}, etc., if you want to use the LLM for data extraction
- * - any custom POJO, if you want to use the LLM for data extraction
+ * - any custom POJO, if you want to use the LLM for data extraction.
+ * For POJOs, it is advisable to use the "json mode" feature if the LLM provider supports it. For OpenAI, this can be enabled by calling {@code responseFormat("json_object")} during model construction.
+ *
  * </pre>
  * <p>
  * Let's see how we can classify the sentiment of a text:
@@ -117,6 +117,10 @@ public abstract class AiServices<T> {
     protected static final String DEFAULT = "default";
 
     protected final AiServiceContext context;
+
+    private boolean retrieverSet = false;
+    private boolean contentRetrieverSet = false;
+    private boolean retrievalAugmentorSet = false;
 
     protected AiServices(AiServiceContext context) {
         this.context = context;
@@ -311,8 +315,13 @@ public abstract class AiServices<T> {
      */
     @Deprecated
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
+        if(contentRetrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
         if (retriever != null) {
-            return contentRetriever(retriever.toContentRetriever());
+            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
+            retrieverSet = true;
+            return withContentRetriever;
         }
         return this;
     }
@@ -331,6 +340,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
+        if(retrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        contentRetrieverSet = true;
         context.retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .contentRetriever(ensureNotNull(contentRetriever, "contentRetriever"))
                 .build();
@@ -344,6 +357,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
+        if(retrieverSet || contentRetrieverSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
         return this;
     }

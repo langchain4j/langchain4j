@@ -1,7 +1,10 @@
 package dev.langchain4j.memory.chat;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
@@ -18,14 +21,19 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * This chat memory operates as a sliding window of {@link #maxMessages} messages.
  * It retains as many of the most recent messages as can fit into the window.
- * If there isn't enough space for a new message, the oldest one is discarded.
+ * If there isn't enough space for a new message, the oldest one is evicted.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
  * Only one {@link SystemMessage} can be held at a time.
  * If a new {@link SystemMessage} with the same content is added, it is ignored.
  * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
  * <p>
- * The state of chat memory is stored in {@link ChatMemoryStore}.
+ * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
+ * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
+ * to avoid problems with some LLM providers (such as OpenAI)
+ * that prohibit sending orphan {@link ToolExecutionResultMessage}(s) in the request.
+ * <p>
+ * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} is used by default).
  */
 public class MessageWindowChatMemory implements ChatMemory {
 
@@ -80,12 +88,24 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     private static void ensureCapacity(List<ChatMessage> messages, int maxMessages) {
         while (messages.size() > maxMessages) {
-            int messageToRemove = 0;
+
+            int messageToEvictIndex = 0;
             if (messages.get(0) instanceof SystemMessage) {
-                messageToRemove = 1;
+                messageToEvictIndex = 1;
             }
-            ChatMessage removedMessage = messages.remove(messageToRemove);
-            log.trace("Removing the following message to comply with the capacity requirements: {}", removedMessage);
+
+            ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
+            log.trace("Evicting the following message to comply with the capacity requirement: {}", evictedMessage);
+
+            if (evictedMessage instanceof AiMessage && ((AiMessage) evictedMessage).hasToolExecutionRequests()) {
+                while (messages.size() > messageToEvictIndex
+                        && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
+                    // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,
+                    // so we have to automatically evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
+                    ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
+                    log.trace("Evicting orphan {}", orphanToolExecutionResultMessage);
+                }
+            }
         }
     }
 
@@ -116,6 +136,7 @@ public class MessageWindowChatMemory implements ChatMemory {
 
         /**
          * @param maxMessages The maximum number of messages to retain.
+         *                    If there isn't enough space for a new message, the oldest one is evicted.
          * @return builder
          */
         public Builder maxMessages(Integer maxMessages) {

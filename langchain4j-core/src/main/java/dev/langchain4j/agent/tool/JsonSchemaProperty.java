@@ -1,6 +1,8 @@
 package dev.langchain4j.agent.tool;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
@@ -51,7 +53,8 @@ public class JsonSchemaProperty {
 
     /**
      * Construct a property with key and value.
-     * @param key the key.
+     *
+     * @param key   the key.
      * @param value the value.
      */
     public JsonSchemaProperty(String key, Object value) {
@@ -61,6 +64,7 @@ public class JsonSchemaProperty {
 
     /**
      * Get the key.
+     *
      * @return the key.
      */
     public String key() {
@@ -69,6 +73,7 @@ public class JsonSchemaProperty {
 
     /**
      * Get the value.
+     *
      * @return the value.
      */
     public Object value() {
@@ -84,6 +89,7 @@ public class JsonSchemaProperty {
 
     /**
      * Utility method to compare two {@link JsonSchemaProperty} instances.
+     *
      * @param another the other instance.
      * @return true if the two instances are equal.
      */
@@ -120,7 +126,7 @@ public class JsonSchemaProperty {
      *
      * <p>Equivalent to {@code new JsonSchemaProperty(key, value)}.
      *
-     * @param key the key.
+     * @param key   the key.
      * @param value the value.
      * @return a property with key and value.
      */
@@ -133,7 +139,7 @@ public class JsonSchemaProperty {
      *
      * <p>Equivalent to {@code new JsonSchemaProperty(key, value)}.
      *
-     * @param key the key.
+     * @param key   the key.
      * @param value the value.
      * @return a property with key and value.
      */
@@ -168,7 +174,7 @@ public class JsonSchemaProperty {
     /**
      * Construct a property with key "enum" and value enumValues.
      *
-     * @param enumValues enum values
+     * @param enumValues enum values as strings. For example: {@code enums("CELSIUS", "FAHRENHEIT")}
      * @return a property with key "enum" and value enumValues
      */
     public static JsonSchemaProperty enums(String... enumValues) {
@@ -180,33 +186,36 @@ public class JsonSchemaProperty {
      *
      * <p>Verifies that each value is a java class.
      *
-     * @param enumValues enum values
+     * @param enumValues enum values. For example: {@code enums(TemperatureUnit.CELSIUS, TemperatureUnit.FAHRENHEIT)}
      * @return a property with key "enum" and value enumValues
      */
     public static JsonSchemaProperty enums(Object... enumValues) {
+        List<String> enumNames = new ArrayList<>();
         for (Object enumValue : enumValues) {
             if (!enumValue.getClass().isEnum()) {
                 throw new RuntimeException("Value " + enumValue.getClass().getName() + " should be enum");
             }
+            enumNames.add(((Enum<?>) enumValue).name());
         }
-        return from("enum", enumValues);
+        return from("enum", enumNames);
     }
 
     /**
-     * Construct a property with key "enum" and values taken from enumClass.
+     * Construct a property with key "enum" and all enum values taken from enumClass.
      *
-     * @param enumClass enum class
+     * @param enumClass enum class. For example: {@code enums(TemperatureUnit.class)}
      * @return a property with key "enum" and values taken from enumClass
      */
     public static JsonSchemaProperty enums(Class<?> enumClass) {
         if (!enumClass.isEnum()) {
             throw new RuntimeException("Class " + enumClass.getName() + " should be enum");
         }
-        return from("enum", enumClass.getEnumConstants());
+        return enums((Object[]) enumClass.getEnumConstants());
     }
 
     /**
      * Wraps the given type in a property with key "items".
+     *
      * @param type the type
      * @return a property with key "items" and value type.
      */

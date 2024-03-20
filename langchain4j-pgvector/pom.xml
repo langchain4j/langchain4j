@@ -7,19 +7,17 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.29.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <properties>
         <pgvector-java.version>0.1.3</pgvector-java.version>
-        <postgresql.version>42.6.0</postgresql.version>
+        <postgresql.version>42.7.2</postgresql.version>
         <spotless.version>2.40.0</spotless.version>
     </properties>
 
     <artifactId>langchain4j-pgvector</artifactId>
-    <packaging>jar</packaging>
-
     <name>LangChain4j :: Integration :: PGVector</name>
     <description>It uses the pgvector-java library</description>
 
@@ -62,6 +60,8 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- junit-jupiter-params should be declared explicitly
+                to run parameterized tests inherited from EmbeddingStore*IT-->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
