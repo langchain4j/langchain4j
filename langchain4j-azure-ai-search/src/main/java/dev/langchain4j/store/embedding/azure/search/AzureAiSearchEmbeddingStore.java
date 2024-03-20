@@ -357,7 +357,7 @@ public class AzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return this;
         }
 
-        public Builder setupIndex(boolean setupIndex) {
+        public Builder createOrUpdateIndex(Boolean createOrUpdateIndex) {
             this.setupIndex = setupIndex;
             return this;
         }
