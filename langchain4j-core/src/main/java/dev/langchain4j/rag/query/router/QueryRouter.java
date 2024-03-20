@@ -1,6 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
-import dev.langchain4j.MightChangeInTheFuture;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.classification.TextClassifier;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -22,7 +22,7 @@ import java.util.Collection;
  * @see DefaultQueryRouter
  * @see LanguageModelQueryRouter
  */
-@MightChangeInTheFuture("This is an experimental feature. Time will tell if this is the right abstraction.")
+@Experimental
 public interface QueryRouter {
 
     /**

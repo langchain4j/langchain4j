@@ -116,7 +116,7 @@ or maybe we just want to use `UserMessage` for that purpose.
 ```java
 interface Friend {
 
-    @SystemMessage("You are a good friend of mine. Answer using slang. {{it}}")
+    @UserMessage("You are a good friend of mine. Answer using slang. {{it}}")
     String chat(String userMessage);
 }
 
@@ -137,7 +137,7 @@ interface Friend {
 }
 ```
 
-## Output Parsing
+## Output Parsing (aka Structured Outputs)
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
 Currently, AI Services support the following return types:
@@ -145,20 +145,9 @@ Currently, AI Services support the following return types:
 - `AiMessage`
 - `Response<AiMessage>` (if you need to access `TokenUsage` or `FinishReason`)
 - `boolean`/`Boolean` (if you need to get "yes" or "no" answer)
-- `byte`/`Byte`
-- `short`/`Short`
-- `int`/`Integer`
-- `long`/`Long`
-- `BigInteger`
-- `float`/`Float`
-- `double`/`Double`
-- `BigDecimal`
-- `Date`
-- `LocalDate`
-- `LocalTime`
-- `LocalDateTime`
-- `List<String>` (if you want to get the answer in the form of a list of bullet points)
-- `Set<String>`
+- `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
+- `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
+- `List<String>`/`Set<String>` (if you want to get the answer in the form of a list of bullet points)
 - Any `Enum` (if you want to classify text, e.g. sentiment, user intent, etc)
 - Any custom POJO
 
@@ -239,10 +228,34 @@ Person person = personExtractor.extractPersonFrom(text);
 System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
 
+## JSON mode
+
 When extracting custom POJOs (actually JSON, which is then parsed into the POJO),
-it is recommended to set a "json mode" in the model configuration.
+it is recommended to enable a "JSON mode" in the model configuration.
 This way, the LLM will be forced to produce valid JSON.
 
+:::note
+Please note that JSON mode and tools/function calling are similar features
+but have different APIs and are used for distinct purposes.
+
+JSON mode is useful when you _always_ need a response from the LLM in a structured format (valid JSON).
+The schema for the expected JSON can be defined in a free form inside a `SystemMessage` or `UserMessage`.
+In this scenario, the LLM must _always_ output valid JSON.
+Additionally, there is usually no state/memory required,
+so each interaction with the LLM is independent of others.
+For instance, you might want to extract information from a text, such as the list of people mentioned in this text
+or convert a free-form product review into a structured form with fields like
+`String productName`, `Sentiment sentiment`, `List<String> claimedProblems`, etc.
+
+On the other hand, the use of tool/function calling is useful when enabling the LLM to call or execute tools,
+but only as necessary. In this case, a list of tools is provided to the LLM, and it autonomously decides
+whether to call the tool.
+
+Function calling is often used for structured data extraction,
+but now we have the JSON mode feature, which is more suitable for this purpose.
+:::
+
+Here is how to enable JSON mode:
 - For OpenAI:
 ```java
 OpenAiChatModel.builder()
@@ -264,8 +277,8 @@ OllamaChatModel.builder()
         .format("json")
         .build();
 ```
-- For other model providers: if the underlying model provider does not support "json mode",
-try lowering the `temperature` and see if that helps.
+- For other model providers: if the underlying model provider does not support JSON mode,
+prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
 
 [More examples](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 
@@ -278,9 +291,8 @@ try lowering the `temperature` and see if that helps.
 [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
 [Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 
-## Tools
-[Example with Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java)
-[Example with dynamic Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java)
+## Tools (Function Calling)
+[Tools](/tutorials/tools)
 
 ## RAG
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
@@ -390,7 +402,8 @@ This is a very simple and somewhat naive example, but hopefully, it demonstrates
 
 Now, I can mock both `GreetingExpert` and `ChatBot` and test `MilesOfSmiles` in isolation
 Also, I can integration test `GreetingExpert` and `ChatBot` separately.
-I can evaluate both of them separately and find the most optimal parameters for each subtask.
+I can evaluate both of them separately and find the most optimal parameters for each subtask,
+or, in the long run, even fine-tune a small specialized model for each specific subtask.
 
 TODO
 

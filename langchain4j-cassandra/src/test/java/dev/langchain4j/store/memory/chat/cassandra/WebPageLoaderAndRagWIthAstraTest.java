@@ -43,7 +43,7 @@ import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.joining;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class WebPageLoaderAndRagWIthAstraTest {
 
@@ -57,11 +57,11 @@ public class WebPageLoaderAndRagWIthAstraTest {
 
         // Database Id
         UUID databaseId = new AstraDBAdmin(getAstraToken()).createDatabase(DB_NAME);
-        assertNotNull(databaseId);
+        assertThat(databaseId).isNotNull();
 
         // OpenAI Key
         String openAIKey = System.getenv("OPENAI_API_KEY");
-        assertNotNull(openAIKey);
+        assertThat(openAIKey).isNotNull();
 
         // --- Documents Ingestion ---
 

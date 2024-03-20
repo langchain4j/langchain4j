@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class InternalAzureOpenAiHelperTest {
 
@@ -30,7 +31,7 @@ class InternalAzureOpenAiHelperTest {
 
         OpenAIClient client = InternalAzureOpenAiHelper.setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses);
 
-        assertNotNull(client);
+        assertThat(client).isNotNull();
     }
 
     @Test
@@ -39,7 +40,7 @@ class InternalAzureOpenAiHelperTest {
 
         OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion(serviceVersion);
 
-        assertEquals(serviceVersion, version.getVersion());
+        assertThat(version.getVersion()).isEqualTo(serviceVersion);
     }
 
     @Test
@@ -48,7 +49,7 @@ class InternalAzureOpenAiHelperTest {
 
         OpenAIServiceVersion version = InternalAzureOpenAiHelper.getOpenAIServiceVersion(serviceVersion);
 
-        assertEquals(OpenAIServiceVersion.getLatest().getVersion(), version.getVersion());
+        assertThat(version.getVersion()).isEqualTo(OpenAIServiceVersion.getLatest().getVersion());
     }
 
     @Test
@@ -58,7 +59,7 @@ class InternalAzureOpenAiHelperTest {
 
         List<ChatRequestMessage> openAiMessages = InternalAzureOpenAiHelper.toOpenAiMessages(messages);
 
-        assertEquals(messages.size(), openAiMessages.size());
+        assertThat(openAiMessages).hasSize(messages.size());
         assertInstanceOf(ChatRequestUserMessage.class, openAiMessages.get(0));
     }
 
@@ -82,6 +83,6 @@ class InternalAzureOpenAiHelperTest {
     void finishReasonFromShouldReturnCorrectFinishReason() {
         CompletionsFinishReason completionsFinishReason = CompletionsFinishReason.STOPPED;
         FinishReason finishReason = InternalAzureOpenAiHelper.finishReasonFrom(completionsFinishReason);
-        assertEquals(FinishReason.STOP, finishReason);
+        assertThat(finishReason).isEqualTo(FinishReason.STOP);
     }
 }
