@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.azure.search;
+package dev.langchain4j.rag.content.retriever.azure.search;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -7,6 +7,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.azure.search.AzureAiSearchQueryType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;

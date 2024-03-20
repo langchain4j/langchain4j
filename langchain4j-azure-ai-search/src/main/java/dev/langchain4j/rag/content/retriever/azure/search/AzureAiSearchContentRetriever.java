@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.azure.search;
+package dev.langchain4j.rag.content.retriever.azure.search;
 
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
@@ -15,6 +15,9 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore;
+import dev.langchain4j.store.embedding.azure.search.AzureAiSearchQueryType;
+import dev.langchain4j.store.embedding.azure.search.AzureAiSearchRuntimeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

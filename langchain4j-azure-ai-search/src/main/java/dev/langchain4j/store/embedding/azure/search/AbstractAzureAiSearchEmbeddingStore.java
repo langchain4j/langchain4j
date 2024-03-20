@@ -28,7 +28,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
+public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AbstractAzureAiSearchEmbeddingStore.class);
 
@@ -36,27 +36,27 @@ abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<Tex
 
     static final String DEFAULT_FIELD_ID = "id";
 
-    static final String DEFAULT_FIELD_CONTENT = "content";
+    protected static final String DEFAULT_FIELD_CONTENT = "content";
 
-    final String DEFAULT_FIELD_CONTENT_VECTOR = "content_vector";
+    protected final String DEFAULT_FIELD_CONTENT_VECTOR = "content_vector";
 
-    static final String DEFAULT_FIELD_METADATA = "metadata";
+    protected static final String DEFAULT_FIELD_METADATA = "metadata";
 
-    static final String DEFAULT_FIELD_METADATA_SOURCE = "source";
+    protected static final String DEFAULT_FIELD_METADATA_SOURCE = "source";
 
-    static final String DEFAULT_FIELD_METADATA_ATTRS = "attributes";
+    protected static final String DEFAULT_FIELD_METADATA_ATTRS = "attributes";
 
-    static final String SEMANTIC_SEARCH_CONFIG_NAME = "semantic-search-config";
+    protected static final String SEMANTIC_SEARCH_CONFIG_NAME = "semantic-search-config";
 
-    static final String VECTOR_ALGORITHM_NAME = "vector-search-algorithm";
+    protected static final String VECTOR_ALGORITHM_NAME = "vector-search-algorithm";
 
-    static final String VECTOR_SEARCH_PROFILE_NAME = "vector-search-profile";
+    protected static final String VECTOR_SEARCH_PROFILE_NAME = "vector-search-profile";
 
     private SearchIndexClient searchIndexClient;
 
-    SearchClient searchClient;
+    protected SearchClient searchClient;
 
-     void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
+     protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
         if (keyCredential != null) {
             searchIndexClient = new SearchIndexClientBuilder()
                     .endpoint(endpoint)
@@ -92,7 +92,7 @@ abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<Tex
      * Creates or updates the index using a ready-made index.
      * @param dimensions The number of dimensions of the embeddings.
      */
-    void createOrUpdateIndex(int dimensions) {
+    public void createOrUpdateIndex(int dimensions) {
         ensureTrue(dimensions > 0, "Dimensions must be greater than 0");
 
         List<SearchField> fields = new ArrayList<>();
@@ -305,7 +305,7 @@ abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<Tex
      * RelevanceScore in LangChain4j is a derivative of cosine similarity,
      * but it compresses it into 0..1 range (instead of -1..1) for ease of use.
      */
-    static double fromAzureScoreToRelevanceScore(double score) {
+    protected static double fromAzureScoreToRelevanceScore(double score) {
         double cosineDistance = (1 - score) / score;
         double cosineSimilarity = -cosineDistance + 1;
         return RelevanceScore.fromCosineSimilarity(cosineSimilarity);
