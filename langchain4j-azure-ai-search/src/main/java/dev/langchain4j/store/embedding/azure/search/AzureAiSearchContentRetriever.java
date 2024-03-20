@@ -33,7 +33,7 @@ import static java.util.stream.Collectors.toList;
  *   See https://learn.microsoft.com/en-us/azure/search/vector-search-overview for more information.
  * - FULL_TEXT: Uses the full text search to find the most similar {@link TextSegment}s.
  *   See https://learn.microsoft.com/en-us/azure/search/search-lucene-query-architecture for more information.
- * - Similarity Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings.
+ * - HYBRID: Uses a hybrid search (vector + full text) to find the most similar {@link TextSegment}s.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-overview for more information.
  * - Semantic Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings, and uses the semantic re-ranker algorithm to rank the results.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking for more information.
