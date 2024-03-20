@@ -35,7 +35,7 @@ import static java.util.stream.Collectors.toList;
  *   See https://learn.microsoft.com/en-us/azure/search/search-lucene-query-architecture for more information.
  * - HYBRID: Uses a hybrid search (vector + full text) to find the most similar {@link TextSegment}s.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-overview for more information.
- * - Semantic Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings, and uses the semantic re-ranker algorithm to rank the results.
+ * - HYBRID_WITH_RERANKING: Uses a hybrid search (vector+ full text) to find the most similar {@link TextSegment}s, and uses the semantic re-ranker algorithm to rank the results.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-ranking for more information.
  */
 public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddingStore implements ContentRetriever {
