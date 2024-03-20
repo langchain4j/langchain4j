@@ -48,7 +48,7 @@ public class AzureAiSearchContentRetrieverTest {
         when(mockResult.getSemanticSearch()).thenReturn(mockSemanticSearchResult);
         when(mockSemanticSearchResult.getRerankerScore()).thenReturn(1.5);
 
-        double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.HYBRID_WITH_RRF);
+        double result = AzureAiSearchContentRetriever.fromAzureScoreToRelevanceScore(mockResult, AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
 
         assertEquals(0.375, result);
     }

@@ -24,13 +24,13 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
     private final EmbeddingModel embeddingModel;
 
-    private final AzureAiSearchContentRetriever contentRetrieverWithSimilarity;
+    private final AzureAiSearchContentRetriever contentRetrieverWithVector;
 
     private final AzureAiSearchContentRetriever contentRetrieverWithFullText;
 
     private final AzureAiSearchContentRetriever contentRetrieverWithHybrid;
 
-    private final AzureAiSearchContentRetriever contentRetrieverWithSemantic;
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybridAndReranking;
 
     private final int dimensions;
 
@@ -45,7 +45,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
         contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID);
 
-        contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RRF);
+        contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
     }
 
     private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
@@ -73,7 +73,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         for (String content : contents) {
             TextSegment textSegment = TextSegment.from(content);
             Embedding embedding = embeddingModel.embed(content).content();
-            contentRetrieverWithSimilarity.add(embedding, textSegment);
+            contentRetrieverWithVector.add(embedding, textSegment);
         }
 
         awaitUntilPersisted();
@@ -81,7 +81,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         String content = "fruit";
         Query query = Query.from(content);
 
-        List<Content> relevant = contentRetrieverWithSimilarity.retrieve(query);
+        List<Content> relevant = contentRetrieverWithVector.retrieve(query);
         assertThat(relevant).hasSize(3);
         assertThat(relevant.get(0).textSegment()).isNotNull();
         assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3, content5);
@@ -105,7 +105,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         for (String content : contents) {
             TextSegment textSegment = TextSegment.from(content);
             Embedding embedding = embeddingModel.embed(content).content();
-            contentRetrieverWithSimilarity.add(embedding, textSegment);
+            contentRetrieverWithVector.add(embedding, textSegment);
         }
 
         awaitUntilPersisted();
@@ -114,7 +114,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         Query query = Query.from(content);
 
         log.info("Testing Vector Search");
-        List<Content> relevant = contentRetrieverWithSimilarity.retrieve(query);
+        List<Content> relevant = contentRetrieverWithVector.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         assertThat(relevant.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
@@ -132,7 +132,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
-        List<Content> relevant4 = contentRetrieverWithSemantic.retrieve(query);
+        List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant4.get(0).textSegment().text());
@@ -202,19 +202,19 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         for (String content : contents) {
             TextSegment textSegment = TextSegment.from(content);
             Embedding embedding = embeddingModel.embed(content).content();
-            contentRetrieverWithSemantic.add(embedding, textSegment);
+            contentRetrieverWithHybridAndReranking.add(embedding, textSegment);
         }
 
         awaitUntilPersisted();
 
         Query query = Query.from("A philosopher who was in the French Resistance");
-        List<Content> relevant = contentRetrieverWithSemantic.retrieve(query);
+        List<Content> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
 
         Query query2 = Query.from("A philosopher who studied at the École Normale Supérieure");
-        List<Content> relevant2 = contentRetrieverWithSemantic.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithHybridAndReranking.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");
@@ -222,7 +222,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
-        return contentRetrieverWithSimilarity;
+        return contentRetrieverWithVector;
     }
 
     @Override
@@ -232,7 +232,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
     @Override
     protected void clearStore() {
-        AzureAiSearchContentRetriever azureAiSearchContentRetriever = (AzureAiSearchContentRetriever) contentRetrieverWithSimilarity;
+        AzureAiSearchContentRetriever azureAiSearchContentRetriever = (AzureAiSearchContentRetriever) contentRetrieverWithVector;
         try {
             azureAiSearchContentRetriever.deleteIndex();
             azureAiSearchContentRetriever.createOrUpdateIndex(dimensions);
