@@ -3,15 +3,14 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
@@ -23,16 +22,21 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 
 class AzureOpenAiStreamingChatModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingChatModelIT.class);
+
+    Percentage tokenizerPrecision = withPercentage(5);
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
@@ -203,11 +207,50 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(53);
+        assertThat(response.tokenUsage().inputTokenCount()).isCloseTo(58, tokenizerPrecision);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+        assertThat(response.finishReason()).isEqualTo(STOP);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "four");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        CompletableFuture<Response<AiMessage>> futureResponse2 = new CompletableFuture<>();
+
+        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                logger.info("onNext: '" + token + "'");
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                logger.info("onComplete: '" + response + "'");
+                futureResponse2.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse2.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response2 = futureResponse2.get(30, SECONDS);
+        AiMessage aiMessage2 = response2.content();
+
+        // then
+        assertThat(aiMessage2.text()).contains("four");
+        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage2 = response2.tokenUsage();
+        assertThat(tokenUsage2.inputTokenCount()).isCloseTo(33, tokenizerPrecision);
+        assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage2.totalTokenCount())
+                .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
+
+        assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 }

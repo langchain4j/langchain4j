@@ -1,7 +1,6 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
-import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -121,6 +120,7 @@ public class AzureOpenAiChatModelIT {
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
+        assertThat(response.finishReason()).isEqualTo(STOP);
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -131,8 +131,7 @@ public class AzureOpenAiChatModelIT {
 
         // We can now call the function with the correct parameters.
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
-        int currentWeather = 0;
-        currentWeather = getCurrentWeather(weatherLocation);
+        int currentWeather = getCurrentWeather(weatherLocation);
 
         String weather = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
