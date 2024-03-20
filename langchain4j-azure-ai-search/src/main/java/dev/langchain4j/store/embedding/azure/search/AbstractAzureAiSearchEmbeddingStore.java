@@ -28,7 +28,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
-public class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
+public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStore.class);
 
