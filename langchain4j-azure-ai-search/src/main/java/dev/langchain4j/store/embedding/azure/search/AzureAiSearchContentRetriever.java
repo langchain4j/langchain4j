@@ -31,7 +31,7 @@ import static java.util.stream.Collectors.toList;
  * This class supports 4 {@link AzureAiSearchQueryType}s:
  * - VECTOR: Uses the vector search algorithm to find the most similar {@link TextSegment}s.
  *   See https://learn.microsoft.com/en-us/azure/search/vector-search-overview for more information.
- * - Full Text: Uses the full text search to find the most similar embeddings.
+ * - FULL_TEXT: Uses the full text search to find the most similar {@link TextSegment}s.
  *   See https://learn.microsoft.com/en-us/azure/search/search-lucene-query-architecture for more information.
  * - Similarity Hybrid: Uses a hybrid search (vector + text) to find the most similar embeddings.
  *   See https://learn.microsoft.com/en-us/azure/search/hybrid-search-overview for more information.
