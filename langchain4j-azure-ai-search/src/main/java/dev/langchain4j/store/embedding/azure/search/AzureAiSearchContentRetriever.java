@@ -28,7 +28,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Azure AI Search EmbeddingStore Implementation.
  *
- * This class implements 4 query types:
+ * This class supports 4 {@link AzureAiSearchQueryType}s:
  * - Similarity: Uses the vector search algorithm to find the most similar embeddings.
  *   See https://learn.microsoft.com/en-us/azure/search/vector-search-overview for more information.
  * - Full Text: Uses the full text search to find the most similar embeddings.
