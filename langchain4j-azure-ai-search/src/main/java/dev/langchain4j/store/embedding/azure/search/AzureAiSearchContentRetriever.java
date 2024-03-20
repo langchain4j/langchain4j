@@ -117,7 +117,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
     }
 
-    List<Content> findRelevantWithSimilarityHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
+    List<Content> findRelevantWithHybrid(Embedding referenceEmbedding, String content, int maxResults, double minScore) {
         List<Float> vector = referenceEmbedding.vectorAsList();
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
