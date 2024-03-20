@@ -39,7 +39,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
-        contentRetrieverWithSimilarity =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
+        contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
 
         contentRetrieverWithFullText =  createContentRetriever(AzureAiSearchQueryType.FULL_TEXT);
 
