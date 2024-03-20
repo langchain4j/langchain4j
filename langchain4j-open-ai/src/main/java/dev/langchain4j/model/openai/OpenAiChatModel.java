@@ -104,6 +104,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         return generate(messages, null, null);

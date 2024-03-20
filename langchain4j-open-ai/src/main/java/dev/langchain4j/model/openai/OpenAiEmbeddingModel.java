@@ -77,6 +77,10 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 

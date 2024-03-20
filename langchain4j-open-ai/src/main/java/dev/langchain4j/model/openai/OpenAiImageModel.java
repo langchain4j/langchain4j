@@ -104,6 +104,10 @@ public class OpenAiImageModel implements ImageModel {
         this.responseFormat = responseFormat;
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public Response<Image> generate(String prompt) {
         GenerateImagesRequest request = requestBuilder(prompt).build();
