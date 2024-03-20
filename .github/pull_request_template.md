@@ -1,7 +1,7 @@
 <!-- Thank you so much for your contribution! -->
 
 ## Context
-<!-- Please provide some contextso that it is clear why this change is required. -->
+<!-- Please provide some context so that it is clear why this change is required. -->
 
 ## Change
 <!-- Please describe the changed you made. -->
