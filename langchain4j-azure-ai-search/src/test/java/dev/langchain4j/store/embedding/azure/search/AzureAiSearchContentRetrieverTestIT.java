@@ -61,7 +61,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
     }
 
     @Test
-    void testAddEmbeddingsAndFindRelevant() {
+    void testAddEmbeddingsAndRetrieveRelevant() {
         String content1 = "banana";
         String content2 = "computer";
         String content3 = "apple";
