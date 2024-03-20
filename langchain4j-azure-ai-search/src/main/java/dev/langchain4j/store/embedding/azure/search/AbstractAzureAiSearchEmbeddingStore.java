@@ -30,7 +30,7 @@ import static java.util.stream.Collectors.toList;
 
 public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStore.class);
+    private static final Logger log = LoggerFactory.getLogger(AbstractAzureAiSearchEmbeddingStore.class);
 
     static final String INDEX_NAME = "vectorsearch";
 
