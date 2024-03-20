@@ -14,6 +14,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.RelevanceScore;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonValue;
@@ -26,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,9 +55,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
     private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbMongoVCoreEmbeddingStore.class);
     private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;
     private final String indexName;
-    private final AzureCosmosDBVectorSearchType kind;
+    private final VectorIndexType kind;
     private final Integer numLists;
-    private final AzureCosmosDBSimilarityType similarity;
     private final Integer dimensions;
     private final Integer m;
     private final Integer efConstruction;
@@ -82,11 +81,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
      *                                vector data. We recommend that numLists is set to documentCount/1000 for up to 1 million
      *                                documents and to sqrt(documentCount) for more than 1 million documents. Using a numLists value
      *                                of 1 is akin to performing brute-force search, which has limited performance.
-     * @param similarity              - Similarity metric to use with the index.
-     *                                Possible options are:
-     *                                - COS (cosine distance),
-     *                                - L2 (Euclidean distance), and
-     *                                - IP (inner product).
      * @param dimensions              - Number of dimensions for vector similarity. The maximum number of supported dimensions
      *                                is 2000.
      * @param m                       - used only for vector -hnsw. The max number of connections per layer (16 by default, minimum value is 2, maximum
@@ -110,19 +104,25 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             Boolean createIndex,
             String kind,
             Integer numLists,
-            String similarity,
             Integer dimensions,
             Integer m,
             Integer efConstruction,
             Integer efSearch) {
+        if (mongoClient == null && (connectionString == null || connectionString.isEmpty())) {
+            throw new IllegalArgumentException("You need to pass either the mongoClient or " +
+                    "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
+        }
+
+        if (databaseName == null || databaseName.isEmpty() || collectionName == null || collectionName.isEmpty()) {
+            throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
+        }
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
         applicationName = getOrDefault(applicationName, "JAVA_LANG_CHAIN");
-        this.kind = AzureCosmosDBVectorSearchType.fromString(kind);
+        this.kind = VectorIndexType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
         // TODO: update this value as a user input once LangChain4J only
         //  supports other similarity types other than Cosine.
-        this.similarity = AzureCosmosDBSimilarityType.COS;
         this.dimensions = getOrDefault(dimensions, 1536);
         this.m = getOrDefault(m, 16);
         this.efConstruction = getOrDefault(efConstruction, 64);
@@ -132,15 +132,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 .register(AzureCosmosDbMongoVCoreDocument.class, BsonDocument.class)
                 .build());
         CodecRegistry codecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(), pojoCodecRegistry);
-
-        if (mongoClient == null && connectionString.isEmpty()) {
-            throw new IllegalArgumentException("You need to pass either the mongoClient or " +
-                    "the connectionString required for connecting to Azure CosmosDB Mongo vCore");
-        }
-
-        if (databaseName == null || collectionName == null) {
-            throw new IllegalArgumentException("databaseName and collectionName needs to be provided.");
-        }
 
         if (mongoClient == null) {
             mongoClient = MongoClients.create(
@@ -206,9 +197,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-//        List<Double> queryVector = referenceEmbedding.vectorAsList().stream()
-//                .map(Float::doubleValue)
-//                .collect(toList());
 
         List<Bson> pipeline = new ArrayList<>();
 
@@ -223,11 +211,9 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
         try {
             AggregateIterable<BsonDocument> results = collection.aggregate(pipeline, BsonDocument.class);
-            List<BsonDocument> abc = StreamSupport.stream(results.spliterator(), false).
-                    collect(Collectors.toList());
 
             return StreamSupport.stream(results.spliterator(), false)
-                    .filter(doc -> doc.getDouble("similarityScore").getValue() >= minScore)
+                    .filter(doc -> RelevanceScore.fromCosineSimilarity(doc.getDouble("similarityScore").getValue()) >= minScore)
                     .map(doc -> toEmbeddingMatch(mapBsonToAzureCosmosDbMongoVCoreMatchedDocument(doc.getDocument("document"), doc.getDouble("similarityScore").getValue())))
                     .collect(Collectors.toList());
 
@@ -305,9 +291,8 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             document.setMetadata(metadata);
         }
 
-
         // Set score
-        document.setScore(score);
+        document.setScore(RelevanceScore.fromCosineSimilarity(score));
 
         return document;
     }
@@ -362,7 +347,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 break;
         }
 
-        // Execute the BSON command
         database.runCommand(commandDocument);
     }
 
@@ -373,17 +357,14 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                 .append("cosmosSearchOptions", new Document()
                         .append("kind", this.kind.getValue())
                         .append("numLists", this.numLists)
-                        .append("similarity", this.similarity)
+                        .append("similarity", SimilarityMetric.COS)
                         .append("dimensions", this.dimensions));
 
-        // Convert the index definition to a BsonDocument
         BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
 
-        // Create a BsonArray containing the index definition
         BsonArray bsonArray = new BsonArray();
         bsonArray.add(bsonIndexDefinition);
 
-        // Create the final BsonDocument
         return new Document()
                 .append("createIndexes", collectionName)
                 .append("indexes", bsonArray).toBsonDocument();
@@ -397,17 +378,14 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
                         .append("kind", this.kind.getValue())
                         .append("m", this.m)
                         .append("efConstruction", this.efConstruction)
-                        .append("similarity", this.similarity)
+                        .append("similarity", SimilarityMetric.COS)
                         .append("dimensions", this.dimensions));
 
-        // Convert the index definition to a BsonDocument
         BsonDocument bsonIndexDefinition = indexDefinition.toBsonDocument();
 
-        // Create a BsonArray containing the index definition
         BsonArray bsonArray = new BsonArray();
         bsonArray.add(bsonIndexDefinition);
 
-        // Create the final BsonDocument
         return new Document()
                 .append("createIndexes", collectionName)
                 .append("indexes", bsonArray).toBsonDocument();
@@ -424,7 +402,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         private Boolean createIndex;
         private String kind;
         private Integer numLists;
-        private String similarity;
         private Integer dimensions;
         private Integer m;
         private Integer efConstruction;
@@ -434,7 +411,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
          * Build Mongo Client, Please close the client to release resources after usage.
          * This is a mandatory parameter if not providing the connectionString.
          */
-        public Builder mongoclient(MongoClient mongoClient) {
+        public Builder mongoClient(MongoClient mongoClient) {
             this.mongoClient = mongoClient;
             return this;
         }
@@ -513,19 +490,6 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
 
         /**
-         * @param similarity - Similarity metric to use with the index.
-         *                   Possible options are:
-         *                   - COS (cosine distance),
-         *                   - L2 (Euclidean distance), and
-         *                   - IP (inner product).
-         * @return
-         */
-        public Builder similarity(String similarity) {
-            this.similarity = similarity;
-            return this;
-        }
-
-        /**
          * @param dimensions - Number of dimensions for vector similarity. The maximum number of supported dimensions
          *                   is 2000.
          * @return
@@ -570,19 +534,17 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
 
         public AzureCosmosDbMongoVCoreEmbeddingStore build() {
             return new AzureCosmosDbMongoVCoreEmbeddingStore(mongoClient, connectionString, databaseName, collectionName, indexName, applicationName,
-                    createCollectionOptions, createIndex, kind, numLists, similarity, dimensions, m,
+                    createCollectionOptions, createIndex, kind, numLists, dimensions, m,
                     efConstruction, efSearch);
         }
     }
 
-    public enum AzureCosmosDBSimilarityType {
-        COS("COS"),
-        IP("IP"),
-        L2("L2");
+    public enum SimilarityMetric {
+        COS("COS");
 
         private final String value;
 
-        AzureCosmosDBSimilarityType(String value) {
+        SimilarityMetric(String value) {
             this.value = value;
         }
 
@@ -590,21 +552,22 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return value;
         }
 
-        public static AzureCosmosDBSimilarityType fromString(String kindString) {
-            return Arrays.stream(AzureCosmosDBSimilarityType.values())
-                    .filter(k -> k.getValue().equals(kindString))
+        public static SimilarityMetric fromString(String similarityString) {
+            return Arrays.stream(SimilarityMetric.values())
+                    .filter(k -> k.getValue().equals(similarityString))
                     .findFirst()
-                    .orElse(AzureCosmosDBSimilarityType.COS); // Default value
+                    .orElseThrow(() -> new IllegalArgumentException("This similarity metric is not supported: "
+                            +similarityString));
         }
     }
 
-    public enum AzureCosmosDBVectorSearchType {
+    public enum VectorIndexType {
         VECTOR_IVF("vector-ivf"),
         VECTOR_HNSW("vector-hnsw");
 
         private final String value;
 
-        AzureCosmosDBVectorSearchType(String value) {
+        VectorIndexType(String value) {
             this.value = value;
         }
 
@@ -612,11 +575,11 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
             return value;
         }
 
-        public static AzureCosmosDBVectorSearchType fromString(String kindString) {
-            return Arrays.stream(AzureCosmosDBVectorSearchType.values())
+        public static VectorIndexType fromString(String kindString) {
+            return Arrays.stream(VectorIndexType.values())
                     .filter(k -> k.getValue().equals(kindString))
                     .findFirst()
-                    .orElse(AzureCosmosDBVectorSearchType.VECTOR_HNSW); // Default value
+                    .orElseThrow(() -> new IllegalArgumentException("This vector index type is not supported: " +kindString));
         }
     }
 }

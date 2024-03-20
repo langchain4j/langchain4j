@@ -28,6 +28,7 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
 public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
@@ -41,7 +42,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
 
     public AzureCosmosDBMongoVCoreEmbeddingStoreIT() {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
-        dimensions = embeddingModel.embed("test").content().vector().length;
+        dimensions = embeddingModel.embed("hello").content().vector().length;
 
         client = MongoClients.create(
                 MongoClientSettings.builder()
@@ -50,15 +51,14 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
                         .build());
 
         embeddingStore = AzureCosmosDbMongoVCoreEmbeddingStore.builder()
-                .mongoclient(client)
+                .mongoClient(client)
                 .databaseName("test_database")
                 .collectionName("test_collection")
                 .indexName("test_index")
                 .applicationName("JAVA_LANG_CHAIN")
                 .createIndex(true)
                 .kind("vector-hnsw")
-                .numLists(1)
-                .similarity("COS")
+                .numLists(2)
                 .dimensions(dimensions)
                 .m(16)
                 .efConstruction(64)
