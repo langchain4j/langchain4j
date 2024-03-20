@@ -20,6 +20,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.data.document.source.FileSystemSource.from;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.Files.isDirectory;
 import static java.nio.file.Files.isRegularFile;
@@ -28,7 +29,7 @@ public class FileSystemDocumentLoader {
 
     private static final Logger log = LoggerFactory.getLogger(FileSystemDocumentLoader.class);
 
-    private static final DocumentParser DEFAULT_DOCUMENT_PARSER = defaultDocumentParser();
+    private static final DocumentParser DEFAULT_DOCUMENT_PARSER = getOrDefault(loadDocumentParser(), TextDocumentParser::new);
 
     private FileSystemDocumentLoader() {
     }
@@ -57,7 +58,8 @@ public class FileSystemDocumentLoader {
      * Loads a {@link Document} from the specified file {@link Path}.
      * <br>
      * The file is parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Returned {@code Document} contains all the textual information from the file.
      *
@@ -89,7 +91,8 @@ public class FileSystemDocumentLoader {
      * Loads a {@link Document} from the specified file path.
      * <br>
      * The file is parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Returned {@code Document} contains all the textual information from the file.
      *
@@ -129,7 +132,8 @@ public class FileSystemDocumentLoader {
      * Loads {@link Document}s from the specified directory. Does not use recursion.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -161,7 +165,8 @@ public class FileSystemDocumentLoader {
      * Loads {@link Document}s from the specified directory. Does not use recursion.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -209,7 +214,8 @@ public class FileSystemDocumentLoader {
      * Loads matching {@link Document}s from the specified directory. Does not use recursion.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -255,7 +261,8 @@ public class FileSystemDocumentLoader {
      * Loads matching {@link Document}s from the specified directory. Does not use recursion.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -301,7 +308,8 @@ public class FileSystemDocumentLoader {
      * Recursively loads {@link Document}s from the specified directory and its subdirectories.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -333,7 +341,8 @@ public class FileSystemDocumentLoader {
      * Recursively loads {@link Document}s from the specified directory and its subdirectories.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -384,7 +393,8 @@ public class FileSystemDocumentLoader {
      * Recursively loads matching {@link Document}s from the specified directory and its subdirectories.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -436,7 +446,8 @@ public class FileSystemDocumentLoader {
      * Recursively loads matching {@link Document}s from the specified directory and its subdirectories.
      * <br>
      * The files are parsed using the default {@link DocumentParser}.
-     * The default {@code DocumentParser} is a {@link TextDocumentParser} or the one available via SPI ({@link DocumentParserFactory}).
+     * The default {@code DocumentParser} is loaded through SPI (see {@link DocumentParserFactory}).
+     * If no {@code DocumentParserFactory} is available in the classpath, a {@link TextDocumentParser} is used.
      * <br>
      * Skips any {@code Document}s that fail to load.
      *
@@ -483,7 +494,7 @@ public class FileSystemDocumentLoader {
         return documents;
     }
 
-    private static DocumentParser defaultDocumentParser() {
+    private static DocumentParser loadDocumentParser() {
 
         Collection<DocumentParserFactory> factories = loadFactories(DocumentParserFactory.class);
 
@@ -496,6 +507,6 @@ public class FileSystemDocumentLoader {
             return factory.create();
         }
 
-        return new TextDocumentParser();
+        return null;
     }
 }

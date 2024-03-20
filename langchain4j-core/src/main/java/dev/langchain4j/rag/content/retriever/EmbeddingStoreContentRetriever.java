@@ -156,7 +156,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
 
     /**
      * Creates an instance of an {@code EmbeddingStoreContentRetriever} from the specified {@link EmbeddingStore}
-     * and {@link EmbeddingModel} found via SPI ({@link EmbeddingModelFactory}).
+     * and {@link EmbeddingModel} found through SPI (see {@link EmbeddingModelFactory}).
      */
     public static EmbeddingStoreContentRetriever from(EmbeddingStore<TextSegment> embeddingStore) {
         return builder().embeddingStore(embeddingStore).build();

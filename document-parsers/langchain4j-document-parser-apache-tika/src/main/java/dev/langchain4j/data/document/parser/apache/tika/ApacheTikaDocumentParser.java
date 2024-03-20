@@ -21,7 +21,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
  */
 public class ApacheTikaDocumentParser implements DocumentParser {
 
-    private static final int UNLIMITED = -1;
+    private static final int NO_WRITE_LIMIT = -1;
 
     private final Parser parser;
     private final ContentHandler contentHandler;
@@ -29,7 +29,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     private final ParseContext parseContext;
 
     /**
-     * Creates an instance of {@code ApacheTikaDocumentParser} with the default Tika components.
+     * Creates an instance of an {@code ApacheTikaDocumentParser} with the default Tika components.
      * It uses {@link AutoDetectParser}, {@link BodyContentHandler} without write limit,
      * empty {@link Metadata} and empty {@link ParseContext}.
      */
@@ -38,10 +38,8 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     }
 
     /**
-     * Creates an instance of {@code ApacheTikaDocumentParser} with the provided Tika components.
-     * If some of the components is not provided ({@code null}, the default will be used.
-     * It uses {@link AutoDetectParser}, {@link BodyContentHandler} without write limit,
-     * empty {@link Metadata} and empty {@link ParseContext}.
+     * Creates an instance of an {@code ApacheTikaDocumentParser} with the provided Tika components.
+     * If some of the components are not provided ({@code null}, the defaults will be used.
      *
      * @param parser         Tika parser to use. Default: {@link AutoDetectParser}
      * @param contentHandler Tika content handler. Default: {@link BodyContentHandler} without write limit
@@ -52,10 +50,10 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                                     ContentHandler contentHandler,
                                     Metadata metadata,
                                     ParseContext parseContext) {
-        this.parser = getOrDefault(parser, new AutoDetectParser());
-        this.contentHandler = getOrDefault(contentHandler, new BodyContentHandler(UNLIMITED));
-        this.metadata = getOrDefault(metadata, new Metadata());
-        this.parseContext = getOrDefault(parseContext, new ParseContext());
+        this.parser = getOrDefault(parser, AutoDetectParser::new);
+        this.contentHandler = getOrDefault(contentHandler, () -> new BodyContentHandler(NO_WRITE_LIMIT));
+        this.metadata = getOrDefault(metadata, Metadata::new);
+        this.parseContext = getOrDefault(parseContext, ParseContext::new);
     }
 
     // TODO allow automatically extract metadata (e.g. creator, last-author, created/modified timestamp, etc)

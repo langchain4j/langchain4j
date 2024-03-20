@@ -21,15 +21,30 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * {@code EmbeddingStoreIngestor} is responsible for the ingestion of {@link Document}s into an {@link EmbeddingStore}.
- * It manages the entire pipeline process, from (optional) splitting the {@code Document}s into {@link TextSegment}s,
- * generating {@link Embedding}s for {@code TextSegment}s using a provided {@link EmbeddingModel}, to finally
- * storing these embeddings into an {@link EmbeddingStore}.
+ * The {@code EmbeddingStoreIngestor} represents an ingestion pipeline and is responsible
+ * for ingesting {@link Document}s into an {@link EmbeddingStore}.
  * <br>
- * Optionally, it can also transform {@code Document}s using a {@link DocumentTransformer} before splitting them,
- * which can be useful if you want to clean/enrich/format your {@code Document}s.
  * <br>
- * Optionally, it can also transform {@code TextSegment}s using a {@link TextSegmentTransformer} after they have been split.
+ * In the simplest configuration, {@code EmbeddingStoreIngestor} embeds provided documents
+ * using a provided {@link EmbeddingModel} and stores them, along with their {@link Embedding}s
+ * in an {@code EmbeddingStore}.
+ * <br>
+ * <br>
+ * Optionally, the {@code EmbeddingStoreIngestor} can transform documents using a provided {@link DocumentTransformer}.
+ * This can be useful if you want to clean, enrich, or format documents before embedding them.
+ * <br>
+ * <br>
+ * Optionally, the {@code EmbeddingStoreIngestor} can split documents into {@link TextSegment}s
+ * using a provided {@link DocumentSplitter}.
+ * This can be useful if documents are big, and you want to split them into smaller segments to improve the quality
+ * of similarity searches and reduce the size and cost of a prompt sent to the LLM.
+ * <br>
+ * <br>
+ * Optionally, the {@code EmbeddingStoreIngestor} can transform {@code TextSegment}s using a {@link TextSegmentTransformer}.
+ * This can be useful if you want to clean, enrich, or format {@code TextSegment}s before embedding them.
+ * <br>
+ * Including a document title or a short summary in each {@code TextSegment} is a common technique
+ * to improve the quality of similarity searches.
  */
 public class EmbeddingStoreIngestor {
 
@@ -44,10 +59,10 @@ public class EmbeddingStoreIngestor {
      *
      * @param documentTransformer    The {@link DocumentTransformer} to use. Optional.
      * @param documentSplitter       The {@link DocumentSplitter} to use. Optional.
-     *                               If none is specified, tries to load one via SPI ({@link DocumentSplitterFactory}).
+     *                               If none is specified, it tries to load one through SPI (see {@link DocumentSplitterFactory}).
      * @param textSegmentTransformer The {@link TextSegmentTransformer} to use. Optional.
      * @param embeddingModel         The {@link EmbeddingModel} to use. Mandatory.
-     *                               If none is specified, tries to load one via SPI ({@link EmbeddingModelFactory}).
+     *                               If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
      * @param embeddingStore         The {@link EmbeddingStore} to use. Mandatory.
      */
     public EmbeddingStoreIngestor(DocumentTransformer documentTransformer,
@@ -94,29 +109,33 @@ public class EmbeddingStoreIngestor {
     }
 
     /**
-     * Ingests specified {@link Document} into specified {@link EmbeddingStore}.
-     * Uses {@link DocumentSplitter} and {@link EmbeddingModel} found via SPIs
-     * ({@link DocumentSplitterFactory} and {@link EmbeddingModelFactory}).
-     * Please import the {@code langchain4j-easy-rag} module to make the default {@code DocumentSplitter}
-     * and {@code EmbeddingModel} available via SPIs.
+     * Ingests a specified {@link Document} into a specified {@link EmbeddingStore}.
+     * <br>
+     * Uses {@link DocumentSplitter} and {@link EmbeddingModel} found through SPIs
+     * (see {@link DocumentSplitterFactory} and {@link EmbeddingModelFactory}).
+     * <br>
+     * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
+     * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
      */
     public static void ingest(Document document, EmbeddingStore<TextSegment> embeddingStore) {
         builder().embeddingStore(embeddingStore).build().ingest(document);
     }
 
     /**
-     * Ingests specified {@link Document}s into specified {@link EmbeddingStore}.
-     * Uses {@link DocumentSplitter} and {@link EmbeddingModel} found via SPIs
-     * ({@link DocumentSplitterFactory} and {@link EmbeddingModelFactory}).
-     * Please import the {@code langchain4j-easy-rag} module to make the default {@code DocumentSplitter}
-     * and {@code EmbeddingModel} available via SPIs.
+     * Ingests specified {@link Document}s into a specified {@link EmbeddingStore}.
+     * <br>
+     * Uses {@link DocumentSplitter} and {@link EmbeddingModel} found through SPIs
+     * (see {@link DocumentSplitterFactory} and {@link EmbeddingModelFactory}).
+     * <br>
+     * For the "Easy RAG", import {@code langchain4j-easy-rag} module,
+     * which contains a {@code DocumentSplitterFactory} and {@code EmbeddingModelFactory} implementations.
      */
     public static void ingest(List<Document> documents, EmbeddingStore<TextSegment> embeddingStore) {
         builder().embeddingStore(embeddingStore).build().ingest(documents);
     }
 
     /**
-     * Ingests a single {@code Document} into an {@link EmbeddingStore} that was specified
+     * Ingests a specified document into an {@link EmbeddingStore} that was specified
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param document the document to ingest.
@@ -126,7 +145,7 @@ public class EmbeddingStoreIngestor {
     }
 
     /**
-     * Ingests multiple {@code Document}s into an {@link EmbeddingStore} that was specified
+     * Ingests specified documents into an {@link EmbeddingStore} that was specified
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param documents the documents to ingest.
@@ -136,7 +155,7 @@ public class EmbeddingStoreIngestor {
     }
 
     /**
-     * Ingests multiple {@code Document}s into an {@link EmbeddingStore} that was specified
+     * Ingests specified documents into an {@link EmbeddingStore} that was specified
      * during the creation of this {@code EmbeddingStoreIngestor}.
      *
      * @param documents the documents to ingest.
@@ -199,7 +218,7 @@ public class EmbeddingStoreIngestor {
 
         /**
          * Sets the document splitter. Optional.
-         * If none is specified, tries to load one via SPI ({@link DocumentSplitterFactory}).
+         * If none is specified, it tries to load one through SPI (see {@link DocumentSplitterFactory}).
          * <br>
          * {@code DocumentSplitters.recursive()} from main ({@code langchain4j}) module is a good starting point.
          *
@@ -224,7 +243,7 @@ public class EmbeddingStoreIngestor {
 
         /**
          * Sets the embedding model. Mandatory.
-         * If none is specified, tries to load one via SPI ({@link EmbeddingModelFactory}).
+         * If none is specified, it tries to load one through SPI (see {@link EmbeddingModelFactory}).
          *
          * @param embeddingModel the embedding model.
          * @return {@code this}
