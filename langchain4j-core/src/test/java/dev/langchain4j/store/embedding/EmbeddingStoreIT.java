@@ -30,7 +30,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             // Not returned.
             TextSegment altSegment = TextSegment.from("hello?");
             Embedding altEmbedding = embeddingModel().embed(altSegment.text()).content();
-            embeddingStore().add(altEmbedding, segment);
+            embeddingStore().add(altEmbedding, altSegment);
         }
 
         awaitUntilPersisted();
