@@ -34,7 +34,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 /**
- * Azure AI Search EmbeddingStore Implementation.
+ * Represents Azure AI Search Service as a {@link ContentRetriever}.
  *
  * This class supports 4 {@link AzureAiSearchQueryType}s:
  * - VECTOR: Uses the vector search algorithm to find the most similar {@link TextSegment}s.
