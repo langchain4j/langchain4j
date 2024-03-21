@@ -222,7 +222,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         log.trace("Retrieved {} contents using retriever '{}' and query '{}':\n{}",
                 contents.size(), retriever, query.text(), contents.stream()
                         .map(Content::textSegment)
-                        .map(segment -> "- " + segment.toString())
+                        .map(segment -> "- " + segment.text().replace("\n", "\\n"))
                         .collect(joining("\n")));
     }
 
@@ -242,7 +242,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         log.trace("Aggregated {} content(s) into:\n{}",
                 contentCount, contents.stream()
                         .map(Content::textSegment)
-                        .map(segment -> "- " + segment.toString())
+                        .map(segment -> "- " + segment.text().replace("\n", "\\n"))
                         .collect(joining("\n")));
     }
 
