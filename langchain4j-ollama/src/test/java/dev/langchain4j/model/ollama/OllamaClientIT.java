@@ -14,7 +14,7 @@ class OllamaClientIT extends AbstractOllamaInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(getBaseUrl())
+                .baseUrl(ollama.getEndpoint())
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
@@ -34,7 +34,7 @@ class OllamaClientIT extends AbstractOllamaInfrastructure {
 
         // when
         OllamaClient ollamaClient = OllamaClient.builder()
-                .baseUrl(getBaseUrl())
+                .baseUrl(ollama.getEndpoint())
                 .timeout(Duration.ofMinutes(1))
                 .build();
 
