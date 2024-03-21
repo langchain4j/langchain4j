@@ -84,12 +84,12 @@ public class ReRankingContentAggregator implements ContentAggregator {
         // Fuse all contents retrieved using all queries
         List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
 
-        // Re-rank all the fused contents against the query selected by the query selector
-        List<TextSegment> reRankedAndFilteredSegments = reRankAndFilter(fusedContents, query);
+        if (fusedContents.isEmpty()) {
+            return fusedContents;
+        }
 
-        return reRankedAndFilteredSegments.stream()
-                .map(Content::from)
-                .collect(toList());
+        // Re-rank all the fused contents against the query selected by the query selector
+        return reRankAndFilter(fusedContents, query);
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {
@@ -101,7 +101,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
         return fused;
     }
 
-    protected List<TextSegment> reRankAndFilter(List<Content> contents, Query query) {
+    protected List<Content> reRankAndFilter(List<Content> contents, Query query) {
 
         List<TextSegment> segments = contents.stream()
                 .map(Content::textSegment)
@@ -118,6 +118,7 @@ public class ReRankingContentAggregator implements ContentAggregator {
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<TextSegment, Double>comparingByValue().reversed())
                 .map(Map.Entry::getKey)
+                .map(Content::from)
                 .collect(toList());
     }
 }
