@@ -25,7 +25,7 @@
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+            <artifactId>langchain4j-embeddings-bge-small-en-v15-q</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -65,5 +65,15 @@
         </dependency>
 
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>snapshot-repo</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
 </project>
