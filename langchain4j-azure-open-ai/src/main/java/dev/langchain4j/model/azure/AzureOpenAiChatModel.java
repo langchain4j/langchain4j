@@ -264,7 +264,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             return Response.from(
                     aiMessage(httpResponseException.getMessage()),
-                    new TokenUsage(),
+                    null,
                     exceptionFinishReason
             );
         }

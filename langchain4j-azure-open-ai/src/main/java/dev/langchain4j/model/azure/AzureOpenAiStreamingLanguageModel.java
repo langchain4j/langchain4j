@@ -238,8 +238,9 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             Response<String> response = Response.from(
                     httpResponseException.getMessage(),
-                    new TokenUsage(),
-                    exceptionFinishReason);
+                    null,
+                    exceptionFinishReason
+            );
 
             handler.onComplete(response);
         } catch (Exception exception) {

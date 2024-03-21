@@ -233,7 +233,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             return Response.from(
                     httpResponseException.getMessage(),
-                    new TokenUsage(),
+                    null,
                     exceptionFinishReason
             );
         }

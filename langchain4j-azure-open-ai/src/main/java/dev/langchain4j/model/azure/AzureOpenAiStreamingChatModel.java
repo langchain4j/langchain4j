@@ -281,7 +281,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             Response<AiMessage> response =  Response.from(
                     aiMessage(httpResponseException.getMessage()),
-                    new TokenUsage(),
+                    null,
                     exceptionFinishReason
             );
             handler.onComplete(response);
