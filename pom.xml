@@ -10,11 +10,6 @@
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
-    <properties>
-        <lombok.version>1.18.30</lombok.version>
-        <lombok.plugin.version>1.18.20.0</lombok.plugin.version>
-    </properties>
-
     <modules>
 
         <module>langchain4j-parent</module>
@@ -87,38 +82,9 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok-maven-plugin</artifactId>
-                <version>${lombok.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>delombok</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                    <addOutputDirectory>false</addOutputDirectory>
-                    <outputDirectory>${project.build.directory}/delombok</outputDirectory>
-                    <sourceDirectory>src/main/java</sourceDirectory>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.projectlombok</groupId>
-                        <artifactId>lombok</artifactId>
-                        <version>${lombok.version}</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration>
-                    <sourcepath>${project.build.directory}/generated-sources/delombok</sourcepath>
-                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -144,9 +110,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration>
-                    <sourcepath>${project.build.directory}/generated-sources/delombok</sourcepath>
-                </configuration>
                 <reportSets>
                     <reportSet>
                         <id>aggregate</id>
