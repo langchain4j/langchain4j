@@ -100,6 +100,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         generate(messages, null, null, handler);

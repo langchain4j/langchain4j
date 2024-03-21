@@ -52,7 +52,8 @@ Try out a simple chat example code:
 ```java
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
-import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.ollama.OllamaContainer;
+import org.testcontainers.utility.DockerImageName;
 
 public class OllamaChatExample {
 
@@ -62,9 +63,9 @@ public class OllamaChatExample {
     String modelName = "orca-mini";
 
     // Create and start the Ollama container
-    GenericContainer<?> ollama =
-        new GenericContainer<>("langchain4j/ollama-" + modelName + ":latest")
-            .withExposedPorts(11434);
+    OllamaContainer ollama =
+        new OllamaContainer(DockerImageName.parse("langchain4j/ollama-" + modelName + ":latest")
+            .asCompatibleSubstituteFor("ollama/ollama"));
     ollama.start();
 
     // Build the ChatLanguageModel
@@ -94,7 +95,8 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaStreamingChatModel;
 import dev.langchain4j.model.output.Response;
-import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.ollama.OllamaContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -102,10 +104,9 @@ public class OllamaStreamingChatExample {
 
   static String MODEL_NAME = "orca-mini"; // try "mistral", "llama2", "codellama" or "phi"
   static String DOCKER_IMAGE_NAME = "langchain4j/ollama-" + MODEL_NAME + ":latest";
-  static Integer PORT = 11434;
 
-  static GenericContainer<?> ollama = new GenericContainer<>(DOCKER_IMAGE_NAME)
-      .withExposedPorts(PORT);
+  static OllamaContainer ollama = new OllamaContainer(
+          DockerImageName.parse(DOCKER_IMAGE_NAME).asCompatibleSubstituteFor("ollama/ollama"));
 
   public static void main(String[] args) {
     ollama.start();
