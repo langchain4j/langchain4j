@@ -66,6 +66,10 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
 
