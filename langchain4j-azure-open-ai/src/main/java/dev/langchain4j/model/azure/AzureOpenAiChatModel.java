@@ -238,12 +238,11 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .setResponseFormat(responseFormat);
 
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            options.setFunctions(toFunctions(toolSpecifications));
+            options.setTools(toToolDefinitions(toolSpecifications));
+            if (toolThatMustBeExecuted != null) {
+                options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+            }
         }
-        if (toolThatMustBeExecuted != null) {
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
-        }
-
         ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);
 
         return Response.from(

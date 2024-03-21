@@ -1,7 +1,9 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.OpenAIClient;
-import com.azure.ai.openai.models.*;
+import com.azure.ai.openai.models.Choice;
+import com.azure.ai.openai.models.Completions;
+import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.ProxyOptions;
@@ -19,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 

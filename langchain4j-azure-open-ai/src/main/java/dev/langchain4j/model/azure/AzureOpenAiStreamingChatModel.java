@@ -21,8 +21,7 @@ import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toFunctions;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
@@ -246,16 +245,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
-            options.setFunctions(toFunctions(singletonList(toolThatMustBeExecuted)));
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
-            }
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         } else if (!isNullOrEmpty(toolSpecifications)) {
-            options.setFunctions(toFunctions(toolSpecifications));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-            }
+            options.setTools(toToolDefinitions(toolSpecifications));
+            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);

@@ -186,17 +186,30 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    public static List<FunctionDefinition> toFunctions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
-                .map(InternalAzureOpenAiHelper::toFunction)
+                .map(InternalAzureOpenAiHelper::toToolDefinition)
                 .collect(toList());
     }
 
-    private static FunctionDefinition toFunction(ToolSpecification toolSpecification) {
+    private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
         functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
-        return functionDefinition;
+        return new ChatCompletionsFunctionToolDefinition(functionDefinition);
+    }
+
+    public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
+        FunctionCall functionCall;
+        if (ChatCompletionsToolSelectionPreset.values().stream()
+                .anyMatch(preset -> preset.toString().equals(toolThatMustBeExecuted.name()))) {
+
+            functionCall = new FunctionCall(ChatCompletionsToolSelectionPreset.fromString(toolThatMustBeExecuted.name()).toString(), "");
+        } else {
+            functionCall = new FunctionCall(toolThatMustBeExecuted.name(), "");
+        }
+        ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        return BinaryData.fromObject(toolToCall);
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
@@ -204,6 +217,7 @@ class InternalAzureOpenAiHelper {
         NO_PARAMETER_DATA.put("type", "object");
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
+
     private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
@@ -246,14 +260,18 @@ class InternalAzureOpenAiHelper {
         if (chatResponseMessage.getContent() != null) {
             return aiMessage(chatResponseMessage.getContent());
         } else {
-            FunctionCall functionCall = chatResponseMessage.getFunctionCall();
+            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
+                    .stream()
+                    .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
+                    .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
+                    .map(ChatCompletionsFunctionToolCall::getFunction)
+                    .map(functionCall -> ToolExecutionRequest.builder()
+                            .name(functionCall.getName())
+                            .arguments(functionCall.getArguments())
+                            .build())
+                    .collect(toList());
 
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(functionCall.getName())
-                    .arguments(functionCall.getArguments())
-                    .build();
-
-            return aiMessage(toolExecutionRequest);
+            return aiMessage(toolExecutionRequests);
         }
     }
 
