@@ -9,6 +9,7 @@ import dev.langchain4j.data.segment.TextSegmentTransformer;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.spi.data.document.splitter.DocumentSplitterFactory;
 import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
 import java.util.List;
@@ -46,6 +47,7 @@ import static java.util.stream.Collectors.toList;
  * Including a document title or a short summary in each {@code TextSegment} is a common technique
  * to improve the quality of similarity searches.
  */
+@Slf4j
 public class EmbeddingStoreIngestor {
 
     private final DocumentTransformer documentTransformer;
@@ -88,7 +90,9 @@ public class EmbeddingStoreIngestor {
         }
 
         for (DocumentSplitterFactory factory : factories) {
-            return factory.create();
+            DocumentSplitter documentSplitter = factory.create();
+            log.debug("Loaded the following document splitter through SPI: {}", documentSplitter);
+            return documentSplitter;
         }
 
         return null;
@@ -102,7 +106,9 @@ public class EmbeddingStoreIngestor {
         }
 
         for (EmbeddingModelFactory factory : factories) {
-            return factory.create();
+            EmbeddingModel embeddingModel = factory.create();
+            log.debug("Loaded the following embedding model through SPI: {}", embeddingModel);
+            return embeddingModel;
         }
 
         return null;
@@ -161,12 +167,17 @@ public class EmbeddingStoreIngestor {
      * @param documents the documents to ingest.
      */
     public void ingest(List<Document> documents) {
+
+        log.debug("Starting to ingest {} documents", documents.size());
+
         if (documentTransformer != null) {
             documents = documentTransformer.transformAll(documents);
+            log.debug("Documents were transformed into {} documents", documents.size());
         }
         List<TextSegment> segments;
         if (documentSplitter != null) {
             segments = documentSplitter.splitAll(documents);
+            log.debug("Documents were split into {} text segments", segments.size());
         } else {
             segments = documents.stream()
                     .map(Document::toTextSegment)
@@ -174,9 +185,18 @@ public class EmbeddingStoreIngestor {
         }
         if (textSegmentTransformer != null) {
             segments = textSegmentTransformer.transformAll(segments);
+            log.debug("Text segments were transformed into {} text segments", documents.size());
         }
+
+        // TODO handle failures, parallelize
+        log.debug("Starting to embed {} text segments", segments.size());
         List<Embedding> embeddings = embeddingModel.embedAll(segments).content();
+        log.debug("Finished embedding {} text segments", segments.size());
+
+        // TODO handle failures, parallelize
+        log.debug("Starting to store {} text segments into the embedding store", segments.size());
         embeddingStore.addAll(embeddings, segments);
+        log.debug("Finished storing {} text segments into the embedding store", segments.size());
     }
 
     /**
