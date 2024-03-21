@@ -4,7 +4,9 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.*;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
@@ -35,6 +37,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .dimensions(dimensions)
+                .createOrUpdateIndex(true)
                 .build();
     }
 

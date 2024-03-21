@@ -15,19 +15,27 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, int dimensions) {
-        this.initialize(endpoint, keyCredential, null, dimensions, null);
+        this.initialize(endpoint, keyCredential, null, dimensions, null, true);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, SearchIndex index) {
-        this.initialize(endpoint, keyCredential, null, 0, index);
+        this.initialize(endpoint, keyCredential, null, 0, index, true);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, int dimensions) {
-        this.initialize(endpoint, null, tokenCredential, dimensions, null);
+        this.initialize(endpoint, null, tokenCredential, dimensions, null, true);
     }
 
     public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, SearchIndex index) {
-        this.initialize(endpoint, null, tokenCredential, 0, index);
+        this.initialize(endpoint, null, tokenCredential, 0, index, true);
+    }
+
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential) {
+        this.initialize(endpoint, null, tokenCredential, 0, null, false);
+    }
+
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential) {
+        this.initialize(endpoint, keyCredential, null, 0, null, false);
     }
 
     public static Builder builder() {
@@ -45,6 +53,8 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
         private int dimensions;
 
         private SearchIndex index;
+
+        private boolean createOrUpdateIndex;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -102,21 +112,40 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
             return this;
         }
 
+        /**
+         * build the store with
+         *
+         * @param createOrUpdateIndex
+         * @return
+         */
+        public Builder createOrUpdateIndex(boolean createOrUpdateIndex) {
+            this.createOrUpdateIndex = createOrUpdateIndex;
+            return this;
+        }
+
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
-            ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
-            if (keyCredential == null) {
-                if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions);
+            if (createOrUpdateIndex) {
+                ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+                if (keyCredential == null) {
+                    if (index == null) {
+                        return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, dimensions);
+                    } else {
+                        return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential);
+                    }
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, index);
+                    if (index == null) {
+                        return new AzureAiSearchEmbeddingStore(endpoint, keyCredential);
+                    } else {
+                        return new AzureAiSearchEmbeddingStore(endpoint, keyCredential);
+                    }
                 }
             } else {
-                if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, dimensions);
+                if (keyCredential == null) {
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, index);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential);
                 }
             }
         }

@@ -71,21 +71,20 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                          AzureAiSearchQueryType azureAiSearchQueryType) {
         ensureNotNull(endpoint, "endpoint");
         ensureTrue(keyCredential != null || tokenCredential != null, "either keyCredential or tokenCredential must be set");
-        ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
         if (!AzureAiSearchQueryType.FULL_TEXT.equals(azureAiSearchQueryType)) {
             ensureNotNull(embeddingModel, "embeddingModel");
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, dimensions, null);
+                this.initialize(endpoint, null, tokenCredential, dimensions, null, false);
             } else {
-                this.initialize(endpoint, null, tokenCredential, 0, index);
+                this.initialize(endpoint, null, tokenCredential, 0, index, false);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, dimensions, null);
+                this.initialize(endpoint, keyCredential, null, dimensions, null, false);
             } else {
-                this.initialize(endpoint, keyCredential, null, 0, index);
+                this.initialize(endpoint, keyCredential, null, 0, index, false);
             }
         }
         this.embeddingModel = embeddingModel;

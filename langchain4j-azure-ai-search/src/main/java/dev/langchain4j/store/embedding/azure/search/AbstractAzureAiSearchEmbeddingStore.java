@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -56,12 +55,14 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected SearchClient searchClient;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index, boolean createOrUpdateIndex) {
         if (keyCredential != null) {
-            searchIndexClient = new SearchIndexClientBuilder()
-                    .endpoint(endpoint)
-                    .credential(keyCredential)
-                    .buildClient();
+            if (createOrUpdateIndex) {
+                searchIndexClient = new SearchIndexClientBuilder()
+                        .endpoint(endpoint)
+                        .credential(keyCredential)
+                        .buildClient();
+            }
 
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
@@ -69,10 +70,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                     .indexName(INDEX_NAME)
                     .buildClient();
         } else {
-            searchIndexClient = new SearchIndexClientBuilder()
-                    .endpoint(endpoint)
-                    .credential(tokenCredential)
-                    .buildClient();
+            if (createOrUpdateIndex) {
+                searchIndexClient = new SearchIndexClientBuilder()
+                        .endpoint(endpoint)
+                        .credential(tokenCredential)
+                        .buildClient();
+            }
 
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
@@ -81,10 +84,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                     .buildClient();
         }
 
-        if (index == null) {
-            createOrUpdateIndex(dimensions);
-        } else {
-            createOrUpdateIndex(index);
+        if (createOrUpdateIndex) {
+            if (index == null) {
+                createOrUpdateIndex(dimensions);
+            } else {
+                createOrUpdateIndex(index);
+            }
         }
     }
 
