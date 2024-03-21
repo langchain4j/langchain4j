@@ -11,6 +11,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicSystemPrompt;
 
@@ -48,7 +49,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
      * @param baseUrl       The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
      * @param apiKey        The API key for authentication with the Anthropic API.
      * @param version       The version of the Anthropic API. Default: "2023-06-01"
-     * @param modelName     The name of the Anthropic model to use. Default: "claude-3-sonnet-20240229"
+     * @param modelName     The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
      * @param temperature   The temperature
      * @param topP          The top-P
      * @param topK          The top-K
@@ -79,7 +80,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, "claude-3-sonnet-20240229");
+        this.modelName = getOrDefault(modelName, CLAUDE_3_HAIKU_20240307.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;

@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
+import lombok.SneakyThrows;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -43,11 +44,8 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
         futureResponse.completeExceptionally(error);
     }
 
+    @SneakyThrows
     public Response<T> get() {
-        try {
-            return futureResponse.get(30, SECONDS);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return futureResponse.get(30, SECONDS);
     }
 }

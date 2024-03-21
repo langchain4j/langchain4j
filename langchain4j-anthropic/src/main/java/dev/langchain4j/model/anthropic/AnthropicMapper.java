@@ -86,8 +86,8 @@ class AnthropicMapper {
 
     static AiMessage toAiMessage(List<AnthropicContent> contents) {
         String text = contents.stream()
-                .filter(content -> "text".equals(content.getType()))
-                .map(AnthropicContent::getText)
+                .filter(content -> "text".equals(content.type))
+                .map(content -> content.text)
                 .collect(joining("\n"));
         return AiMessage.from(text);
     }
@@ -96,7 +96,7 @@ class AnthropicMapper {
         if (anthropicUsage == null) {
             return null;
         }
-        return new TokenUsage(anthropicUsage.getInputTokens(), anthropicUsage.getOutputTokens());
+        return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens);
     }
 
     static FinishReason toFinishReason(String anthropicStopReason) {

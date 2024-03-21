@@ -117,6 +117,14 @@ class AnthropicClient {
 
             volatile String stopReason;
 
+            private synchronized StringBuffer currentContentBuilder() {
+                return currentContentBuilder;
+            }
+
+            private synchronized void setCurrentContentBuilder(StringBuffer stringBuffer) {
+                currentContentBuilder = stringBuffer;
+            }
+
             @Override
             public void onOpen(EventSource eventSource, okhttp3.Response response) {
                 if (logResponses) {
@@ -160,21 +168,20 @@ class AnthropicClient {
             }
 
             private void handleUsage(AnthropicUsage usage) {
-                if (usage.getInputTokens() != null) {
-                    this.inputTokenCount.addAndGet(usage.getInputTokens());
+                if (usage.inputTokens != null) {
+                    this.inputTokenCount.addAndGet(usage.inputTokens);
                 }
-                if (usage.getOutputTokens() != null) {
-                    this.outputTokenCount.addAndGet(usage.getOutputTokens());
+                if (usage.outputTokens != null) {
+                    this.outputTokenCount.addAndGet(usage.outputTokens);
                 }
             }
 
             private void handleContentBlockStart(AnthropicStreamingData data) {
-                if (data.contentBlock != null && "text".equals(data.contentBlock.getType())) {
-                    String text = data.contentBlock.getText();
+                if (data.contentBlock != null && "text".equals(data.contentBlock.type)) {
+                    String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
-                        currentContentBuilder.append(text);
+                        currentContentBuilder().append(text);
                         handler.onNext(text);
-
                     }
                 }
             }
@@ -183,16 +190,15 @@ class AnthropicClient {
                 if (data.delta != null && "text_delta".equals(data.delta.type)) {
                     String text = data.delta.text;
                     if (isNotNullOrEmpty(text)) {
-                        currentContentBuilder.append(text);
+                        currentContentBuilder().append(text);
                         handler.onNext(text);
-
                     }
                 }
             }
 
             private void handleContentBlockStop() {
-                contents.add(currentContentBuilder.toString());
-                currentContentBuilder = new StringBuffer();
+                contents.add(currentContentBuilder().toString());
+                setCurrentContentBuilder(new StringBuffer());
             }
 
             private void handleMessageDelta(AnthropicStreamingData data) {
@@ -247,7 +253,7 @@ class AnthropicClient {
             }
         };
 
-        Call<ResponseBody> call = anthropicApi.streamCreateMessage(apiKey, version, request);
+        Call<ResponseBody> call = anthropicApi.streamMessage(apiKey, version, request);
         EventSources.createFactory(okHttpClient).newEventSource(call.request(), eventSourceListener);
     }
 }

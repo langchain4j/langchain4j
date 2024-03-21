@@ -308,7 +308,7 @@ class AnthropicChatModelIT {
                 model.generate("Hi");
             }
         })
-                .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)
+                .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)?
                 .hasRootCauseExactlyInstanceOf(AnthropicHttpException.class)
                 .hasMessageContaining("rate_limit_error");
     }

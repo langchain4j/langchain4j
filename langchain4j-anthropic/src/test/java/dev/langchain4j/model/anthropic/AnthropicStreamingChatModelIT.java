@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 import java.time.Duration;
 import java.util.Base64;
+import java.util.concurrent.ExecutionException;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -30,13 +31,6 @@ class AnthropicStreamingChatModelIT {
             .apiKey(getenv("ANTHROPIC_API_KEY"))
             .maxTokens(20)
             .logRequests(true)
-            .logResponses(true)
-            .build();
-
-    StreamingChatLanguageModel visionModel = AnthropicStreamingChatModel.builder()
-            .apiKey(getenv("ANTHROPIC_API_KEY"))
-            .maxTokens(20)
-            .logRequests(false) // base64-encoded images are huge
             .logResponses(true)
             .build();
 
@@ -72,13 +66,20 @@ class AnthropicStreamingChatModelIT {
     void should_accept_base64_image() {
 
         // given
+        StreamingChatLanguageModel visionModel = AnthropicStreamingChatModel.builder()
+                .apiKey(getenv("ANTHROPIC_API_KEY"))
+                .maxTokens(20)
+                .logRequests(false) // base64-encoded images are huge
+                .logResponses(true)
+                .build();
+
         String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
         ImageContent imageContent = ImageContent.from(base64Data, "image/png");
         UserMessage userMessage = UserMessage.from(imageContent);
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
+        visionModel.generate(userMessage, handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -165,7 +166,7 @@ class AnthropicStreamingChatModelIT {
                 handler.get();
             }
         })
-                .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)
+                .isExactlyInstanceOf(ExecutionException.class)
                 .hasRootCauseExactlyInstanceOf(AnthropicHttpException.class)
                 .hasMessageContaining("rate_limit_error");
     }

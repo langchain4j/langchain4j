@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 class AnthropicImageContentSource {
 
-    private final String type;
-    private final String mediaType;
-    private final String data;
+    String type;
+    String mediaType;
+    String data;
 }
