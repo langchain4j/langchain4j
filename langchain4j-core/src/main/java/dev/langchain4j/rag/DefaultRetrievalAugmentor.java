@@ -235,7 +235,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
             }
         }
 
-        log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
+        if (contentCount != contents.size()) {
+            log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
+        }
 
         log.trace("Aggregated {} content(s) into:\n{}",
                 contentCount, contents.stream()
