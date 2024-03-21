@@ -229,29 +229,10 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                     finishReasonFrom(completions.getChoices().get(0).getFinishReason())
             );
         } catch (HttpResponseException httpResponseException) {
-            String exceptionMessage = httpResponseException.getMessage();
-            FinishReason exceptionFinishReason = FinishReason.OTHER;
-            if (httpResponseException.getValue() instanceof Map) {
-                try {
-                    Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
-                    Object errorMap = error.get("error");
-                    if (errorMap instanceof Map) {
-                        Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
-                        Object errorCode = errorDetails.get("code");
-                        if (errorCode instanceof String) {
-                            String code = (String) errorCode;
-                            if ("content_filter".equals(code)) {
-                                // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                                exceptionFinishReason = FinishReason.CONTENT_FILTER;
-                            }
-                        }
-                    }
-                } catch (ClassCastException classCastException) {
-                    logger.error("Error parsing error response from Azure OpenAI", classCastException);
-                }
-            }
+            logger.info("Error generating response, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             return Response.from(
-                    exceptionMessage,
+                    httpResponseException.getMessage(),
                     new TokenUsage(),
                     exceptionFinishReason
             );

@@ -20,8 +20,7 @@ import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.imageFrom;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
@@ -165,26 +164,7 @@ public class AzureOpenAiImageModel implements ImageModel {
             return Response.from(image);
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating image, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = FinishReason.OTHER;
-            if (httpResponseException.getValue() instanceof Map) {
-                try {
-                    Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
-                    Object errorMap = error.get("error");
-                    if (errorMap instanceof Map) {
-                        Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
-                        Object errorCode = errorDetails.get("code");
-                        if (errorCode instanceof String) {
-                            String code = (String) errorCode;
-                            if ("content_policy_violation".equals(code)) {
-                                // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                                exceptionFinishReason = FinishReason.CONTENT_FILTER;
-                            }
-                        }
-                    }
-                } catch (ClassCastException classCastException) {
-                    logger.error("Error parsing error response from Azure OpenAI", classCastException);
-                }
-            }
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_policy_violation");
             return Response.from(Image.builder().build(), new TokenUsage(), exceptionFinishReason);
         }
     }

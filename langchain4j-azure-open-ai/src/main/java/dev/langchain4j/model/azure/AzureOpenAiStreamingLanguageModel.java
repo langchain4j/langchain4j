@@ -26,6 +26,7 @@ import java.util.Map;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.contentFilterManagement;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -233,32 +234,14 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
                     response.finishReason()
             ));
         } catch (HttpResponseException httpResponseException) {
-            String exceptionMessage = httpResponseException.getMessage();
-            FinishReason exceptionFinishReason = FinishReason.OTHER;
-            if (httpResponseException.getValue() instanceof Map) {
-                try {
-                    Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
-                    Object errorMap = error.get("error");
-                    if (errorMap instanceof Map) {
-                        Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
-                        Object errorCode = errorDetails.get("code");
-                        if (errorCode instanceof String) {
-                            String code = (String) errorCode;
-                            if ("content_filter".equals(code)) {
-                                // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                                exceptionFinishReason = FinishReason.CONTENT_FILTER;
-                            }
-                        }
-                    }
-                } catch (ClassCastException classCastException) {
-                    logger.error("Error parsing error response from Azure OpenAI", classCastException);
-                }
-            }
-            handler.onComplete(Response.from(
-                    exceptionMessage,
+            logger.info("Error generating response, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            Response<String> response = Response.from(
+                    httpResponseException.getMessage(),
                     new TokenUsage(),
-                    exceptionFinishReason
-            ));
+                    exceptionFinishReason);
+
+            handler.onComplete(response);
         } catch (Exception exception) {
             handler.onError(exception);
         }
