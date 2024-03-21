@@ -59,7 +59,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     public AzureAiSearchContentRetriever(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index, EmbeddingModel embeddingModel, int maxResults, double minScore, AzureAiSearchQueryType azureAiSearchQueryType) {
         ensureNotNull(endpoint, "endpoint");
-        ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
+        ensureTrue(keyCredential != null || tokenCredential != null, "either keyCredential or tokenCredential must be set");
         ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
         if (!AzureAiSearchQueryType.FULL_TEXT.equals(azureAiSearchQueryType)) {
             ensureNotNull(embeddingModel, "embeddingModel");
