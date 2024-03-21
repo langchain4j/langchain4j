@@ -1,12 +1,12 @@
 package dev.langchain4j.model.dashscope;
 
-import com.alibaba.dashscope.aigc.generation.Generation;
-import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.protocol.Protocol;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.Generation;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationResult;
 import dev.langchain4j.model.dashscope.spi.QwenLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;

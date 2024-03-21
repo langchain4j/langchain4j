@@ -1,11 +1,7 @@
 package dev.langchain4j.model.dashscope;
 
-import com.alibaba.dashscope.aigc.generation.Generation;
-import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
@@ -16,6 +12,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.Generation;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationResult;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversation;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversationResult;
 import dev.langchain4j.model.dashscope.spi.QwenStreamingChatModelBuilderFactory;
 import lombok.Builder;
 

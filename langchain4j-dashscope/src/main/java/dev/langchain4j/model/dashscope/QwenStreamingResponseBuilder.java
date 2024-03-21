@@ -1,47 +1,40 @@
 package dev.langchain4j.model.dashscope;
 
-import com.alibaba.dashscope.aigc.generation.GenerationResult;
-import com.alibaba.dashscope.aigc.generation.GenerationUsage;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationUsage;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationResult;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversationResult;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import static dev.langchain4j.model.dashscope.QwenHelper.*;
-
 public class QwenStreamingResponseBuilder {
     private final StringBuilder generatedContent = new StringBuilder();
-
     private Integer inputTokenCount;
-
     private Integer outputTokenCount;
-
     private FinishReason finishReason;
 
-    public QwenStreamingResponseBuilder() {}
+    public QwenStreamingResponseBuilder() {
+    }
 
     public String append(GenerationResult partialResponse) {
         if (partialResponse == null) {
             return null;
         }
 
-        GenerationUsage usage = partialResponse.getUsage();
+        Response<AiMessage> response = QwenHelper.responseFrom(partialResponse);
+
+        TokenUsage usage = response.tokenUsage();
         if (usage != null) {
-            inputTokenCount = usage.getInputTokens();
-            outputTokenCount = usage.getOutputTokens();
+            inputTokenCount = usage.inputTokenCount();
+            outputTokenCount = usage.outputTokenCount();
         }
 
-        FinishReason finishReason = finishReasonFrom(partialResponse);
+        FinishReason finishReason = response.finishReason();
         if (finishReason != null) {
             this.finishReason = finishReason;
-            if (!hasAnswer(partialResponse)) {
-                return null;
-            }
         }
 
-        String partialContent = answerFrom(partialResponse);
+        String partialContent = response.content().text();
         generatedContent.append(partialContent);
 
         return partialContent;
@@ -52,21 +45,20 @@ public class QwenStreamingResponseBuilder {
             return null;
         }
 
-        MultiModalConversationUsage usage = partialResponse.getUsage();
+        Response<AiMessage> response = QwenHelper.responseFrom(partialResponse);
+
+        TokenUsage usage = response.tokenUsage();
         if (usage != null) {
-            inputTokenCount = usage.getInputTokens();
-            outputTokenCount = usage.getOutputTokens();
+            inputTokenCount = usage.inputTokenCount();
+            outputTokenCount = usage.outputTokenCount();
         }
 
-        FinishReason finishReason = finishReasonFrom(partialResponse);
+        FinishReason finishReason = response.finishReason();
         if (finishReason != null) {
             this.finishReason = finishReason;
-            if (!hasAnswer(partialResponse)) {
-                return null;
-            }
         }
 
-        String partialContent = answerFrom(partialResponse);
+        String partialContent = response.content().text();
         generatedContent.append(partialContent);
 
         return partialContent;

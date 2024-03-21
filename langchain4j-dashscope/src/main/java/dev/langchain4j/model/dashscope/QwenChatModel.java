@@ -1,24 +1,27 @@
 package dev.langchain4j.model.dashscope;
 
-import com.alibaba.dashscope.aigc.generation.Generation;
-import com.alibaba.dashscope.aigc.generation.GenerationResult;
 import com.alibaba.dashscope.aigc.generation.models.QwenParam;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.exception.UploadFileException;
 import com.alibaba.dashscope.protocol.Protocol;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.Generation;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationResult;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversation;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversationResult;
 import dev.langchain4j.model.dashscope.spi.QwenChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
@@ -80,10 +83,20 @@ public class QwenChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return isMultimodalModel ? generateByMultimodalModel(messages) : generateByNonMultimodalModel(messages);
+        return isMultimodalModel ? generateByMultimodalModel(messages, null) : generateByNonMultimodalModel(messages, null);
     }
 
-    private Response<AiMessage> generateByNonMultimodalModel(List<ChatMessage> messages) {
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
+        return isMultimodalModel ? generateByMultimodalModel(messages, Collections.singletonList(toolSpecification)) : generateByNonMultimodalModel(messages, Collections.singletonList(toolSpecification));
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        return isMultimodalModel ? generateByMultimodalModel(messages, toolSpecifications) : generateByNonMultimodalModel(messages, toolSpecifications);
+    }
+
+    private Response<AiMessage> generateByNonMultimodalModel(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         try {
             QwenParam.QwenParamBuilder<?, ?> builder = QwenParam.builder()
                     .apiKey(apiKey)
@@ -96,6 +109,7 @@ public class QwenChatModel implements ChatLanguageModel {
                     .temperature(temperature)
                     .maxTokens(maxTokens)
                     .messages(toQwenMessages(messages))
+                    .parameters(toQwenToolsParameters(toolSpecifications))
                     .resultFormat(MESSAGE);
 
             if (stops != null) {
@@ -103,16 +117,13 @@ public class QwenChatModel implements ChatLanguageModel {
             }
 
             GenerationResult generationResult = generation.call(builder.build());
-            String answer = answerFrom(generationResult);
-
-            return Response.from(AiMessage.from(answer),
-                    tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
+            return responseFrom(generationResult);
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Response<AiMessage> generateByMultimodalModel(List<ChatMessage> messages) {
+    private Response<AiMessage> generateByMultimodalModel(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
         try {
             MultiModalConversationParam param = MultiModalConversationParam.builder()
                     .apiKey(apiKey)
@@ -127,10 +138,7 @@ public class QwenChatModel implements ChatLanguageModel {
                     .build();
 
             MultiModalConversationResult result = conv.call(param);
-            String answer = answerFrom(result);
-
-            return Response.from(AiMessage.from(answer),
-                    tokenUsageFrom(result), finishReasonFrom(result));
+            return responseFrom(result);
         } catch (NoApiKeyException | UploadFileException e) {
             throw new RuntimeException(e);
         }
