@@ -150,4 +150,40 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(answer).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
         assertThat(response.content().text()).isEqualTo(answer);
     }
+
+    @Test
+    void should_propagate_failure_to_handler_onError() throws Exception {
+
+        // given
+        StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName("banana") // wrong model name
+                .build();
+
+        CompletableFuture<Throwable> future = new CompletableFuture<>();
+
+        // when
+        model.generate("does not matter", new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                future.completeExceptionally(new Exception("onNext should never be called"));
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                future.completeExceptionally(new Exception("onComplete should never be called"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.complete(error);
+            }
+        });
+
+        // then
+        assertThat(future.get())
+                .isExactlyInstanceOf(NullPointerException.class)
+                .hasMessageContaining("is null");
+    }
 }
