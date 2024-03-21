@@ -2,8 +2,6 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 
 import com.azure.search.documents.models.SearchResult;
 import com.azure.search.documents.models.SemanticSearchResult;
-import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchContentRetriever;
-import dev.langchain4j.store.embedding.azure.search.AzureAiSearchQueryType;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
