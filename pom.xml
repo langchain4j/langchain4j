@@ -69,6 +69,7 @@
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
+        <module>langchain4j-tei</module>
 
     </modules>
 
