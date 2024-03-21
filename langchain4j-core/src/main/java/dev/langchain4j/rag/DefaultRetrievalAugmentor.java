@@ -123,10 +123,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     public UserMessage augment(UserMessage userMessage, Metadata metadata) {
 
         Query originalQuery = Query.from(userMessage.text(), metadata);
-        log(originalQuery);
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
-        log(queries);
+        logQueries(originalQuery, queries);
 
         Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
         queries.forEach(query -> {
@@ -144,7 +143,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Map<Query, Collection<List<Content>>> queryToContents = join(queryToFutureContents);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
-        log(contents);
+        log(queryToContents, contents);
 
         UserMessage augmentedUserMessage = contentInjector.inject(contents, userMessage);
         log(augmentedUserMessage);
@@ -184,43 +183,69 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 ).join();
     }
 
-    private static void log(Query originalQuery) {
-        log.debug("Original query: '{}'", originalQuery.text());
-    }
+    private static void logQueries(Query originalQuery, Collection<Query> queries) {
+        if (queries.size() == 1) {
+            Query transformedQuery = queries.iterator().next();
+            if (!transformedQuery.equals(originalQuery)) {
+                log.debug("Transformed original query '{}' into '{}'",
+                        originalQuery.text(), transformedQuery.text());
+            }
+            return;
+        }
 
-    private static void log(Collection<Query> queries) {
-        log.debug("Transformed queries:\n{}", queries.stream()
-                .map(Query::text)
-                .map(query -> "- '" + query + "'")
-                .collect(joining("\n")));
+        log.debug("Transformed original query '{}' into the following {} queries:\n{}",
+                originalQuery.text(), queries.size(), queries.stream()
+                        .map(Query::text)
+                        .map(query -> "- '" + query + "'")
+                        .collect(joining("\n")));
     }
 
     private static void log(Query query, Collection<ContentRetriever> retrievers) {
         // TODO use retriever id
-        log.debug("Routing query '{}' to the following retrievers:\n{}",
-                query.text(), retrievers.stream()
+        if (retrievers.size() == 1) {
+            log.debug("Routing query '{}' to the following retriever: {}",
+                    query.text(), retrievers.iterator().next());
+            return;
+        }
+
+        log.debug("Routing query '{}' to the following {} retrievers:\n{}",
+                query.text(), retrievers.size(), retrievers.stream()
                         .map(retriever -> "- " + retriever.toString())
                         .collect(joining("\n")));
     }
 
     private static void log(Query query, ContentRetriever retriever, List<Content> contents) {
         // TODO use retriever id
-        log.debug("Retrieved the following contents using retriever '{}' and query '{}':\n{}",
-                retriever, query.text(), contents.stream()
+        log.debug("Retrieved {} contents using retriever '{}' and query '{}'",
+                contents.size(), retriever, query.text());
+
+        log.trace("Retrieved {} contents using retriever '{}' and query '{}':\n{}",
+                contents.size(), retriever, query.text(), contents.stream()
                         .map(Content::textSegment)
                         .map(segment -> "- " + segment.toString())
                         .collect(joining("\n")));
     }
 
-    private static void log(List<Content> contents) {
-        log.debug("Aggregated all contents into:\n{}", contents.stream()
-                .map(Content::textSegment)
-                .map(segment -> "- " + segment.toString())
-                .collect(joining("\n")));
+    private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents) {
+
+        int contentCount = 0;
+        for (Map.Entry<Query, Collection<List<Content>>> entry : queryToContents.entrySet()) {
+            for (List<Content> contentList : entry.getValue()) {
+                contentCount += contentList.size();
+            }
+        }
+
+        log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
+
+        log.trace("Aggregated {} content(s) into:\n{}",
+                contentCount, contents.stream()
+                        .map(Content::textSegment)
+                        .map(segment -> "- " + segment.toString())
+                        .collect(joining("\n")));
     }
 
     private static void log(UserMessage augmentedUserMessage) {
-        log.debug("Augmented user message: " + augmentedUserMessage);
+        log.trace("Augmented user message: " + augmentedUserMessage);
     }
 
     public static DefaultRetrievalAugmentorBuilder builder() {
