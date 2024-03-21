@@ -17,7 +17,7 @@ import java.nio.file.Paths;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class EasyRagTest {
+class EasyRagIT {
 
     OpenAiChatModel model = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
