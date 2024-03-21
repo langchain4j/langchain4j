@@ -20,8 +20,8 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaInfrastructure {
         String prompt = "What is the capital of Germany?";
 
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(OllamaImage.PHI_MODEL)
                 .temperature(0.0)
                 .build();
 
@@ -76,8 +76,8 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaInfrastructure {
         int numPredict = 1; // max output tokens
 
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(OllamaImage.PHI_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
                 .build();
@@ -127,8 +127,8 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaInfrastructure {
 
         // given
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(OllamaImage.PHI_MODEL)
                 .format("json")
                 .temperature(0.0)
                 .build();
