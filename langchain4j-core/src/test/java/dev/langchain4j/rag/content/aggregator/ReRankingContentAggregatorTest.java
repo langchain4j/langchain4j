@@ -14,13 +14,11 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.Collections.singletonMap;
+import static java.util.Collections.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class ReRankingContentAggregatorTest {
 
@@ -192,5 +190,39 @@ class ReRankingContentAggregatorTest {
                 // content4, content6, content7 were fused with content1
                 // content3 and content5 were filtered out by minScore
                 .containsExactly(content1, content8, content2);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_return_empty_list_when_there_is_no_content_to_rerank(
+            Map<Query, Collection<List<Content>>> queryToContents
+    ) {
+        // given
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(queryToContents);
+
+        // then
+        assertThat(aggregated).isEmpty();
+        verifyNoInteractions(scoringModel);
+    }
+
+    private static Stream<Arguments> should_return_empty_list_when_there_is_no_content_to_rerank() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        emptyMap()
+                ))
+                .add(Arguments.of(
+                        singletonMap(Query.from("query"), emptyList())
+                ))
+                .add(Arguments.of(
+                        singletonMap(Query.from("query"), singletonList(emptyList()))
+                ))
+                .add(Arguments.of(
+                        singletonMap(Query.from("query"), asList(emptyList(), emptyList()))
+                ))
+                .build();
     }
 }

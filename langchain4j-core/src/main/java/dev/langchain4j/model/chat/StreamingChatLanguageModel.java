@@ -26,6 +26,16 @@ public interface StreamingChatLanguageModel {
     }
 
     /**
+     * Generates a response from the model based on a message from a user.
+     *
+     * @param userMessage The message from the user.
+     * @param handler     The handler for streaming the response.
+     */
+    default void generate(UserMessage userMessage, StreamingResponseHandler<AiMessage> handler) {
+        generate(singletonList(userMessage), handler);
+    }
+
+    /**
      * Generates a response from the model based on a sequence of messages.
      * Typically, the sequence contains messages in the following order:
      * System (optional) - User - AI - User - AI - User ...
@@ -53,9 +63,10 @@ public interface StreamingChatLanguageModel {
 
     /**
      * Generates a response from the model based on a list of messages and a tool specification.
-     * @param messages A list of messages.
+     *
+     * @param messages          A list of messages.
      * @param toolSpecification A tool that the model is allowed to execute.
-     * @param handler The handler for streaming the response.
+     * @param handler           The handler for streaming the response.
      */
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");

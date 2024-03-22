@@ -18,9 +18,9 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
+public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetrieverTestIT.class);
+    private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetrieverIT.class);
 
     private final EmbeddingModel embeddingModel;
 
@@ -34,7 +34,7 @@ public class AzureAiSearchContentRetrieverTestIT extends EmbeddingStoreIT {
 
     private final int dimensions;
 
-    public AzureAiSearchContentRetrieverTestIT() {
+    public AzureAiSearchContentRetrieverIT() {
 
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;

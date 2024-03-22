@@ -106,8 +106,8 @@ class OllamaClient {
                             return;
                         }
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    handler.onError(e);
                 }
             }
 
@@ -147,8 +147,8 @@ class OllamaClient {
                             return;
                         }
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    handler.onError(e);
                 }
             }
 

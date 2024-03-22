@@ -7,7 +7,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaModelsIT extends AbstractOllamaInfrastructure {
+class OllamaModelsIT extends AbstractOllamaLanguageModelInfrastructure {
 
     OllamaModels ollamaModels = OllamaModels.builder()
             .baseUrl(ollama.getEndpoint())
@@ -22,7 +22,7 @@ class OllamaModelsIT extends AbstractOllamaInfrastructure {
 
         // then
         assertThat(response.content().size()).isGreaterThan(0);
-        assertThat(response.content().get(0).getName()).isEqualTo("phi:latest");
+        assertThat(response.content().get(0).getName()).isEqualTo("tinydolphin:latest");
     }
 
     @Test
@@ -31,7 +31,7 @@ class OllamaModelsIT extends AbstractOllamaInfrastructure {
 
         // when
         OllamaModel ollamaModel = OllamaModel.builder()
-                .name("phi:latest")
+                .name("tinydolphin:latest")
                 .build();
 
         Response<OllamaModelCard> response = ollamaModels.modelCard(ollamaModel);
@@ -40,7 +40,7 @@ class OllamaModelsIT extends AbstractOllamaInfrastructure {
         assertThat(response.content().getModelfile()).isNotBlank();
         assertThat(response.content().getTemplate()).isNotBlank();
         assertThat(response.content().getParameters()).isNotBlank();
-        assertThat(response.content().getDetails().getFamily()).isEqualTo("phi2");
+        assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
     }
 
     @Test
@@ -48,13 +48,12 @@ class OllamaModelsIT extends AbstractOllamaInfrastructure {
         // given AbstractOllamaInfrastructure
 
         // when
-        Response<OllamaModelCard> response = ollamaModels.modelCard("phi:latest");
+        Response<OllamaModelCard> response = ollamaModels.modelCard("tinydolphin:latest");
 
         // then
         assertThat(response.content().getModelfile()).isNotBlank();
         assertThat(response.content().getTemplate()).isNotBlank();
         assertThat(response.content().getParameters()).isNotBlank();
-        assertThat(response.content().getDetails().getFamily()).isEqualTo("phi2");
+        assertThat(response.content().getDetails().getFamily()).isEqualTo("llama");
     }
-
 }

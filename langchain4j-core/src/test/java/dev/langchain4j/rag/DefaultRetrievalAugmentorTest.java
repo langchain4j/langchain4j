@@ -70,13 +70,13 @@ class DefaultRetrievalAugmentorTest {
         UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
 
         // then
-        assertThat(augmented.text()).isEqualTo(
+        assertThat(augmented.singleText()).isEqualTo(
                 "query\n" +
                         "content 1\n" +
                         "content 2\n" +
                         "content 3\n" +
                         "content 4\n" +
-                        "content 1\n" +
+                        "content 1\n" + // contents are repeating because TestContentAggregator does not perform RRF
                         "content 2\n" +
                         "content 3\n" +
                         "content 4"
