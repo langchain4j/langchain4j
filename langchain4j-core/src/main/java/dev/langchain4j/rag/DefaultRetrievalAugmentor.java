@@ -190,14 +190,13 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 log.debug("Transformed original query '{}' into '{}'",
                         originalQuery.text(), transformedQuery.text());
             }
-            return;
+        } else {
+            log.debug("Transformed original query '{}' into the following queries:\n{}",
+                    originalQuery.text(), queries.stream()
+                            .map(Query::text)
+                            .map(query -> "- '" + query + "'")
+                            .collect(joining("\n")));
         }
-
-        log.debug("Transformed original query '{}' into the following {} queries:\n{}",
-                originalQuery.text(), queries.size(), queries.stream()
-                        .map(Query::text)
-                        .map(query -> "- '" + query + "'")
-                        .collect(joining("\n")));
     }
 
     private static void log(Query query, Collection<ContentRetriever> retrievers) {
@@ -205,25 +204,26 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         if (retrievers.size() == 1) {
             log.debug("Routing query '{}' to the following retriever: {}",
                     query.text(), retrievers.iterator().next());
-            return;
+        } else {
+            log.debug("Routing query '{}' to the following retrievers:\n{}",
+                    query.text(), retrievers.stream()
+                            .map(retriever -> "- " + retriever.toString())
+                            .collect(joining("\n")));
         }
-
-        log.debug("Routing query '{}' to the following {} retrievers:\n{}",
-                query.text(), retrievers.size(), retrievers.stream()
-                        .map(retriever -> "- " + retriever.toString())
-                        .collect(joining("\n")));
     }
 
     private static void log(Query query, ContentRetriever retriever, List<Content> contents) {
         // TODO use retriever id
-        log.debug("Retrieved {} contents using retriever '{}' and query '{}'",
-                contents.size(), retriever, query.text());
+        log.debug("Retrieved {} contents using query '{}' and retriever '{}'",
+                contents.size(), query.text(), retriever);
 
-        log.trace("Retrieved {} contents using retriever '{}' and query '{}':\n{}",
-                contents.size(), retriever, query.text(), contents.stream()
-                        .map(Content::textSegment)
-                        .map(segment -> "- " + segment.text().replace("\n", "\\n"))
-                        .collect(joining("\n")));
+        if (contents.size() > 0) {
+            log.trace("Retrieved {} contents using query '{}' and retriever '{}':\n{}",
+                    contents.size(), query.text(), retriever, contents.stream()
+                            .map(Content::textSegment)
+                            .map(segment -> "- " + escapeNewlines(segment.text()))
+                            .collect(joining("\n")));
+        }
     }
 
     private static void log(Map<Query, Collection<List<Content>>> queryToContents, List<Content> contents) {
@@ -234,20 +234,25 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 contentCount += contentList.size();
             }
         }
-
-        if (contentCount != contents.size()) {
-            log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
+        if (contentCount == contents.size()) {
+            return;
         }
+
+        log.debug("Aggregated {} content(s) into {}", contentCount, contents.size());
 
         log.trace("Aggregated {} content(s) into:\n{}",
                 contentCount, contents.stream()
                         .map(Content::textSegment)
-                        .map(segment -> "- " + segment.text().replace("\n", "\\n"))
+                        .map(segment -> "- " + escapeNewlines(segment.text()))
                         .collect(joining("\n")));
     }
 
     private static void log(UserMessage augmentedUserMessage) {
-        log.trace("Augmented user message: " + augmentedUserMessage);
+        log.trace("Augmented user message: " + escapeNewlines(augmentedUserMessage.singleText()));
+    }
+
+    private static String escapeNewlines(String text) {
+        return text.replace("\n", "\\n");
     }
 
     public static DefaultRetrievalAugmentorBuilder builder() {
