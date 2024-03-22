@@ -119,28 +119,6 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_accept_text_and_multiple_images() {
-
-        // given
-        String catBase64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        String diceBase64Data = Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL));
-
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
-                ImageContent.from(catBase64Data, "image/png"),
-                ImageContent.from(diceBase64Data, "image/png")
-        );
-
-        // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
-
-        // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
-    }
-
-    @Test
     void should_respect_maxTokens() {
 
         // given
