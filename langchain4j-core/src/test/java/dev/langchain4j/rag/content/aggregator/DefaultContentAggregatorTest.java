@@ -194,6 +194,9 @@ class DefaultContentAggregatorTest {
     private static Stream<Arguments> should_return_empty_list_when_there_is_no_content_to_rerank() {
         return Stream.<Arguments>builder()
                 .add(Arguments.of(
+                        emptyMap()
+                ))
+                .add(Arguments.of(
                         singletonMap(Query.from("query"), emptyList())
                 ))
                 .add(Arguments.of(
