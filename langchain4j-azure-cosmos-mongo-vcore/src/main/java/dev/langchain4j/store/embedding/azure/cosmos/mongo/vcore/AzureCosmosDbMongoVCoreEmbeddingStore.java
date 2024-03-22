@@ -118,7 +118,7 @@ public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<Tex
         }
         createIndex = getOrDefault(createIndex, false);
         this.indexName = getOrDefault(indexName, "defaultIndexAzureCosmos");
-        applicationName = getOrDefault(applicationName, "JAVA_LANG_CHAIN");
+        applicationName = getOrDefault(applicationName, "LangChain4j");
         this.kind = VectorIndexType.fromString(kind);
         this.numLists = getOrDefault(numLists, 1);
         // TODO: update this value as a user input once LangChain4J only

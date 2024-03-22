@@ -9,6 +9,7 @@ import com.mongodb.client.MongoDatabase;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import org.bson.Document;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.stream.StreamSupport;
 
@@ -21,6 +22,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
     private static final String DATABASE_NAME = "test_db";
     private static final String COLLECTION_NAME = "test_coll";
     private static final String INDEX_NAME = "test_index";
+
     @Test
     void should_fail_if_mongoClient_missing() {
         assertThrows(IllegalArgumentException.class, () -> {
@@ -92,6 +94,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
     void should_create_collection_and_index_if_not_exists() {
         MongoClient client = MongoClients.create(
                 MongoClientSettings.builder()
@@ -120,6 +123,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
     void should_not_create_index_if_createIndex_set_to_false() {
         MongoClient client = MongoClients.create(
                 MongoClientSettings.builder()

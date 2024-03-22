@@ -31,13 +31,13 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
-public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
+public class AzureCosmosDBMongoVCoreEmbeddingStoreIT extends EmbeddingStoreIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureCosmosDBMongoVCoreEmbeddingStoreIT.class);
     private static MongoClient client;
-    private EmbeddingModel embeddingModel;
-    private EmbeddingStore<TextSegment> embeddingStore;
-    private int dimensions;
+    private final EmbeddingModel embeddingModel;
+    private final EmbeddingStore<TextSegment> embeddingStore;
+    private final int dimensions;
 
 
     public AzureCosmosDBMongoVCoreEmbeddingStoreIT() {
@@ -97,6 +97,7 @@ public class AzureCosmosDBMongoVCoreEmbeddingStoreIT  extends EmbeddingStoreIT {
         assertThat(relevant.get(2).embedded().text()).isIn(content1, content3, content5);
         log.info("#3 relevant item: {}", relevant.get(2).embedded().text());
     }
+
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;
