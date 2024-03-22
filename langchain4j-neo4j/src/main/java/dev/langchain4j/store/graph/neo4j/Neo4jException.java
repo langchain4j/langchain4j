@@ -1,4 +1,4 @@
-package dev.langchain4j.graph.neo4j;
+package dev.langchain4j.store.graph.neo4j;
 
 public class Neo4jException extends RuntimeException {
 

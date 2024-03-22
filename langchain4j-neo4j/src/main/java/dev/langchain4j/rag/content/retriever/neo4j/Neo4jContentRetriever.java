@@ -1,11 +1,12 @@
-package dev.langchain4j.rag.content.retriever;
+package dev.langchain4j.rag.content.retriever.neo4j;
 
-import dev.langchain4j.graph.neo4j.Neo4jGraph;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.graph.neo4j.Neo4jGraph;
 import lombok.Builder;
 import org.neo4j.driver.Record;
 import org.neo4j.driver.internal.value.NodeValue;

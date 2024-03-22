@@ -1,9 +1,10 @@
-package dev.langchain4j.rag.content.retriever;
+package dev.langchain4j.rag.content.neo4j;
 
-import dev.langchain4j.graph.neo4j.Neo4jGraph;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.content.retriever.neo4j.Neo4jContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.graph.neo4j.Neo4jGraph;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,7 +27,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class Neo4jContentRetrieverTest {
+class Neo4jContentRetrieverIT {
 
     @Container
     private static final Neo4jContainer<?> neo4jContainer = new Neo4jContainer<>(DockerImageName.parse("neo4j:5.16.0"))
