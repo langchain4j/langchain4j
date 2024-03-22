@@ -13,7 +13,9 @@ public class OllamaImage {
 
     static final String BAKLLAVA_MODEL = "bakllava";
 
-    static final String PHI_MODEL = "phi";
+    static final String TINY_DOLPHIN_MODEL = "tinydolphin";
+
+    static final String ALL_MINILM_MODEL = "all-minilm";
 
     static DockerImageName resolve(String baseImage, String localImageName) {
         DockerImageName dockerImageName = DockerImageName.parse(baseImage);
@@ -24,5 +26,4 @@ public class OllamaImage {
         }
         return DockerImageName.parse(localImageName).asCompatibleSubstituteFor(baseImage);
     }
-
 }
