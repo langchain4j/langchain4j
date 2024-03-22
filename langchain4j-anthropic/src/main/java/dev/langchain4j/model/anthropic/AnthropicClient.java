@@ -234,13 +234,17 @@ class AnthropicClient {
 
                 if (t != null) {
                     handler.onError(t);
-                } else if (response != null) {
-                    try {
-                        if (response.body() != null) {
-                            handler.onError(new AnthropicHttpException(response.code(), response.body().string()));
+                }
+
+                if (response != null) {
+                    try (ResponseBody responseBody = response.body()) {
+                        if (responseBody != null) {
+                            handler.onError(new AnthropicHttpException(response.code(), responseBody.string()));
+                        } else {
+                            handler.onError(new AnthropicHttpException(response.code(), null));
                         }
                     } catch (IOException e) {
-                        handler.onError(new AnthropicHttpException(response.code(), null));
+                        handler.onError(new AnthropicHttpException(response.code(), "[error reading response body]"));
                     }
                 }
             }
