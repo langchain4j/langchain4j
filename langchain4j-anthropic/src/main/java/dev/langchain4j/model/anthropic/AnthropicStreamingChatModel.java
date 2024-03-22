@@ -11,6 +11,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicMessages;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicSystemPrompt;
@@ -113,10 +114,12 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+        ensureNotEmpty(messages, "messages");
+        ensureNotNull(handler, "handler");
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(ensureNotEmpty(messages, "messages")))
+                .messages(toAnthropicMessages(messages))
                 .system(toAnthropicSystemPrompt(messages))
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)

@@ -19,6 +19,7 @@ import java.util.concurrent.ExecutionException;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelIT.CAT_IMAGE_URL;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
@@ -118,7 +119,7 @@ class AnthropicStreamingChatModelIT {
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
-                .modelName("claude-3-opus-20240229")
+                .modelName(CLAUDE_3_SONNET_20240229)
                 .temperature(1.0)
                 .topP(1.0)
                 .topK(1)

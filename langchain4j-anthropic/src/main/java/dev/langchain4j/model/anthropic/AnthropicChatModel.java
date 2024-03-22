@@ -115,10 +115,11 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
+        ensureNotEmpty(messages, "messages");
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(ensureNotEmpty(messages, "messages")))
+                .messages(toAnthropicMessages(messages))
                 .system(toAnthropicSystemPrompt(messages))
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
