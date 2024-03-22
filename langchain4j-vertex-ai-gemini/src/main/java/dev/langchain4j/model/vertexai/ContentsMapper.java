@@ -30,10 +30,7 @@ class ContentsMapper {
             messages = mergeSystemMessagesIntoUserMessage(messages, systemMessages);
         }
 
-// TODO test with memory
-        // TODO what if only system messages
-        // TODO what if only AiMessage?
-
+        // TODO what if only a single system message?
 
         return messages.stream()
                 .map(message -> com.google.cloud.vertexai.api.Content.newBuilder()
