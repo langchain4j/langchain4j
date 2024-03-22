@@ -100,9 +100,11 @@ class OllamaStreamingLanguageModelIT extends AbstractOllamaLanguageModelInfrastr
     void should_propagate_failure_to_handler_onError() throws Exception {
 
         // given
+        String wrongModelName = "banana";
+
         StreamingLanguageModel model = OllamaStreamingLanguageModel.builder()
                 .baseUrl(ollama.getEndpoint())
-                .modelName("banana") // wrong model name
+                .modelName(wrongModelName)
                 .build();
 
         CompletableFuture<Throwable> future = new CompletableFuture<>();

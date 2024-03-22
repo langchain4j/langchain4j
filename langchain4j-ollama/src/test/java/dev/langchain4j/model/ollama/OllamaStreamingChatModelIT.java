@@ -83,12 +83,11 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(response.tokenUsage().outputTokenCount()).isBetween(numPredict, numPredict + 2); // bug in Ollama
     }
 
-
     @Test
     void should_respect_system_message() {
 
         // given
-        SystemMessage systemMessage = SystemMessage.from("Translate into German language");
+        SystemMessage systemMessage = SystemMessage.from("Translate messages from user into German");
         UserMessage userMessage = UserMessage.from("I love you");
 
         // when
@@ -155,9 +154,11 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
     void should_propagate_failure_to_handler_onError() throws Exception {
 
         // given
+        String wrongModelName = "banana";
+
         StreamingChatLanguageModel model = OllamaStreamingChatModel.builder()
                 .baseUrl(ollama.getEndpoint())
-                .modelName("banana") // wrong model name
+                .modelName(wrongModelName)
                 .build();
 
         CompletableFuture<Throwable> future = new CompletableFuture<>();
