@@ -18,6 +18,8 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
 
+        <module>langchain4j-easy-rag</module>
+
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
@@ -64,6 +66,7 @@
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+        <module>document-parsers/langchain4j-document-parser-apache-tika</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
