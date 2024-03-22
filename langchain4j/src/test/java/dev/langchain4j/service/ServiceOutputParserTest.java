@@ -1,5 +1,9 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.Response;
+import lombok.Builder;
+import lombok.Data;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
@@ -11,10 +15,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ServiceOutputParserTest {
 
+    @Data
+    @Builder
     static class Person {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
+    }
+
+    @Test
+    void parse_SimplePerson() {
+        String output = "dev.langchain4j.service.ServiceOutputParserTest$Person: {\n" +
+                "\"firstName\": \"firstName\",\n" +
+                "\"lastName\": \"lastName\",\n" +
+                "\"birthDate\": \"2023-12-30\"\n" +
+                "}";
+        Person personExpected = Person.builder().firstName("firstName").lastName("lastName").birthDate(LocalDate.of(2023, 12, 30)).build();
+        Object person = ServiceOutputParser.parse(Response.from(AiMessage.from(output)), Person.class);
+        assertThat(person).isEqualTo(personExpected);
     }
 
     @Test
