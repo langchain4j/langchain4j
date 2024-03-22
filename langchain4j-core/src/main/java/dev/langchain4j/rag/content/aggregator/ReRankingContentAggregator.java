@@ -13,6 +13,7 @@ import java.util.function.Function;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -74,6 +75,10 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
     @Override
     public List<Content> aggregate(Map<Query, Collection<List<Content>>> queryToContents) {
+
+        if (queryToContents.isEmpty()) {
+            return emptyList();
+        }
 
         // Select a query against which all contents will be re-ranked
         Query query = querySelector.apply(queryToContents);
