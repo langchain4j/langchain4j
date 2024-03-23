@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.retriever.neo4j;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.graph.neo4j.Neo4jGraph;
@@ -32,6 +33,8 @@ class Neo4jContentRetrieverIT {
 
     private static Driver driver;
 
+    private static Neo4jGraph graph;
+
     private static Neo4jContentRetriever retriever;
 
     @Mock
@@ -42,11 +45,13 @@ class Neo4jContentRetrieverIT {
 
         neo4jContainer.start();
         driver = GraphDatabase.driver(neo4jContainer.getBoltUrl(), AuthTokens.none());
+        graph = Neo4jGraph.builder().driver(driver).build();
     }
 
     @AfterAll
     static void afterAll() {
 
+        graph.close();
         driver.close();
         neo4jContainer.stop();
     }
@@ -54,7 +59,6 @@ class Neo4jContentRetrieverIT {
     @BeforeEach
     void setUp() {
 
-        Neo4jGraph graph = Neo4jGraph.builder().driver(driver).build();
         try (Session session = driver.session()) {
             session.run("CREATE (book:Book {title: 'Dune'})<-[:WROTE]-(author:Person {name: 'Frank Herbert'})");
         }
@@ -93,6 +97,33 @@ class Neo4jContentRetrieverIT {
 
         // When
         List<Content> contents = retriever.retrieve(query);
+
+        // Then
+        assertEquals(1, contents.size());
+    }
+
+    @Test
+    void shouldRetrieveContentWhenQueryIsValidAndOpenAiChatModelIsUsed() {
+
+        // With
+        ChatLanguageModel openAiChatModel = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        Neo4jContentRetriever neo4jContentRetriever = Neo4jContentRetriever.builder()
+                .graph(graph)
+                .chatLanguageModel(openAiChatModel)
+                .build();
+
+        // Given
+        Query query = new Query("Who is the author of the book 'Dune'?");
+
+        // When
+        List<Content> contents = neo4jContentRetriever.retrieve(query);
 
         // Then
         assertEquals(1, contents.size());
