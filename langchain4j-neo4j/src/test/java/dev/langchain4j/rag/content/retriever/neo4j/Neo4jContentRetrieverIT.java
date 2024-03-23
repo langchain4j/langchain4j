@@ -1,14 +1,10 @@
-package dev.langchain4j.rag.content.neo4j;
+package dev.langchain4j.rag.content.retriever.neo4j;
 
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.rag.content.retriever.neo4j.Neo4jContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.graph.neo4j.Neo4jGraph;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,6 +30,8 @@ class Neo4jContentRetrieverIT {
             .withoutAuthentication()
             .withLabsPlugins("apoc");
 
+    private static Driver driver;
+
     private static Neo4jContentRetriever retriever;
 
     @Mock
@@ -43,18 +41,19 @@ class Neo4jContentRetrieverIT {
     static void beforeAll() {
 
         neo4jContainer.start();
+        driver = GraphDatabase.driver(neo4jContainer.getBoltUrl(), AuthTokens.none());
     }
 
     @AfterAll
     static void afterAll() {
 
+        driver.close();
         neo4jContainer.stop();
     }
 
     @BeforeEach
     void setUp() {
 
-        Driver driver = GraphDatabase.driver(neo4jContainer.getBoltUrl(), AuthTokens.none());
         Neo4jGraph graph = Neo4jGraph.builder().driver(driver).build();
         try (Session session = driver.session()) {
             session.run("CREATE (book:Book {title: 'Dune'})<-[:WROTE]-(author:Person {name: 'Frank Herbert'})");
@@ -65,11 +64,32 @@ class Neo4jContentRetrieverIT {
                 .build();
     }
 
+    @AfterEach
+    void tearDown() {
+
+        try (Session session = driver.session()) {
+            session.run("MATCH (n) DETACH DELETE n");
+        }
+    }
+
     @Test
     void shouldRetrieveContentWhenQueryIsValid() {
         // Given
         Query query = new Query("Who is the author of the book 'Dune'?");
         when(chatLanguageModel.generate(anyString())).thenReturn("MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output");
+
+        // When
+        List<Content> contents = retriever.retrieve(query);
+
+        // Then
+        assertEquals(1, contents.size());
+    }
+
+    @Test
+    void shouldRetrieveContentWhenQueryIsValidAndResponseHasBackticks() {
+        // Given
+        Query query = new Query("Who is the author of the book 'Dune'?");
+        when(chatLanguageModel.generate(anyString())).thenReturn("```MATCH(book:Book {title: 'Dune'})<-[:WROTE]-(author:Person) RETURN author.name AS output```");
 
         // When
         List<Content> contents = retriever.retrieve(query);
