@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -24,7 +25,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  */
 public class Neo4jContentRetriever implements ContentRetriever {
 
-    private static final PromptTemplate CYPHER_PROMPT_TEMPLATE = PromptTemplate.from("""
+    private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from("""
             Based on the Neo4j graph schema below, write a Cypher query that would answer the user's question:
             {{schema}}
 
@@ -38,11 +39,14 @@ public class Neo4jContentRetriever implements ContentRetriever {
 
     private final ChatLanguageModel chatLanguageModel;
 
+    private final PromptTemplate promptTemplate;
+
     @Builder
-    public Neo4jContentRetriever(Neo4jGraph graph, ChatLanguageModel chatLanguageModel) {
+    public Neo4jContentRetriever(Neo4jGraph graph, ChatLanguageModel chatLanguageModel, PromptTemplate promptTemplate) {
 
         this.graph = ensureNotNull(graph, "graph");
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
+        this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
     }
 
     @Override
@@ -57,7 +61,7 @@ public class Neo4jContentRetriever implements ContentRetriever {
 
     private String generateCypherQuery(String schema, String question) {
 
-        Prompt cypherPrompt = CYPHER_PROMPT_TEMPLATE.apply(Map.of("schema", schema, "question", question));
+        Prompt cypherPrompt = promptTemplate.apply(Map.of("schema", schema, "question", question));
         String cypherQuery = chatLanguageModel.generate(cypherPrompt.text());
         Matcher matcher = BACKTICKS_PATTERN.matcher(cypherQuery);
         if (matcher.find()) {
