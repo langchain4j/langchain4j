@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
@@ -42,7 +43,8 @@ class DefaultMistralAiHelper {
 
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
-            if (!aiMessage.hasToolExecutionRequests()){
+
+            if (!aiMessage.hasToolExecutionRequests()) {
                 return MistralAiChatMessage.builder()
                         .role(MistralAiRole.ASSISTANT)
                         .content(aiMessage.text())
@@ -52,6 +54,14 @@ class DefaultMistralAiHelper {
             List<MistralAiToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
                     .map(DefaultMistralAiHelper::toMistralAiToolCall)
                     .collect(toList());
+
+            if (isNullOrBlank(aiMessage.text())){
+                return MistralAiChatMessage.builder()
+                        .role(MistralAiRole.ASSISTANT)
+                        .content(null)
+                        .toolCalls(toolCalls)
+                        .build();
+            }
 
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.ASSISTANT)

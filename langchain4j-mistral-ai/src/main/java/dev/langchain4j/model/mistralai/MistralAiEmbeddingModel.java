@@ -105,5 +105,15 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
     public static class MistralAiEmbeddingModelBuilder {
         public MistralAiEmbeddingModelBuilder() {
         }
+
+        public MistralAiEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public MistralAiEmbeddingModelBuilder modelName(MistralAiEmbeddingModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
     }
 }

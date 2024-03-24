@@ -32,7 +32,7 @@ class MistralAiChatModelIT {
 
     ChatLanguageModel mistralLargeModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST.toString())
+            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
             .temperature(0.1)
             .logRequests(true)
             .logResponses(true)
@@ -154,7 +154,7 @@ class MistralAiChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8x7B.toString())
+                .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8x7B)
                 .temperature(0.1)
                 .logRequests(true)
                 .logResponses(true)
@@ -183,7 +183,7 @@ class MistralAiChatModelIT {
         // given - Mistral Small = Mistral-8X7B
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8x7B.toString())
+                .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8x7B)
                 .temperature(0.1)
                 .logRequests(true)
                 .logResponses(true)
@@ -212,7 +212,7 @@ class MistralAiChatModelIT {
         // given - Mistral Medium 2312.
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_MEDIUM_LATEST.toString())
+                .modelName(MistralAiChatModelName.MISTRAL_MEDIUM_LATEST)
                 .maxTokens(10)
                 .logRequests(true)
                 .logResponses(true)
@@ -247,7 +247,7 @@ class MistralAiChatModelIT {
 
         // then
         AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNullOrEmpty();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -283,7 +283,7 @@ class MistralAiChatModelIT {
 
         // then
         AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNullOrEmpty();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -382,9 +382,9 @@ class MistralAiChatModelIT {
 
         ChatLanguageModel mistralLargeModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST.toString())
+                .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
                 .temperature(0.1)
-                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT.toString())
+                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -416,7 +416,7 @@ class MistralAiChatModelIT {
 
         // then
         AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNullOrEmpty();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
 
         ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);

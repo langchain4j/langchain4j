@@ -179,5 +179,25 @@ public class MistralAiChatModel implements ChatLanguageModel {
     public static class MistralAiChatModelBuilder {
         public MistralAiChatModelBuilder() {
         }
+
+        public MistralAiChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public MistralAiChatModelBuilder modelName(MistralAiChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
+
+        public MistralAiChatModelBuilder responseFormat(String responseFormat) {
+            this.responseFormat = responseFormat;
+            return this;
+        }
+
+        public MistralAiChatModelBuilder responseFormat(MistralAiResponseFormatType responseFormat) {
+            this.responseFormat = responseFormat.toString();
+            return this;
+        }
     }
 }

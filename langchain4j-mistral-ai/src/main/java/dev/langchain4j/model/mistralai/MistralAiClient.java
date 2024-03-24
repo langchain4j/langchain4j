@@ -24,8 +24,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
 
 class MistralAiClient {
@@ -137,7 +136,7 @@ class MistralAiClient {
                         MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
 
                         String chunk = choice.getDelta().getContent();
-                        if (chunk != null){
+                        if (isNotNullOrBlank(chunk)) {
                             contentBuilder.append(chunk);
                             handler.onNext(chunk);
                         }
