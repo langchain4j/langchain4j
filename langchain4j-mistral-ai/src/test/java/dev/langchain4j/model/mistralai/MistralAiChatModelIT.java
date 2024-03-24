@@ -264,7 +264,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_function_when_toolChoice_is_auto_and_answer(){
+    void should_execute_tool_when_toolChoice_is_auto_and_answer(){
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
