@@ -47,7 +47,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
      * @param safePrompt   a flag indicating whether to use a safe prompt for generating chat responses
      * @param randomSeed   the random seed for generating chat responses
      *                     (if not specified, a random number is used)
-     * @param responseFormat the response format for generating chat responses
+     * @param responseFormat the response format for generating chat responses. Current values supported are "text" and "json_object".
      * @param logRequests  a flag indicating whether to log raw HTTP requests
      * @param logResponses a flag indicating whether to log raw HTTP responses
      * @param timeout      the timeout duration for API requests
