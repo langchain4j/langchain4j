@@ -236,7 +236,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_return_toolCalls_as_finishReason(){
+    void should_execute_tool_and_return_finishReason_tool_execution(){
 
         // given
         UserMessage userMessage = userMessage("What is the status of transaction T123?");
