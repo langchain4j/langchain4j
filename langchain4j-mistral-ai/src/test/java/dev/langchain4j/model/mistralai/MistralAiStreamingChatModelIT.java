@@ -258,7 +258,7 @@ class MistralAiStreamingChatModelIT {
 
         // then
         AiMessage aiMessage = response.content();
-        //assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.text()).isNull();
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
 
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
