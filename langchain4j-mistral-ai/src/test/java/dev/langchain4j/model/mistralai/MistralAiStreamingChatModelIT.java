@@ -392,7 +392,7 @@ class MistralAiStreamingChatModelIT {
     }
 
     @Test
-    void should_multiple_tools_then_answer(){
+    void should_execute_multiple_tools_then_answer(){
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
