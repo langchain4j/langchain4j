@@ -51,6 +51,7 @@ jobs:
           GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
           HF_API_KEY: ${{ secrets.HF_API_KEY }}
           MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
+          MILVUS_URI: ${{ secrets.MILVUS_URI }}
           MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
           MONGODB_ATLAS_USERNAME: ${{ secrets.MONGODB_ATLAS_USERNAME }}
           MONGODB_ATLAS_PASSWORD: ${{ secrets.MONGODB_ATLAS_PASSWORD }}
