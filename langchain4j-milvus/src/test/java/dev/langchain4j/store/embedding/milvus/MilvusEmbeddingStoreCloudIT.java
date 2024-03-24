@@ -20,7 +20,7 @@ class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     private static final String COLLECTION_NAME = "test_collection";
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
-            .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com") // TODO env var
+            .uri(System.getenv("MILVUS_URI"))
             .token(System.getenv("MILVUS_API_KEY"))
             .collectionName(COLLECTION_NAME)
             .dimension(384)
@@ -50,7 +50,7 @@ class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
         boolean retrieveEmbeddingsOnSearch = false;
 
         EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
-                .uri("https://in03-d11858f677102da.api.gcp-us-west1.zillizcloud.com") // TODO env var
+                .uri(System.getenv("MILVUS_URI"))
                 .token(System.getenv("MILVUS_API_KEY"))
                 .collectionName("test")
                 .dimension(384)
