@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 @Getter
 @SuperBuilder
-public class BedrockMistralAIChatModel extends AbstractBedrockChatModel<BedrockMistralAIChatModelResponse> {
+public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockMistralAIChatModelResponse> {
     
     @Builder.Default
     private final int topK = 200;
