@@ -62,9 +62,14 @@ public class OpenAiModerationModel implements ModerationModel {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
         this.maxRetries = getOrDefault(maxRetries, 3);
+    }
+
+    public String modelName() {
+        return modelName;
     }
 
     @Override

@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiChatCompletionRequest {
+public class MistralAiChatCompletionRequest {
 
     private String model;
     private List<MistralAiChatMessage> messages;

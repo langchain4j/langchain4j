@@ -9,10 +9,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.List;
+
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.output.FinishReason.*;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,7 +36,6 @@ class QianfanChatModelIT {
             .addParameter("first", INTEGER)
             .addParameter("second", INTEGER)
             .build();
-
 
 
     @Test
@@ -114,6 +115,7 @@ class QianfanChatModelIT {
 
 
     }
+
     @Test
     void should_generate_answer_with_system_message() {
 
@@ -123,9 +125,28 @@ class QianfanChatModelIT {
         SystemMessage systemMessage = SystemMessage.from("Please add the word hello before each answer");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage,systemMessage);
+        Response<AiMessage> response = model.generate(userMessage, systemMessage);
 
         // then
+        assertThat(response.content().text()).containsIgnoringCase("hello");
+
+    }
+
+    @Test
+    void should_generate_answer_with_even_number_of_messages() {
+
+        // Assume this history message has been removed because of the chat memory's sliding window mechanism.
+        UserMessage historyMessage = userMessage("Where is the capital of China");
+
+        AiMessage aiMessage = AiMessage.aiMessage("Hello, The capital of China is Beijing.");
+
+        UserMessage userMessage = userMessage("What are the districts of Beijing?");
+
+        SystemMessage systemMessage = SystemMessage.from("Please add the word hello before each answer");
+
+        // length of message is even excluding system message.
+        Response<AiMessage> response = model.generate(aiMessage, userMessage, systemMessage);
+
         assertThat(response.content().text()).containsIgnoringCase("hello");
 
     }

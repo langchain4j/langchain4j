@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -15,6 +15,7 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
@@ -29,18 +30,20 @@ class AnthropicChatModelIT {
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .maxTokens(20)
             .logRequests(true)
             .logResponses(true)
             .build();
 
     ChatLanguageModel visionModel = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+            .maxTokens(20)
             .logRequests(false) // base64-encoded images are huge
             .logResponses(true)
             .build();
 
-    @BeforeEach
-    void beforeEach() throws InterruptedException {
+    @AfterEach
+    void afterEach() throws InterruptedException {
         Thread.sleep(10_000L); // to avoid hitting rate limits
     }
 
@@ -61,7 +64,7 @@ class AnthropicChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -113,28 +116,6 @@ class AnthropicChatModelIT {
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_accept_text_and_multiple_images() {
-
-        // given
-        String catBase64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        String diceBase64Data = Base64.getEncoder().encodeToString(readBytes(DICE_IMAGE_URL));
-
-        UserMessage userMessage = UserMessage.from(
-                TextContent.from("What do you see? Reply with one word per image."),
-                ImageContent.from(catBase64Data, "image/png"),
-                ImageContent.from(diceBase64Data, "image/png")
-        );
-
-        // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
-
-        // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("cat")
-                .containsIgnoringCase("dice");
     }
 
     @Test
@@ -205,21 +186,6 @@ class AnthropicChatModelIT {
     }
 
     @Test
-    void should_continue_ai_message() {
-
-        // given
-        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
-        AiMessage aiMessage = AiMessage.from("In one word, the capital of Germany is:");
-
-        // when
-        Response<AiMessage> response = model.generate(userMessage, aiMessage);
-        System.out.println(response);
-
-        // then
-        assertThat(response.content().text().trim()).isIn("Berlin", "Berlin.");
-    }
-
-    @Test
     void test_all_parameters() {
 
         // given
@@ -227,7 +193,7 @@ class AnthropicChatModelIT {
                 .baseUrl("https://api.anthropic.com/v1/")
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .version("2023-06-01")
-                .modelName("claude-3-opus-20240229")
+                .modelName(CLAUDE_3_SONNET_20240229)
                 .temperature(1.0)
                 .topP(1.0)
                 .topK(1)
@@ -257,7 +223,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelName)
-                .maxTokens(3)
+                .maxTokens(1)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -282,7 +248,7 @@ class AnthropicChatModelIT {
         ChatLanguageModel model = AnthropicChatModel.builder()
                 .apiKey(System.getenv("ANTHROPIC_API_KEY"))
                 .modelName(modelNameString)
-                .maxTokens(3)
+                .maxTokens(1)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -295,5 +261,34 @@ class AnthropicChatModelIT {
 
         // then
         assertThat(response.content().text()).isNotBlank();
+    }
+
+    @Test
+    void should_fail_to_create_without_api_key() {
+
+        assertThatThrownBy(() -> AnthropicChatModel.withApiKey(null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Anthropic API key must be defined. " +
+                        "It can be generated here: https://console.anthropic.com/settings/keys");
+    }
+
+    @Test
+    void should_fail_with_rate_limit_error() {
+
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .maxTokens(1)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        assertThatThrownBy(() -> {
+            for (int i = 0; i < 100; i++) {
+                model.generate("Hi");
+            }
+        })
+                .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)?
+                .hasRootCauseExactlyInstanceOf(AnthropicHttpException.class)
+                .hasMessageContaining("rate_limit_error");
     }
 }

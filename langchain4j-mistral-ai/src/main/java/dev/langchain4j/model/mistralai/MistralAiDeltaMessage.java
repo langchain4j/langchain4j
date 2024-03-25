@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiDeltaMessage {
+public class MistralAiDeltaMessage {
 
     private MistralAiRole role;
     private String content;

@@ -20,7 +20,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
-class DefaultMistralAiHelper {
+public class DefaultMistralAiHelper {
 
     static final String MISTRALAI_API_URL = "https://api.mistral.ai/v1";
     static final String MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT = "float";
@@ -33,7 +33,7 @@ class DefaultMistralAiHelper {
                 .collect(toList());
     }
 
-    private static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
+    static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
         if (message instanceof SystemMessage) {
             return MistralAiChatMessage.builder()
                     .role(MistralAiRole.SYSTEM)
@@ -88,7 +88,7 @@ class DefaultMistralAiHelper {
         throw new IllegalArgumentException("Unknown message type: " + message.type());
     }
 
-    private static MistralAiToolCall toMistralAiToolCall(ToolExecutionRequest toolExecutionRequest) {
+    static MistralAiToolCall toMistralAiToolCall(ToolExecutionRequest toolExecutionRequest) {
         return MistralAiToolCall.builder()
                 .id(toolExecutionRequest.id())
                 .function(MistralAiFunctionCall.builder()
@@ -98,7 +98,7 @@ class DefaultMistralAiHelper {
                 .build();
     }
 
-    static TokenUsage tokenUsageFrom(MistralAiUsage mistralAiUsage) {
+    public static TokenUsage tokenUsageFrom(MistralAiUsage mistralAiUsage) {
         if (mistralAiUsage == null) {
             return null;
         }
@@ -109,7 +109,7 @@ class DefaultMistralAiHelper {
         );
     }
 
-    static FinishReason finishReasonFrom(String mistralAiFinishReason) {
+    public static FinishReason finishReasonFrom(String mistralAiFinishReason) {
         if (mistralAiFinishReason == null) {
             return null;
         }
@@ -128,7 +128,7 @@ class DefaultMistralAiHelper {
         }
     }
 
-    static AiMessage aiMessageFrom(MistralAiChatCompletionResponse response) {
+    public static AiMessage aiMessageFrom(MistralAiChatCompletionResponse response) {
         MistralAiChatMessage aiMistralMessage = response.getChoices().get(0).getMessage();
         List<MistralAiToolCall> toolCalls = aiMistralMessage.getToolCalls();
         if (!isNullOrEmpty(toolCalls)){
@@ -137,14 +137,14 @@ class DefaultMistralAiHelper {
         return  AiMessage.from(aiMistralMessage.getContent());
     }
 
-    static List<ToolExecutionRequest> toToolExecutionRequests(List<MistralAiToolCall> mistralAiToolCalls) {
+    public static List<ToolExecutionRequest> toToolExecutionRequests(List<MistralAiToolCall> mistralAiToolCalls) {
         return mistralAiToolCalls.stream()
                 .filter(toolCall -> toolCall.getType() == MistralAiToolType.FUNCTION)
                 .map(DefaultMistralAiHelper::toToolExecutionRequest)
                 .collect(toList());
     }
 
-    private static ToolExecutionRequest toToolExecutionRequest(MistralAiToolCall mistralAiToolCall) {
+    public static ToolExecutionRequest toToolExecutionRequest(MistralAiToolCall mistralAiToolCall) {
         return ToolExecutionRequest.builder()
                 .id(mistralAiToolCall.getId())
                 .name(mistralAiToolCall.getFunction().getName())
@@ -158,7 +158,7 @@ class DefaultMistralAiHelper {
                 .collect(toList());
     }
 
-    private static MistralAiTool toMistralAiTool(ToolSpecification toolSpecification) {
+    static MistralAiTool toMistralAiTool(ToolSpecification toolSpecification) {
         MistralAiFunction function = MistralAiFunction.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
@@ -167,7 +167,7 @@ class DefaultMistralAiHelper {
         return MistralAiTool.from(function);
     }
 
-    private static MistralAiParameters toMistralAiParameters(ToolParameters parameters){
+    static MistralAiParameters toMistralAiParameters(ToolParameters parameters){
         if (parameters == null) {
             return MistralAiParameters.builder().build();
         }
