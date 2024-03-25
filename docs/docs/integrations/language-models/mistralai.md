@@ -21,7 +21,7 @@ For Maven project `pom.xml`
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
-<artifactId>langchain4j-mistral-ai</artifactId>
+    <artifactId>langchain4j-mistral-ai</artifactId>
 <version>{your-version}</version>
 </dependency>
 ```
