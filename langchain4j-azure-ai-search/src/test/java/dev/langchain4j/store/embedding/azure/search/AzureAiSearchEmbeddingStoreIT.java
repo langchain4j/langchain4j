@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.*;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
@@ -36,6 +37,11 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .apiKey(System.getenv("AZURE_SEARCH_KEY"))
                 .dimensions(dimensions)
                 .build();
+    }
+
+    @BeforeEach
+    void setUp() {
+        clearStore();
     }
 
     @Test
@@ -83,8 +89,12 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     @Override
     protected void clearStore() {
         AzureAiSearchEmbeddingStore azureAiSearchEmbeddingStore = (AzureAiSearchEmbeddingStore) embeddingStore;
-        azureAiSearchEmbeddingStore.deleteIndex();
-        azureAiSearchEmbeddingStore.createOrUpdateIndex(dimensions);
+        try {
+            azureAiSearchEmbeddingStore.deleteIndex();
+            azureAiSearchEmbeddingStore.createOrUpdateIndex(dimensions);
+        } catch (RuntimeException e) {
+            log.error("Failed to clean up the index. You should look at deleting it manually.", e);
+        }
     }
 
     @Override

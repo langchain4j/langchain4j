@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.BasicAuthenticationCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.credential.TokenRequestContext;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.SearchResult;
 import com.azure.search.documents.models.SemanticSearchResult;
@@ -56,7 +55,7 @@ public class AzureAiSearchContentRetrieverTest {
             new AzureAiSearchContentRetriever(endpoint, null, tokenCredential, true, 0, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("either dimensions or index must be set", e.getMessage());
+            assertEquals("dimensions must be set to a positive, non-zero integer between 2 and 3072", e.getMessage());
         }
 
         // Test dimensions > 0, for a full text search
