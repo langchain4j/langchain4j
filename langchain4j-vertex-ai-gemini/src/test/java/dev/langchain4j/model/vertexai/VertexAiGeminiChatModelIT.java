@@ -15,15 +15,19 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 class VertexAiGeminiChatModelIT {
@@ -65,17 +69,65 @@ class VertexAiGeminiChatModelIT {
         assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
-    @Test
-    void should_deny_system_message() {
+    @ParameterizedTest
+    @MethodSource
+    void should_merge_system_messages_into_user_message(List<ChatMessage> messages) {
 
-        // given
-        SystemMessage systemMessage = SystemMessage.from("Be polite");
-        UserMessage userMessage = UserMessage.from("Tell me a joke");
+        // when
+        Response<AiMessage> response = model.generate(messages);
 
-        // when-then
-        assertThatThrownBy(() -> model.generate(systemMessage, userMessage))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("SystemMessage is currently not supported by Gemini");
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("liebe");
+    }
+
+    static Stream<Arguments> should_merge_system_messages_into_user_message() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from("I love you")
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                UserMessage.from("I love you"),
+                                SystemMessage.from("Translate in German")
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in Italian"),
+                                UserMessage.from("I love you"),
+                                SystemMessage.from("No, translate in German!")
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from(asList(
+                                        TextContent.from("I love you"),
+                                        TextContent.from("I see you")
+                                ))
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from(asList(
+                                        TextContent.from("I see you"),
+                                        TextContent.from("I love you")
+                                ))
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from("I see you"),
+                                AiMessage.from("Ich sehe dich"),
+                                UserMessage.from("I love you")
+                        )
+                ))
+                .build();
     }
 
     @Test
@@ -104,7 +156,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
