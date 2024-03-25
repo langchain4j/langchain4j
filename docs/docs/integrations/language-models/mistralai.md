@@ -20,7 +20,7 @@ For Maven project `pom.xml`
 </dependency>
 
 <dependency>
-<groupId>dev.langchain4j</groupId>
+    <groupId>dev.langchain4j</groupId>
 <artifactId>langchain4j-mistral-ai</artifactId>
 <version>{your-version}</version>
 </dependency>
