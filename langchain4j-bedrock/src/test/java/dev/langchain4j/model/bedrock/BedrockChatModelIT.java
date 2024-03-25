@@ -1,13 +1,14 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
+import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.bedrock.BedrockMistralAIChatModel.Types;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -289,14 +290,14 @@ public class BedrockChatModelIT {
     
     @Test
     @Disabled("To run this test, you must have provide your own access key, secret, region")
-    void testBedrockMistralAI7bInstructChatModel() {
+    void testBedrockMistralAi7bInstructChatModel() {
         
-        BedrockMistralAIChatModel bedrockChatModel = BedrockMistralAIChatModel
+        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
             .builder()
             .temperature(0.50f)
             .maxTokens(300)
             .region(Region.US_EAST_1)
-            .model(Types.Mistral7bInstructV0_2.getValue())
+            .model(Mistral7bInstructV0_2.getValue())
             .maxRetries(1)
             .build();
         
@@ -316,14 +317,14 @@ public class BedrockChatModelIT {
     
     @Test
     @Disabled("To run this test, you must have provide your own access key, secret, region")
-    void testBedrockMistralAIMixtral8x7bInstructChatModel() {
+    void testBedrockMistralAiMixtral8x7bInstructChatModel() {
         
-        BedrockMistralAIChatModel bedrockChatModel = BedrockMistralAIChatModel
+        BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
             .builder()
             .temperature(0.50f)
             .maxTokens(300)
             .region(Region.US_EAST_1)
-            .model(Types.MistralMixtral8x7bInstructV0_1.getValue())
+            .model(MistralMixtral8x7bInstructV0_1.getValue())
             .maxRetries(1)
             .build();
         
