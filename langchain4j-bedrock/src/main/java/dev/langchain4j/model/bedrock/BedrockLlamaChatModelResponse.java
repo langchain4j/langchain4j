@@ -7,25 +7,28 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * Bedrock Anthropic Invoke response
+ * Bedrock Llama Invoke response
  */
 @Getter
 @Setter
-public class BedrockAnthropicChatModelResponse implements BedrockChatModelResponse {
-    private String completion;
+public class BedrockLlamaChatModelResponse implements BedrockChatModelResponse {
+    
+    private String generation;
+    private int prompt_token_count;
+    private int generation_token_count;
     private String stop_reason;
 
     @Override
     public String getOutputText() {
-        return completion;
+        return generation;
     }
 
     @Override
     public FinishReason getFinishReason() {
         switch (stop_reason) {
-            case "stop_sequence":
+            case "stop":
                 return FinishReason.STOP;
-            case "max_tokens":
+            case "length":
                 return FinishReason.LENGTH;
             default:
                 throw new IllegalArgumentException("Unknown stop reason: " + stop_reason);
@@ -34,6 +37,6 @@ public class BedrockAnthropicChatModelResponse implements BedrockChatModelRespon
 
     @Override
     public TokenUsage getTokenUsage() {
-        return null;
+        return new TokenUsage(prompt_token_count, generation_token_count);
     }
 }

@@ -23,7 +23,7 @@ public class BedrockEmbeddingIT {
                 .builder()
                 .region(Region.US_EAST_1)
                 .maxRetries(1)
-                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV1)
+                .model(BedrockTitanEmbeddingModel.Types.TitanEmbedTextV1.getValue())
                 .build();
 
         assertThat(embeddingModel).isNotNull();
