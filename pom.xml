@@ -18,6 +18,8 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
 
+        <module>langchain4j-easy-rag</module>
+
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
