@@ -63,6 +63,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     public AzureAiSearchContentRetriever(String endpoint,
                                          AzureKeyCredential keyCredential,
                                          TokenCredential tokenCredential,
+                                         boolean createOrUpdateIndex,
                                          int dimensions,
                                          SearchIndex index,
                                          EmbeddingModel embeddingModel,
@@ -81,15 +82,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, dimensions, null);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null);
             } else {
-                this.initialize(endpoint, null, tokenCredential, 0, index);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, dimensions, null);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null);
             } else {
-                this.initialize(endpoint, keyCredential, null, 0, index);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index);
             }
         }
         this.embeddingModel = embeddingModel;
@@ -262,17 +263,19 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
     }
 
-    public static AzureAiSearchContentRetrieverBuilder builder() {
-        return new AzureAiSearchContentRetrieverBuilder();
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static class AzureAiSearchContentRetrieverBuilder {
+    public static class Builder {
 
         private String endpoint;
 
         private AzureKeyCredential keyCredential;
 
         private TokenCredential tokenCredential;
+
+        private boolean createOrUpdateIndex = true;
 
         private int dimensions;
 
@@ -292,7 +295,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param endpoint The Azure AI Search endpoint in the format: https://{resource}.search.windows.net
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder endpoint(String endpoint) {
+        public Builder endpoint(String endpoint) {
             this.endpoint = endpoint;
             return this;
         }
@@ -303,7 +306,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param apiKey The Azure AI Search API key.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder apiKey(String apiKey) {
+        public Builder apiKey(String apiKey) {
             this.keyCredential = new AzureKeyCredential(apiKey);
             return this;
         }
@@ -314,8 +317,19 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param tokenCredential the credentials to authenticate with Azure Active Directory
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder tokenCredential(TokenCredential tokenCredential) {
+        public Builder tokenCredential(TokenCredential tokenCredential) {
             this.tokenCredential = tokenCredential;
+            return this;
+        }
+
+        /**
+         * Whether to create or update the search index.
+         *
+         * @param createOrUpdateIndex Whether to create or update the index.
+         * @return builder
+         */
+        public Builder createOrUpdateIndex(boolean createOrUpdateIndex) {
+            this.createOrUpdateIndex = createOrUpdateIndex;
             return this;
         }
 
@@ -326,7 +340,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param dimensions The number of dimensions of the embeddings.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder dimensions(int dimensions) {
+        public Builder dimensions(int dimensions) {
             this.dimensions = dimensions;
             return this;
         }
@@ -338,7 +352,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param index The index to be used.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder index(SearchIndex index) {
+        public Builder index(SearchIndex index) {
             this.index = index;
             return this;
         }
@@ -349,7 +363,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param embeddingModel The Embedding Model.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder embeddingModel(EmbeddingModel embeddingModel) {
+        public Builder embeddingModel(EmbeddingModel embeddingModel) {
             this.embeddingModel = embeddingModel;
             return this;
         }
@@ -360,7 +374,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param maxResults The maximum number of {@link Content}s to retrieve.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder maxResults(int maxResults) {
+        public Builder maxResults(int maxResults) {
             this.maxResults = maxResults;
             return this;
         }
@@ -372,7 +386,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param minScore The minimum relevance score for the returned {@link Content}s.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder minScore(double minScore) {
+        public Builder minScore(double minScore) {
             this.minScore = minScore;
             return this;
         }
@@ -383,13 +397,13 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
          * @param azureAiSearchQueryType The Azure AI Search Query Type.
          * @return builder
          */
-        public AzureAiSearchContentRetrieverBuilder queryType(AzureAiSearchQueryType azureAiSearchQueryType) {
+        public Builder queryType(AzureAiSearchQueryType azureAiSearchQueryType) {
             this.azureAiSearchQueryType = azureAiSearchQueryType;
             return this;
         }
 
         public AzureAiSearchContentRetriever build() {
-            return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, dimensions, index,
+            return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, createOrUpdateIndex, dimensions, index,
                     embeddingModel, maxResults, minScore, azureAiSearchQueryType);
         }
     }

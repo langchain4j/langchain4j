@@ -35,16 +35,11 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
     private final int dimensions;
 
     public AzureAiSearchContentRetrieverIT() {
-
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
-
         contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
-
         contentRetrieverWithFullText =  createContentRetriever(AzureAiSearchQueryType.FULL_TEXT);
-
         contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID);
-
         contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
     }
 
