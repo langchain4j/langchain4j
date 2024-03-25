@@ -179,10 +179,18 @@ public class InternalQianfanHelper {
 
     }
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
-        return messages.stream()
+         List<Message> aiMessages = messages.stream()
                 .filter(chatMessage -> !(chatMessage instanceof SystemMessage))
                 .map(InternalQianfanHelper::toQianfanMessage)
                 .collect(toList());
+
+         // ensure the length of messages is odd
+        if(aiMessages.size() == 0 || aiMessages.size() % 2 == 1){
+            return aiMessages;
+        }
+
+        aiMessages.remove(0);
+        return aiMessages;
     }
 
 

@@ -5,6 +5,6 @@ import lombok.Builder;
 @Builder
 class AnthropicMessage {
 
-    private final AnthropicRole role;
-    private final Object content;
+    AnthropicRole role;
+    Object content;
 }

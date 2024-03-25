@@ -84,30 +84,26 @@ class AnthropicMapper {
         }
     }
 
-    static AiMessage toAiMessage(List<AnthropicCreateMessageResponse.Content> contents) {
+    static AiMessage toAiMessage(List<AnthropicContent> contents) {
         String text = contents.stream()
-                .filter(content -> "text".equals(content.getType()))
-                .map(AnthropicCreateMessageResponse.Content::getText)
+                .filter(content -> "text".equals(content.type))
+                .map(content -> content.text)
                 .collect(joining("\n"));
         return AiMessage.from(text);
     }
 
-    static TokenUsage toTokenUsage(AnthropicCreateMessageResponse.Usage anthropicUsage) {
+    static TokenUsage toTokenUsage(AnthropicUsage anthropicUsage) {
         if (anthropicUsage == null) {
             return null;
         }
-        return new TokenUsage(
-                anthropicUsage.getInputTokens(),
-                anthropicUsage.getOutputTokens(),
-                anthropicUsage.getInputTokens() + anthropicUsage.getOutputTokens()
-        );
+        return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens);
     }
 
-    static FinishReason toFinishReason(String anthropicFinishReason) {
-        if (anthropicFinishReason == null) {
+    static FinishReason toFinishReason(String anthropicStopReason) {
+        if (anthropicStopReason == null) {
             return null;
         }
-        switch (anthropicFinishReason) {
+        switch (anthropicStopReason) {
             case "end_turn":
                 return STOP;
             case "max_tokens":
