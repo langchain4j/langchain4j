@@ -12,7 +12,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class BedrockMistralAiChatModelResponse implements BedrockChatModelResponse {
+class BedrockMistralAiChatModelResponse implements BedrockChatModelResponse {
     
     private List<Output> outputs;
     

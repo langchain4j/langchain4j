@@ -17,8 +17,8 @@ import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
 
 @Getter
 @SuperBuilder
-public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockMistralAIChatModelResponse> {
-    
+public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockMistralAiChatModelResponse> {
+
     @Builder.Default
     private final int topK = 200;
     @Builder.Default
@@ -42,27 +42,27 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
 
         return parameters;
     }
-    
+
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         String prompt = buildPrompt(messages);
-        
+
         final Map<String, Object> requestParameters = getRequestParameters(prompt);
         final String body = Json.toJson(requestParameters);
-        
+
         InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(body), getMaxRetries());
         final String response = invokeModelResponse.body().asUtf8String().trim();
-        final BedrockMistralAIChatModelResponse result = Json.fromJson(response, getResponseClassType());
-        
+        final BedrockMistralAiChatModelResponse result = Json.fromJson(response, getResponseClassType());
+
         return new Response<>(new AiMessage(result.getOutputText()),
             result.getTokenUsage(),
             result.getFinishReason());
     }
-    
+
     private String buildPrompt(List<ChatMessage> messages) {
         StringBuilder promptBuilder = new StringBuilder();
         promptBuilder.append("<s>");
-        
+
         for (ChatMessage message : messages) {
           switch (message.type()) {
             case USER:
@@ -75,14 +75,14 @@ public class BedrockMistralAiChatModel extends AbstractBedrockChatModel<BedrockM
               throw new IllegalArgumentException("Bedrock Mistral AI does not support the message type: " + message.type());
           }
         }
-        
+
         promptBuilder.append("</s>");
         return promptBuilder.toString();
     }
-    
+
     @Override
-    public Class<BedrockMistralAIChatModelResponse> getResponseClassType() {
-        return BedrockMistralAIChatModelResponse.class;
+    public Class<BedrockMistralAiChatModelResponse> getResponseClassType() {
+        return BedrockMistralAiChatModelResponse.class;
     }
 
     /**
