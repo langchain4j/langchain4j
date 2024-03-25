@@ -8,7 +8,8 @@ public enum MistralAiRole {
 
     @SerializedName("system") SYSTEM,
     @SerializedName("user") USER,
-    @SerializedName("assistant") ASSISTANT;
+    @SerializedName("assistant") ASSISTANT,
+    @SerializedName("tool") TOOL;
 
     MistralAiRole() {
     }
