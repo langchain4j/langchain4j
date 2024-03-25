@@ -376,16 +376,6 @@ public abstract class AiServices<T> {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
         }
-
-        if (context.toolSpecifications != null && !context.hasChatMemory()) {
-            throw illegalConfiguration(
-                    "Please set up chatMemory or chatMemoryProvider in order to use tools. "
-                            + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
-                            + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
-                            "result of the tool's execution without the initial message from the user, it won't interpret " +
-                            "the result properly."
-            );
-        }
     }
 
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
