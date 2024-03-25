@@ -25,12 +25,18 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
     private final EmbeddingModel embeddingModel;
 
     private final AzureAiSearchContentRetriever contentRetrieverWithVector;
+    private final AzureAiSearchContentRetriever contentRetrieverWithVectorSearch;
 
     private final AzureAiSearchContentRetriever contentRetrieverWithFullText;
 
     private final AzureAiSearchContentRetriever contentRetrieverWithHybrid;
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybridSearch;
 
     private final AzureAiSearchContentRetriever contentRetrieverWithHybridAndReranking;
+
+    private final AzureAiSearchContentRetriever contentRetrieverWithHybridAndRerankingSearch;
+
+
 
     private final int dimensions;
 
@@ -39,25 +45,39 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
-        contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
+        contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR,true);
+        contentRetrieverWithVectorSearch =  createContentRetriever(AzureAiSearchQueryType.VECTOR,false);
 
-        contentRetrieverWithFullText =  createContentRetriever(AzureAiSearchQueryType.FULL_TEXT);
+        contentRetrieverWithFullText =  createContentRetriever(AzureAiSearchQueryType.FULL_TEXT,false);
 
-        contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID);
+        contentRetrieverWithHybrid =  createContentRetriever(AzureAiSearchQueryType.HYBRID,true);
+        contentRetrieverWithHybridSearch =  createContentRetriever(AzureAiSearchQueryType.HYBRID,false);
 
-        contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING);
+        contentRetrieverWithHybridAndReranking =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING,true);
+        contentRetrieverWithHybridAndRerankingSearch =  createContentRetriever(AzureAiSearchQueryType.HYBRID_WITH_RERANKING,false);
     }
 
-    private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType) {
-        return AzureAiSearchContentRetriever.builder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
-                .dimensions(dimensions)
-                .embeddingModel(embeddingModel)
-                .queryType(azureAiSearchQueryType)
-                .maxResults(3)
-                .minScore(0.0)
-                .build();
+    private AzureAiSearchContentRetriever createContentRetriever(AzureAiSearchQueryType azureAiSearchQueryType, boolean createOrUpdateIndex){
+        int newDimensions = azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT ? 0 : dimensions;
+        EmbeddingModel embeddingModel = azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT ? null : this.embeddingModel;
+        if(createOrUpdateIndex) {
+            return AzureAiSearchContentRetriever.builder()
+                    .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                    .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+                    .dimensions(newDimensions)
+                    .embeddingModel(embeddingModel)
+                    .queryType(azureAiSearchQueryType)
+                    .maxResults(3)
+                    .minScore(0.0)
+                    .build();
+        }else{
+            return AzureAiSearchContentRetriever.builder()
+                    .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                    .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+                    .embeddingModel(embeddingModel)
+                    .queryType(azureAiSearchQueryType)
+                    .build();
+        }
     }
 
     @Test
@@ -92,6 +112,17 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         assertThat(relevant.get(2).textSegment()).isNotNull();
         assertThat(relevant.get(2).textSegment().text()).isIn(content1, content3, content5);
         log.info("#3 relevant item: {}", relevant.get(2).textSegment().text());
+        relevant = contentRetrieverWithVectorSearch.retrieve(query);
+        assertThat(relevant).hasSize(3);
+        assertThat(relevant.get(0).textSegment()).isNotNull();
+        assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3, content5);
+        log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
+        assertThat(relevant.get(1).textSegment()).isNotNull();
+        assertThat(relevant.get(1).textSegment().text()).isIn(content1, content3, content5);
+        log.info("#2 relevant item: {}", relevant.get(1).textSegment().text());
+        assertThat(relevant.get(2).textSegment()).isNotNull();
+        assertThat(relevant.get(2).textSegment().text()).isIn(content1, content3, content5);
+        log.info("#3 relevant item: {}", relevant.get(2).textSegment().text());
     }
 
     @Test
@@ -114,7 +145,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         Query query = Query.from(content);
 
         log.info("Testing Vector Search");
-        List<Content> relevant = contentRetrieverWithVector.retrieve(query);
+        List<Content> relevant = contentRetrieverWithVectorSearch.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         assertThat(relevant.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
@@ -127,13 +158,13 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search");
-        List<Content> relevant3 = contentRetrieverWithHybrid.retrieve(query);
+        List<Content> relevant3 = contentRetrieverWithHybridSearch.retrieve(query);
         assertThat(relevant3).hasSizeGreaterThan(0);
         assertThat(relevant3.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant3.get(0).textSegment().text());
 
         log.info("Testing Hybrid Search with Reranking");
-        List<Content> relevant4 = contentRetrieverWithHybridAndReranking.retrieve(query);
+        List<Content> relevant4 = contentRetrieverWithHybridAndRerankingSearch.retrieve(query);
         assertThat(relevant4).hasSizeGreaterThan(0);
         assertThat(relevant4.get(0).textSegment().text()).isEqualTo("The house is open");
         log.info("#1 relevant item: {}", relevant4.get(0).textSegment().text());
@@ -155,13 +186,13 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         awaitUntilPersisted();
 
         Query query = Query.from("Alain");
-        List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
+        List<Content> relevant = contentRetrieverWithHybridSearch.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Émile-Auguste Chartier");
 
         Query query2 = Query.from("Heidegger");
-        List<Content> relevant2 = contentRetrieverWithHybrid.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithHybridSearch.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Maurice Jean Jacques Merleau-Ponty");
@@ -195,13 +226,13 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         awaitUntilPersisted();
 
         Query query = Query.from("Algeria");
-        List<Content> relevant = contentRetrieverWithHybrid.retrieve(query);
+        List<Content> relevant = contentRetrieverWithHybridSearch.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
 
         Query query2 = Query.from("École Normale Supérieure");
-        List<Content> relevant2 = contentRetrieverWithHybrid.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithHybridSearch.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");
@@ -235,13 +266,13 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
         awaitUntilPersisted();
 
         Query query = Query.from("A philosopher who was in the French Resistance");
-        List<Content> relevant = contentRetrieverWithHybridAndReranking.retrieve(query);
+        List<Content> relevant = contentRetrieverWithHybridAndRerankingSearch.retrieve(query);
         assertThat(relevant).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
         assertThat(relevant.get(0).textSegment().text()).contains("Albert Camus");
 
         Query query2 = Query.from("A philosopher who studied at the École Normale Supérieure");
-        List<Content> relevant2 = contentRetrieverWithHybridAndReranking.retrieve(query2);
+        List<Content> relevant2 = contentRetrieverWithHybridAndRerankingSearch.retrieve(query2);
         assertThat(relevant2).hasSizeGreaterThan(0);
         log.info("#1 relevant item: {}", relevant2.get(0).textSegment().text());
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");

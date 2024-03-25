@@ -81,16 +81,41 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, dimensions, null, false);
+                this.initialize(endpoint, null, tokenCredential, dimensions, null, true);
             } else {
-                this.initialize(endpoint, null, tokenCredential, 0, index, false);
+                this.initialize(endpoint, null, tokenCredential, 0, index, true);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, dimensions, null, false);
+                this.initialize(endpoint, keyCredential, null, dimensions, null, true);
             } else {
-                this.initialize(endpoint, keyCredential, null, 0, index, false);
+                this.initialize(endpoint, keyCredential, null, 0, index, true);
             }
+        }
+        this.embeddingModel = embeddingModel;
+        this.azureAiSearchQueryType = azureAiSearchQueryType;
+        this.maxResults = maxResults;
+        this.minScore = minScore;
+    }
+
+    public AzureAiSearchContentRetriever(String endpoint,
+                                         AzureKeyCredential keyCredential,
+                                         TokenCredential tokenCredential,
+                                         EmbeddingModel embeddingModel,
+                                         int maxResults,
+                                         double minScore,
+                                         AzureAiSearchQueryType azureAiSearchQueryType) {
+        ensureNotNull(endpoint, "endpoint");
+        ensureTrue((keyCredential != null && tokenCredential == null) || (keyCredential == null && tokenCredential != null), "either keyCredential or tokenCredential must be set");
+        if (AzureAiSearchQueryType.FULL_TEXT.equals(azureAiSearchQueryType)) {
+            // Full-text search doesn't use embeddings, so dimensions must be 0
+            ensureTrue(embeddingModel == null, "for full-text search, embedding model is not needed");
+        }
+
+        if (keyCredential == null) {
+            this.initialize(endpoint, null, tokenCredential, 0, null, false);
+        } else {
+            this.initialize(endpoint, keyCredential, null, 0, null, false);
         }
         this.embeddingModel = embeddingModel;
         this.azureAiSearchQueryType = azureAiSearchQueryType;
@@ -308,6 +333,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             return this;
         }
 
+
         /**
          * Used to authenticate to Azure OpenAI with Azure Active Directory credentials.
          *
@@ -389,8 +415,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
 
         public AzureAiSearchContentRetriever build() {
-            return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, dimensions, index,
-                    embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+            if (index != null || dimensions > 0) {
+                // for create and update index
+                return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, dimensions, index,
+                        embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+            } else {
+                // search only model
+                return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential,
+                        embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+            }
         }
     }
 }
