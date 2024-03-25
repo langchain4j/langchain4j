@@ -32,7 +32,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     private static final Logger log = LoggerFactory.getLogger(AbstractAzureAiSearchEmbeddingStore.class);
 
-    static final String INDEX_NAME = "vectorsearch";
+    public static final String INDEX_NAME = "vectorsearch";
 
     static final String DEFAULT_FIELD_ID = "id";
 
@@ -106,7 +106,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         if (!createOrUpdateIndex) {
             throw new IllegalArgumentException("createOrUpdateIndex is false, so the index cannot be created or updated");
         }
-        ensureTrue(dimensions > 0, "Dimensions must be greater than 0");
+        if (dimensions == 0) {
+            log.info("Dimensions is 0, so the index will only be created for full text search");
+        }
 
         List<SearchField> fields = new ArrayList<>();
         fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
@@ -115,10 +117,14 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         fields.add(new SearchField(DEFAULT_FIELD_CONTENT, SearchFieldDataType.STRING)
                 .setSearchable(true)
                 .setFilterable(true));
-        fields.add(new SearchField(DEFAULT_FIELD_CONTENT_VECTOR, SearchFieldDataType.collection(SearchFieldDataType.SINGLE))
-                .setSearchable(true)
-                .setVectorSearchDimensions(dimensions)
-                .setVectorSearchProfileName(VECTOR_SEARCH_PROFILE_NAME));
+
+        if (dimensions > 0) {
+            fields.add(new SearchField(DEFAULT_FIELD_CONTENT_VECTOR, SearchFieldDataType.collection(SearchFieldDataType.SINGLE))
+                    .setSearchable(true)
+                    .setVectorSearchDimensions(dimensions)
+                    .setVectorSearchProfileName(VECTOR_SEARCH_PROFILE_NAME));
+        }
+
         fields.add((new SearchField(DEFAULT_FIELD_METADATA, SearchFieldDataType.COMPLEX)).setFields(
                 Arrays.asList(
                         new SearchField(DEFAULT_FIELD_METADATA_SOURCE, SearchFieldDataType.STRING)
@@ -135,29 +141,35 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 )
         ));
 
-        VectorSearch vectorSearch = new VectorSearch()
-                .setAlgorithms(Collections.singletonList(
-                        new HnswAlgorithmConfiguration(VECTOR_ALGORITHM_NAME)
-                                .setParameters(
-                                        new HnswParameters()
-                                                .setMetric(VectorSearchAlgorithmMetric.COSINE)
-                                                .setM(4)
-                                                .setEfSearch(500)
-                                                .setEfConstruction(400))))
-                .setProfiles(Collections.singletonList(
-                        new VectorSearchProfile(VECTOR_SEARCH_PROFILE_NAME, VECTOR_ALGORITHM_NAME)));
+        SearchIndex index = null;
+        if (dimensions > 0) {
+            VectorSearch vectorSearch = new VectorSearch()
+                    .setAlgorithms(Collections.singletonList(
+                            new HnswAlgorithmConfiguration(VECTOR_ALGORITHM_NAME)
+                                    .setParameters(
+                                            new HnswParameters()
+                                                    .setMetric(VectorSearchAlgorithmMetric.COSINE)
+                                                    .setM(4)
+                                                    .setEfSearch(500)
+                                                    .setEfConstruction(400))))
+                    .setProfiles(Collections.singletonList(
+                            new VectorSearchProfile(VECTOR_SEARCH_PROFILE_NAME, VECTOR_ALGORITHM_NAME)));
 
-        SemanticSearch semanticSearch = new SemanticSearch().setDefaultConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME)
-                .setConfigurations(singletonList(
-                        new SemanticConfiguration(SEMANTIC_SEARCH_CONFIG_NAME,
-                                new SemanticPrioritizedFields()
-                                        .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
-                                        .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
+            SemanticSearch semanticSearch = new SemanticSearch().setDefaultConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME)
+                    .setConfigurations(singletonList(
+                            new SemanticConfiguration(SEMANTIC_SEARCH_CONFIG_NAME,
+                                    new SemanticPrioritizedFields()
+                                            .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
+                                            .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
 
-        SearchIndex index = new SearchIndex(INDEX_NAME)
-                .setFields(fields)
-                .setVectorSearch(vectorSearch)
-                .setSemanticSearch(semanticSearch);
+            index = new SearchIndex(INDEX_NAME)
+                    .setFields(fields)
+                    .setVectorSearch(vectorSearch)
+                    .setSemanticSearch(semanticSearch);
+        } else {
+            index = new SearchIndex(INDEX_NAME)
+                    .setFields(fields);
+        }
 
         searchIndexClient.createOrUpdateIndex(index);
     }

@@ -78,7 +78,11 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             ensureTrue(dimensions == 0, "for full-text search, dimensions must be 0");
         } else {
             ensureNotNull(embeddingModel, "embeddingModel");
-            ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
+            if (index == null) {
+                ensureTrue(dimensions >= 2 && dimensions <= 3072, "dimensions must be set to a positive, non-zero integer between 2 and 3072");
+            } else {
+                ensureTrue(dimensions == 0, "for custom index, dimensions must be 0");
+            }
         }
         if (keyCredential == null) {
             if (index == null) {
