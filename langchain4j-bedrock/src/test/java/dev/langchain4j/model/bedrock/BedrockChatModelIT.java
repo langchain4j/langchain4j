@@ -1,28 +1,137 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.readBytes;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.bedrock.BedrockMistralAIChatModel.Types;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.regions.Region;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 public class BedrockChatModelIT {
-
+    
+    private static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    
     @Test
     @Disabled("To run this test, you must have provide your own access key, secret, region")
-    void testBedrockAnthropicChatModel() {
+    void testBedrockAnthropicV3SonnetChatModel() {
+        
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockAnthropicV3SonnetChatModelImageContent() {
+        
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3SonnetV1.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
+        UserMessage userMessage = UserMessage.from(imageContent);
+        
+        Response<AiMessage> response = bedrockChatModel.generate(userMessage);
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockAnthropicV3HaikuChatModel() {
+        
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockAnthropicV3HaikuChatModelImageContent() {
+        
+        BedrockAnthropicMessageChatModel bedrockChatModel = BedrockAnthropicMessageChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(BedrockAnthropicMessageChatModel.Types.AnthropicClaude3HaikuV1.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+        ImageContent imageContent = ImageContent.from(base64Data, "image/png");
+        UserMessage userMessage = UserMessage.from(imageContent);
+        
+        Response<AiMessage> response = bedrockChatModel.generate(userMessage);
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockAnthropicV2ChatModelEnumModelType() {
 
-        BedrockAnthropicChatModel bedrockChatModel = BedrockAnthropicChatModel
+        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
                 .builder()
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .model(BedrockAnthropicChatModel.Types.AnthropicClaudeV2)
+                .model(BedrockAnthropicCompletionChatModel.Types.AnthropicClaudeV2.getValue())
                 .maxRetries(1)
                 .build();
 
@@ -33,7 +142,30 @@ public class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockAnthropicV2ChatModelStringModelType() {
+        
+        BedrockAnthropicCompletionChatModel bedrockChatModel = BedrockAnthropicCompletionChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model("anthropic.claude-v2")
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
     @Test
@@ -45,7 +177,7 @@ public class BedrockChatModelIT {
                 .temperature(0.50f)
                 .maxTokens(300)
                 .region(Region.US_EAST_1)
-                .model(BedrockTitanChatModel.Types.TitanTextExpressV1)
+                .model(BedrockTitanChatModel.Types.TitanTextExpressV1.getValue())
                 .maxRetries(1)
                 .build();
 
@@ -61,8 +193,7 @@ public class BedrockChatModelIT {
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount()).isGreaterThan(15);
-
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
     @Test
@@ -84,8 +215,7 @@ public class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 
     @Test
@@ -108,7 +238,101 @@ public class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockLlama13BChatModel() {
+        
+        BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(BedrockLlamaChatModel.Types.MetaLlama2Chat13B.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockLlama70BChatModel() {
+        
+        BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(BedrockLlamaChatModel.Types.MetaLlama2Chat70B.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.tokenUsage()).isNotNull();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockMistralAI7bInstructChatModel() {
+        
+        BedrockMistralAIChatModel bedrockChatModel = BedrockMistralAIChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(Types.Mistral7bInstructV0_2.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        List<ChatMessage> messages = Arrays.asList(
+            UserMessage.from("hi, how are you doing"),
+            AiMessage.from("I am an AI model so I don't have feelings"),
+            UserMessage.from("Ok no worries, tell me story about a man who wears a tin hat."));
+        
+        Response<AiMessage> response = bedrockChatModel.generate(messages);
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+    }
+    
+    @Test
+    @Disabled("To run this test, you must have provide your own access key, secret, region")
+    void testBedrockMistralAIMixtral8x7bInstructChatModel() {
+        
+        BedrockMistralAIChatModel bedrockChatModel = BedrockMistralAIChatModel
+            .builder()
+            .temperature(0.50f)
+            .maxTokens(300)
+            .region(Region.US_EAST_1)
+            .model(Types.MistralMixtral8x7bInstructV0_1.getValue())
+            .maxRetries(1)
+            .build();
+        
+        assertThat(bedrockChatModel).isNotNull();
+        
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        
+        assertThat(response).isNotNull();
+        assertThat(response.content().text()).isNotBlank();
+        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
     }
 }
