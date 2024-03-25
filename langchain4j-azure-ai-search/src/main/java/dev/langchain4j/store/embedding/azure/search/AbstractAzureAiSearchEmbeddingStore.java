@@ -52,16 +52,21 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected static final String VECTOR_SEARCH_PROFILE_NAME = "vector-search-profile";
 
+    private boolean createOrUpdateIndex;
+
     private SearchIndexClient searchIndexClient;
 
     protected SearchClient searchClient;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, int dimensions, SearchIndex index) {
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index) {
+        this.createOrUpdateIndex = createOrUpdateIndex;
         if (keyCredential != null) {
-            searchIndexClient = new SearchIndexClientBuilder()
-                    .endpoint(endpoint)
-                    .credential(keyCredential)
-                    .buildClient();
+            if (createOrUpdateIndex) {
+                searchIndexClient = new SearchIndexClientBuilder()
+                        .endpoint(endpoint)
+                        .credential(keyCredential)
+                        .buildClient();
+            }
 
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
@@ -69,10 +74,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                     .indexName(INDEX_NAME)
                     .buildClient();
         } else {
-            searchIndexClient = new SearchIndexClientBuilder()
-                    .endpoint(endpoint)
-                    .credential(tokenCredential)
-                    .buildClient();
+            if (createOrUpdateIndex) {
+                searchIndexClient = new SearchIndexClientBuilder()
+                        .endpoint(endpoint)
+                        .credential(tokenCredential)
+                        .buildClient();
+            }
 
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
@@ -81,10 +88,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                     .buildClient();
         }
 
-        if (index == null) {
-            createOrUpdateIndex(dimensions);
-        } else {
-            createOrUpdateIndex(index);
+        if (createOrUpdateIndex) {
+            if (index == null) {
+                createOrUpdateIndex(dimensions);
+            } else {
+                createOrUpdateIndex(index);
+            }
         }
     }
 
@@ -94,6 +103,9 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
      * @param dimensions The number of dimensions of the embeddings.
      */
     public void createOrUpdateIndex(int dimensions) {
+        if (!createOrUpdateIndex) {
+            throw new IllegalArgumentException("createOrUpdateIndex is false, so the index cannot be created or updated");
+        }
         ensureTrue(dimensions > 0, "Dimensions must be greater than 0");
 
         List<SearchField> fields = new ArrayList<>();
@@ -156,10 +168,16 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
      * @param index The index to be created or updated.
      */
     void createOrUpdateIndex(SearchIndex index) {
+        if (!createOrUpdateIndex) {
+            throw new IllegalArgumentException("createOrUpdateIndex is false, so the index cannot be created or updated");
+        }
         searchIndexClient.createOrUpdateIndex(index);
     }
 
     public void deleteIndex() {
+        if (!createOrUpdateIndex) {
+            throw new IllegalArgumentException("createOrUpdateIndex is false, so the index cannot be deleted");
+        }
         searchIndexClient.deleteIndex(INDEX_NAME);
     }
 
