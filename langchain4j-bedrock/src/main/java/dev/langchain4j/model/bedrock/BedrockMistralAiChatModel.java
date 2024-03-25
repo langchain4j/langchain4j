@@ -1,19 +1,20 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static dev.langchain4j.internal.RetryUtils.withRetry;
 
 @Getter
 @SuperBuilder

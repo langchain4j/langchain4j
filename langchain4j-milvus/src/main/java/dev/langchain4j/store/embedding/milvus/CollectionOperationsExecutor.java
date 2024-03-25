@@ -18,7 +18,6 @@ import io.milvus.param.index.CreateIndexParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 
-import java.lang.String;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;

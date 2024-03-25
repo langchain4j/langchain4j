@@ -8,7 +8,10 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 
 import static dev.langchain4j.model.vertexai.VertexAiEmbeddingModel.TaskType.*;
 import static java.util.Arrays.asList;

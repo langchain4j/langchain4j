@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.spi.ServiceHelper;
+
 import java.time.Duration;
 
 public abstract class MistralAiClient {

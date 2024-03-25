@@ -2,7 +2,6 @@ package dev.langchain4j.data.document.loader.azure.storage.blob;
 
 import com.azure.storage.blob.BlobClient;
 import com.azure.storage.blob.BlobServiceClient;
-import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.BlobProperties;
 import com.azure.storage.blob.specialized.BlobInputStream;
 import dev.langchain4j.data.document.Document;

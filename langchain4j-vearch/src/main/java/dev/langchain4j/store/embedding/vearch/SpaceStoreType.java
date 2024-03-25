@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.vearch;
 
 import com.google.gson.annotations.SerializedName;
-import lombok.Getter;
 
 public enum SpaceStoreType {
 

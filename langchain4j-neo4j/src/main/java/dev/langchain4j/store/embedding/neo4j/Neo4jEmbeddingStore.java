@@ -6,11 +6,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Builder;
 import lombok.Getter;
-import org.neo4j.driver.AuthTokens;
-import org.neo4j.driver.GraphDatabase;
-import org.neo4j.driver.Session;
-import org.neo4j.driver.Value;
-import org.neo4j.driver.Values;
+import org.neo4j.driver.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,12 +15,8 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
-import static java.util.Collections.singletonList;
-
-import org.neo4j.driver.Driver;
-import org.neo4j.driver.SessionConfig;
-
 import static dev.langchain4j.store.embedding.neo4j.Neo4jEmbeddingUtils.*;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents a Vector index as an embedding store.
