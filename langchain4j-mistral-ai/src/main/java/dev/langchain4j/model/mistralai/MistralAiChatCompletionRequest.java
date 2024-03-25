@@ -21,4 +21,8 @@ public class MistralAiChatCompletionRequest {
     private Boolean stream;
     private Boolean safePrompt;
     private Integer randomSeed;
+    private List<MistralAiTool> tools;
+    private MistralAiToolChoiceName toolChoice;
+    private MistralAiResponseFormat responseFormat;
+
 }

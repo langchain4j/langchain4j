@@ -3,6 +3,7 @@ package dev.langchain4j.model.mistralai;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -12,6 +13,7 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -91,5 +93,27 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
                 embeddings,
                 tokenUsageFrom(response.getUsage())
         );
+    }
+
+    public static MistralAiEmbeddingModelBuilder builder() {
+        for (MistralAiEmbeddingModelBuilderFactory factory : loadFactories(MistralAiEmbeddingModelBuilderFactory.class)){
+            return factory.get();
+        }
+        return new MistralAiEmbeddingModelBuilder();
+    }
+
+    public static class MistralAiEmbeddingModelBuilder {
+        public MistralAiEmbeddingModelBuilder() {
+        }
+
+        public MistralAiEmbeddingModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public MistralAiEmbeddingModelBuilder modelName(MistralAiEmbeddingModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
+        }
     }
 }

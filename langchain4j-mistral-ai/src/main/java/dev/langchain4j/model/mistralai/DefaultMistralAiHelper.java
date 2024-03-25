@@ -1,5 +1,8 @@
 package dev.langchain4j.model.mistralai;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
@@ -11,8 +14,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
 public class DefaultMistralAiHelper {
@@ -29,39 +34,68 @@ public class DefaultMistralAiHelper {
     }
 
     static MistralAiChatMessage toMistralAiMessage(ChatMessage message) {
-        return MistralAiChatMessage.builder()
-                .role(toMistralAiRole(message.type()))
-                .content(toMistralChatMessageContent(message))
-                .build();
-    }
-
-    private static MistralAiRole toMistralAiRole(ChatMessageType chatMessageType) {
-        switch (chatMessageType) {
-            case SYSTEM:
-                return MistralAiRole.SYSTEM;
-            case AI:
-                return MistralAiRole.ASSISTANT;
-            case USER:
-                return MistralAiRole.USER;
-            default:
-                throw new IllegalArgumentException("Unknown chat message type: " + chatMessageType);
-        }
-    }
-
-    private static String toMistralChatMessageContent(ChatMessage message) {
         if (message instanceof SystemMessage) {
-            return ((SystemMessage) message).text();
+            return MistralAiChatMessage.builder()
+                    .role(MistralAiRole.SYSTEM)
+                    .content(((SystemMessage) message).text())
+                    .build();
         }
 
         if (message instanceof AiMessage) {
-            return ((AiMessage) message).text();
+            AiMessage aiMessage = (AiMessage) message;
+
+            if (!aiMessage.hasToolExecutionRequests()) {
+                return MistralAiChatMessage.builder()
+                        .role(MistralAiRole.ASSISTANT)
+                        .content(aiMessage.text())
+                        .build();
+            }
+
+            List<MistralAiToolCall> toolCalls = aiMessage.toolExecutionRequests().stream()
+                    .map(DefaultMistralAiHelper::toMistralAiToolCall)
+                    .collect(toList());
+
+            if (isNullOrBlank(aiMessage.text())){
+                return MistralAiChatMessage.builder()
+                        .role(MistralAiRole.ASSISTANT)
+                        .content(null)
+                        .toolCalls(toolCalls)
+                        .build();
+            }
+
+            return MistralAiChatMessage.builder()
+                    .role(MistralAiRole.ASSISTANT)
+                    .content(aiMessage.text())
+                    .toolCalls(toolCalls)
+                    .build();
         }
 
         if (message instanceof UserMessage) {
-            return message.text(); // MistralAI support Text Content only as String
+            return MistralAiChatMessage.builder()
+                    .role(MistralAiRole.USER)
+                    .content(message.text()) // MistralAI support Text Content only as String
+                    .build();
+        }
+
+        if (message instanceof ToolExecutionResultMessage){
+            return MistralAiChatMessage.builder()
+                    .role(MistralAiRole.TOOL)
+                    .name(((ToolExecutionResultMessage) message).toolName())
+                    .content(((ToolExecutionResultMessage) message).text())
+                    .build();
         }
 
         throw new IllegalArgumentException("Unknown message type: " + message.type());
+    }
+
+    static MistralAiToolCall toMistralAiToolCall(ToolExecutionRequest toolExecutionRequest) {
+        return MistralAiToolCall.builder()
+                .id(toolExecutionRequest.id())
+                .function(MistralAiFunctionCall.builder()
+                        .name(toolExecutionRequest.name())
+                        .arguments(toolExecutionRequest.arguments())
+                        .build())
+                .build();
     }
 
     public static TokenUsage tokenUsageFrom(MistralAiUsage mistralAiUsage) {
@@ -84,9 +118,73 @@ public class DefaultMistralAiHelper {
                 return STOP;
             case "length":
                 return LENGTH;
+            case "tool_calls":
+                return TOOL_EXECUTION;
+            case "content_filter":
+                return CONTENT_FILTER;
             case "model_length":
             default:
                 return null;
+        }
+    }
+
+    public static AiMessage aiMessageFrom(MistralAiChatCompletionResponse response) {
+        MistralAiChatMessage aiMistralMessage = response.getChoices().get(0).getMessage();
+        List<MistralAiToolCall> toolCalls = aiMistralMessage.getToolCalls();
+        if (!isNullOrEmpty(toolCalls)){
+            return AiMessage.from(toToolExecutionRequests(toolCalls));
+        }
+        return  AiMessage.from(aiMistralMessage.getContent());
+    }
+
+    public static List<ToolExecutionRequest> toToolExecutionRequests(List<MistralAiToolCall> mistralAiToolCalls) {
+        return mistralAiToolCalls.stream()
+                .filter(toolCall -> toolCall.getType() == MistralAiToolType.FUNCTION)
+                .map(DefaultMistralAiHelper::toToolExecutionRequest)
+                .collect(toList());
+    }
+
+    public static ToolExecutionRequest toToolExecutionRequest(MistralAiToolCall mistralAiToolCall) {
+        return ToolExecutionRequest.builder()
+                .id(mistralAiToolCall.getId())
+                .name(mistralAiToolCall.getFunction().getName())
+                .arguments(mistralAiToolCall.getFunction().getArguments())
+                .build();
+    }
+
+    static List<MistralAiTool> toMistralAiTools(List<ToolSpecification> toolSpecifications) {
+        return toolSpecifications.stream()
+                .map(DefaultMistralAiHelper::toMistralAiTool)
+                .collect(toList());
+    }
+
+    static MistralAiTool toMistralAiTool(ToolSpecification toolSpecification) {
+        MistralAiFunction function = MistralAiFunction.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .parameters(toMistralAiParameters(toolSpecification.parameters()))
+                .build();
+        return MistralAiTool.from(function);
+    }
+
+    static MistralAiParameters toMistralAiParameters(ToolParameters parameters){
+        if (parameters == null) {
+            return MistralAiParameters.builder().build();
+        }
+        return MistralAiParameters.from(parameters);
+    }
+
+    static MistralAiResponseFormat toMistralAiResponseFormat(String responseFormat) {
+        if (responseFormat == null) {
+            return null;
+        }
+        switch (responseFormat) {
+            case "text":
+                return MistralAiResponseFormat.fromType(MistralAiResponseFormatType.TEXT);
+            case "json_object":
+                return MistralAiResponseFormat.fromType(MistralAiResponseFormatType.JSON_OBJECT);
+            default:
+                throw new IllegalArgumentException("Unknown response format: " + responseFormat);
         }
     }
 
