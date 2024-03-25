@@ -1,12 +1,12 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
-import java.util.HashMap;
-import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Getter
 @SuperBuilder

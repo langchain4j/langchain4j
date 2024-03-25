@@ -1,9 +1,5 @@
 package dev.langchain4j.store.embedding.vespa;
 
-import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInstance;
-
 import ai.vespa.client.dsl.A;
 import ai.vespa.client.dsl.Annotation;
 import ai.vespa.client.dsl.NearestNeighbor;
@@ -14,6 +10,10 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import lombok.Builder;
+import lombok.SneakyThrows;
+import retrofit2.Response;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,9 +25,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.SneakyThrows;
-import retrofit2.Response;
+
+import static dev.langchain4j.internal.Utils.generateUUIDFrom;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.vespa.VespaQueryClient.createInstance;
 
 /**
  * Represents the <a href="https://vespa.ai/">Vespa</a> - search engine and vector database.

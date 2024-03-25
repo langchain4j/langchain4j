@@ -9,7 +9,6 @@ import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 
 import java.util.HashMap;
 import java.util.List;

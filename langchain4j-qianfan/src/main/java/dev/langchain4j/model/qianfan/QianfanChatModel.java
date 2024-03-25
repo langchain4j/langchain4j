@@ -2,21 +2,23 @@ package dev.langchain4j.model.qianfan;
 
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
+import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanChatModelBuilderFactory;
 import lombok.Builder;
+
 import java.util.List;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
-import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 
 /**
  *

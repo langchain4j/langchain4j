@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.BasicAuthenticationCredential;
 import com.azure.core.credential.TokenCredential;
-import com.azure.core.credential.TokenRequestContext;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.SearchResult;
 import com.azure.search.documents.models.SemanticSearchResult;

@@ -15,9 +15,11 @@ import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanStreamingChatModelBuilderFactory;
 import lombok.Builder;
-import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+
 import java.util.List;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.getSystemMessage;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**

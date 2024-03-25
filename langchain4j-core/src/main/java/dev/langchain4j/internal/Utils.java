@@ -1,9 +1,5 @@
 package dev.langchain4j.internal;
 
-import static java.net.HttpURLConnection.HTTP_OK;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Collections.unmodifiableList;
-
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -14,6 +10,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
+
+import static java.net.HttpURLConnection.HTTP_OK;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * Utility methods.

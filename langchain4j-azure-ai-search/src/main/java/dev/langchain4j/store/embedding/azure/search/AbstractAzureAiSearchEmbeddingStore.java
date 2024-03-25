@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;

@@ -1,28 +1,23 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.util.stream.Collectors.joining;
-
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ChatMessageType;
-import dev.langchain4j.data.message.Content;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
 import dev.langchain4j.model.output.Response;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+
+import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.stream.Collectors.joining;
 
 @Getter
 @SuperBuilder

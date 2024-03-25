@@ -13,9 +13,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toEmbed;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toEmbedTexts;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**

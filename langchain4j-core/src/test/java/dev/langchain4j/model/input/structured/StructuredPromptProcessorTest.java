@@ -1,12 +1,13 @@
 package dev.langchain4j.model.input.structured;
 
+import dev.langchain4j.model.input.Prompt;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
 import static dev.langchain4j.model.input.structured.StructuredPromptProcessor.toPrompt;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-
-import dev.langchain4j.model.input.Prompt;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 class StructuredPromptProcessorTest {
 

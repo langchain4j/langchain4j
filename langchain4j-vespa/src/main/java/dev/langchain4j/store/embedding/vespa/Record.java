@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.vespa;
 
 import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 class Record {

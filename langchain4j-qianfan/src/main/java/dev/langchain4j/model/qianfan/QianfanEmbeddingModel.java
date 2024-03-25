@@ -6,14 +6,16 @@ import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanEmbeddingModelBuilderFactory;
 import lombok.Builder;
+
 import java.util.List;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 /**

@@ -15,7 +15,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.toMistralAiTools;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 

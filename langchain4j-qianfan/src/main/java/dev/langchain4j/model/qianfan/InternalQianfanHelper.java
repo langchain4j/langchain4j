@@ -4,22 +4,17 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
-import dev.langchain4j.model.qianfan.client.chat.Parameters;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
-import dev.langchain4j.model.qianfan.client.chat.Message;
-import dev.langchain4j.model.qianfan.client.chat.Role;
-import dev.langchain4j.model.qianfan.client.chat.FunctionCall;
-import dev.langchain4j.model.qianfan.client.chat.Function;
+import dev.langchain4j.model.qianfan.client.chat.*;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.model.output.FinishReason.*;

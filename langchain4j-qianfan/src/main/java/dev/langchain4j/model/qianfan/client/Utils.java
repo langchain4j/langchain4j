@@ -1,6 +1,7 @@
 package dev.langchain4j.model.qianfan.client;
 
 import retrofit2.Response;
+
 import java.io.IOException;
 
 public class Utils {
