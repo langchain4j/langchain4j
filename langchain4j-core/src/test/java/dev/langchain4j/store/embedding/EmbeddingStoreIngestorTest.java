@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.DocumentTransformer;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.data.segment.TextSegmentTransformer;
@@ -51,9 +52,9 @@ class EmbeddingStoreIngestorTest {
         TextSegmentTransformer textSegmentTransformer = mock(TextSegmentTransformer.class);
         when(textSegmentTransformer.transformAll(singletonList(
                 textSegment("First sentence."))))
-        .thenReturn(singletonList(
-                textSegment("Transformed first sentence.")
-        ));
+                .thenReturn(singletonList(
+                        textSegment("Transformed first sentence.")
+                ));
         when(textSegmentTransformer.transformAll(asList(
                 textSegment("Second sentence."),
                 textSegment("Third sentence."),
@@ -151,13 +152,13 @@ class EmbeddingStoreIngestorTest {
                 singletonList(textSegment("Transformed first sentence.")));
         verify(embeddingStore).addAll(
                 asList(
-                    new Embedding(new float[]{2}),
-                    new Embedding(new float[]{3}),
-                    new Embedding(new float[]{4})),
+                        new Embedding(new float[]{2}),
+                        new Embedding(new float[]{3}),
+                        new Embedding(new float[]{4})),
                 asList(
-                    textSegment("Transformed second sentence."),
-                    textSegment("Transformed third sentence."),
-                    textSegment("Transformed fourth sentence.")
+                        textSegment("Transformed second sentence."),
+                        textSegment("Transformed third sentence."),
+                        textSegment("Transformed fourth sentence.")
                 ));
         verify(embeddingStore).addAll(
                 asList(
@@ -167,6 +168,35 @@ class EmbeddingStoreIngestorTest {
                         textSegment("Transformed fifth sentence."),
                         textSegment("Transformed sixth sentence.")
                 ));
+        verifyNoMoreInteractions(embeddingStore);
+    }
+
+    @Test
+    void should_not_split_when_no_splitter_is_specified() {
+
+        // given
+        String text = "Some text";
+        Document document = Document.from(text);
+
+        TextSegment expectedTextSegment = TextSegment.from(text, Metadata.from("index", "0"));
+        Embedding expectedEmbedding = Embedding.from(new float[]{1});
+
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+        when(embeddingModel.embedAll(singletonList(expectedTextSegment)))
+                .thenReturn(Response.from(singletonList(expectedEmbedding)));
+
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+
+        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+                .embeddingModel(embeddingModel)
+                .embeddingStore(embeddingStore)
+                .build();
+
+        // when
+        ingestor.ingest(document);
+
+        // then
+        verify(embeddingStore).addAll(singletonList(expectedEmbedding), singletonList(expectedTextSegment));
         verifyNoMoreInteractions(embeddingStore);
     }
 }
