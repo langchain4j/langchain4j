@@ -10,7 +10,8 @@ import java.util.Map;
 
 @Getter
 @SuperBuilder
-public class BedrockAnthropicChatModel extends AbstractBedrockChatModel<BedrockAnthropicChatModelResponse> {
+public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatModel<BedrockAnthropicCompletionChatModelResponse> {
+    
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
 
     @Builder.Default
@@ -18,11 +19,11 @@ public class BedrockAnthropicChatModel extends AbstractBedrockChatModel<BedrockA
     @Builder.Default
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
     @Builder.Default
-    private final Types model = Types.AnthropicClaudeV2;
+    private final String model = Types.AnthropicClaudeV2.getValue();
 
     @Override
     protected String getModelId() {
-        return model.getValue();
+        return model;
     }
 
     @Override
@@ -41,8 +42,8 @@ public class BedrockAnthropicChatModel extends AbstractBedrockChatModel<BedrockA
     }
 
     @Override
-    public Class<BedrockAnthropicChatModelResponse> getResponseClassType() {
-        return BedrockAnthropicChatModelResponse.class;
+    public Class<BedrockAnthropicCompletionChatModelResponse> getResponseClassType() {
+        return BedrockAnthropicCompletionChatModelResponse.class;
     }
 
     /**
@@ -53,13 +54,13 @@ public class BedrockAnthropicChatModel extends AbstractBedrockChatModel<BedrockA
         AnthropicClaudeInstantV1("anthropic.claude-instant-v1"),
         AnthropicClaudeV1("anthropic.claude-v1"),
         AnthropicClaudeV2("anthropic.claude-v2"),
-        AnthropicClaudeV2_1("anthropic.claude-v2:1");
+        AnthropicClaudeV2_1("anthropic.claude-v2:1"),
+        AnthropicClaude3SonnetV1("anthropic.claude-3-sonnet-20240229-v1:0");
 
         private final String value;
 
         Types(String modelID) {
             this.value = modelID;
         }
-
     }
 }
