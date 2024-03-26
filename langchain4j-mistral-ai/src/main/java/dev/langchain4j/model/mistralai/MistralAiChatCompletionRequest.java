@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiChatCompletionRequest {
+public class MistralAiChatCompletionRequest {
 
     private String model;
     private List<MistralAiChatMessage> messages;
@@ -21,4 +21,8 @@ class MistralAiChatCompletionRequest {
     private Boolean stream;
     private Boolean safePrompt;
     private Integer randomSeed;
+    private List<MistralAiTool> tools;
+    private MistralAiToolChoiceName toolChoice;
+    private MistralAiResponseFormat responseFormat;
+
 }

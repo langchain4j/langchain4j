@@ -178,7 +178,7 @@ Currently supported by [OpenAI](https://github.com/langchain4j/langchain4j-examp
 2 July:
 
 - [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
-- Added support for HuggingFace models
+- Added support for Hugging Face models
 
 1 July:
 
@@ -270,12 +270,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.27.1</version>
+          <version>0.28.0</version>
       </dependency>
       ```
     - Gradle:
       ```groovy
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.27.1'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.28.0'
       ```
 
 2. Import your OpenAI API key:
@@ -295,22 +295,24 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     System.out.println(answer); // Hello! How can I assist you today?
     ```
 ## Supported LLM Integrations ([Docs](https://docs.langchain4j.dev/category/integrations))
-| Provider                                                                                                | Native Image     | [Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming](https://docs.langchain4j.dev/integrations/language-models/response-streaming)  | [Async Completion](https://docs.langchain4j.dev/category/language-models) | [Async Streaming](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [ReRanking](https://docs.langchain4j.dev/category/reranking-models) 
-|---------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
-| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
-| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-openai)             |  | ✅ | ✅ |  |   | ✅ | ✅ | 
-| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/huggingface)              |  | ✅ |  | ✅ |  | ✅ |  |  |
-| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |  | ✅ |  |  |  | ✅ |
-| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
-| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
-| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |  | ✅ | ✅ |  | ✅ | ✅ |
-| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | ✅ |  |
-| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
-| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |  |  |  |  |  |  |  | ✅ |
-| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
-| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ |  |  |  |  |
-| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  |  |  |  |  | ✅ |  |
+| Provider                                                                                           | Native Image     | [Sync Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming Completion](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [Scoring](https://docs.langchain4j.dev/category/scoring-models) | [Function Calling](https://docs.langchain4j.dev/tutorials/tools)
+|----------------------------------------------------------------------------------------------------| ------------- |---------------------------------------------------------------------| ----------- | ------ |-------------------------------| ------ |--------------------------------------------------------------------------------------------|
+| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | | ✅ |                                                                                                
+| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-openai)             |  | ✅ | ✅ | ✅ | ✅ | | ✅ | 
+| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/huggingface)              |  | ✅ | | ✅ |  | | |  |
+| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |  | ✅  | |✅ | ✅ | | |
+| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |  | ✅ | ✅ | | ✅ | | ✅ |
+| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅ | ✅ | | ✅ | ✅ | | |
+| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ |  | |✅ |
+| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |  | ✅ | ✅ |✅ |  | | |
+| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | | ✅ |
+| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ |  | | |
+| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |  | | | |  | ✅| |
+| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ |  | |✅ |
+| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ | | |  | |
+| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  | | |✅ |  | | |
+| [Anthropic](https://docs.langchain4j.dev/integrations/language-models/anthropic)                   |  |✅ | | |  | | |
+| [Zhipu AI](https://docs.langchain4j.dev/integrations/language-models/zhipuai)                      |  |✅| ✅| ✅|  | |✅ |
 
 ## Disclaimer
 
@@ -339,7 +341,7 @@ Please note that the library is in active development and:
     - [Chats](https://cloud.google.com/vertex-ai/docs/generative-ai/chat/chat-prompts)
     - [Completions](https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview)
     - [Embeddings](https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings)
-- Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
+- Integration with [Hugging Face Inference API](https://huggingface.co/docs/api-inference/index) for:
     - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
@@ -449,7 +451,7 @@ Here are some best practices for using LLMs:
   data or input from instructions.
 
 ## How to get an API key
-You will need an API key from OpenAI (paid) or HuggingFace (free) to use LLMs hosted by them.
+You will need an API key from OpenAI (paid) or Hugging Face (free) to use LLMs hosted by them.
 
 We recommend using OpenAI LLMs (`gpt-3.5-turbo` and `gpt-4`) as they are by far the most capable and are reasonably priced.
 
@@ -457,10 +459,10 @@ It will cost approximately $0.01 to generate 10 pages (A4 format) of text with `
 
 [How to get OpenAI API key](https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/).
 
-For embeddings, we recommend using one of the models from the [HuggingFace MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
+For embeddings, we recommend using one of the models from the [Hugging Face MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
 You'll have to find the best one for your specific use case.
 
-Here's how to get a HuggingFace API key:
+Here's how to get a Hugging Face API key:
 - Create an account on https://huggingface.co
 - Go to https://huggingface.co/settings/tokens
 - Generate a new access token

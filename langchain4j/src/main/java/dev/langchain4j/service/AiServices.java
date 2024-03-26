@@ -118,6 +118,10 @@ public abstract class AiServices<T> {
 
     protected final AiServiceContext context;
 
+    private boolean retrieverSet = false;
+    private boolean contentRetrieverSet = false;
+    private boolean retrievalAugmentorSet = false;
+
     protected AiServices(AiServiceContext context) {
         this.context = context;
     }
@@ -311,8 +315,13 @@ public abstract class AiServices<T> {
      */
     @Deprecated
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
+        if(contentRetrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
         if (retriever != null) {
-            return contentRetriever(retriever.toContentRetriever());
+            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
+            retrieverSet = true;
+            return withContentRetriever;
         }
         return this;
     }
@@ -331,6 +340,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
+        if(retrieverSet || retrievalAugmentorSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        contentRetrieverSet = true;
         context.retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .contentRetriever(ensureNotNull(contentRetriever, "contentRetriever"))
                 .build();
@@ -344,6 +357,10 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
+        if(retrieverSet || contentRetrieverSet) {
+            throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
+        }
+        retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
         return this;
     }
@@ -358,16 +375,6 @@ public abstract class AiServices<T> {
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
-        }
-
-        if (context.toolSpecifications != null && !context.hasChatMemory()) {
-            throw illegalConfiguration(
-                    "Please set up chatMemory or chatMemoryProvider in order to use tools. "
-                            + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
-                            + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
-                            "result of the tool's execution without the initial message from the user, it won't interpret " +
-                            "the result properly."
-            );
         }
     }
 
