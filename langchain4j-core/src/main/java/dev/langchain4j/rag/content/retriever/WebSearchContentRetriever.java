@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * A {@link ContentRetriever} that retrieves relevant {@link Content} from the web using a {@link WebSearchEngine}.
  * <br>
- * By default, this retriever fetches the  all web pages {@link Content} for a given {@link Query}.
+ * By default, this retriever returns complete web pages: one {@link Content} for each web page that a {@link WebSearchEngine} has returned for a given {@link Query}. For some use cases, this might be suboptimal, as complete web pages can contain too much irrelevant content. For example, for the query "Who painted the Mona Lisa?", Google returns a Wikipedia page that contains everything about the Mona Lisa. For such use cases, this retriever can be configured with a {@link DocumentSplitter} and an {@link EmbeddingModel}, which will be used to split web pages into smaller segments and find the most relevant ones, returning only those.
  * <br>
  * <br>
  * Configurable parameters (optional):
