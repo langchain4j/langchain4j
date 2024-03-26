@@ -88,6 +88,16 @@ So, `AiService` will automatically convert it into a `UserMessage` and invoke `C
 Since the output type of the `chat` method is a `String`, after `ChatLanguageModel` returns `AiMessage`,
 it will be converted into a `String` before being returned from the `chat` method.
 
+## Using AI Services in Quarkus Application
+[LangChain4j Quarkus extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/index.html)
+greatly simplifies using AI Services in Quarkus applications.
+
+More information can be found [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html).
+
+## Using AI Services in Spring Boot Application
+[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration)
+greatly simplifies using AI Services in Spring Boot applications.
+
 ## @SystemMessage
 
 Now, let's look at a more complicated example.
