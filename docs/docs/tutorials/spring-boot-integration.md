@@ -13,7 +13,7 @@ To use one of the Spring Boot starters, first import the corresponding dependenc
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.28.0</version>
+    <version>0.29.0</version>
 </dependency>
 ```
 
