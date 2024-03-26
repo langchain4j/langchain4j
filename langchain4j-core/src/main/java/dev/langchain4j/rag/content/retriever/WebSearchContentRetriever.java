@@ -30,7 +30,7 @@ import static java.util.stream.Collectors.toList;
  *     <li>{@link DocumentSplitter} - To split the web pages into smaller text segments.</li>
  *     <li>{@link EmbeddingModel} - To embed segments and find the most
  *     relevant ones to the given {@link Query}</li>
- *     <li>{@link #maxResults} - The maximum number of results to retrieve by the internal {@link EmbeddingStore}.
+ *     <li>{@link #maxTextSegments} - The maximum number of text segments to return.
  *     <br>
  *     Default value is 3.
  *     </li>
