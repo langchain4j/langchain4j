@@ -20,7 +20,7 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.stream.Collectors.toList;
 
 /**
- * A {@link ContentRetriever} backed by a {@link WebSearchEngine}.
+ * A {@link ContentRetriever} that retrieves relevant {@link Content} from the web using a {@link WebSearchEngine}.
  * <br>
  * By default, this retriever fetches the  all web pages {@link Content} for a given {@link Query}.
  * <br>
