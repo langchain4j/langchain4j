@@ -68,6 +68,10 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public Response<String> generate(String prompt) {
 

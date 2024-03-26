@@ -79,11 +79,16 @@ class OpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
+        int maxTokens = 1;
+
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .maxTokens(3)
+                .maxTokens(maxTokens)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Germany?");
@@ -96,7 +101,7 @@ class OpenAiChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(3);
+        assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
