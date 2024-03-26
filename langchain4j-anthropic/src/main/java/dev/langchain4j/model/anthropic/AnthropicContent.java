@@ -1,7 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicContent {
+public class AnthropicContent {
 
-    String type;
-    String text;
+    public String type;
+    public String text;
 }

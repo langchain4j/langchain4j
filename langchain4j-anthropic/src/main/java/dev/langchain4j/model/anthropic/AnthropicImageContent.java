@@ -1,11 +1,11 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicImageContent {
+public class AnthropicImageContent {
 
-    String type = "image";
-    AnthropicImageContentSource source;
+    public String type = "image";
+    public AnthropicImageContentSource source;
 
-    AnthropicImageContent(String mediaType, String data) {
+    public AnthropicImageContent(String mediaType, String data) {
         this.source = new AnthropicImageContentSource("base64", mediaType, data);
     }
 }
