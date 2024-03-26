@@ -52,7 +52,7 @@ class AiServicesWithToolsIT {
                         .build(),
                 MistralAiChatModel.builder()
                         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                        .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
+                        .modelName("mistral-large-latest")
                         .logRequests(true)
                         .logResponses(true)
                         .build()

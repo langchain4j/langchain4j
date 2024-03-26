@@ -12,11 +12,15 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
@@ -27,7 +31,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class VertexAiGeminiStreamingChatModelIT {
 
@@ -44,45 +47,18 @@ class VertexAiGeminiStreamingChatModelIT {
             .build();
 
     @Test
-    void should_stream_answer() throws Exception {
+    void should_stream_answer() {
 
         // given
         String userMessage = "What is the capital of Germany?";
 
         // when
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
-
-        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
-            @Override
-            public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
-                answerBuilder.append(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response.content() + "'");
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(answer).contains("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.content().text()).contains("Berlin");
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(7);
         assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
@@ -92,21 +68,71 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @Test
-    void should_deny_system_message() {
+    @ParameterizedTest
+    @MethodSource
+    void should_merge_system_messages_into_user_message(List<ChatMessage> messages) {
 
-        // given
-        SystemMessage systemMessage = SystemMessage.from("Be polite");
-        UserMessage userMessage = UserMessage.from("Tell me a joke");
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(messages, handler);
+        Response<AiMessage> response = handler.get();
 
-        // when-then
-        assertThatThrownBy(() -> model.generate(asList(systemMessage, userMessage), null))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("SystemMessage is currently not supported by Gemini");
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("liebe");
+    }
+
+    static Stream<Arguments> should_merge_system_messages_into_user_message() {
+        return Stream.<Arguments>builder()
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from("I love you")
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                UserMessage.from("I love you"),
+                                SystemMessage.from("Translate in German")
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in Italian"),
+                                UserMessage.from("I love you"),
+                                SystemMessage.from("No, translate in German!")
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from(asList(
+                                        TextContent.from("I love you"),
+                                        TextContent.from("I see you")
+                                ))
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from(asList(
+                                        TextContent.from("I see you"),
+                                        TextContent.from("I love you")
+                                ))
+                        )
+                ))
+                .add(Arguments.of(
+                        asList(
+                                SystemMessage.from("Translate in German"),
+                                UserMessage.from("I see you"),
+                                AiMessage.from("Ich sehe dich"),
+                                UserMessage.from("I love you")
+                        )
+                ))
+                .build();
     }
 
     @Test
-    void should_respect_maxOutputTokens() throws Exception {
+    void should_respect_maxOutputTokens() {
 
         // given
         StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
@@ -119,50 +145,23 @@ class VertexAiGeminiStreamingChatModelIT {
         String userMessage = "Tell me a joke";
 
         // when
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
-
-        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
-
-            private final StringBuilder answerBuilder = new StringBuilder();
-
-            @Override
-            public void onNext(String token) {
-                System.out.println("onNext: '" + token + "'");
-                answerBuilder.append(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                System.out.println("onComplete: '" + response.content() + "'");
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(answer).isNotBlank();
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(response.content().text()).isNotBlank();
 
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(4);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(1);
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @Test
-    void should_allow_custom_generativeModel_and_generationConfig() throws Exception {
+    void should_allow_custom_generativeModel_and_generationConfig() {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
@@ -174,26 +173,9 @@ class VertexAiGeminiStreamingChatModelIT {
         String userMessage = "What is the capital of Germany?";
 
         // when
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
-
-        model.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
-
-            @Override
-            public void onNext(String token) {
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                futureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
 
         // then
         assertThat(response.content().text()).contains("Berlin");
@@ -347,17 +329,17 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro")
-            .build();
+                .project(System.getenv("GCP_PROJECT_ID"))
+                .location(System.getenv("GCP_LOCATION"))
+                .modelName("gemini-pro")
+                .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
-            .name("getWeatherForecast")
-            .description("Get the weather forecast for a location")
-            .addParameter("location", JsonSchemaProperty.STRING,
-                JsonSchemaProperty.description("the location to get the weather forecast for"))
-            .build();
+                .name("getWeatherForecast")
+                .description("Get the weather forecast for a location")
+                .addParameter("location", JsonSchemaProperty.STRING,
+                        JsonSchemaProperty.description("the location to get the weather forecast for"))
+                .build();
 
         List<ChatMessage> allMessages = new ArrayList<>();
 
@@ -381,7 +363,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when (feeding the function return value back)
         ToolExecutionResultMessage toolExecResMsg = ToolExecutionResultMessage.from(toolExecutionRequest,
-            "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
+                "{\"location\":\"Paris\",\"forecast\":\"sunny\", \"temperature\": 20}");
         allMessages.add(toolExecResMsg);
 
         handler = new TestStreamingResponseHandler<>();

@@ -48,7 +48,7 @@ public class BedrockStabilityAIChatModel extends AbstractBedrockChatModel<Bedroc
     }
 
     @Builder.Default
-    private final Types model = Types.StableDiffuseXlV0;
+    private final String model = Types.StableDiffuseXlV1.getValue();
     @Builder.Default
     private final int cfgScale = 10;
     @Builder.Default
@@ -87,7 +87,7 @@ public class BedrockStabilityAIChatModel extends AbstractBedrockChatModel<Bedroc
 
     @Override
     protected String getModelId() {
-        return model.getValue();
+        return model;
     }
 
     @Override
@@ -96,11 +96,12 @@ public class BedrockStabilityAIChatModel extends AbstractBedrockChatModel<Bedroc
     }
 
     /**
-     * Bedrock Amazon Titan model ids
+     * Bedrock Amazon Stability AI model ids
      */
     @Getter
     public enum Types {
-        StableDiffuseXlV0("stability.stable-diffusion-xl-v0");
+        StableDiffuseXlV0("stability.stable-diffusion-xl-v0"),
+        StableDiffuseXlV1("stability.stable-diffusion-xl-v1");
 
         private final String value;
 

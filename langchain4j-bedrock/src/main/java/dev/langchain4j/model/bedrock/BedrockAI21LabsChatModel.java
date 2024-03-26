@@ -13,7 +13,7 @@ import java.util.Map;
 public class BedrockAI21LabsChatModel extends AbstractBedrockChatModel<BedrockAI21LabsChatModelResponse> {
 
     @Builder.Default
-    private final Types model = Types.J2MidV2;
+    private final String model = Types.J2MidV2.getValue();
     @Builder.Default
     private final Map<String, Object> countPenalty = of("scale", 0);
     @Builder.Default
@@ -40,7 +40,7 @@ public class BedrockAI21LabsChatModel extends AbstractBedrockChatModel<BedrockAI
 
     @Override
     protected String getModelId() {
-        return model.getValue();
+        return model;
     }
 
     @Override

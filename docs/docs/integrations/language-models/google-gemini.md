@@ -140,6 +140,12 @@ Caused by: io.grpc.StatusRuntimeException:
   `projects/{YOUR_PROJECT_ID}/locations/us-central1/publishers/google/models/gemini-ultra`
 ```
 
+## Warning
+
+Please note that Gemini does not support `SystemMessage`s.
+If there are `SystemMessage`s provided to the `generate()` methods, they will be merged into the first
+`UserMessage` (before the content of the `UserMessage`).
+
 ## Apply for early access
 
 [Early access for Gemma](https://docs.google.com/forms/d/e/1FAIpQLSe0grG6mRFW6dNF3Rb1h_YvKqUp2GaXiglZBgA2Os5iTLWlcg/viewform)

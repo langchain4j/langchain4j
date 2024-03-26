@@ -19,11 +19,11 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     private final static String MODEL_ID = "amazon.titan-embed-text-v1";
 
     @Builder.Default
-    private final Types model = Types.TitanEmbedTextV1;
+    private final String model = Types.TitanEmbedTextV1.getValue();
 
     @Override
     protected String getModelId() {
-        return model.getValue();
+        return model;
     }
 
     @Override

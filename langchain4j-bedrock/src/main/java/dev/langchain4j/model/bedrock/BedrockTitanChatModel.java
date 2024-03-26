@@ -16,7 +16,7 @@ import java.util.Map;
 public class BedrockTitanChatModel extends AbstractBedrockChatModel<BedrockTitanChatModelResponse> {
 
     @Builder.Default
-    private final Types model = Types.TitanTextExpressV1;
+    private final String model = Types.TitanTextExpressV1.getValue();
 
     @Override
     protected Map<String, Object> getRequestParameters(String prompt) {
@@ -36,7 +36,7 @@ public class BedrockTitanChatModel extends AbstractBedrockChatModel<BedrockTitan
 
     @Override
     protected String getModelId() {
-        return model.getValue();
+        return model;
     }
 
     @Override
