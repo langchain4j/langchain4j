@@ -29,7 +29,7 @@ import static java.util.stream.Collectors.toList;
  * <ul>
  *     <li>{@link DocumentSplitter} - To split the web pages into smaller text segments.</li>
  *     <li>{@link EmbeddingModel} - To embed segments and find the most
- *     relevant web search results based on the {@link Query}</li>
+ *     relevant ones to the given {@link Query}</li>
  *     <li>{@link #maxResults} - The maximum number of results to retrieve by the internal {@link EmbeddingStore}.
  *     <br>
  *     Default value is 3.
