@@ -20,17 +20,17 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.stream.Collectors.toList;
 
 /**
- * A {@link ContentRetriever} backed by a {@link WebSearchEngine}.
+ * A {@link ContentRetriever} that retrieves relevant {@link Content} from the web using a {@link WebSearchEngine}.
  * <br>
- * By default, this retriever fetches the  all web pages {@link Content} for a given {@link Query}.
+ * By default, this retriever returns complete web pages: one {@link Content} for each web page that a {@link WebSearchEngine} has returned for a given {@link Query}. For some use cases, this might be suboptimal, as complete web pages can contain too much irrelevant content. For example, for the query "Who painted the Mona Lisa?", Google returns a Wikipedia page that contains everything about the Mona Lisa. For such use cases, this retriever can be configured with a {@link DocumentSplitter} and an {@link EmbeddingModel}, which will be used to split web pages into smaller segments and find the most relevant ones, returning only those.
  * <br>
  * <br>
  * Configurable parameters (optional):
  * <ul>
  *     <li>{@link DocumentSplitter} - To split the web pages into smaller text segments.</li>
- *     <li>{@link EmbeddingModel} - To generate embeddings to ingest them into an internal {@link EmbeddingStore} and find the most
- *     relevant web search results based on the {@link Query}</li>
- *     <li>{@link #maxResults} - The maximum number of results to retrieve by the internal {@link EmbeddingStore}.
+ *     <li>{@link EmbeddingModel} - To embed segments and find the most
+ *     relevant ones to the given {@link Query}</li>
+ *     <li>{@link #maxTextSegments} - The maximum number of text segments to return.
  *     <br>
  *     Default value is 3.
  *     </li>
