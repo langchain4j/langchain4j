@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.InlineScript;
+import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
 import co.elastic.clients.elasticsearch._types.mapping.TextProperty;
@@ -10,6 +11,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import co.elastic.clients.json.JsonData;
@@ -41,13 +43,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -66,6 +73,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     private final String indexName;
     private final ObjectMapper objectMapper;
 
+    private final boolean ann;
+
     /**
      * Creates an instance of ElasticsearchEmbeddingStore.
      *
@@ -76,13 +85,15 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
      * @param indexName Elasticsearch index name (optional). Default value: "default".
      *                  Index will be created automatically if not exists.
      * @param dimension Embedding vector dimension (mandatory when index does not exist yet).
+     * @param ann       whether to enable Ann, the default is knn
      */
     public ElasticsearchEmbeddingStore(String serverUrl,
                                        String apiKey,
                                        String userName,
                                        String password,
                                        String indexName,
-                                       Integer dimension) {
+                                       Integer dimension,
+                                       boolean ann) {
 
         RestClientBuilder restClientBuilder = RestClient
                 .builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
@@ -104,17 +115,19 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
+        this.ann = ann;
 
         createIndexIfNotExist(indexName, dimension);
     }
 
-    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName, Integer dimension) {
+    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName, Integer dimension, boolean ann) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
         this.client = new ElasticsearchClient(transport);
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
+        this.ann = ann;
 
         createIndexIfNotExist(indexName, dimension);
     }
@@ -132,6 +145,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private RestClient restClient;
         private String indexName = "default";
         private Integer dimension;
+        private boolean ann;
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -198,11 +212,20 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return this;
         }
 
+        /**
+         * @param ann use approximate kNN or not.
+         * @return builder
+         */
+        public Builder ann(boolean ann) {
+            this.ann = ann;
+            return this;
+        }
+
         public ElasticsearchEmbeddingStore build() {
             if (restClient != null) {
-                return new ElasticsearchEmbeddingStore(restClient, indexName, dimension);
+                return new ElasticsearchEmbeddingStore(restClient, indexName, dimension, ann);
             } else {
-                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName, dimension);
+                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName, dimension, ann);
             }
         }
     }
@@ -244,8 +267,30 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         return ids;
     }
 
+    /**
+     * Elasticsearch supports two methods for kNN search:
+     * <p>
+     * Approximate kNN (Approximate Nearest Neighbor - ANN) using the knn search option or knn query
+     * <p>
+     * Exact, brute-force kNN using a script_score query with a vector function
+     * <p>
+     * In most cases, you’ll want to use approximate kNN. Approximate kNN offers lower latency at the cost of slower indexing and imperfect accuracy.
+     * <p>
+     * Exact, brute-force kNN guarantees accurate results but doesn’t scale well with large datasets. With this approach, a script_score query must scan each matching document to compute the vector function, which can result in slow search speeds.
+     * <p>
+     * However, you can improve latency by using a query to limit the number of matching documents passed to the function.
+     * <p>
+     * If you filter your data to a small subset of documents, you can get good search performance using this approach.
+     * <p>
+     *
+     * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html#tune-approximate-knn-for-speed-accuracy">k-nearest neighbor (kNN) search</a>
+     */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+        return ann ? new EmbeddingSearchResult<>(ann(embeddingSearchRequest)) : new EmbeddingSearchResult<>(knn(embeddingSearchRequest));
+    }
+
+    private List<EmbeddingMatch<TextSegment>> knn(EmbeddingSearchRequest embeddingSearchRequest) {
         try {
             // Use Script Score and cosineSimilarity to calculate
             // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
@@ -255,35 +300,46 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     embeddingSearchRequest.filter()
             );
             SearchResponse<Document> response = client.search(
-                    co.elastic.clients.elasticsearch.core.SearchRequest.of(s -> s.index(indexName)
+                    SearchRequest.of(s -> s.index(indexName)
                             .query(q -> q.scriptScore(scriptScoreQuery))
                             .size(embeddingSearchRequest.maxResults())),
                     Document.class
             );
-
-            return new EmbeddingSearchResult<>(toMatches(response));
+            return toMatches(response);
         } catch (IOException e) {
-            // TODO improve
-            log.error("[ElasticSearch encounter I/O Exception]", e);
+            log.error("[ElasticSearch knn I/O Exception]", e);
+            throw new ElasticsearchRequestFailedException(e.getMessage());
+        }
+    }
+
+    private List<EmbeddingMatch<TextSegment>> ann(EmbeddingSearchRequest embeddingSearchRequest) {
+        try {
+            int maxResults = embeddingSearchRequest.maxResults();
+            float[] vector = embeddingSearchRequest.queryEmbedding().vector();
+            List<Float> vectorList = new ArrayList<>(vector.length);
+            for (float value : vector) {
+                vectorList.add(value);
+            }
+            // The score of each hit is the sum of the knn and query scores.
+            // You can specify a boost value to give a weight to each score in the sum.
+            // score = match_boost * match_score + knn_boost * knn_score
+            Query query = buildQuery(embeddingSearchRequest.filter());
+            KnnQuery knnQuery = KnnQuery.of(build -> build.field("vector").queryVector(vectorList).k(maxResults).numCandidates(10L * maxResults).boost(1f));
+            SearchRequest searchRequest = SearchRequest.of(s -> s.index(indexName).knn(knnQuery).query(query).minScore(embeddingSearchRequest.minScore()));
+            SearchResponse<Document> searchResponse = client.search(searchRequest, Document.class);
+            return toMatches(searchResponse);
+        } catch (IOException e) {
+            log.error("[ElasticSearch ann I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
 
     private ScriptScoreQuery buildScriptScoreQuery(float[] vector,
                                                    float minScore,
-                                                   Filter filter
-    ) throws JsonProcessingException {
-
-        Query query;
-        if (filter == null) {
-            query = Query.of(q -> q.matchAll(m -> m));
-        } else {
-            query = ElasticsearchMetadataFilterMapper.map(filter);
-        }
-
+                                                   Filter filter) throws JsonProcessingException {
         return ScriptScoreQuery.of(q -> q.
                 minScore(minScore)
-                .query(query)
+                .query(buildQuery(filter))
                 .script(s -> s.inline(InlineScript.of(i -> i
                         // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
                         // divided by 2 to keep score in the range [0, 1]
@@ -291,6 +347,16 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                         .params("query_vector", toJsonData(vector))))
                 )
         );
+    }
+
+    private Query buildQuery(Filter filter) {
+        Query query;
+        if (filter == null) {
+            query = Query.of(q -> q.matchAll(m -> m.boost(0f)));
+        } else {
+            query = ElasticsearchMetadataFilterMapper.map(filter);
+        }
+        return query;
     }
 
     private <T> JsonData toJsonData(T rawData) {
@@ -337,7 +403,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     private TypeMapping getDefaultMappings(int dimension) {
         Map<String, Property> properties = new HashMap<>(4);
         properties.put("text", Property.of(p -> p.text(TextProperty.of(t -> t))));
-        properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dimension)))));
+        properties.put("vector", Property.of(p -> p.denseVector(DenseVectorProperty.of(d -> d.dims(dimension).similarity("cosine")))));
         return TypeMapping.of(c -> c.properties(properties));
     }
 
@@ -380,4 +446,5 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                         )).orElse(null))
                 .collect(toList());
     }
+
 }
