@@ -22,7 +22,7 @@ class WebSearchPaginationTest {
 
     @Test
     void should_return_webSearchPagination_with_pagination(){
-        WebSearchPagination webSearchPagination = WebSearchPagination.pagination(1);
+        WebSearchPagination webSearchPagination = WebSearchPagination.from(1);
 
         assertThat(webSearchPagination.current()).isEqualTo(1);
         assertThat(webSearchPagination.next()).isNull();
@@ -35,8 +35,8 @@ class WebSearchPaginationTest {
 
     @Test
     void test_equals_and_hash(){
-        WebSearchPagination wsp1 = WebSearchPagination.pagination(1);
-        WebSearchPagination wsp2 = WebSearchPagination.pagination(1);
+        WebSearchPagination wsp1 = WebSearchPagination.from(1);
+        WebSearchPagination wsp2 = WebSearchPagination.from(1);
 
         assertThat(wsp1)
                 .isEqualTo(wsp1)
@@ -45,13 +45,13 @@ class WebSearchPaginationTest {
                 .isEqualTo(wsp2)
                 .hasSameHashCodeAs(wsp2);
 
-        assertThat(WebSearchPagination.pagination(2))
+        assertThat(WebSearchPagination.from(2))
                 .isNotEqualTo(wsp1);
     }
 
     @Test
     void should_throw_illegalArgumentException(){
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> WebSearchPagination.pagination(0));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> WebSearchPagination.from(0));
         assertThat(exception.getMessage()).isEqualTo("current must be greater than zero, but is: 0");
     }
 }

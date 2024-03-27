@@ -309,26 +309,4 @@ public class WebSearchRequest {
     public static WebSearchRequest from(String searchTerms, Integer maxResults) {
         return WebSearchRequest.builder().searchTerms(searchTerms).maxResults(maxResults).build();
     }
-
-    /**
-     * Create a web search request with the given search terms.
-     *
-     * @param searchTerms The search terms.
-     * @return The web search request.
-     */
-    public static WebSearchRequest webSearchRequest(String searchTerms) {
-        return from(searchTerms);
-    }
-
-    /**
-     * Create a web search request with the given search terms and maximum number of results.
-     *
-     * @param searchTerms The search terms.
-     * @param maxResults The maximum number of results.
-     * @return The web search request.
-     */
-    public static WebSearchRequest webSearchRequest(String searchTerms, Integer maxResults) {
-        return from(searchTerms, maxResults);
-    }
-
 }

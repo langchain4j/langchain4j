@@ -163,29 +163,4 @@ public class WebSearchResults {
     public static WebSearchResults from(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results, WebSearchPagination pagination) {
         return new WebSearchResults(searchMetadata, searchInformation, results, pagination);
     }
-
-    /**
-     * Creates a new instance of WebSearchResults from the specified parameters.
-     *
-     * @param results           The list of organic search results.
-     * @param searchInformation The information about the web search.
-     * @param pagination        The pagination information for the search results.
-     * @return The new instance of WebSearchResults.
-     */
-    public static WebSearchResults webSearchResults(List<WebSearchOrganicResult> results, WebSearchInformationResult searchInformation, WebSearchPagination pagination) {
-        return from(results, searchInformation, pagination);
-    }
-
-    /**
-     * Creates a new instance of WebSearchResults from the specified parameters.
-     *
-     * @param searchMetadata    The metadata associated with the search results.
-     * @param searchInformation The information about the web search.
-     * @param results           The list of organic search results.
-     * @param pagination        The pagination information for the search results.
-     * @return The new instance of WebSearchResults.
-     */
-    public static WebSearchResults webSearchResults(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results, WebSearchPagination pagination) {
-        return from(searchMetadata, searchInformation, results, pagination);
-    }
 }

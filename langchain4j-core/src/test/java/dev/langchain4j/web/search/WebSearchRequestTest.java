@@ -9,7 +9,7 @@ class WebSearchRequestTest {
 
     @Test
     void should_build_webSearchRequest_with_default_values(){
-        WebSearchRequest webSearchRequest = WebSearchRequest.webSearchRequest("query");
+        WebSearchRequest webSearchRequest = WebSearchRequest.from("query");
 
         assertThat(webSearchRequest.searchTerms()).isEqualTo("query");
         assertThat(webSearchRequest.startPage()).isEqualTo(1);
@@ -41,7 +41,7 @@ class WebSearchRequestTest {
 
     @Test
     void should_build_webSearchRequest_with_custom_maxResults(){
-        WebSearchRequest webSearchRequest = WebSearchRequest.webSearchRequest("query", 10);
+        WebSearchRequest webSearchRequest = WebSearchRequest.from("query", 10);
 
         assertThat(webSearchRequest.searchTerms()).isEqualTo("query");
         assertThat(webSearchRequest.startPage()).isEqualTo(1);
@@ -73,8 +73,8 @@ class WebSearchRequestTest {
 
     @Test
     void test_equals_and_hash(){
-        WebSearchRequest wsr1 = WebSearchRequest.webSearchRequest("query", 10);
-        WebSearchRequest wsr2 = WebSearchRequest.webSearchRequest("query", 10);
+        WebSearchRequest wsr1 = WebSearchRequest.from("query", 10);
+        WebSearchRequest wsr2 = WebSearchRequest.from("query", 10);
 
         assertThat(wsr1)
                 .isEqualTo(wsr1)
@@ -83,10 +83,10 @@ class WebSearchRequestTest {
                 .isEqualTo(wsr2)
                 .hasSameHashCodeAs(wsr2);
 
-        assertThat(WebSearchRequest.webSearchRequest("other query", 10))
+        assertThat(WebSearchRequest.from("other query", 10))
                 .isNotEqualTo(wsr1);
 
-        assertThat(WebSearchRequest.webSearchRequest("query", 20))
+        assertThat(WebSearchRequest.from("query", 20))
                 .isNotEqualTo(wsr1);
     }
 

@@ -6,7 +6,7 @@ import java.util.Objects;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
- * Represents a general information about the web search performed.
+ * Represents general information about the web search performed.
  * This includes the total number of results, the page number, and metadata.
  * <p>
  * The total number of results is the total number of web pages that are founded by the search engine in response to a search query.
@@ -114,27 +114,5 @@ public class WebSearchInformationResult {
      */
     public static WebSearchInformationResult from(Long totalResults, Integer pageNumber, Map<String, Object> metadata) {
         return new WebSearchInformationResult(totalResults, pageNumber, metadata);
-    }
-
-    /**
-     * Creates a new WebSearchInformationResult with the specified total results.
-     *
-     * @param totalResults The total number of results.
-     * @return The new WebSearchInformationResult.
-     */
-    public static WebSearchInformationResult informationResult(Long totalResults) {
-        return from(totalResults);
-    }
-
-    /**
-     * Creates a new WebSearchInformationResult with the specified total results, page number, and metadata.
-     *
-     * @param totalResults The total number of results.
-     * @param pageNumber  The page number.
-     * @param metadata     The metadata.
-     * @return The new WebSearchInformationResult.
-     */
-    public static WebSearchInformationResult informationResult(Long totalResults, Integer pageNumber, Map<String, Object> metadata) {
-        return from(totalResults, pageNumber, metadata);
     }
 }

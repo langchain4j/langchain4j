@@ -10,7 +10,6 @@ import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents an organic search results are the web pages that are returned by the search engine in response to a search query.
@@ -32,7 +31,7 @@ public class WebSearchOrganicResult {
      * @param content The content of the search result.
      */
     public WebSearchOrganicResult(String content) {
-        this("noTitle", "noLink", content, null);
+        this(null, null, content, null);
     }
 
     /**
@@ -42,7 +41,7 @@ public class WebSearchOrganicResult {
      * @param link    The link associated with the search result.
      */
     public WebSearchOrganicResult(String content, String link) {
-        this("noTitle", link, content, null);
+        this(null, link, content, null);
     }
 
     /**
@@ -65,8 +64,8 @@ public class WebSearchOrganicResult {
      * @param resultMetadata  The metadata associated with the search result.
      */
     public WebSearchOrganicResult(String title, String link, String content, Map<String, String> resultMetadata) {
-        this.title = ensureNotNull(title, "title");
-        this.link = ensureNotNull(link, "link");
+        this.title = title;
+        this.link = link;
         this.content = ensureNotBlank(content, "content");
         this.resultMetadata = getOrDefault(resultMetadata, new HashMap<>());
     }
@@ -201,51 +200,5 @@ public class WebSearchOrganicResult {
      */
     public static WebSearchOrganicResult from(String title, String link, String content, Map<String, String> resultMetadata) {
         return new WebSearchOrganicResult(title, link, content, resultMetadata);
-    }
-
-    /**
-     * Creates a WebSearchOrganicResult object from the given content.
-     *
-     * @param content The content of the search result.
-     * @return The created WebSearchOrganicResult object.
-     */
-    public static WebSearchOrganicResult webSearchOrganicResult(String content) {
-        return from(content);
-    }
-
-    /**
-     * Creates a WebSearchOrganicResult object from the given content and link.
-     *
-     * @param content The content of the search result.
-     * @param link    The link associated with the search result.
-     * @return The created WebSearchOrganicResult object.
-     */
-    public static WebSearchOrganicResult webSearchOrganicResult(String content, String link) {
-        return from(content, link);
-    }
-
-    /**
-     * Creates a WebSearchOrganicResult object from the given title, link, and content.
-     *
-     * @param title   The title of the search result.
-     * @param link    The link associated with the search result.
-     * @param content The content of the search result.
-     * @return The created WebSearchOrganicResult object.
-     */
-    public static WebSearchOrganicResult webSearchOrganicResult(String title, String link, String content) {
-        return from(title, link, content);
-    }
-
-    /**
-     * Creates a WebSearchOrganicResult object from the given title, link, content, and result metadata.
-     *
-     * @param title           The title of the search result.
-     * @param link            The link associated with the search result.
-     * @param content         The content of the search result.
-     * @param resultMetadata  The metadata associated with the search result.
-     * @return The created WebSearchOrganicResult object.
-     */
-    public static WebSearchOrganicResult webSearchOrganicResult(String title, String link, String content, Map<String, String> resultMetadata) {
-        return from(title, link, content, resultMetadata);
     }
 }

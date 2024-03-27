@@ -18,30 +18,30 @@ class WebSearchResultsTest {
 
     @Test
     void should_build_webSearchResults(){
-       WebSearchResults webSearchResults = WebSearchResults.webSearchResults(
-               singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
-               WebSearchInformationResult.informationResult(1L),
-               WebSearchPagination.pagination(1));
+       WebSearchResults webSearchResults = WebSearchResults.from(
+               singletonList(WebSearchOrganicResult.from("content")),
+               WebSearchInformationResult.from(1L),
+               WebSearchPagination.from(1));
 
        assertThat(webSearchResults.results()).hasSize(1);
        assertThat(webSearchResults.results().get(0).content()).isEqualTo("content");
        assertThat(webSearchResults.searchInformation().totalResults()).isEqualTo(1L);
        assertThat(webSearchResults.pagination().current()).isEqualTo(1);
 
-       assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}, results=[WebSearchOrganicResult{title='noTitle', link='noLink', content='content', resultMetadata={}}], pagination=WebSearchPagination{current=1, next='null', previous='null', otherPages=null}}");
+       assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}, results=[WebSearchOrganicResult{title='null', link='null', content='content', resultMetadata={}}], pagination=WebSearchPagination{current=1, next='null', previous='null', otherPages=null}}");
     }
 
     @Test
     void test_equals_and_hash(){
-        WebSearchResults wsr1 = WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
-                WebSearchInformationResult.informationResult(1L),
-                WebSearchPagination.pagination(1));
+        WebSearchResults wsr1 = WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("content")),
+                WebSearchInformationResult.from(1L),
+                WebSearchPagination.from(1));
 
-        WebSearchResults wsr2 = WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
-                WebSearchInformationResult.informationResult(1L),
-                WebSearchPagination.pagination(1));
+        WebSearchResults wsr2 = WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("content")),
+                WebSearchInformationResult.from(1L),
+                WebSearchPagination.from(1));
 
         assertThat(wsr1)
                 .isEqualTo(wsr1)
@@ -50,31 +50,31 @@ class WebSearchResultsTest {
                 .isEqualTo(wsr2)
                 .hasSameHashCodeAs(wsr2);
 
-        assertThat(WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("other content")),
-                WebSearchInformationResult.informationResult(1L),
-                WebSearchPagination.pagination(1)))
+        assertThat(WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("other content")),
+                WebSearchInformationResult.from(1L),
+                WebSearchPagination.from(1)))
                 .isNotEqualTo(wsr1);
 
-        assertThat(WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
-                WebSearchInformationResult.informationResult(2L),
-                WebSearchPagination.pagination(1)))
+        assertThat(WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("content")),
+                WebSearchInformationResult.from(2L),
+                WebSearchPagination.from(1)))
                 .isNotEqualTo(wsr1);
 
-        assertThat(WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
-                WebSearchInformationResult.informationResult(1L),
-                WebSearchPagination.pagination(2)))
+        assertThat(WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("content")),
+                WebSearchInformationResult.from(1L),
+                WebSearchPagination.from(2)))
                 .isNotEqualTo(wsr1);
     }
 
     @Test
     void should_return_array_of_textSegments(){
-        WebSearchResults webSearchResults = WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("title","url","content")),
-                WebSearchInformationResult.informationResult(1L),
-                WebSearchPagination.pagination(1));
+        WebSearchResults webSearchResults = WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("title","url","content")),
+                WebSearchInformationResult.from(1L),
+                WebSearchPagination.from(1));
 
         assertThat(webSearchResults.toTextSegments()).hasSize(1);
         assertThat(webSearchResults.toTextSegments().get(0).text()).isEqualTo("content");
@@ -88,10 +88,10 @@ class WebSearchResultsTest {
 
     @Test
     void should_return_array_of_documents(){
-        WebSearchResults webSearchResults = WebSearchResults.webSearchResults(
-                singletonList(WebSearchOrganicResult.webSearchOrganicResult("title","url","content")),
-                WebSearchInformationResult.informationResult(1L),
-                WebSearchPagination.pagination(1));
+        WebSearchResults webSearchResults = WebSearchResults.from(
+                singletonList(WebSearchOrganicResult.from("title","url","content")),
+                WebSearchInformationResult.from(1L),
+                WebSearchPagination.from(1));
 
         assertThat(webSearchResults.toDocuments()).hasSize(1);
         assertThat(webSearchResults.toDocuments().get(0).text()).isEqualTo("content");
@@ -114,8 +114,8 @@ class WebSearchResultsTest {
             new WebSearchResults(
                     searchMetadata,
                     null,
-                    singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
-                    WebSearchPagination.pagination(1));
+                    singletonList(WebSearchOrganicResult.from("content")),
+                    WebSearchPagination.from(1));
         });
     }
 
@@ -129,9 +129,9 @@ class WebSearchResultsTest {
         assertThrows(IllegalArgumentException.class, () -> {
             new WebSearchResults(
                     searchMetadata,
-                    WebSearchInformationResult.informationResult(1L),
+                    WebSearchInformationResult.from(1L),
                     anyList(),
-                    WebSearchPagination.pagination(1));
+                    WebSearchPagination.from(1));
         });
     }
 
@@ -145,8 +145,8 @@ class WebSearchResultsTest {
         assertThrows(IllegalArgumentException.class, () -> {
             new WebSearchResults(
                     searchMetadata,
-                    WebSearchInformationResult.informationResult(1L),
-                    singletonList(WebSearchOrganicResult.webSearchOrganicResult("content")),
+                    WebSearchInformationResult.from(1L),
+                    singletonList(WebSearchOrganicResult.from("content")),
                     null);
         });
     }

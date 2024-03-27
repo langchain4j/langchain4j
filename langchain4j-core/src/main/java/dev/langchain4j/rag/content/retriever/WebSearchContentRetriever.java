@@ -3,6 +3,7 @@ package dev.langchain4j.rag.content.retriever;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.web.search.WebSearchResults;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -38,20 +39,20 @@ import static java.util.stream.Collectors.toList;
  */
 public class WebSearchContentRetriever implements ContentRetriever{
 
-    private static final int DEFAULT_MAX_RESULTS = 3;
+    private static final int DEFAULT_MAX_TEXT_SEGMENTS = 3;
     
     private final WebSearchEngine webSearchEngine;
-    private final EmbeddingModel embeddingModel;
     private final DocumentSplitter documentSplitter;
-    private final EmbeddingStore<TextSegment> embeddingStore;
-    private final int maxResults;
+    private final EmbeddingModel embeddingModel;
+    private final Integer maxTextSegments;
+
 
     /**
      * Constructs a new WebSearchContentRetriever with the specified web search engine.
      * @param webSearchEngine The web search engine to use for retrieving web search results.
      */
     public WebSearchContentRetriever(WebSearchEngine webSearchEngine) {
-        this(webSearchEngine, null, null,null);
+        this(webSearchEngine, null);
     }
 
     /**
@@ -60,38 +61,7 @@ public class WebSearchContentRetriever implements ContentRetriever{
      * @param documentSplitter The document splitter to use for splitting web search results into smaller text segments.
      */
     public WebSearchContentRetriever(WebSearchEngine webSearchEngine, DocumentSplitter documentSplitter) {
-        this(webSearchEngine, null, documentSplitter,null);
-    }
-
-    /**
-     * Constructs a new WebSearchContentRetriever with the specified web search engine and embedding model.
-     * @param webSearchEngine The web search engine to use for retrieving web search results.
-     * @param embeddingModel The embedding model to use for generating embeddings and finding the most 3 relevant web search results.
-     */
-    public WebSearchContentRetriever(WebSearchEngine webSearchEngine, EmbeddingModel embeddingModel) {
-        this(webSearchEngine, embeddingModel, null,null);
-    }
-
-    /**
-     * Constructs a new WebSearchContentRetriever with the specified web search engine, embedding model, and maximum results.
-     * @param webSearchEngine The web search engine to use for retrieving search results.
-     * @param embeddingModel The embedding model to use for generating embeddings.
-     * @param maxResults The maximum number of relevant results to retrieve.
-     */
-    public WebSearchContentRetriever(WebSearchEngine webSearchEngine, EmbeddingModel embeddingModel, Integer maxResults) {
-        this(webSearchEngine, embeddingModel, null, maxResults);
-    }
-
-    /**
-     * Constructs a new WebSearchContentRetriever with the specified web search engine, embedding model, and document splitter.
-     * @param webSearchEngine The web search engine to use for retrieving search results.
-     * @param embeddingModel The embedding model to use for generating embeddings and finding the most relevant 3 web search results.
-     * @param documentSplitter The document splitter to use for splitting search results into text segments.
-     */
-    public WebSearchContentRetriever(WebSearchEngine webSearchEngine,
-                                     EmbeddingModel embeddingModel,
-                                     DocumentSplitter documentSplitter) {
-        this(webSearchEngine, embeddingModel, documentSplitter, DEFAULT_MAX_RESULTS);
+        this(webSearchEngine, documentSplitter, null, null);
     }
 
     /**
@@ -99,18 +69,17 @@ public class WebSearchContentRetriever implements ContentRetriever{
      * @param webSearchEngine The web search engine to use for retrieving search results.
      * @param embeddingModel The embedding model to use for generating embeddings and finding the relevant web search results.
      * @param documentSplitter The document splitter to use for splitting search results into text segments.
-     * @param maxResults The maximum number of relevant results to retrieve.
+     * @param maxTextSegments The maximum number of text segments to return.
      */
     @Builder
     public WebSearchContentRetriever(WebSearchEngine webSearchEngine,
-                                     EmbeddingModel embeddingModel,
                                      DocumentSplitter documentSplitter,
-                                     Integer maxResults) {
+                                     EmbeddingModel embeddingModel,
+                                     Integer maxTextSegments) {
         this.webSearchEngine = ensureNotNull(webSearchEngine, "webSearchEngine");
         this.embeddingModel = embeddingModel;
         this.documentSplitter = documentSplitter;
-        this.embeddingStore = new InMemoryEmbeddingStore<>();
-        this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
+        this.maxTextSegments = ensureGreaterThanZero(getOrDefault(maxTextSegments, DEFAULT_MAX_TEXT_SEGMENTS), "maxResults");
     }
 
     @Override
@@ -121,14 +90,20 @@ public class WebSearchContentRetriever implements ContentRetriever{
             textSegments = documentSplitter.splitAll(webSearchResults.toDocuments());
         }
         if (embeddingModel != null) {
-            Embedding embedding = embeddingModel.embed(query.text()).content();
-            embeddingStore.add(embedding, TextSegment.from(query.text()));
+            EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
+
+            Embedding embeddedQuery = embeddingModel.embed(query.text()).content();
 
             List<Embedding> embeddings = embeddingModel.embedAll(textSegments).content();
             embeddingStore.addAll(embeddings, textSegments);
 
-            List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, maxResults);
-            textSegments = relevant.stream()
+            EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
+                    .queryEmbedding(embeddedQuery)
+                    .maxResults(maxTextSegments)
+                    .build();
+
+            List<EmbeddingMatch<TextSegment>> searchResults = embeddingStore.search(searchRequest).matches();
+            textSegments = searchResults.stream()
                     .map(EmbeddingMatch::embedded)
                     .collect(toList());
         }

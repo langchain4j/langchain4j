@@ -126,27 +126,4 @@ public class WebSearchPagination {
     public static WebSearchPagination from(Integer current, String next, String previous, Map<Integer, String> otherPages) {
         return new WebSearchPagination(current, next, previous, otherPages);
     }
-
-    /**
-     * Creates a new WebSearchPagination object with the specified current page.
-     *
-     * @param current the current page number
-     * @return a new WebSearchPagination object
-     */
-    public static WebSearchPagination pagination(Integer current) {
-        return from(current);
-    }
-
-    /**
-     * Creates a new WebSearchPagination object with the specified parameters.
-     *
-     * @param current     the current page number
-     * @param next        the URL of the next page
-     * @param previous    the URL of the previous page
-     * @param otherPages  a map of page numbers to their respective URLs
-     * @return a new WebSearchPagination object
-     */
-    public static WebSearchPagination pagination(Integer current, String next, String previous, Map<Integer, String> otherPages) {
-        return from(current, next, previous, otherPages);
-    }
 }
