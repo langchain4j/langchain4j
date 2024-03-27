@@ -266,6 +266,7 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 :::
 
 Here is how to enable JSON mode:
+
 - For OpenAI:
 ```java
 OpenAiChatModel.builder()
@@ -273,6 +274,7 @@ OpenAiChatModel.builder()
         .responseFormat("json_object")
         .build();
 ```
+
 - For Azure OpenAI:
 ```java
 AzureOpenAiChatModel.builder()
@@ -280,6 +282,15 @@ AzureOpenAiChatModel.builder()
         .responseFormat(new ChatCompletionsJsonResponseFormat())
         .build();
 ```
+
+- For Mistral AI:
+```java
+MistralAiChatModel.builder()
+        ...
+        .responseFormat(JSON_OBJECT)
+        .build();
+```
+
 - For Ollama:
 ```java
 OllamaChatModel.builder()
@@ -287,6 +298,7 @@ OllamaChatModel.builder()
         .format("json")
         .build();
 ```
+
 - For other model providers: if the underlying model provider does not support JSON mode,
 prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
 
