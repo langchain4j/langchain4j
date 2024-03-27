@@ -29,6 +29,7 @@ import io.milvus.param.MetricType;
 import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.response.SearchResultsWrapper;
+import org.apache.commons.lang3.StringUtils;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -98,6 +99,12 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     CollectionOperationsExecutor.dropCollection(milvusClient, collectionName);
   }
 
+  public void createPartition(String partitionName) {
+    if (StringUtils.isNotEmpty(partitionName) && !hasPartition(this.milvusClient, this.collectionName, partitionName)) {
+      CollectionOperationsExecutor.createPartition(this.milvusClient, this.collectionName, partitionName);
+    }
+  }
+
   public String add(Embedding embedding) {
     String id = Utils.randomUUID();
     add(id, embedding);
@@ -116,21 +123,54 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
   public List<String> addAll(List<Embedding> embeddings) {
     List<String> ids = generateRandomIds(embeddings.size());
-    addAllInternal(ids, embeddings, null);
+    addAllInternal(ids, embeddings, null, null);
     return ids;
   }
 
   public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
     List<String> ids = generateRandomIds(embeddings.size());
-    addAllInternal(ids, embeddings, embedded);
+    addAllInternal(ids, embeddings, embedded, null);
+    return ids;
+  }
+
+public String add(Embedding embedding, String partitionName) {
+    String id = Utils.randomUUID();
+    add(id, embedding, partitionName);
+    return id;
+  }
+
+  public void add(String id, Embedding embedding, String partitionName) {
+    addInternal(id, embedding, null, partitionName);
+  }
+
+  public String add(Embedding embedding, TextSegment textSegment, String partitionName) {
+    String id = Utils.randomUUID();
+    addInternal(id, embedding, textSegment, partitionName);
+    return id;
+  }
+
+  public List<String> addAll(List<Embedding> embeddings, String partitionName) {
+    List<String> ids = generateRandomIds(embeddings.size());
+    addAllInternal(ids, embeddings, null, partitionName);
+    return ids;
+  }
+
+  public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded, String partitionName) {
+    List<String> ids = generateRandomIds(embeddings.size());
+    addAllInternal(ids, embeddings, embedded, partitionName);
     return ids;
   }
 
   @Override
   public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+    return this.search(embeddingSearchRequest, null);
+  }
+
+  public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest, List<String> partitionNames) {
 
     SearchParam searchParam = buildSearchRequest(
             collectionName,
+            partitionNames,
             embeddingSearchRequest.queryEmbedding().vectorAsList(),
             embeddingSearchRequest.filter(),
             embeddingSearchRequest.maxResults(),
@@ -159,18 +199,28 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     addAllInternal(
       singletonList(id),
       singletonList(embedding),
-      textSegment == null ? null : singletonList(textSegment)
+      textSegment == null ? null : singletonList(textSegment),
+      null
     );
   }
 
-  private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
+    private void addInternal(String id, Embedding embedding, TextSegment textSegment, String partitionName) {
+    addAllInternal(
+      singletonList(id),
+      singletonList(embedding),
+      textSegment == null ? null : singletonList(textSegment),
+      partitionName
+    );
+  }
+
+  private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments, String partitionName) {
     List<InsertParam.Field> fields = new ArrayList<>();
     fields.add(new InsertParam.Field(ID_FIELD_NAME, ids));
     fields.add(new InsertParam.Field(TEXT_FIELD_NAME, toScalars(textSegments, ids.size())));
     fields.add(new InsertParam.Field(METADATA_FIELD_NAME, toMetadataJsons(textSegments, ids.size())));
     fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
-    insert(milvusClient, collectionName, fields);
+    insert(milvusClient, collectionName, fields, partitionName);
     flush(milvusClient, collectionName);
   }
 
