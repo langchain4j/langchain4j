@@ -53,7 +53,7 @@ MistralAI updated a new selection and classification of models according to perf
 
 Here a list of available models:
 - open-mistral-7b (aka mistral-tiny-2312)
-- open-mistral-8x7b (aka mistral-small-2312)
+- open-mixtral-8x7b (aka mistral-small-2312)
 - mistral-small-latest (aka mistral-small-2402)
 - mistral-medium-latest (aka mistral-medium-2312)
 - mistral-large-latest (aka mistral-large-2402)
