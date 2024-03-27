@@ -18,4 +18,9 @@ public @interface P {
      * @return the description of a parameter
      */
     String value();
+
+    /**
+     * The current attribute is allowed to be empty
+     * */
+    boolean required() default true;
 }
