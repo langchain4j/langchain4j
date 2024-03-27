@@ -68,6 +68,10 @@ public class OpenAiModerationModel implements ModerationModel {
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
+    public String modelName() {
+        return modelName;
+    }
+
     @Override
     public Response<Moderation> moderate(String text) {
         return moderateInternal(singletonList(text));

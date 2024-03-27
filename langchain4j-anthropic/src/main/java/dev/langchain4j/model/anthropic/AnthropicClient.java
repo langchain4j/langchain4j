@@ -1,87 +1,88 @@
 package dev.langchain4j.model.anthropic;
 
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import lombok.Builder;
-import okhttp3.OkHttpClient;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.spi.ServiceHelper;
 
-import java.io.IOException;
 import java.time.Duration;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static java.lang.String.format;
+public abstract class AnthropicClient {
+    public abstract AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request);
+    public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingResponseHandler<AiMessage> handler);
 
-class AnthropicClient {
-
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
-            .setPrettyPrinting()
-            .create();
-
-    private final String apiKey;
-    private final String version;
-    private final AnthropicApi anthropicApi;
-
-    @Builder
-    AnthropicClient(String baseUrl,
-                    String apiKey,
-                    String version,
-                    Duration timeout,
-                    boolean logRequests,
-                    boolean logResponses) {
-
-        if (isNullOrBlank(apiKey)) {
-            throw new IllegalArgumentException("Anthropic API key must be defined. " +
-                    "It can be generated here: https://console.anthropic.com/settings/keys");
+    @SuppressWarnings("rawtypes")
+    public static AnthropicClient.Builder builder() {
+        for (AnthropicClientBuilderFactory factory : ServiceHelper.loadFactories(AnthropicClientBuilderFactory.class)) {
+            return factory.get();
         }
-
-        this.apiKey = apiKey;
-        this.version = ensureNotBlank(version, "version");
-
-        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
-
-        if (logRequests) {
-            okHttpClientBuilder.addInterceptor(new AnthropicRequestLoggingInterceptor());
-        }
-        if (logResponses) {
-            okHttpClientBuilder.addInterceptor(new AnthropicResponseLoggingInterceptor());
-        }
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
-                .client(okHttpClientBuilder.build())
-                .addConverterFactory(GsonConverterFactory.create(GSON))
-                .build();
-
-        this.anthropicApi = retrofit.create(AnthropicApi.class);
+        // fallback to the default
+        return DefaultAnthropicClient.builder();
     }
 
-    AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
-        try {
-            retrofit2.Response<AnthropicCreateMessageResponse> retrofitResponse
-                    = anthropicApi.createMessage(apiKey, version, request).execute();
-            if (retrofitResponse.isSuccessful()) {
-                return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
+    public abstract static class Builder<T extends AnthropicClient, B extends Builder<T, B>> {
+        protected String baseUrl;
+        protected String apiKey;
+        protected String version;
+        protected Duration timeout;
+        protected Boolean logRequests;
+        protected Boolean logResponses;
+
+        public abstract T build();
+
+        public B baseUrl(String baseUrl) {
+            if ((baseUrl == null) || baseUrl.trim().isEmpty()) {
+                throw new IllegalArgumentException("baseUrl cannot be null or empty");
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            this.baseUrl = baseUrl;
+            return (B) this;
         }
-    }
 
-    private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
-        int code = response.code();
-        String body = response.errorBody().string();
-        String errorMessage = format("status code: %s; body: %s", code, body);
-        return new RuntimeException(errorMessage);
+        public B apiKey(String apiKey) {
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                throw new IllegalArgumentException("Anthropic API Key must be defined.");
+            }
+            this.apiKey = apiKey;
+            return (B) this;
+        }
+
+        public B version(String version) {
+            if (version == null) {
+                throw new IllegalArgumentException("version cannot be null or empty");
+            }
+            this.version = version;
+            return (B) this;
+        }
+
+        public B timeout(Duration timeout) {
+            if (timeout == null) {
+                throw new IllegalArgumentException("timeout cannot be null");
+            }
+            this.timeout = timeout;
+            return (B) this;
+        }
+
+        public B logRequests() {
+            return logRequests(true);
+        }
+
+        public B logRequests(Boolean logRequests) {
+            if (logRequests == null) {
+                logRequests = false;
+            }
+            this.logRequests = logRequests;
+            return (B) this;
+        }
+
+        public B logResponses() {
+            return logResponses(true);
+        }
+
+        public B logResponses(Boolean logResponses) {
+            if (logResponses == null) {
+                logResponses = false;
+            }
+            this.logResponses = logResponses;
+            return (B) this;
+        }
     }
 }

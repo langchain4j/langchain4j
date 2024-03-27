@@ -7,10 +7,10 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0</version>
+        <version>0.29.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
-    
+
     <artifactId>langchain4j-neo4j</artifactId>
     <name>LangChain4j :: Integration :: Neo4j Vector Index</name>
 
@@ -21,7 +21,7 @@
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
-    
+
     <dependencies>
 
         <dependency>
@@ -91,6 +91,18 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
