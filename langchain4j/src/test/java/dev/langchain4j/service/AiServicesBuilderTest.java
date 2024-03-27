@@ -7,7 +7,7 @@ import dev.langchain4j.retriever.Retriever;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -24,7 +24,7 @@ public class AiServicesBuilderTest {
         });
         ContentRetriever contentRetriever = mock(ContentRetriever.class);
 
-        assertThrows(IllegalConfigurationException.class, () -> {
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
             AiServices.builder(AiServices.class)
                     .retriever(retriever)
                     .contentRetriever(contentRetriever)
@@ -40,7 +40,7 @@ public class AiServicesBuilderTest {
         });
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
-        assertThrows(IllegalConfigurationException.class, () -> {
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
             AiServices.builder(AiServices.class)
                     .retriever(retriever)
                     .retrievalAugmentor(retrievalAugmentor)
@@ -53,7 +53,7 @@ public class AiServicesBuilderTest {
         ContentRetriever contentRetriever = mock(ContentRetriever.class);
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
-        assertThrows(IllegalConfigurationException.class, () -> {
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
             AiServices.builder(AiServices.class)
                     .contentRetriever(contentRetriever)
                     .retrievalAugmentor(retrievalAugmentor)
@@ -66,7 +66,7 @@ public class AiServicesBuilderTest {
         Retriever retriever = mock(Retriever.class);
         ContentRetriever contentRetriever = mock(ContentRetriever.class);
 
-        assertThrows(IllegalConfigurationException.class, () -> {
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
             AiServices.builder(AiServices.class)
                     .contentRetriever(contentRetriever)
                     .retriever(retriever)
@@ -79,7 +79,7 @@ public class AiServicesBuilderTest {
         Retriever retriever = mock(Retriever.class);
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
-        assertThrows(IllegalConfigurationException.class, () -> {
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
             AiServices.builder(AiServices.class)
                     .retrievalAugmentor(retrievalAugmentor)
                     .retriever(retriever)
@@ -92,7 +92,7 @@ public class AiServicesBuilderTest {
         ContentRetriever contentRetriever = mock(ContentRetriever.class);
         RetrievalAugmentor retrievalAugmentor = mock(RetrievalAugmentor.class);
 
-        assertThrows(IllegalConfigurationException.class, () -> {
+        assertThatExceptionOfType(IllegalConfigurationException.class).isThrownBy(() -> {
             AiServices.builder(AiServices.class)
                     .retrievalAugmentor(retrievalAugmentor)
                     .contentRetriever(contentRetriever)
