@@ -1,23 +1,26 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.pgvector.PGvector;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Type;
 import java.sql.*;
 import java.util.*;
+import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static java.lang.String.join;
+import static java.util.Collections.nCopies;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -28,31 +31,23 @@ import static java.util.stream.Collectors.toList;
  * Only ivfflat index is used.
  */
 public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
-
     private static final Logger log = LoggerFactory.getLogger(PgVectorEmbeddingStore.class);
-
-    private static final Gson GSON = new Gson();
-
     private final String host;
     private final Integer port;
     private final String user;
     private final String password;
     private final String database;
     private final String table;
+    private final MetadataHandler metadataHandler;
 
     /**
      * All args constructor for PgVectorEmbeddingStore Class
      *
-     * @param host           The database host
-     * @param port           The database port
-     * @param user           The database user
-     * @param password       The database password
-     * @param database       The database name
-     * @param table          The database table
-     * @param dimension      The vector dimension
-     * @param useIndex       Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param indexListSize  The IVFFlat number of lists
-     * @param createTable    Should create table automatically
+     * @param table The database table
+     * @param dimension The vector dimension
+     * @param useIndex Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize The IVFFlat number of lists
+     * @param createTable Should create table automatically
      * @param dropTableFirst Should drop table first, usually for testing
      */
     @Builder
@@ -67,7 +62,13 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean useIndex,
             Integer indexListSize,
             Boolean createTable,
-            Boolean dropTableFirst) {
+            Boolean dropTableFirst,
+            // Metadata
+            String metadataType,
+            String metadataDefinition,
+            List<String> metadataIndexes,
+            String metadataIndexType
+    ) {
         this.host = ensureNotBlank(host, "host");
         this.port = ensureGreaterThanZero(port, "port");
         this.user = ensureNotBlank(user, "user");
@@ -75,35 +76,39 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.database = ensureNotBlank(database, "database");
         this.table = ensureNotBlank(table, "table");
 
+        this.metadataHandler = MetadataHandlerFactory.get(
+                createMetadataConfig(metadataType, metadataDefinition, metadataIndexes, metadataIndexType));
+
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
 
-        try (Connection connection = setupConnection()) {
+        initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
+    }
 
+    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
+                        Integer indexListSize) {
+        try (Connection connection = setupConnection()) {
             if (dropTableFirst) {
                 connection.createStatement().executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
-
             if (createTable) {
-                connection.createStatement().executeUpdate(String.format(
-                        "CREATE TABLE IF NOT EXISTS %s (" +
-                                "embedding_id UUID PRIMARY KEY, " +
-                                "embedding vector(%s), " +
-                                "text TEXT NULL, " +
-                                "metadata JSON NULL" +
-                                ")",
-                        table, ensureGreaterThanZero(dimension, "dimension")));
+                String query = String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
+                                "embedding vector(%s), text TEXT NULL, %s )",
+                        table, ensureGreaterThanZero(dimension, "dimension"),
+                        metadataHandler.columnDefinition());
+                connection.createStatement().executeUpdate(query);
             }
-
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
-                connection.createStatement().executeUpdate(String.format(
+                String query = String.format(
                         "CREATE INDEX IF NOT EXISTS %s ON %s " +
                                 "USING ivfflat (embedding vector_cosine_ops) " +
                                 "WITH (lists = %s)",
-                        indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize")));
+                        indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
+                connection.createStatement().executeUpdate(query);
             }
+            metadataHandler.createMetadataIndexes(connection.createStatement(), table);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -118,6 +123,28 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         connection.createStatement().executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
         PGvector.addVectorType(connection);
         return connection;
+    }
+
+    private MetadataConfig createMetadataConfig(String metadataType, String metadataDefinition,
+                                                             List<String> metadataIndexes, String metadataIndexType) {
+        return new MetadataConfig() {
+            @Override
+            public String type() {
+                return metadataType == null ? "JSON" : metadataType;
+            }
+            @Override
+            public String definition() {
+                return metadataDefinition == null ? "metadata JSON NULL" : metadataDefinition;
+            }
+            @Override
+            public Optional<List<String>> indexes() {
+                return Optional.ofNullable(metadataIndexes);
+            }
+            @Override
+            public String indexType() {
+                return metadataIndexType == null ? "BTREE" : metadataIndexType;
+            }
+        };
     }
 
     /**
@@ -136,7 +163,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Adds a given embedding to the store.
      *
-     * @param id        The unique identifier for the embedding to be added.
+     * @param id The unique identifier for the embedding to be added.
      * @param embedding The embedding to be added to the store.
      */
     @Override
@@ -147,7 +174,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Adds a given embedding and the corresponding content that has been embedded to the store.
      *
-     * @param embedding   The embedding to be added to the store.
+     * @param embedding The embedding to be added to the store.
      * @param textSegment Original content that was embedded.
      * @return The auto-generated ID associated with the added embedding.
      */
@@ -175,7 +202,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Adds multiple embeddings and their corresponding contents that have been embedded to the store.
      *
      * @param embeddings A list of embeddings to be added to the store.
-     * @param embedded   A list of original contents that were embedded.
+     * @param embedded A list of original contents that were embedded.
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
     @Override
@@ -186,24 +213,31 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * Finds the most relevant (closest in space) embeddings to the provided reference embedding.
+     * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
+     * <br>
+     * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
+     * <br>
+     * {@link EmbeddingSearchRequest#filter()} is used to filter by meta dada.
      *
-     * @param referenceEmbedding The embedding used as a reference. Returned embeddings should be relevant (closest) to this one.
-     * @param maxResults         The maximum number of embeddings to be returned.
-     * @param minScore           The minimum relevance score, ranging from 0 to 1 (inclusive).
-     *                           Only embeddings with a score of this value or higher will be returned.
-     * @return A list of embedding matches.
-     * Each embedding match includes a relevance score (derivative of cosine distance),
-     * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        Embedding referenceEmbedding = request.queryEmbedding();
+        int maxResults = request.maxResults();
+        double minScore = request.minScore();
+        Filter filter = request.filter();
+
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         try (Connection connection = setupConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
+            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
+            whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
             String query = String.format(
-                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, metadata FROM %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, table, minScore, maxResults);
+                    "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
+                            "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
+                    referenceVector, metadataHandler.columnsNames(), table, whereClause, minScore, maxResults);
             PreparedStatement selectStmt = connection.prepareStatement(query);
 
             ResultSet resultSet = selectStmt.executeQuery();
@@ -217,20 +251,18 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 String text = resultSet.getString("text");
                 TextSegment textSegment = null;
                 if (isNotNullOrBlank(text)) {
-                    String metadataJson = Optional.ofNullable(resultSet.getString("metadata")).orElse("{}");
-                    Type type = new TypeToken<Map<String, String>>() {
-                    }.getType();
-                    Metadata metadata = new Metadata(new HashMap<>(GSON.fromJson(metadataJson, type)));
+                    Metadata metadata = metadataHandler.fromResultSet(resultSet);
                     textSegment = TextSegment.from(text, metadata);
                 }
-
                 result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
             }
+            resultSet.close();
+            selectStmt.close();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
-        return result;
+        return new EmbeddingSearchResult<>(result);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -252,13 +284,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         try (Connection connection = setupConnection()) {
             String query = String.format(
-                    "INSERT INTO %s (embedding_id, embedding, text, metadata) VALUES (?, ?, ?, ?)" +
+                    "INSERT INTO %s (embedding_id, embedding, text, %s) VALUES (?, ?, ?, %s)" +
                             "ON CONFLICT (embedding_id) DO UPDATE SET " +
                             "embedding = EXCLUDED.embedding," +
                             "text = EXCLUDED.text," +
-                            "metadata = EXCLUDED.metadata;",
-                    table);
-
+                            "%s;",
+                    table, metadataHandler.columnsNames(),
+                    join(",", nCopies(metadataHandler.nbMetadataColumns(), "?")),
+                    metadataHandler.insertClause());
             PreparedStatement upsertStmt = connection.prepareStatement(query);
 
             for (int i = 0; i < ids.size(); ++i) {
@@ -267,19 +300,28 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
                 if (embedded != null && embedded.get(i) != null) {
                     upsertStmt.setObject(3, embedded.get(i).text());
-                    Map<String, String> metadata = embedded.get(i).metadata().asMap();
-                    upsertStmt.setObject(4, GSON.toJson(metadata), Types.OTHER);
+                    metadataHandler.setMetadata(upsertStmt, 4, embedded.get(i).metadata());
                 } else {
                     upsertStmt.setNull(3, Types.VARCHAR);
-                    upsertStmt.setNull(4, Types.OTHER);
+                    IntStream.range(4, 4 + metadataHandler.nbMetadataColumns()).forEach(
+                            j -> {
+                                try {
+                                    upsertStmt.setNull(j, Types.OTHER);
+                                } catch (SQLException e) {
+                                    throw new RuntimeException(e);
+                                }
+                            });
+
                 }
                 upsertStmt.addBatch();
             }
 
             upsertStmt.executeBatch();
+            upsertStmt.close();
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
+
 }
