@@ -1,21 +1,21 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicStreamingData {
+public class AnthropicStreamingData {
 
-    String type;
+    public String type;
 
     // when type = "message_start"
-    AnthropicResponseMessage message;
+    public AnthropicResponseMessage message;
 
     // when type = "content_block_start" || "content_block_delta" || "content_block_stop"
-    Integer index;
+    public Integer index;
 
     // when type = "content_block_start"
-    AnthropicContent contentBlock;
+    public AnthropicContent contentBlock;
 
     // when type = "content_block_delta" || "message_delta"
-    AnthropicDelta delta; // mix of Content and Message
+    public AnthropicDelta delta; // mix of Content and Message
 
     // when type = "message_delta"
-    AnthropicUsage usage;
+    public AnthropicUsage usage;
 }

@@ -2,7 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import java.util.List;
 
-class AnthropicResponseMessage {
+public class AnthropicResponseMessage {
 
     String id;
     String type;
