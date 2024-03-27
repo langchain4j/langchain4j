@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 @Getter
-enum MistralAiToolType {
+public enum MistralAiToolType {
 
     @SerializedName("function") FUNCTION;
 
