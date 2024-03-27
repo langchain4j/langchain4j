@@ -7,6 +7,7 @@ import com.azure.ai.openai.models.*;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.netty.NettyAsyncHttpClientProvider;
@@ -23,7 +24,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -38,6 +42,8 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 class InternalAzureOpenAiHelper {
+
+    private static final Logger logger = LoggerFactory.getLogger(InternalAzureOpenAiHelper.class);
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
@@ -120,18 +126,44 @@ class InternalAzureOpenAiHelper {
 
     public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
-            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(message.text(), ""));
+            AiMessage aiMessage = (AiMessage) message;
+            ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
             chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
         } else if (message instanceof SystemMessage) {
-            return new ChatRequestSystemMessage(message.text());
-        } else {
-            ChatRequestUserMessage chatRequestUserMessage = new ChatRequestUserMessage(message.text());
+            SystemMessage systemMessage = (SystemMessage) message;
+            return new ChatRequestSystemMessage(systemMessage.text());
+        } else if (message instanceof UserMessage) {
+            UserMessage userMessage = (UserMessage) message;
+            ChatRequestUserMessage chatRequestUserMessage;
+            if (userMessage.hasSingleText()) {
+                chatRequestUserMessage = new ChatRequestUserMessage(((TextContent) userMessage.contents().get(0)).text());
+            } else {
+                chatRequestUserMessage = new ChatRequestUserMessage(userMessage.contents().stream()
+                        .map(content -> {
+                            if (content instanceof TextContent) {
+                                String text = ((TextContent) content).text();
+                                return new ChatMessageTextContentItem(text);
+                            } else if (content instanceof ImageContent) {
+                                ImageContent imageContent = (ImageContent) content;
+                                if (imageContent.image().url() == null) {
+                                    throw new IllegalArgumentException("Image URL is not present. Base64 encoded images are not supported at the moment.");
+                                }
+                                ChatMessageImageUrl imageUrl = new ChatMessageImageUrl(imageContent.image().url().toString());
+                                return new ChatMessageImageContentItem(imageUrl);
+                            } else {
+                                throw new IllegalArgumentException("Unsupported content type: " + content.type());
+                            }
+                        })
+                        .collect(toList()));
+            }
             chatRequestUserMessage.setName(nameFrom(message));
             return chatRequestUserMessage;
+        } else {
+            throw new IllegalArgumentException("Unsupported message type: " + message.type());
         }
     }
 
@@ -276,5 +308,32 @@ class InternalAzureOpenAiHelper {
         } else {
             return null;
         }
+    }
+
+    /**
+     * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
+     */
+    public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
+        FinishReason exceptionFinishReason = FinishReason.OTHER;
+        if (httpResponseException.getValue() instanceof Map) {
+            try {
+                Map<String, Object> error = (Map<String, Object>) httpResponseException.getValue();
+                Object errorMap = error.get("error");
+                if (errorMap instanceof Map) {
+                    Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
+                    Object errorCode = errorDetails.get("code");
+                    if (errorCode instanceof String) {
+                        String code = (String) errorCode;
+                        if (contentFilterCode.equals(code)) {
+                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
+                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                        }
+                    }
+                }
+            } catch (ClassCastException classCastException) {
+                logger.error("Error parsing error response from Azure OpenAI", classCastException);
+            }
+        }
+        return exceptionFinishReason;
     }
 }

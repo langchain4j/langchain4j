@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiChatCompletionResponse {
+public class MistralAiChatCompletionResponse {
 
     private String id;
     private String object;

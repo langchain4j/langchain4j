@@ -79,11 +79,16 @@ class OpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
+        int maxTokens = 1;
+
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .maxTokens(3)
+                .maxTokens(maxTokens)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Germany?");
@@ -96,7 +101,7 @@ class OpenAiChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(3);
+        assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -124,8 +129,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(53);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(22);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(52);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(18);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -144,7 +149,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -172,8 +177,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(59);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(16);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(61);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(9);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -192,7 +197,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());

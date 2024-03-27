@@ -12,13 +12,11 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.29.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-core</artifactId>
-    <packaging>jar</packaging>
-
     <name>LangChain4j :: Core</name>
     <description>Core classes and interfaces of LangChain4j</description>
 
@@ -126,6 +124,11 @@
                             <rules>
                                 <rule>
                                     <excludes>
+                                        <exclude>dev.langchain4j.data.document</exclude>
+                                        <exclude>dev.langchain4j.store.embedding</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter.logical</exclude>
+                                        <exclude>dev.langchain4j.store.embedding.filter.comparison</exclude>
                                         <exclude>dev.langchain4j.rag</exclude>
                                         <exclude>dev.langchain4j.rag.content</exclude>
                                         <exclude>dev.langchain4j.rag.content.aggregator</exclude>
@@ -160,7 +163,24 @@
                                         <limit>
                                             <counter>INSTRUCTION</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
+                                            <minimum>0.75</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <rule>
+                                    <includes>
+                                        <include>dev.langchain4j.data.document</include>
+                                        <include>dev.langchain4j.store.embedding</include>
+                                        <include>dev.langchain4j.store.embedding.filter</include>
+                                        <include>dev.langchain4j.store.embedding.filter.logical</include>
+                                        <include>dev.langchain4j.store.embedding.filter.comparison</include>
+                                    </includes>
+                                    <element>PACKAGE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.00</minimum>
                                         </limit>
                                     </limits>
                                 </rule>

@@ -87,6 +87,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
@@ -101,6 +102,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
+    }
+
+    public String modelName() {
+        return modelName;
     }
 
     @Override
