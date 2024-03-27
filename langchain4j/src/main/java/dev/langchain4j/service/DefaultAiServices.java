@@ -26,8 +26,6 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static dev.langchain4j.service.ServiceOutputParser.parse;
 import static java.util.Collections.singletonMap;
 
 class DefaultAiServices<T> extends AiServices<T> {
@@ -35,8 +33,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
+    private final DefaultServiceOutputParser serviceOutputParser;
+
     DefaultAiServices(AiServiceContext context) {
+        this(context, DefaultServiceOutputParser.DEFAULT);
+    }
+    DefaultAiServices(AiServiceContext context, DefaultServiceOutputParser serviceOutputParser) {
         super(context);
+        this.serviceOutputParser = serviceOutputParser;
     }
 
     static void validateParameters(Method method) {
@@ -100,8 +104,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
                         }
 
-                        // TODO give user ability to provide custom OutputParser
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
+                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(method.getReturnType());
                         userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
@@ -176,7 +179,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        return parse(response, method.getReturnType());
+                        return serviceOutputParser.parse(response, method.getReturnType());
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

@@ -19,7 +19,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_SimplePerson() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(Person.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(Person.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$Person: {\n" +
@@ -37,7 +37,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithFirstNameList() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithFirstNameList.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithFirstNameList.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithFirstNameList: {\n" +
@@ -55,7 +55,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithFirstNameArray() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithFirstNameArray.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithFirstNameArray.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithFirstNameArray: {\n" +
@@ -73,7 +73,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithJavaType() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithCalendarDate.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithCalendarDate.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithCalendarDate: {\n" +
@@ -92,7 +92,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithStaticFinalField() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithStaticField.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithStaticField.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithStaticField: {\n" +
@@ -117,7 +117,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithNestedObject() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddress.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonAndAddress.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonAndAddress: {\n" +
@@ -141,7 +141,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithNestedObjectList() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddressList.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonAndAddressList.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonAndAddressList: {\n" +
@@ -165,7 +165,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithNestedObjectArray() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonAndAddressArray.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonAndAddressArray.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonAndAddressArray: {\n" +
@@ -194,7 +194,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithFinalFields() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithFinalFields.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithFinalFields.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithFinalFields: {\n" +
@@ -212,7 +212,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithParents() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithParents.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithParents.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents: {\n" +
@@ -230,7 +230,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithParentArray() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithParentArray.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithParentArray.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray: {\n" +
@@ -249,7 +249,7 @@ class ServiceOutputParserTest {
 
     @Test
     void outputFormatInstructions_PersonWithMotherAndFather() {
-        String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithMotherAndFather.class);
+        String formatInstructions = DefaultServiceOutputParser.DEFAULT.outputFormatInstructions(PersonWithMotherAndFather.class);
 
         assertThat(formatInstructions).isEqualTo(
                 "\nYou must answer strictly in the following JSON format: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
