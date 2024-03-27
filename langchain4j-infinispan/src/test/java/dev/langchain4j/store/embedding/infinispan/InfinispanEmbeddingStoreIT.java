@@ -12,9 +12,7 @@ import org.infinispan.server.test.core.InfinispanContainer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 
-import static org.infinispan.server.test.core.InfinispanContainer.DEFAULT_PASSWORD;
-import static org.infinispan.server.test.core.InfinispanContainer.DEFAULT_USERNAME;
-import static org.infinispan.server.test.core.InfinispanContainer.IMAGE_BASENAME;
+import static org.infinispan.server.test.core.InfinispanContainer.*;
 
 class InfinispanEmbeddingStoreIT extends EmbeddingStoreIT {
 

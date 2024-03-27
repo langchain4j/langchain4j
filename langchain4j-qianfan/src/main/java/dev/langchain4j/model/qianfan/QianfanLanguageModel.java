@@ -1,7 +1,6 @@
 package dev.langchain4j.model.qianfan;
 
 
-
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -10,9 +9,11 @@ import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanLanguageModelBuilderFactory;
 import lombok.Builder;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.finishReasonFrom;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 

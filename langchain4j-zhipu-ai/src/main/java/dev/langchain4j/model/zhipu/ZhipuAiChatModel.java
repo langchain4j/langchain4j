@@ -19,11 +19,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.aiMessageFrom;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toTools;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toZhipuAiMessages;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**

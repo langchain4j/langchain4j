@@ -7,11 +7,12 @@ import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
 import dev.langchain4j.model.qianfan.client.QianfanStreamingResponseBuilder;
-import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.SyncOrAsyncOrStreaming;
+import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanStreamingLanguageModelBuilderFactory;
 import lombok.Builder;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 

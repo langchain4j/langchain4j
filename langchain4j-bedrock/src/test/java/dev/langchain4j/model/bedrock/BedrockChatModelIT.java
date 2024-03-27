@@ -1,10 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
-import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -12,12 +7,18 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.regions.Region;
+
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+
+import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.Mistral7bInstructV0_2;
+import static dev.langchain4j.model.bedrock.BedrockMistralAiChatModel.Types.MistralMixtral8x7bInstructV0_1;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class BedrockChatModelIT {
     

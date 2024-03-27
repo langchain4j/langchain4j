@@ -22,7 +22,8 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.IOException;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
 
 class DefaultMistralAiClient extends MistralAiClient {

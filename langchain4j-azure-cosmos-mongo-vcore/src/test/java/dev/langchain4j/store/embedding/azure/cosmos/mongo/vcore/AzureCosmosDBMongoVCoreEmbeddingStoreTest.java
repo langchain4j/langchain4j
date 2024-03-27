@@ -14,7 +14,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.stream.StreamSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.in;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AzureCosmosDBMongoVCoreEmbeddingStoreTest {

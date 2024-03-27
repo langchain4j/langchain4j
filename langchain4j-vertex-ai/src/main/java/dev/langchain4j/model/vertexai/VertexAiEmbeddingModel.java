@@ -1,14 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
-import com.google.cloud.aiplatform.v1beta1.ComputeTokensRequest;
-import com.google.cloud.aiplatform.v1beta1.ComputeTokensResponse;
-import com.google.cloud.aiplatform.v1beta1.EndpointName;
-import com.google.cloud.aiplatform.v1beta1.LlmUtilityServiceClient;
-import com.google.cloud.aiplatform.v1beta1.LlmUtilityServiceSettings;
-import com.google.cloud.aiplatform.v1beta1.PredictResponse;
-import com.google.cloud.aiplatform.v1beta1.PredictionServiceClient;
-import com.google.cloud.aiplatform.v1beta1.PredictionServiceSettings;
-import com.google.cloud.aiplatform.v1beta1.TokensInfo;
+import com.google.cloud.aiplatform.v1beta1.*;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.embedding.Embedding;

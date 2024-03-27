@@ -1,8 +1,5 @@
 package dev.langchain4j.store.embedding.vearch;
 
-import dev.langchain4j.store.embedding.vearch.ModelParam;
-import dev.langchain4j.store.embedding.vearch.SpaceEngine;
-import dev.langchain4j.store.embedding.vearch.SpacePropertyParam;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

@@ -28,9 +28,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.finishReasonFrom;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.specificationsFrom;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.model.zhipu.Json.GSON;
 
 public class ZhipuAiClient {

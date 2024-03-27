@@ -2,12 +2,7 @@ package dev.langchain4j.store.embedding.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.dtsx.astra.sdk.cassio.AnnQuery;
-import com.dtsx.astra.sdk.cassio.AnnResult;
-import com.dtsx.astra.sdk.cassio.CassIO;
-import com.dtsx.astra.sdk.cassio.MetadataVectorRecord;
-import com.dtsx.astra.sdk.cassio.MetadataVectorTable;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
+import com.dtsx.astra.sdk.cassio.*;
 import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;

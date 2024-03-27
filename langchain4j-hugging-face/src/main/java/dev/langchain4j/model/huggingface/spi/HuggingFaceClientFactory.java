@@ -1,6 +1,7 @@
 package dev.langchain4j.model.huggingface.spi;
 
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
+
 import java.time.Duration;
 
 

@@ -2,7 +2,6 @@ package dev.langchain4j.store.memory.chat.cassandra;
 
 import com.dtsx.astra.sdk.AstraDBAdmin;
 import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
-import com.dtsx.astra.sdk.utils.TestUtils;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
@@ -22,7 +21,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import dev.langchain4j.store.embedding.astradb.AstraDbEmbeddingStore;
 import dev.langchain4j.store.embedding.cassandra.CassandraEmbeddingStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -36,7 +34,6 @@ import java.util.UUID;
 
 import static com.dtsx.astra.sdk.utils.TestUtils.TEST_REGION;
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
-import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;

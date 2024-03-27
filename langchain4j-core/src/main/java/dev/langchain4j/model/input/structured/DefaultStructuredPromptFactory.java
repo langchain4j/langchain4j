@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.spi.prompt.structured.StructuredPromptFactory;
+
 import java.util.Map;
 
 /**
