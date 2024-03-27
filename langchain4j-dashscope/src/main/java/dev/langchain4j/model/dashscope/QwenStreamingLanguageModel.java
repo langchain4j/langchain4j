@@ -108,7 +108,8 @@ public class QwenStreamingLanguageModel implements StreamingLanguageModel {
                     handler.onComplete(Response.from(
                             response.content().text(),
                             response.tokenUsage(),
-                            response.finishReason()
+                            response.finishReason(),
+                            response.metadata()
                     ));
                 }
 

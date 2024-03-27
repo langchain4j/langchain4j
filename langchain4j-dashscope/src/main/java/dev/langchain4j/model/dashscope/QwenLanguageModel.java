@@ -90,8 +90,8 @@ public class QwenLanguageModel implements LanguageModel {
 
             GenerationResult generationResult = generation.call(builder.build());
 
-            return Response.from(answerFrom(generationResult),
-                    tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
+            return Response.from(answerFrom(generationResult), tokenUsageFrom(generationResult),
+                    finishReasonFrom(generationResult), metadataFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }

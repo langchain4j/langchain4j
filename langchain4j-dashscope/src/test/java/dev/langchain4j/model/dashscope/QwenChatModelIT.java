@@ -7,6 +7,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import static dev.langchain4j.model.dashscope.DashScopeMetadata.REQUEST_ID;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,6 +26,7 @@ public class QwenChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("rain");
+        assertThat(response.metadata().get(REQUEST_ID)).asString().isNotBlank();
     }
 
     @ParameterizedTest
@@ -39,6 +41,7 @@ public class QwenChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("dog");
+        assertThat(response.metadata().get(REQUEST_ID)).asString().isNotBlank();
     }
 
     @ParameterizedTest
@@ -53,5 +56,6 @@ public class QwenChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
+        assertThat(response.metadata().get(REQUEST_ID)).asString().isNotBlank();
     }
 }

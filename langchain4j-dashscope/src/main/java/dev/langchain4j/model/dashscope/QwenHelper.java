@@ -7,6 +7,7 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationO
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
+import com.alibaba.dashscope.embeddings.TextEmbeddingResult;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
@@ -23,12 +24,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.common.Role.*;
+import static dev.langchain4j.model.dashscope.DashScopeMetadata.REQUEST_ID;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
 class QwenHelper {
-
     static List<Message> toQwenMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(QwenHelper::toQwenMessage)
@@ -263,6 +264,18 @@ class QwenHelper {
             default:
                 return null;
         }
+    }
+
+    static Map<String, Object> metadataFrom(GenerationResult result) {
+        return Collections.singletonMap(REQUEST_ID, result.getRequestId());
+    }
+
+    static Map<String, Object> metadataFrom(MultiModalConversationResult result) {
+        return Collections.singletonMap(REQUEST_ID, result.getRequestId());
+    }
+
+    static Map<String, Object> metadataFrom(TextEmbeddingResult result) {
+        return Collections.singletonMap(REQUEST_ID, result.getRequestId());
     }
 
     public static boolean isMultimodalModel(String modelName) {

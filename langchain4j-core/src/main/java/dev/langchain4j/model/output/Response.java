@@ -1,5 +1,7 @@
 package dev.langchain4j.model.output;
 
+import java.util.Collections;
+import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -15,6 +17,7 @@ public class Response<T> {
     private final T content;
     private final TokenUsage tokenUsage;
     private final FinishReason finishReason;
+    private final Map<String, Object> metadata;
 
     /**
      * Create a new Response.
@@ -24,7 +27,7 @@ public class Response<T> {
      * @param content the content to wrap.
      */
     public Response(T content) {
-        this(content, null, null);
+        this(content, null, null, null);
     }
 
     /**
@@ -35,9 +38,22 @@ public class Response<T> {
      * @param finishReason the finish reason, or {@code null}.
      */
     public Response(T content, TokenUsage tokenUsage, FinishReason finishReason) {
+        this(content, tokenUsage, finishReason, null);
+    }
+
+    /**
+     * Create a new Response.
+     *
+     * @param content the content to wrap.
+     * @param tokenUsage the token usage statistics, or {@code null}.
+     * @param finishReason the finish reason, or {@code null}.
+     * @param metadata the metadata defined by the model provider, or {@code null}.
+     */
+    public Response(T content, TokenUsage tokenUsage, FinishReason finishReason, Map<String, Object> metadata) {
         this.content = ensureNotNull(content, "content");
         this.tokenUsage = tokenUsage;
         this.finishReason = finishReason;
+        this.metadata = metadata;
     }
 
     /**
@@ -64,6 +80,10 @@ public class Response<T> {
         return finishReason;
     }
 
+    public Map<String, Object> metadata() {
+        return metadata;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -71,12 +91,13 @@ public class Response<T> {
         Response<?> that = (Response<?>) o;
         return Objects.equals(this.content, that.content)
                 && Objects.equals(this.tokenUsage, that.tokenUsage)
-                && Objects.equals(this.finishReason, that.finishReason);
+                && Objects.equals(this.finishReason, that.finishReason)
+                && Objects.equals(this.metadata, that.metadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(content, tokenUsage, finishReason);
+        return Objects.hash(content, tokenUsage, finishReason, metadata);
     }
 
     @Override
@@ -85,6 +106,7 @@ public class Response<T> {
                 " content = " + content +
                 ", tokenUsage = " + tokenUsage +
                 ", finishReason = " + finishReason +
+                ", metadata = " + metadata +
                 " }";
     }
 
@@ -119,5 +141,18 @@ public class Response<T> {
      */
     public static <T> Response<T> from(T content, TokenUsage tokenUsage, FinishReason finishReason) {
         return new Response<>(content, tokenUsage, finishReason);
+    }
+
+    /**
+     * Create a new Response.
+     * @param content the content to wrap.
+     * @param tokenUsage the token usage statistics.
+     * @param finishReason the finish reason.
+     * @param metadata the metadata defined by the model provider.
+     * @return the new Response.
+     * @param <T> the type of content.
+     */
+    public static <T> Response<T> from(T content, TokenUsage tokenUsage, FinishReason finishReason, Map<String, Object> metadata) {
+        return new Response<>(content, tokenUsage, finishReason, metadata);
     }
 }

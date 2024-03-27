@@ -105,8 +105,8 @@ public class QwenChatModel implements ChatLanguageModel {
             GenerationResult generationResult = generation.call(builder.build());
             String answer = answerFrom(generationResult);
 
-            return Response.from(AiMessage.from(answer),
-                    tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
+            return Response.from(AiMessage.from(answer), tokenUsageFrom(generationResult),
+                    finishReasonFrom(generationResult), metadataFrom(generationResult));
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
@@ -129,8 +129,8 @@ public class QwenChatModel implements ChatLanguageModel {
             MultiModalConversationResult result = conv.call(param);
             String answer = answerFrom(result);
 
-            return Response.from(AiMessage.from(answer),
-                    tokenUsageFrom(result), finishReasonFrom(result));
+            return Response.from(AiMessage.from(answer), tokenUsageFrom(result),
+                    finishReasonFrom(result), metadataFrom(result));
         } catch (NoApiKeyException | UploadFileException e) {
             throw new RuntimeException(e);
         }

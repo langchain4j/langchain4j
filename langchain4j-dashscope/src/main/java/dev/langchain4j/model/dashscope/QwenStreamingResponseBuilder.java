@@ -9,16 +9,18 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.Collections;
+
+import static dev.langchain4j.model.dashscope.DashScopeMetadata.REQUEST_ID;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 
 public class QwenStreamingResponseBuilder {
     private final StringBuilder generatedContent = new StringBuilder();
-
     private Integer inputTokenCount;
-
     private Integer outputTokenCount;
-
     private FinishReason finishReason;
+    private String requestId;
+
 
     public QwenStreamingResponseBuilder() {}
 
@@ -26,6 +28,8 @@ public class QwenStreamingResponseBuilder {
         if (partialResponse == null) {
             return null;
         }
+
+        requestId = partialResponse.getRequestId();
 
         GenerationUsage usage = partialResponse.getUsage();
         if (usage != null) {
@@ -52,6 +56,8 @@ public class QwenStreamingResponseBuilder {
             return null;
         }
 
+        requestId = partialResponse.getRequestId();
+
         MultiModalConversationUsage usage = partialResponse.getUsage();
         if (usage != null) {
             inputTokenCount = usage.getInputTokens();
@@ -76,7 +82,8 @@ public class QwenStreamingResponseBuilder {
         return Response.from(
                 AiMessage.from(generatedContent.toString()),
                 new TokenUsage(inputTokenCount, outputTokenCount),
-                finishReason
+                finishReason,
+                Collections.singletonMap(REQUEST_ID, requestId)
         );
     }
 }
