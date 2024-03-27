@@ -1,0 +1,52 @@
+package dev.langchain4j.store.embedding.pgvector;
+
+import java.sql.SQLException;
+import java.sql.Statement;
+
+/**
+ *  Handle metadata as JSONB columns.
+ */
+public class JSONBMetadataHandler extends JSONMetadataHandler {
+
+    final String indexType;
+
+    /**
+     * MetadataHandler constructor
+     * @param config {@link MetadataConfig} configuration
+     */
+    public JSONBMetadataHandler(MetadataConfig config) {
+        super(config);
+        if (!this.columnDefinition().toLowerCase().contains("jsonb")) {
+            throw new RuntimeException("Your column definition should contains JSONB Type");
+        }
+        indexType = config.indexType();
+    }
+
+    @Override
+    public void createMetadataIndexes(Statement statement, String table) {
+        String indexTypeSql = indexType == null ? "" : "USING " + indexType;
+        for (String str : this.indexes) {
+            String index = str.trim();
+            String indexName = formatIndex(index);
+            try {
+                String indexSql = String.format("create index %s_%s on %s %s ( %s )",
+                        table, indexName, table, indexTypeSql, index);
+                statement.executeUpdate(indexSql);
+            } catch (SQLException e) {
+                throw new RuntimeException(String.format("Cannot create index %s: %s", index, e));
+            }
+        }
+    }
+
+    String formatIndex(String index) {
+        // (metadata_b->'name')
+        String indexName;
+        if (index.contains("->")) {
+            indexName = columnName + "_" + index.substring(index.indexOf("->") + 3, index.length() - 1)
+                    .trim().replaceAll("'", "");
+        } else {
+            indexName = index;
+        }
+        return indexName;
+    }
+}
