@@ -3,6 +3,8 @@ package dev.langchain4j.agent.tool;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
@@ -221,5 +223,12 @@ public class JsonSchemaProperty {
      */
     public static JsonSchemaProperty items(JsonSchemaProperty type) {
         return from("items", singletonMap(type.key, type.value));
+    }
+
+    public static JsonSchemaProperty objectItems(JsonSchemaProperty type) {
+        Map<String,Object> map = new HashMap<>();
+        map.put("type", "object");
+        map.put(type.key, type.value);
+        return from("items", map);
     }
 }
