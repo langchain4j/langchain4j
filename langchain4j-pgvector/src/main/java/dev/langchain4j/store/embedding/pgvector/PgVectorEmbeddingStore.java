@@ -43,12 +43,21 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * All args constructor for PgVectorEmbeddingStore Class
      *
-     * @param table The database table
-     * @param dimension The vector dimension
-     * @param useIndex Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
-     * @param indexListSize The IVFFlat number of lists
-     * @param createTable Should create table automatically
-     * @param dropTableFirst Should drop table first, usually for testing
+     * @param host                  The database host
+     * @param port                  The database port
+     * @param user                  The database user
+     * @param password              The database password
+     * @param database              The database name
+     * @param table                 The database table
+     * @param dimension             The vector dimension
+     * @param useIndex              Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param indexListSize         The IVFFlat number of lists
+     * @param createTable           Should create table automatically
+     * @param dropTableFirst        Should drop table first, usually for testing
+     * @param metadataType          The metadata Type, only JSON, JSONB and COLUMNS are allowed
+     * @param metadataDefinition    List of metadata columns with definition. Ex: "metadata JSONB NULL"
+     * @param metadataIndexes       List of metadata indexes
+     * @param metadataIndexType     Type of metadata index. Ex: BTREE, GIN
      */
     @Builder
     public PgVectorEmbeddingStore(
@@ -65,7 +74,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Boolean dropTableFirst,
             // Metadata
             String metadataType,
-            String metadataDefinition,
+            List<String> metadataDefinition,
             List<String> metadataIndexes,
             String metadataIndexType
     ) {
@@ -125,7 +134,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         return connection;
     }
 
-    private MetadataConfig createMetadataConfig(String metadataType, String metadataDefinition,
+    private MetadataConfig createMetadataConfig(String metadataType, List<String> metadataDefinition,
                                                              List<String> metadataIndexes, String metadataIndexType) {
         return new MetadataConfig() {
             @Override
@@ -133,8 +142,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 return metadataType == null ? "JSON" : metadataType;
             }
             @Override
-            public String definition() {
-                return metadataDefinition == null ? "metadata JSON NULL" : metadataDefinition;
+            public List<String> definition() {
+                return metadataDefinition == null ? Collections.singletonList("metadata JSON NULL") : metadataDefinition;
             }
             @Override
             public Optional<List<String>> indexes() {

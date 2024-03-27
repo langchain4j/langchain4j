@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public interface MetadataConfig {
     String type();
-    String definition();
+    List<String> definition();
     Optional<List<String>> indexes();
     String indexType();
 }

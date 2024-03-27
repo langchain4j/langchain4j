@@ -12,7 +12,7 @@ import java.util.stream.Collectors;
  */
 public class ColumnsMetadataHandler implements MetadataHandler {
 
-    final String columnsDefinition;
+    final List<String> columnsDefinition;
     final List<String> columnsName;
     final PgVectorFilterMapper filterMapper;
 
@@ -22,7 +22,7 @@ public class ColumnsMetadataHandler implements MetadataHandler {
 
     public ColumnsMetadataHandler(MetadataConfig config) {
         this.columnsDefinition = config.definition();
-        this.columnsName = Arrays.stream(columnsDefinition.split(","))
+        this.columnsName = config.definition().stream()
                 .map(d -> d.trim().split(" ")[0]).collect(Collectors.toList());
         this.filterMapper = new PgVectorFilterMapper();
         this.indexes = config.indexes().orElse(Collections.emptyList());
@@ -31,7 +31,7 @@ public class ColumnsMetadataHandler implements MetadataHandler {
 
     @Override
     public String columnDefinition() {
-        return this.columnsDefinition;
+        return String.join(",", this.columnsDefinition);
     }
 
     @Override

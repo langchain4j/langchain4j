@@ -34,7 +34,7 @@ public class PgVectorEmbeddingStoreWithJSONBFilteringIT extends EmbeddingStoreWi
                 .dimension(384)
                 .dropTableFirst(true)
                 .metadataType("JSONB")
-                .metadataDefinition("metadata JSONB NULL")
+                .metadataDefinition(Collections.singletonList("metadata JSONB NULL"))
                 .metadataIndexes(Collections.singletonList("metadata"))
                 .build();
     }

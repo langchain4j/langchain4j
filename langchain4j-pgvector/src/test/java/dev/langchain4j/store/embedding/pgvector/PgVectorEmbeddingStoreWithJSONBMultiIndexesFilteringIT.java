@@ -11,6 +11,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 @Testcontainers
 public class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends EmbeddingStoreWithFilteringIT {
@@ -34,7 +35,7 @@ public class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends Embe
                 .dimension(384)
                 .dropTableFirst(true)
                 .metadataType("JSONB")
-                .metadataDefinition("metadata_b JSONB NULL")
+                .metadataDefinition(Collections.singletonList("metadata_b JSONB NULL"))
                 .metadataIndexes(Arrays.asList("(metadata_b->'key')", "(metadata_b->'name')", "(metadata_b->'age')"))
                 .metadataIndexType("GIN")
                 .build();

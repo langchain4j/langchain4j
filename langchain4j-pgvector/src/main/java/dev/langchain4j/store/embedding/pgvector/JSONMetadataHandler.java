@@ -23,8 +23,8 @@ public class JSONMetadataHandler implements MetadataHandler {
     final List<String> indexes;
 
     public JSONMetadataHandler(MetadataConfig config) {
-        this.columnDefinition = config.definition();
-        if (this.columnDefinition().contains(",")) {
+        this.columnDefinition = config.definition().get(0);
+        if (config.definition().size()>1 || this.columnDefinition().contains(",")) {
             throw new RuntimeException("Multiple columns definition are not allowed in JSON, JSONB Type");
         }
         this.columnName = this.columnDefinition.split(" ")[0];
