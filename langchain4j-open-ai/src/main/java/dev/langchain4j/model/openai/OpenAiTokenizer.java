@@ -283,8 +283,7 @@ public class OpenAiTokenizer implements Tokenizer {
     }
 
     private Supplier<IllegalArgumentException> unknownModelException() {
-        return () -> illegalArgument("Model '%s' is unknown to jtokkit. " +
-                "Please provide an instance of OpenAiTokenizer in the model class's builder.", modelName);
+        return () -> illegalArgument("Model '%s' is unknown to jtokkit", modelName);
     }
 
     @Override
