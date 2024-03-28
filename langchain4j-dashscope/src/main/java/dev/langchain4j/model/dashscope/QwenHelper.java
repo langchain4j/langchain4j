@@ -1,16 +1,21 @@
 package dev.langchain4j.model.dashscope;
 
-import com.alibaba.dashscope.aigc.generation.GenerationOutput;
-import com.alibaba.dashscope.aigc.generation.GenerationOutput.Choice;
-import com.alibaba.dashscope.aigc.generation.GenerationResult;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationOutput;
-import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationMessage;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationOutput;
+import dev.langchain4j.model.dashscope.extension.aigc.generation.GenerationResult;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversationMessage;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversationOutput;
+import dev.langchain4j.model.dashscope.extension.aigc.multimodalconversation.MultiModalConversationResult;
+import dev.langchain4j.model.dashscope.extension.common.*;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.io.ByteArrayInputStream;
@@ -28,6 +33,19 @@ import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
 
 class QwenHelper {
+    static Map<String, Object> toQwenToolsParameters(List<ToolSpecification> toolSpecifications) {
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put(
+                "tools",
+                toolSpecifications.stream().map(toolSpecification -> {
+                    Map<String, Object> functionDef = new HashMap<>();
+                    functionDef.put("type", "function");
+                    functionDef.put("function", toolSpecification);
+                    return functionDef;
+                }).collect(Collectors.toList())
+        );
+        return parameters;
+    }
 
     static List<Message> toQwenMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -42,10 +60,46 @@ class QwenHelper {
     }
 
     static Message toQwenMessage(ChatMessage message) {
-        return Message.builder()
+        Message.MessageBuilder<?, ?> builder;
+        switch (message.type()) {
+            case AI:
+                if (((AiMessage) message).hasToolExecutionRequests()) {
+                    builder = ToolCallMessage.builder()
+                            .toolCalls(toolCallsFrom(((AiMessage) message)));
+                } else {
+                    builder = Message.builder();
+                }
+                break;
+            case TOOL_EXECUTION_RESULT:
+                builder = ToolResultMessage.builder()
+                        .name(((ToolExecutionResultMessage) message).toolName());
+                break;
+            default:
+                builder = Message.builder();
+        }
+        return builder
                 .role(roleFrom(message))
                 .content(toSingleText(message))
                 .build();
+    }
+
+    private static List<ToolCall> toolCallsFrom(AiMessage aiMessage) {
+        return aiMessage
+                .toolExecutionRequests()
+                .stream()
+                .map(toolExecutionRequest -> ToolCall
+                        .builder()
+                        .id(toolExecutionRequest.id())
+                        .type("function")
+                        .function(FunctionCall
+                                .builder()
+                                .name(toolExecutionRequest.name())
+                                .arguments(toolExecutionRequest.arguments())
+                                .build()
+                        )
+                        .build()
+                )
+                .collect(Collectors.toList());
     }
 
     static String toSingleText(ChatMessage message) {
@@ -75,7 +129,24 @@ class QwenHelper {
     }
 
     static MultiModalMessage toQwenMultiModalMessage(ChatMessage message) {
-        return MultiModalMessage.builder()
+        MultiModalMessage.MultiModalMessageBuilder<?, ?> builder;
+        switch (message.type()) {
+            case AI:
+                if (((AiMessage) message).hasToolExecutionRequests()) {
+                    builder = ToolCallMultiModalMessage.builder()
+                            .toolCalls(toolCallsFrom(((AiMessage) message)));
+                } else {
+                    builder = MultiModalMessage.builder();
+                }
+                break;
+            case TOOL_EXECUTION_RESULT:
+                builder = ToolResultMultiModalMessage.builder()
+                        .name(((ToolExecutionResultMessage) message).toolName());
+                break;
+            default:
+                builder = MultiModalMessage.builder();
+        }
+        return builder
                 .role(roleFrom(message))
                 .content(toMultiModalContents(message))
                 .build();
@@ -84,7 +155,7 @@ class QwenHelper {
     static List<Map<String, Object>> toMultiModalContents(ChatMessage message) {
         switch (message.type()) {
             case USER:
-                return((UserMessage) message).contents()
+                return ((UserMessage) message).contents()
                         .stream()
                         .map(QwenHelper::toMultiModalContent)
                         .collect(Collectors.toList());
@@ -171,13 +242,25 @@ class QwenHelper {
                 .isPresent();
     }
 
+    static Response<AiMessage> responseFrom(GenerationResult generationResult) {
+        String answer = answerFrom(generationResult);
+        List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestsFrom(generationResult);
+        return Response.from(
+                toolExecutionRequests.isEmpty()
+                        ? AiMessage.from(answer)
+                        : AiMessage.from(toolExecutionRequests),
+                tokenUsageFrom(generationResult),
+                finishReasonFrom(generationResult)
+        );
+    }
+
     static String answerFrom(GenerationResult result) {
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
                 .map(GenerationOutput::getChoices)
                 .filter(choices -> !choices.isEmpty())
                 .map(choices -> choices.get(0))
-                .map(Choice::getMessage)
+                .map(GenerationOutput.Choice::getMessage)
                 .map(Message::getContent)
                 // Compatible with some older models.
                 .orElseGet(() -> Optional.of(result)
@@ -196,6 +279,18 @@ class QwenHelper {
                 .map(MultiModalMessage::getContent)
                 .filter(contents -> !contents.isEmpty())
                 .isPresent();
+    }
+
+    static Response<AiMessage> responseFrom(MultiModalConversationResult generationResult) {
+        String answer = answerFrom(generationResult);
+        List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestsFrom(generationResult);
+        return Response.from(
+                toolExecutionRequests.isEmpty()
+                        ? AiMessage.from(answer)
+                        : AiMessage.from(toolExecutionRequests),
+                tokenUsageFrom(generationResult),
+                finishReasonFrom(generationResult)
+        );
     }
 
     static String answerFrom(MultiModalConversationResult result) {
@@ -233,7 +328,7 @@ class QwenHelper {
                 .map(GenerationOutput::getChoices)
                 .filter(choices -> !choices.isEmpty())
                 .map(choices -> choices.get(0))
-                .map(Choice::getFinishReason)
+                .map(GenerationOutput.Choice::getFinishReason)
                 .orElse("");
 
         switch (finishReason) {
@@ -263,6 +358,44 @@ class QwenHelper {
             default:
                 return null;
         }
+    }
+
+    private static List<ToolExecutionRequest> toolExecutionRequestsFrom(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(GenerationOutput.Choice::getMessage)
+                .map(GenerationMessage::getToolCalls)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .map(toolCall -> ToolExecutionRequest
+                        .builder()
+                        .id(toolCall.getId())
+                        .name(toolCall.getFunction().getName())
+                        .arguments(toolCall.getFunction().getArguments())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private static List<ToolExecutionRequest> toolExecutionRequestsFrom(MultiModalConversationResult result) {
+        return Optional.of(result)
+                .map(MultiModalConversationResult::getOutput)
+                .map(MultiModalConversationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(MultiModalConversationOutput.Choice::getMessage)
+                .map(MultiModalConversationMessage::getToolCalls)
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .map(toolCall -> ToolExecutionRequest
+                        .builder()
+                        .id(toolCall.getId())
+                        .name(toolCall.getFunction().getName())
+                        .arguments(toolCall.getFunction().getArguments())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     public static boolean isMultimodalModel(String modelName) {
