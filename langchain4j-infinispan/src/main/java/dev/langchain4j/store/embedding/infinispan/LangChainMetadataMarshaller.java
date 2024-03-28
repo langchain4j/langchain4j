@@ -7,10 +7,14 @@ import java.io.IOException;
 /**
  * Marshaller to read and write metadata to Infinispan
  */
-class LangChainMetadataMarshaller implements MessageMarshaller<LangChainMetadata> {
+public class LangChainMetadataMarshaller implements MessageMarshaller<LangChainMetadata> {
 
     private final String typeName;
 
+    /**
+     * Constructor for the LangChainMetadata Marshaller
+     * @param typeName, the full type of the protobuf entity
+     */
     public LangChainMetadataMarshaller(String typeName) {
         this.typeName = typeName;
     }
