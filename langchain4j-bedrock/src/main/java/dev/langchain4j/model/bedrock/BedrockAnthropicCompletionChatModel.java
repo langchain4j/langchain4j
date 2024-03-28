@@ -13,9 +13,8 @@ import java.util.Map;
 public class BedrockAnthropicCompletionChatModel extends AbstractBedrockChatModel<BedrockAnthropicCompletionChatModelResponse> {
     
     private static final String DEFAULT_ANTHROPIC_VERSION = "bedrock-2023-05-31";
+    private final Integer topK;
 
-    @Builder.Default
-    private final int topK = 250;
     @Builder.Default
     private final String anthropicVersion = DEFAULT_ANTHROPIC_VERSION;
     @Builder.Default

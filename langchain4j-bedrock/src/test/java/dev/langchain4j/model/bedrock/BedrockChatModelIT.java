@@ -38,12 +38,12 @@ public class BedrockChatModelIT {
         
         assertThat(bedrockChatModel).isNotNull();
         
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
         
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
     
     @Test
@@ -88,12 +88,12 @@ public class BedrockChatModelIT {
         
         assertThat(bedrockChatModel).isNotNull();
         
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
         
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
     
     @Test
@@ -138,12 +138,12 @@ public class BedrockChatModelIT {
 
         assertThat(bedrockChatModel).isNotNull();
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
-
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
+        
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
     
     @Test
@@ -161,12 +161,12 @@ public class BedrockChatModelIT {
         
         assertThat(bedrockChatModel).isNotNull();
         
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
         
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -184,17 +184,17 @@ public class BedrockChatModelIT {
 
         assertThat(bedrockChatModel).isNotNull();
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(21);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(1);
         assertThat(tokenUsage.totalTokenCount()).isGreaterThan(15);
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -211,12 +211,12 @@ public class BedrockChatModelIT {
 
         assertThat(bedrockChatModel).isNotNull();
 
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
 
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 
     @Test
@@ -249,7 +249,7 @@ public class BedrockChatModelIT {
         BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
             .builder()
             .temperature(0.50f)
-            .maxTokens(300)
+            .maxTokens(500)
             .region(Region.US_EAST_1)
             .model(BedrockLlamaChatModel.Types.MetaLlama2Chat13B.getValue())
             .maxRetries(1)
@@ -257,12 +257,12 @@ public class BedrockChatModelIT {
         
         assertThat(bedrockChatModel).isNotNull();
         
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
         
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
     
     @Test
@@ -272,7 +272,7 @@ public class BedrockChatModelIT {
         BedrockLlamaChatModel bedrockChatModel = BedrockLlamaChatModel
             .builder()
             .temperature(0.50f)
-            .maxTokens(300)
+            .maxTokens(500)
             .region(Region.US_EAST_1)
             .model(BedrockLlamaChatModel.Types.MetaLlama2Chat70B.getValue())
             .maxRetries(1)
@@ -285,7 +285,7 @@ public class BedrockChatModelIT {
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
         assertThat(response.tokenUsage()).isNotNull();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
     
     @Test
@@ -295,7 +295,7 @@ public class BedrockChatModelIT {
         BedrockMistralAiChatModel bedrockChatModel = BedrockMistralAiChatModel
             .builder()
             .temperature(0.50f)
-            .maxTokens(300)
+            .maxTokens(500)
             .region(Region.US_EAST_1)
             .model(Mistral7bInstructV0_2.getValue())
             .maxRetries(1)
@@ -306,13 +306,13 @@ public class BedrockChatModelIT {
         List<ChatMessage> messages = Arrays.asList(
             UserMessage.from("hi, how are you doing"),
             AiMessage.from("I am an AI model so I don't have feelings"),
-            UserMessage.from("Ok no worries, tell me story about a man who wears a tin hat."));
+            UserMessage.from("Ok no worries, tell me short story about a man who wears a tin hat. The story should be no longer than 300 words."));
         
         Response<AiMessage> response = bedrockChatModel.generate(messages);
         
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
     
     @Test
@@ -330,10 +330,10 @@ public class BedrockChatModelIT {
         
         assertThat(bedrockChatModel).isNotNull();
         
-        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("hi, how are you doing?"));
+        Response<AiMessage> response = bedrockChatModel.generate(UserMessage.from("Answer the following question with yes or no: Is the sky blue?"));
         
         assertThat(response).isNotNull();
         assertThat(response.content().text()).isNotBlank();
-        assertThat(response.finishReason()).isIn(FinishReason.STOP, FinishReason.LENGTH);
+        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
     }
 }
