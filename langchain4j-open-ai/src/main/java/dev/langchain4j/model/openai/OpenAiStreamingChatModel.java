@@ -70,7 +70,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Proxy proxy,
                                     Boolean logRequests,
                                     Boolean logResponses,
-                                    Tokenizer tokenizer) {
+                                    Tokenizer tokenizer,
+                                    Map<String, String> customHeaders) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -86,6 +87,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);

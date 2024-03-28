@@ -13,6 +13,7 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -45,7 +46,8 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                                Proxy proxy,
                                Boolean logRequests,
                                Boolean logResponses,
-                               Tokenizer tokenizer) {
+                               Tokenizer tokenizer,
+                               Map<String, String> customHeaders) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -61,6 +63,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);

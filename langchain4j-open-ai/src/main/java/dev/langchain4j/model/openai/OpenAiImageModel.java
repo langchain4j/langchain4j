@@ -14,6 +14,7 @@ import java.net.Proxy;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -70,7 +71,8 @@ public class OpenAiImageModel implements ImageModel {
             Boolean logRequests,
             Boolean logResponses,
             Boolean withPersisting,
-            Path persistTo
+            Path persistTo,
+            Map<String, String> customHeaders
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -87,7 +89,8 @@ public class OpenAiImageModel implements ImageModel {
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .userAgent(DEFAULT_USER_AGENT)
-                .persistTo(persistTo);
+                .persistTo(persistTo)
+                .customHeaders(customHeaders);
 
         if (withPersisting != null && withPersisting) {
             cBuilder.withPersisting();
