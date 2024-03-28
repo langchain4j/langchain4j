@@ -4,7 +4,10 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.sql.*;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -24,7 +27,7 @@ public class ColumnsMetadataHandler implements MetadataHandler {
         this.columnsDefinition = config.definition();
         this.columnsName = config.definition().stream()
                 .map(d -> d.trim().split(" ")[0]).collect(Collectors.toList());
-        this.filterMapper = new PgVectorFilterMapper();
+        this.filterMapper = new ColumnFilterMapper();
         this.indexes = config.indexes().orElse(Collections.emptyList());
         this.indexType = config.indexType();
     }

@@ -7,12 +7,12 @@ class JSONFilterMapper extends PgVectorFilterMapper {
         this.metadataColumn = metadataColumn;
     }
 
-    String formatKeyAsText(String key) {
-        return metadataColumn + "->>'" + key + "'";
-    }
-
     String formatKey(String key, Class<?> valueType) {
         return String.format("(%s->>'%s')::%s", metadataColumn, key, SQL_TYPE_MAP.get(valueType));
+    }
+
+    String formatKeyAsString(String key) {
+        return metadataColumn + "->>'" + key + "'";
     }
 
 }
