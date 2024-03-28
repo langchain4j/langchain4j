@@ -23,6 +23,7 @@ public class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public String formatInstructions() {
-        return "one of " + Arrays.toString(enumClass.getEnumConstants());
+        return "\nYou must answer strictly in the following format: one of " +
+                Arrays.toString(enumClass.getEnumConstants());
     }
 }
