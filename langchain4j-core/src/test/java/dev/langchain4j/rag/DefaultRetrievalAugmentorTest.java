@@ -62,7 +62,7 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("query");
+        UserMessage userMessage = UserMessage.from("userName", "query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
@@ -81,6 +81,7 @@ class DefaultRetrievalAugmentorTest {
                         "content 3\n" +
                         "content 4"
         );
+        assertThat(augmented.name()).isEqualTo("userName");
 
         verify(queryTransformer).transform(Query.from("query", metadata));
         verifyNoMoreInteractions(queryTransformer);
@@ -131,7 +132,7 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("query");
+        UserMessage userMessage = UserMessage.from("userName", "query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
