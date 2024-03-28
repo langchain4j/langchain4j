@@ -83,8 +83,9 @@ public class ServiceOutputParser {
         if (returnType == Set.class) {
             return new HashSet<>(asList(text.split("\n")));
         }
-
-        return Json.fromJson(text, returnType);
+        String simpleTypeName = simpleTypeName(returnType) + " :";
+        String json = text.substring(simpleTypeName.length());
+        return Json.fromJson(json, returnType);
     }
 
     public static String outputFormatInstructions(Class<?> returnType) {
