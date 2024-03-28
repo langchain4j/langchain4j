@@ -16,8 +16,6 @@ import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class EmbeddingStoreContentRetrieverTest {

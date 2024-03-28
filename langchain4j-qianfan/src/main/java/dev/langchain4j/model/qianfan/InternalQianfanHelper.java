@@ -4,7 +4,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.chat.Parameters;

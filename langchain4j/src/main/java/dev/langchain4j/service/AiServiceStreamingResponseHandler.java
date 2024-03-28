@@ -10,7 +10,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
