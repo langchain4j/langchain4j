@@ -54,7 +54,7 @@ public class DocumentByParagraphSplitter extends HierarchicalDocumentSplitter {
 
     @Override
     public String[] split(String text) {
-        return text.split("\\s*\\R\\s*\\R\\s*"); // additional whitespaces are ignored
+        return text.split("\\s*(?>\\R)\\s*(?>\\R)\\s*"); // additional whitespaces are ignored
     }
 
     @Override
