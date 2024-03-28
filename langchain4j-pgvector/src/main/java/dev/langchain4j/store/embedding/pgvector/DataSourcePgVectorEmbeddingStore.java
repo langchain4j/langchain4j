@@ -80,7 +80,7 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
     protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
                         Integer indexListSize) {
         String query = "init";
-        try (Statement statement = datasource.getConnection().createStatement()) {
+        try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
             statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
             if (dropTableFirst) {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
@@ -190,8 +190,7 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
         Filter filter = request.filter();
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
-        try (Connection connection = datasource.getConnection()) {
-            PGvector.addVectorType(connection); // Find a way to do it in connection creation.
+        try (Connection connection = getConnection()) {
             String referenceVector = Arrays.toString(referenceEmbedding.vector());
             String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
             whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
@@ -242,8 +241,7 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
         ensureTrue(embedded == null || embeddings.size() == embedded.size(),
                 "embeddings size is not equal to embedded size");
 
-        try (Connection connection = datasource.getConnection()) {
-            PGvector.addVectorType(connection); // Find a way to do it in connection creation.
+        try (Connection connection = getConnection()) {
             String query = String.format(
                     "INSERT INTO %s (embedding_id, embedding, text, %s) VALUES (?, ?, ?, %s)" +
                             "ON CONFLICT (embedding_id) DO UPDATE SET " +
@@ -280,5 +278,11 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Connection getConnection() throws SQLException {
+        Connection connection = datasource.getConnection();
+        PGvector.addVectorType(connection); // Find a way to do it in connection creation.
+        return connection;
     }
 }
