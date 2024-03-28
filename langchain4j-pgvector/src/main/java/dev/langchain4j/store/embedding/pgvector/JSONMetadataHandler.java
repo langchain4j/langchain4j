@@ -9,6 +9,8 @@ import java.lang.reflect.Type;
 import java.sql.*;
 import java.util.*;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * This class handle JSON and JSONB Filter mapping
  */
@@ -27,7 +29,7 @@ public class JSONMetadataHandler implements MetadataHandler {
      * @param config {@link MetadataConfig} configuration
      */
     public JSONMetadataHandler(MetadataConfig config) {
-        this.columnDefinition = config.definition().get(0);
+        this.columnDefinition = ensureNotNull(config.definition(), "Metadata definition").get(0);
         if (config.definition().size()>1 || this.columnDefinition().contains(",")) {
             throw new RuntimeException("Multiple columns definition are not allowed in JSON, JSONB Type");
         }
@@ -48,7 +50,7 @@ public class JSONMetadataHandler implements MetadataHandler {
 
     @Override
     public void createMetadataIndexes(Statement statement, String table) {
-        if (!this.indexes.isEmpty()) {
+        if (this.indexes != null && !this.indexes.isEmpty()) {
             throw new RuntimeException("Indexes are not allowed for JSON metadata, use JSONB instead");
         }
     }

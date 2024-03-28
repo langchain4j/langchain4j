@@ -4,7 +4,6 @@ import lombok.Builder;
 import org.postgresql.ds.PGSimpleDataSource;
 
 import javax.sql.DataSource;
-import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -30,10 +29,7 @@ public class PgVectorEmbeddingStore extends DataSourcePgVectorEmbeddingStore {
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
-     * @param metadataType          The metadata Type, only JSON, JSONB and COLUMNS are allowed
-     * @param metadataDefinition    List of metadata columns with definition. Ex: "metadata JSONB NULL"
-     * @param metadataIndexes       List of metadata indexes
-     * @param metadataIndexType     Type of metadata index. Ex: BTREE, GIN
+     * @param metadataConfig        The {@link MetadataConfig} config.
      */
     @Builder
     public PgVectorEmbeddingStore(
@@ -48,15 +44,10 @@ public class PgVectorEmbeddingStore extends DataSourcePgVectorEmbeddingStore {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            // Metadata
-            String metadataType,
-            List<String> metadataDefinition,
-            List<String> metadataIndexes,
-            String metadataIndexType
+            MetadataConfig metadataConfig
     ) {
         super(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, indexListSize, createTable, dropTableFirst,
-                metadataType, metadataDefinition, metadataIndexes, metadataIndexType);
+                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataConfig);
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {

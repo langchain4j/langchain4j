@@ -9,15 +9,12 @@ import java.util.Collections;
 public class PgVectorEmbeddingStoreWithJSONBFilteringIT extends PgVectorEmbeddingStoreConfigIT {
     @BeforeAll
     static void beforeAll() {
-        PgVectorEmbeddingStoreConfigIT.beforeAll();
-        embeddingStore = DataSourcePgVectorEmbeddingStore.withDataSourceBuilder()
-                .datasource(dataSource)
-                .table(TABLE_NAME)
-                .dimension(TABLE_DIMENSION)
-                .dropTableFirst(true)
-                .metadataType("JSONB")
-                .metadataDefinition(Collections.singletonList("metadata JSONB NULL"))
-                .metadataIndexes(Collections.singletonList("metadata"))
+        MetadataConfig config = DefaultMetadataConfig.builder()
+                .type("JSONB")
+                .definition(Collections.singletonList("metadata JSONB NULL"))
+                .indexes(Collections.singletonList("metadata"))
+                .indexType("GIN")
                 .build();
+        PgVectorEmbeddingStoreConfigIT.configureStore(config);
     }
 }

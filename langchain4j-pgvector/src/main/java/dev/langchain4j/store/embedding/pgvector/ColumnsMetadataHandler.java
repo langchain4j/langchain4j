@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 /**
  * Handle Metadata stored in independent columns
  */
@@ -28,7 +30,7 @@ public class ColumnsMetadataHandler implements MetadataHandler {
      * @param config {@link MetadataConfig} configuration
      */
     public ColumnsMetadataHandler(MetadataConfig config) {
-        this.columnsDefinition = config.definition();
+        this.columnsDefinition = ensureNotNull(config.definition(), "Metadata definition");
         this.columnsName = config.definition().stream()
                 .map(d -> d.trim().split(" ")[0]).collect(Collectors.toList());
         this.filterMapper = new ColumnFilterMapper();
@@ -53,10 +55,11 @@ public class ColumnsMetadataHandler implements MetadataHandler {
 
     @Override
     public void createMetadataIndexes(Statement statement, String table) {
+        String indexTypeSql = indexType == null ? "" : "USING " + indexType;
         this.indexes.stream().map(String::trim)
                 .forEach(index -> {
-                    String indexSql = String.format("create index %s_%s on %s USING %s ( %s )",
-                            table, index, table, indexType, index);
+                    String indexSql = String.format("create index %s_%s on %s %s ( %s )",
+                            table, index, table, indexTypeSql, index);
                     try {
                         statement.executeUpdate(indexSql);
                     } catch (SQLException e) {

@@ -47,10 +47,7 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
-     * @param metadataType          The metadata Type, only JSON, JSONB and COLUMNS are allowed
-     * @param metadataDefinition    List of metadata columns with definition. Ex: "metadata JSONB NULL"
-     * @param metadataIndexes       List of metadata indexes
-     * @param metadataIndexType     Type of metadata index. Ex: BTREE, GIN
+     * @param metadataConfig        The {@link MetadataConfig} config.
      */
     @Builder(builderMethodName = "withDataSourceBuilder")
     public DataSourcePgVectorEmbeddingStore(DataSource datasource,
@@ -60,15 +57,11 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
                                             Integer indexListSize,
                                             Boolean createTable,
                                             Boolean dropTableFirst,
-                                            // Metadata
-                                            String metadataType,
-                                            List<String> metadataDefinition,
-                                            List<String> metadataIndexes,
-                                            String metadataIndexType) {
+                                            MetadataConfig metadataConfig) {
         this.datasource = datasource;
         this.table = ensureNotBlank(table, "table");
-        this.metadataHandler = MetadataHandlerFactory.get(
-                createMetadataConfig(metadataType, metadataDefinition, metadataIndexes, metadataIndexType));
+        MetadataConfig config = Optional.ofNullable(metadataConfig).orElse(DefaultMetadataConfig.defaultConfig());
+        this.metadataHandler = MetadataHandlerFactory.get(config);
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
         dropTableFirst = getOrDefault(dropTableFirst, false);
@@ -112,28 +105,6 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Sql statement issue: %s \nLast query: %s", e, query));
         }
-    }
-
-    private MetadataConfig createMetadataConfig(String metadataType, List<String> metadataDefinition,
-                                                             List<String> metadataIndexes, String metadataIndexType) {
-        return new MetadataConfig() {
-            @Override
-            public String type() {
-                return metadataType == null ? "JSON" : metadataType;
-            }
-            @Override
-            public List<String> definition() {
-                return metadataDefinition == null ? Collections.singletonList("metadata JSON NULL") : metadataDefinition;
-            }
-            @Override
-            public Optional<List<String>> indexes() {
-                return Optional.ofNullable(metadataIndexes);
-            }
-            @Override
-            public String indexType() {
-                return metadataIndexType == null ? "BTREE" : metadataIndexType;
-            }
-        };
     }
 
     /**

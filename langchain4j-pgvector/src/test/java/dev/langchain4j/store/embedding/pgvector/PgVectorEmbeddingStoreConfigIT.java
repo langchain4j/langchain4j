@@ -5,7 +5,6 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.postgresql.ds.PGSimpleDataSource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -30,8 +29,8 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
 
     static final String TABLE_NAME = "test";
     static final int TABLE_DIMENSION = 384;
-    @BeforeAll
-    static void beforeAll() {
+
+    static void configureStore(MetadataConfig config) {
         PGSimpleDataSource source = new PGSimpleDataSource();
         source.setServerNames(new String[] {pgVector.getHost()});
         source.setPortNumbers(new int[] {pgVector.getFirstMappedPort()});
@@ -39,6 +38,13 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
         source.setUser("test");
         source.setPassword("test");
         dataSource = source;
+        embeddingStore = DataSourcePgVectorEmbeddingStore.withDataSourceBuilder()
+                .datasource(dataSource)
+                .table(TABLE_NAME)
+                .dimension(TABLE_DIMENSION)
+                .dropTableFirst(true)
+                .metadataConfig(config)
+                .build();
     }
 
     @BeforeEach

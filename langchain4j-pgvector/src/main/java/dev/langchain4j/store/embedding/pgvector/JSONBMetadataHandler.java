@@ -24,12 +24,13 @@ public class JSONBMetadataHandler extends JSONMetadataHandler {
 
     @Override
     public void createMetadataIndexes(Statement statement, String table) {
+        String indexTypeSql = indexType == null ? "" : "USING " + indexType;
         for (String str : this.indexes) {
             String index = str.trim();
             String indexName = formatIndex(index);
             try {
-                String indexSql = String.format("create index %s_%s on %s USING %s ( %s )",
-                        table, indexName, table, indexType, index);
+                String indexSql = String.format("create index %s_%s on %s %s ( %s )",
+                        table, indexName, table, indexTypeSql, index);
                 statement.executeUpdate(indexSql);
             } catch (SQLException e) {
                 throw new RuntimeException(String.format("Cannot create index %s: %s", index, e));

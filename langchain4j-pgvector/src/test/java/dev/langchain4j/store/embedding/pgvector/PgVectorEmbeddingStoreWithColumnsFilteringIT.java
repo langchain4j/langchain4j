@@ -10,14 +10,9 @@ public class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbedd
 
     @BeforeAll
     static void beforeAll() {
-        PgVectorEmbeddingStoreConfigIT.beforeAll();
-        embeddingStore = DataSourcePgVectorEmbeddingStore.withDataSourceBuilder()
-                .datasource(dataSource)
-                .table(TABLE_NAME)
-                .dimension(TABLE_DIMENSION)
-                .dropTableFirst(true)
-                .metadataType("COLUMNS")
-                .metadataDefinition(
+        MetadataConfig config = DefaultMetadataConfig.builder()
+                .type("COLUMNS")
+                .definition(
                         Arrays.asList("key text NULL", "name text NULL", "age float NULL", "city varchar null", "country varchar null",
                                 "string_empty varchar null", "string_space varchar null", "string_abc varchar null",
                                 "integer_min int null", "integer_minus_1 int null", "integer_0 int null", "integer_1 int null", "integer_max int null",
@@ -25,7 +20,8 @@ public class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbedd
                                 "float_min float null", "float_minus_1 float null", "float_0 float null", "float_1 float null", "float_123 float null", "float_max float null",
                                 "double_minus_1 float8 null", "double_0 float8 null", "double_1 float8 null", "double_123 float8 null"
                         ))
-                .metadataIndexes(Arrays.asList("key", "name", "age"))
+                .indexes(Arrays.asList("key", "name", "age"))
                 .build();
+        PgVectorEmbeddingStoreConfigIT.configureStore(config);
     }
 }
