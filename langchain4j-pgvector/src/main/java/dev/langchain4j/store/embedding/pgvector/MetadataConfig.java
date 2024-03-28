@@ -30,8 +30,8 @@ public interface MetadataConfig {
      * Metadata Indexes, list of fields to use as index
      * example:
      * <ul>
-     * <li>JSON: metadata or (metadata->'key'), (metadata->'name'), (metadata->'age')
-     * <li>JSONB: (metadata_b->'key'), (metadata_b->'name'), (metadata_b->'age')
+     * <li>JSON: metadata or (metadata-&gt;'key'), (metadata-&gt;'name'), (metadata-&gt;'age')
+     * <li>JSONB: (metadata_b-&gt;'key'), (metadata_b-&gt;'name'), (metadata_b-&gt;'age')
      * <li>COLUMNS: key, name, age
      * </ul>
      * @return Metadata Indexes
