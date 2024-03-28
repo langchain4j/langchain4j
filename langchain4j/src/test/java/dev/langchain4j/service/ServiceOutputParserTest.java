@@ -219,10 +219,10 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents),\n" +
-                        "}),\n" +
+                            "\"firstName\": (type: string),\n" +
+                            "\"lastName\": (type: string),\n" +
+                            "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents),\n" +
+                            "}),\n" +
                         "}");
     }
 
@@ -241,10 +241,10 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray),\n" +
-                        "}),\n" +
+                            "\"firstName\": (type: string),\n" +
+                            "\"lastName\": (type: string),\n" +
+                            "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray),\n" +
+                            "}),\n" +
                         "}");
     }
 
@@ -264,10 +264,10 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"mother\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
-                        "\"firstName\": (type: string),\n" +
-                        "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
-                        "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                            "\"firstName\": (type: string),\n" +
+                            "\"lastName\": (type: string),\n" +
+                            "\"mother\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                            "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
                         "}),\n" +
                         "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
                         "}");
