@@ -1,18 +1,9 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.*;
-import dev.langchain4j.model.output.structured.Description;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.*;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static java.lang.String.format;
-import static java.util.Arrays.asList;
 
 /**
  * DefaultServiceOutputParser provides methods to parse service output and provide format instructions for different return types.
@@ -20,20 +11,17 @@ import static java.util.Arrays.asList;
 public class DefaultServiceOutputParser {
 
     public static final DefaultServiceOutputParser DEFAULT = new DefaultServiceOutputParser();
+    private final OutputParserResolver  outputParserResolver;
 
-    private final Map<Class<?>, OutputParser<?>> parsers;
-
-    public DefaultServiceOutputParser(final Map<Class<?>, OutputParser<?>> parsers) {
-        this.parsers = Collections.unmodifiableMap(parsers);
+    public DefaultServiceOutputParser(final OutputParserResolver outputParserResolver) {
+        this.outputParserResolver = outputParserResolver;
     }
 
     public DefaultServiceOutputParser() {
-        this(new ParsersBuilder().defaultParsers().build());
+        this(new OutputParserResolver());
     }
 
-
-    public Object parse(Response<AiMessage> response, Class<?> returnType) {
-
+    public <T> Object parse(Response<AiMessage> response, Class<T> returnType) {
         if (returnType == Response.class) {
             return response;
         }
@@ -48,23 +36,11 @@ public class DefaultServiceOutputParser {
             return text;
         }
 
-        OutputParser<?> outputParser = parsers.get(returnType);
-        if (outputParser != null) {
-            return outputParser.parse(text);
-        }
-
-        if (returnType == List.class) {
-            return asList(text.split("\n"));
-        }
-
-        if (returnType == Set.class) {
-            return new HashSet<>(asList(text.split("\n")));
-        }
-
-        return Json.fromJson(text, returnType);
+        return outputParserResolver.resolve(returnType).parse(text);
     }
 
-    public String outputFormatInstructions(Class<?> returnType) {
+    public <T> String outputFormatInstructions(Class<T> returnType) {
+        if (returnType == void.class) throw illegalConfiguration("Return type of method '%s' cannot be void");
 
         if (returnType == String.class
                 || returnType == AiMessage.class
@@ -73,110 +49,8 @@ public class DefaultServiceOutputParser {
             return "";
         }
 
-        if (returnType == void.class) {
-            throw illegalConfiguration("Return type of method '%s' cannot be void");
-        }
-
-        if (returnType.isEnum()) {
-            String formatInstructions = new EnumOutputParser(returnType.asSubclass(Enum.class)).formatInstructions();
-            return "\nYou must answer strictly in the following format: " + formatInstructions;
-        }
-
-        OutputParser<?> outputParser = parsers.get(returnType);
-        if (outputParser != null) {
-            String formatInstructions = outputParser.formatInstructions();
-            return "\nYou must answer strictly in the following format: " + formatInstructions;
-        }
-
-        if (returnType == List.class || returnType == Set.class) {
-            return "\nYou must put every item on a separate line.";
-        }
-
-        return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
+        return outputParserResolver.resolve(returnType).formatInstructions();
     }
 
-    private String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
-        StringBuilder jsonSchema = new StringBuilder();
-        String simpleTypeName = simpleTypeName(structured);
-        visited.add(structured);
-        jsonSchema.append(simpleTypeName + ": {\n");
-        for (Field field : structured.getDeclaredFields()) {
-            String name = field.getName();
-            if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
-                // Skip coverage instrumentation field.
-                continue;
-            }
-            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
-        }
-        jsonSchema.append("}");
-        return jsonSchema.toString();
-    }
 
-    private String descriptionFor(Field field, Set<Class<?>> visited) {
-        Description fieldDescription = field.getAnnotation(Description.class);
-        if (fieldDescription == null) {
-            return "type: " + typeOf(field, visited);
-        }
-
-        return String.join(" ", fieldDescription.value()) + "; type: " + typeOf(field, visited);
-    }
-
-    private String typeOf(Field field, Set<Class<?>> visited) {
-        Type type = field.getGenericType();
-
-        if (type instanceof ParameterizedType) {
-            ParameterizedType parameterizedType = (ParameterizedType) type;
-            Type[] typeArguments = parameterizedType.getActualTypeArguments();
-
-            if (parameterizedType.getRawType().equals(List.class)
-                    || parameterizedType.getRawType().equals(Set.class)) {
-                return format("array of %s", simpleNameOrJsonStructure((Class<?>) typeArguments[0], visited));
-            }
-        } else if (field.getType().isArray()) {
-            return format("array of %s", simpleNameOrJsonStructure(field.getType().getComponentType(), visited));
-        } else if (((Class<?>) type).isEnum()) {
-            return "enum, must be one of " + Arrays.toString(((Class<?>) type).getEnumConstants());
-        }
-
-        return simpleNameOrJsonStructure(field.getType(), visited);
-    }
-
-    private String simpleNameOrJsonStructure(Class<?> structured, Set<Class<?>> visited) {
-        String simpleTypeName = simpleTypeName(structured);
-        if (structured.getPackage() == null
-                || structured.getPackage().getName().startsWith("java.")
-                || visited.contains(structured)) {
-            return simpleTypeName;
-        } else {
-            return jsonStructure(structured, visited);
-        }
-    }
-
-    private String simpleTypeName(Type type) {
-        switch (type.getTypeName()) {
-            case "java.lang.String":
-                return "string";
-            case "java.lang.Integer":
-            case "int":
-                return "integer";
-            case "java.lang.Boolean":
-            case "boolean":
-                return "boolean";
-            case "java.lang.Float":
-            case "float":
-                return "float";
-            case "java.lang.Double":
-            case "double":
-                return "double";
-            case "java.util.Date":
-            case "java.time.LocalDate":
-                return "date string (2023-12-31)";
-            case "java.time.LocalTime":
-                return "time string (23:59:59)";
-            case "java.time.LocalDateTime":
-                return "date-time string (2023-12-31T23:59:59)";
-            default:
-                return type.getTypeName();
-        }
-    }
 }

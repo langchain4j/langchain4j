@@ -7,9 +7,7 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Collections.unmodifiableMap;
 
@@ -37,6 +35,8 @@ public class ParsersBuilder {
         parsers.put(LocalDate.class, new LocalDateOutputParser());
         parsers.put(LocalTime.class, new LocalTimeOutputParser());
         parsers.put(LocalDateTime.class, new LocalDateTimeOutputParser());
+        parsers.put(Set.class, new SetOutputParser());
+        parsers.put(List.class, new ListOutputParser());
         return this;
     }
 

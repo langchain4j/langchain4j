@@ -11,11 +11,11 @@ import static dev.langchain4j.service.DefaultServiceOutputParser.DEFAULT;
  * For more control over output parsing use directly {@see DefaultServiceOutputParser}
  */
 public class ServiceOutputParser {
-    public Object parse(Response<AiMessage> response, Class<?> returnType) {
+    public static Object parse(Response<AiMessage> response, Class<?> returnType) {
         return DEFAULT.parse(response, returnType);
     }
 
-    public String outputFormatInstructions(Class<?> returnType) {
+    public static String outputFormatInstructions(Class<?> returnType) {
         return DEFAULT.outputFormatInstructions(returnType);
     }
 }
