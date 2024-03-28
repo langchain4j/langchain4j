@@ -15,12 +15,23 @@
 
     <name>LangChain4j :: Integration :: Clickhouse</name>
 
+    <properties>
+        <clickhouse.version>0.6.0</clickhouse.version>
+        <lz4.version>1.8.0</lz4.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
             <groupId>com.clickhouse</groupId>
-            <artifactId>clickhouse-http-client</artifactId>
-            <version>0.6.0</version>
+            <artifactId>clickhouse-jdbc</artifactId>
+            <version>${clickhouse.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>${lz4.version}</version>
         </dependency>
 
         <dependency>
