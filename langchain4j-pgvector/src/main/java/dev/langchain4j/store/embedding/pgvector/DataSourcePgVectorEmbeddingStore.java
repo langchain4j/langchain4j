@@ -87,17 +87,17 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
     protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
                         Integer indexListSize) {
         String query = "init";
-        try (Connection connection = datasource.getConnection()) {
-            connection.createStatement().executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+        try (Statement statement = datasource.getConnection().createStatement()) {
+            statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
             if (dropTableFirst) {
-                connection.createStatement().executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
+                statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
             if (createTable) {
                 query = String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
                                 "embedding vector(%s), text TEXT NULL, %s )",
                         table, ensureGreaterThanZero(dimension, "dimension"),
                         metadataHandler.columnDefinition());
-                connection.createStatement().executeUpdate(query);
+                statement.executeUpdate(query);
             }
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
@@ -106,9 +106,9 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
                                 "USING ivfflat (embedding vector_cosine_ops) " +
                                 "WITH (lists = %s)",
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
-                connection.createStatement().executeUpdate(query);
+                statement.executeUpdate(query);
             }
-            metadataHandler.createMetadataIndexes(connection.createStatement(), table);
+            metadataHandler.createMetadataIndexes(statement, table);
         } catch (SQLException e) {
             throw new RuntimeException(String.format("Sql statement issue: %s \nLast query: %s", e, query));
         }
@@ -251,7 +251,6 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
         return new EmbeddingSearchResult<>(result);
     }
 
@@ -302,17 +301,13 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
                                     throw new RuntimeException(e);
                                 }
                             });
-
                 }
                 upsertStmt.addBatch();
             }
-
             upsertStmt.executeBatch();
             upsertStmt.close();
-
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
-
 }
