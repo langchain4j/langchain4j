@@ -266,6 +266,9 @@ public class InternalOpenAiHelper {
     }
 
     static boolean isOpenAiModel(String modelName) {
+        if (modelName == null) {
+            return false;
+        }
         for (OpenAiChatModelName openAiChatModelName : OpenAiChatModelName.values()) {
             if (modelName.contains(openAiChatModelName.toString())) {
                 return true;
