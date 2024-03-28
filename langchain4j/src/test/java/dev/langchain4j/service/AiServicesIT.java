@@ -221,7 +221,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract information about a person from " + text + "\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Person: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
@@ -268,7 +268,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Extract information about a person from " + text + "\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Person: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
@@ -323,7 +323,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
@@ -346,7 +346,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
@@ -411,7 +411,7 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
@@ -441,7 +441,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
                 userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
@@ -472,7 +472,7 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(asList(
                 systemMessage("You are very funny chef"),
                 userMessage("Create a recipe of a salad that can be prepared using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +

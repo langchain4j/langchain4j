@@ -5,7 +5,7 @@ import lombok.Builder;
 import java.util.List;
 
 @Builder
-class AnthropicCreateMessageRequest {
+public class AnthropicCreateMessageRequest {
 
     String model;
     List<AnthropicMessage> messages;

@@ -2,14 +2,14 @@ package dev.langchain4j.model.anthropic;
 
 import java.util.List;
 
-class AnthropicCreateMessageResponse {
+public class AnthropicCreateMessageResponse {
 
-    String id;
-    String type;
-    String role;
-    List<AnthropicContent> content;
-    String model;
-    String stopReason;
-    String stopSequence;
-    AnthropicUsage usage;
+    public String id;
+    public String type;
+    public String role;
+    public List<AnthropicContent> content;
+    public String model;
+    public String stopReason;
+    public String stopSequence;
+    public AnthropicUsage usage;
 }

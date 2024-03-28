@@ -1,12 +1,12 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicDelta {
+public class AnthropicDelta {
 
     // when AnthropicStreamingData.type = "content_block_delta"
-    String type;
-    String text;
+    public String type;
+    public String text;
 
     // when AnthropicStreamingData.type = "message_delta"
-    String stopReason;
-    String stopSequence;
+    public String stopReason;
+    public String stopSequence;
 }

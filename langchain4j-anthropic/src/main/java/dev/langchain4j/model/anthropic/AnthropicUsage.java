@@ -1,7 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicUsage {
+public class AnthropicUsage {
 
-    Integer inputTokens;
-    Integer outputTokens;
+    public Integer inputTokens;
+    public Integer outputTokens;
 }
