@@ -76,6 +76,14 @@ public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegm
         initTable(dropTableFirst, createTable, useIndex, dimension, indexListSize);
     }
 
+    /**
+     * Initialize metadata table following configuration
+     * @param dropTableFirst    Should drop table first, usually for testing
+     * @param createTable       Should create table automatically
+     * @param useIndex          Should use <a href="https://github.com/pgvector/pgvector#ivfflat">IVFFlat</a> index
+     * @param dimension         The vector dimension
+     * @param indexListSize     The IVFFlat number of lists
+     */
     protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension,
                         Integer indexListSize) {
         String query = "init";

@@ -22,6 +22,10 @@ public class JSONMetadataHandler implements MetadataHandler {
 
     final List<String> indexes;
 
+    /**
+     * MetadataHandler constructor
+     * @param config {@link MetadataConfig} configuration
+     */
     public JSONMetadataHandler(MetadataConfig config) {
         this.columnDefinition = config.definition().get(0);
         if (config.definition().size()>1 || this.columnDefinition().contains(",")) {

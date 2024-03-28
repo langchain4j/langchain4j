@@ -3,10 +3,17 @@ package dev.langchain4j.store.embedding.pgvector;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+/**
+ *  Handle metadata as JSONB columns.
+ */
 public class JSONBMetadataHandler extends JSONMetadataHandler {
 
     final String indexType;
 
+    /**
+     * MetadataHandler constructor
+     * @param config {@link MetadataConfig} configuration
+     */
     public JSONBMetadataHandler(MetadataConfig config) {
         super(config);
         if (!this.columnDefinition().toLowerCase().contains("jsonb")) {

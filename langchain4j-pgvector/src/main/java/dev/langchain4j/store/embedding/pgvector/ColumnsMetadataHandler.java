@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * This class handle Metadata stored in independent columns
+ * Handle Metadata stored in independent columns
  */
 public class ColumnsMetadataHandler implements MetadataHandler {
 
@@ -23,6 +23,10 @@ public class ColumnsMetadataHandler implements MetadataHandler {
 
     final String indexType;
 
+    /**
+     * MetadataHandler constructor
+     * @param config {@link MetadataConfig} configuration
+     */
     public ColumnsMetadataHandler(MetadataConfig config) {
         this.columnsDefinition = config.definition();
         this.columnsName = config.definition().stream()
