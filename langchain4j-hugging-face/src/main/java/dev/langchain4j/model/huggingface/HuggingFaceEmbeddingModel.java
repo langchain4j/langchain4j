@@ -45,7 +45,7 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
                 return timeout == null ? DEFAULT_TIMEOUT : timeout;
             }
         });
-        this.waitForModel = waitForModel == null ? true : waitForModel;
+        this.waitForModel = waitForModel == null || waitForModel;
     }
 
     @Override
