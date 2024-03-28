@@ -102,6 +102,36 @@ class InMemoryEmbeddingStoreTest extends EmbeddingStoreWithFilteringIT {
         assertThat(matches.get(1).embedded()).isEqualTo(expectedSegment2);
     }
 
+    @Test
+    void should_merge_multiple_stores() {
+
+        // given
+        InMemoryEmbeddingStore<TextSegment> store1 = new InMemoryEmbeddingStore<>();
+        TextSegment segment1 = TextSegment.from("first", Metadata.from("first-key", "first-value"));
+        Embedding embedding1 = embeddingModel.embed(segment1).content();
+        store1.add("1", embedding1, segment1);
+
+        InMemoryEmbeddingStore<TextSegment> store2 = new InMemoryEmbeddingStore<>();
+        TextSegment segment2 = TextSegment.from("second", Metadata.from("second-key", "second-value"));
+        Embedding embedding2 = embeddingModel.embed(segment2).content();
+        store2.add("2", embedding2, segment2);
+
+        // when
+        InMemoryEmbeddingStore<TextSegment> merged = InMemoryEmbeddingStore.merge(store1, store2);
+
+        // then
+        List<EmbeddingMatch<TextSegment>> matches = merged.findRelevant(embedding1, 100);
+        assertThat(matches).hasSize(2);
+
+        assertThat(matches.get(0).embeddingId()).isEqualTo("1");
+        assertThat(matches.get(0).embedding()).isEqualTo(embedding1);
+        assertThat(matches.get(0).embedded()).isEqualTo(segment1);
+
+        assertThat(matches.get(1).embeddingId()).isEqualTo("2");
+        assertThat(matches.get(1).embedding()).isEqualTo(embedding2);
+        assertThat(matches.get(1).embedded()).isEqualTo(segment2);
+    }
+
     private InMemoryEmbeddingStore<TextSegment> createEmbeddingStore() {
 
         InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
