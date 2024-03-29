@@ -10,6 +10,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
+import lombok.NoArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +32,7 @@ import static java.util.stream.Collectors.toList;
  * Only cosine similarity is used.
  * Only ivfflat index is used.
  */
+@NoArgsConstructor(force = true) // Needed for inherited bean injection validation
 public class DataSourcePgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final Logger log = LoggerFactory.getLogger(DataSourcePgVectorEmbeddingStore.class);
     private final DataSource datasource;
