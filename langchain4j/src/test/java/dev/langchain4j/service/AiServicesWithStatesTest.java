@@ -1,17 +1,18 @@
 package dev.langchain4j.service;
 
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Scanner;
 
-import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.MessagesProvider;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
-import dev.langchain4j.statemachine.State;
-import dev.langchain4j.statemachine.StateMachineContext;
 
-import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.*;
+import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.CALCULATE_REFUND;
+import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.EXTRACT_CUSTOMER;
+import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.EXTRACT_FLIGHT;
 
 class AiServicesWithStatesTest {
 
@@ -19,7 +20,7 @@ class AiServicesWithStatesTest {
         String chat(String userMessage);
     }
 
-    enum AirlineChatState implements State {
+    enum AirlineChatState {
         EXTRACT_CUSTOMER("<SYS>>You are a chat bot of an airline company. Your goal is asking questions to gather information " +
                                  "about a customer<</SYS>>",
                          "Ask question to the customer regarding his name and age. +++ {{it}} +++ "),
@@ -61,9 +62,7 @@ class AiServicesWithStatesTest {
         Agent agent = AiServices.builder(Agent.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemory(chatMemory)
-                .states(context, EXTRACT_CUSTOMER, AiServicesWithStatesTest::nextState)
-                .systemMessages(s -> ((AirlineChatState)s).getSystemMessage())
-                .userMessages(s -> ((AirlineChatState)s).getUserMessage())
+                .messages(new AirlineChatMessagesProvider(context))
                 .build();
 
         CustomerExtractor customerExtractor = AiServices.builder(CustomerExtractor.class)
@@ -103,23 +102,12 @@ class AiServicesWithStatesTest {
             }
 
             String agentMessage = context.isComplete() ?
-                    "You are eligible for a refund of $" + context.getRefund() :
+                    "Thank you " + context.getCustomer().getFullName() + ", you are eligible for a refund of $" + context.getRefund() :
                     agent.chat(userMessage);
             System.out.println("Agent: " + agentMessage);
-
         }
 
         scanner.close();
-    }
-
-    private static State nextState(State currentState, StateMachineContext context) {
-        if (currentState == EXTRACT_CUSTOMER && ((AirlineChatContext) context).getCustomer() != null) {
-            return EXTRACT_FLIGHT;
-        }
-        if (currentState == EXTRACT_FLIGHT && ((AirlineChatContext) context).getFlight() != null) {
-            return CALCULATE_REFUND;
-        }
-        return currentState;
     }
 
     public interface Validated {
@@ -191,7 +179,9 @@ class AiServicesWithStatesTest {
         Flight extractData(String text);
     }
 
-    public static class AirlineChatContext implements StateMachineContext {
+    public static class AirlineChatContext {
+
+        private AirlineChatState currentState = EXTRACT_CUSTOMER;
 
         private Customer customer;
 
@@ -235,6 +225,32 @@ class AiServicesWithStatesTest {
                     ", flight=" + flight +
                     '}';
         }
+
+        private AirlineChatState getState() {
+            if (currentState == EXTRACT_CUSTOMER && getCustomer() != null) {
+                currentState = EXTRACT_FLIGHT;
+            } else if (currentState == EXTRACT_FLIGHT && getFlight() != null) {
+                currentState = CALCULATE_REFUND;
+            }
+            return currentState;
+        }
     }
 
+    public static class AirlineChatMessagesProvider implements MessagesProvider {
+        private final AirlineChatContext context;
+
+        public AirlineChatMessagesProvider(AirlineChatContext context) {
+            this.context = context;
+        }
+
+        @Override
+        public Optional<String> systemMessage() {
+            return Optional.of(context.getState().getSystemMessage());
+        }
+
+        @Override
+        public Optional<String> userMessage() {
+            return Optional.of(context.getState().getUserMessage());
+        }
+    }
 }

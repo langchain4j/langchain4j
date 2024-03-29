@@ -1,10 +1,21 @@
 package dev.langchain4j.service;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
+
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.MessagesProvider;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
@@ -20,17 +31,6 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
-import dev.langchain4j.statemachine.State;
-import dev.langchain4j.statemachine.StateMachineContext;
-import dev.langchain4j.statemachine.StateManager;
-
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -175,24 +175,18 @@ public abstract class AiServices<T> {
         return new DefaultAiServices<>(context);
     }
 
-    public AiServices<T> states(StateMachineContext stateMachineContext, State initialState, BiFunction<State, StateMachineContext, State> stateManager) {
-        context.stateManager = new StateManager(stateMachineContext, initialState, stateManager);
+    public AiServices<T> messages(MessagesProvider messagesProvider) {
+        context.messagesProvider = messagesProvider;
         return this;
     }
 
-    public AiServices<T> systemMessages(Function<State, String> stateToSystemMessage) {
-        if (!context.hasState()) {
-            throw new IllegalArgumentException("No state machine defined");
-        }
-        context.stateManager.setStateToSystemMessage(stateToSystemMessage);
+    public AiServices<T> systemMessages(Supplier<String> systemMessageSupplier) {
+        context.messagesProvider = new MessagesProvider.SystemMessageDecorator(context.messagesProvider, systemMessageSupplier);
         return this;
     }
 
-    public AiServices<T> userMessages(Function<State, String> stateToUserMessage) {
-        if (!context.hasState()) {
-            throw new IllegalArgumentException("No state machine defined");
-        }
-        context.stateManager.setStateToUserMessage(stateToUserMessage);
+    public AiServices<T> userMessages(Supplier<String> userMessageSupplier) {
+        context.messagesProvider = new MessagesProvider.UserMessageDecorator(context.messagesProvider, userMessageSupplier);
         return this;
     }
 

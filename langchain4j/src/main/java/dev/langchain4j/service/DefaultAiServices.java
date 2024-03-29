@@ -80,10 +80,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
 
-                        if (context.hasState()) {
-                            context.stateManager.nextState();
-                        }
-
                         if (method.getDeclaringClass() == Object.class) {
                             // methods like equals(), hashCode() and toString() should not be handled by this proxy
                             return method.invoke(this, args);
@@ -217,21 +213,15 @@ class DefaultAiServices<T> extends AiServices<T> {
             ));
         }
 
-        if (context.hasState()) {
-            return context.stateManager.getSystemMessage();
-        }
-
-        return Optional.empty();
+        return context.messagesProvider.systemMessage();
     }
 
     private UserMessage prepareUserMessage(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
-        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
-
         String userName = getUserName(parameters, args);
 
         return prepareUserMessageTemplate(method)
-                .map(template -> prepareUserMessageFromTemplate(args, template, parameters, variables, userName))
+                .map(template -> prepareUserMessageFromTemplate(args, template, parameters, getPromptTemplateVariables(args, parameters), userName))
                 .orElse(prepareUserMessage(args, parameters, userName));
     }
 
@@ -293,11 +283,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             ));
         }
 
-        if (context.hasState()) {
-            return context.stateManager.getUserMessage();
-        }
-
-        return Optional.empty();
+        return context.messagesProvider.userMessage();
     }
 
     private static String getPromptText(Method method, String type, String resource, String[] value, String delimiter) {
