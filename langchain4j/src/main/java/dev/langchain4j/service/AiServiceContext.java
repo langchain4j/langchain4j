@@ -8,6 +8,7 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.rag.RetrievalAugmentor;
+import dev.langchain4j.statemachine.StateManager;
 
 import java.util.List;
 import java.util.Map;
@@ -29,12 +30,18 @@ public class AiServiceContext {
 
     public RetrievalAugmentor retrievalAugmentor;
 
+    public StateManager stateManager;
+
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
     }
 
     public boolean hasChatMemory() {
         return chatMemories != null;
+    }
+
+    public boolean hasState() {
+        return stateManager != null;
     }
 
     public ChatMemory chatMemory(Object memoryId) {

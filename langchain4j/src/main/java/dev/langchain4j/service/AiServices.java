@@ -14,19 +14,23 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
+import dev.langchain4j.statemachine.State;
+import dev.langchain4j.statemachine.StateMachineContext;
+import dev.langchain4j.statemachine.StateManager;
 
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -169,6 +173,27 @@ public abstract class AiServices<T> {
             return factory.create(context);
         }
         return new DefaultAiServices<>(context);
+    }
+
+    public AiServices<T> states(StateMachineContext stateMachineContext, State initialState, BiFunction<State, StateMachineContext, State> stateManager) {
+        context.stateManager = new StateManager(stateMachineContext, initialState, stateManager);
+        return this;
+    }
+
+    public AiServices<T> systemMessages(Function<State, String> stateToSystemMessage) {
+        if (!context.hasState()) {
+            throw new IllegalArgumentException("No state machine defined");
+        }
+        context.stateManager.setStateToSystemMessage(stateToSystemMessage);
+        return this;
+    }
+
+    public AiServices<T> userMessages(Function<State, String> stateToUserMessage) {
+        if (!context.hasState()) {
+            throw new IllegalArgumentException("No state machine defined");
+        }
+        context.stateManager.setStateToUserMessage(stateToUserMessage);
+        return this;
     }
 
     /**

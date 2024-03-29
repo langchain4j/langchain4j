@@ -80,6 +80,10 @@ class DefaultAiServices<T> extends AiServices<T> {
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
 
+                        if (context.hasState()) {
+                            context.stateManager.nextState();
+                        }
+
                         if (method.getDeclaringClass() == Object.class) {
                             // methods like equals(), hashCode() and toString() should not be handled by this proxy
                             return method.invoke(this, args);
@@ -194,62 +198,62 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<SystemMessage> prepareSystemMessage(Method method, Object[] args) {
+        return prepareSystemMessageTemplate(method)
+                .map(template -> PromptTemplate.from(template)
+                        .apply(getPromptTemplateVariables(args, method.getParameters()))
+                        .toSystemMessage());
+    }
 
-        Parameter[] parameters = method.getParameters();
-        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
-
+    private Optional<String> prepareSystemMessageTemplate(Method method) {
         dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
 
-            String systemMessageTemplate = getPromptText(
+            return Optional.of(getPromptText(
                     method,
                     "System",
                     annotation.fromResource(),
                     annotation.value(),
                     annotation.delimiter()
-            );
+            ));
+        }
 
-            Prompt prompt = PromptTemplate.from(systemMessageTemplate).apply(variables);
-            return Optional.of(prompt.toSystemMessage());
+        if (context.hasState()) {
+            return context.stateManager.getSystemMessage();
         }
 
         return Optional.empty();
     }
 
-    private static UserMessage prepareUserMessage(Method method, Object[] args) {
+    private UserMessage prepareUserMessage(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
 
-
         String userName = getUserName(parameters, args);
 
-        dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
-        if (annotation != null) {
-            String userMessageTemplate = getPromptText(
-                    method,
-                    "User",
-                    annotation.fromResource(),
-                    annotation.value(),
-                    annotation.delimiter()
-            );
+        return prepareUserMessageTemplate(method)
+                .map(template -> prepareUserMessageFromTemplate(args, template, parameters, variables, userName))
+                .orElse(prepareUserMessage(args, parameters, userName));
+    }
 
-            if (userMessageTemplate.contains("{{it}}")) {
-                if (parameters.length != 1) {
-                    throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
-                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
-                }
-
-                variables = singletonMap("it", toString(args[0]));
+    private UserMessage prepareUserMessageFromTemplate(Object[] args, String userMessageTemplate, Parameter[] parameters, Map<String, Object> variables, String userName) {
+        if (userMessageTemplate.contains("{{it}}")) {
+            if (parameters.length != 1) {
+                throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
+                        "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
             }
 
-            Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            if (userName != null) {
-                return userMessage(userName, prompt.text());
-            } else {
-                return prompt.toUserMessage();
-            }
+            variables = singletonMap("it", toString(args[0]));
         }
 
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+        if (userName != null) {
+            return userMessage(userName, prompt.text());
+        } else {
+            return prompt.toUserMessage();
+        }
+    }
+
+    private UserMessage prepareUserMessage(Object[] args, Parameter[] parameters, String userName) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
                 String text = toString(args[i]);
@@ -275,6 +279,25 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
+    }
+
+    private Optional<String> prepareUserMessageTemplate(Method method) {
+        dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
+        if (annotation != null) {
+            return Optional.of(getPromptText(
+                    method,
+                    "User",
+                    annotation.fromResource(),
+                    annotation.value(),
+                    annotation.delimiter()
+            ));
+        }
+
+        if (context.hasState()) {
+            return context.stateManager.getUserMessage();
+        }
+
+        return Optional.empty();
     }
 
     private static String getPromptText(Method method, String type, String resource, String[] value, String delimiter) {
