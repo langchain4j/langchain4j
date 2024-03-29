@@ -8,42 +8,49 @@ sidebar_position: 8
 by [Siva](https://www.sivalabs.in/).
 
 LLM's knowledge is limited to the data it has been trained on.
-To enable LLM to "know" your private data, like internal company documentation, you can:
-- Use RAG, which we will cover here
-- Fine-tune LLM with your data
-- [Combine RAG and fine-tuning](https://gorilla.cs.berkeley.edu/blogs/9_raft.html)
+If you want to make an LLM aware of domain-specific knowledge or proprietary data, you can:
+- Use RAG, which we will cover in this section
+- Fine-tune the LLM with your data
+- [Combine both RAG and fine-tuning](https://gorilla.cs.berkeley.edu/blogs/9_raft.html)
 
-Simply put, RAG is the way to find and inject relevant pieces of information from your private knowledge base
+## What is RAG?
+Simply put, RAG is the way to find and inject relevant pieces of information from your data
 into the prompt before sending it to the LLM.
-This way LLM will get (hopefully) relevant information and will be able to reply using this information.
+This way LLM will get (hopefully) relevant information and will be able to reply using this information,
+which should reduce the probability of hallucinations.
 
 ## Easy RAG
 LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get started with RAG.
-You don't need to learn about embeddings, choose a vector store, find the right embedding model,
+You don't have to learn about embeddings, choose a vector store, find the right embedding model,
 figure out how to parse and split documents, etc.
-Just point to your document(s), and LangChain4j will work its magic.
+Just point to your document(s), and LangChain4j will do its magic.
+
+If you need a customizable RAG, skip to the [next section](/tutorials/rag#rag-apis).
+
+If you are using Quarkus, there is an even easier way to do Easy RAG.
+Please read [Quarkus documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/easy-rag.html).
 
 :::note
-The quality of such "Easy RAG" will, of course, by definition, be lower than that of a tailored solution.
+The quality of such "Easy RAG" will, of course, be lower than that of a tailored RAG setup.
 However, this is the easiest way to start learning about RAG and/or make a proof of concept.
 Later, you will be able to transition smoothly from Easy RAG to more advanced RAG,
-adjusting and customizing more aspects.
+adjusting and customizing more and more aspects.
 :::
 
-First, import the `langchain4j-easy-rag` dependency, which contains everything we need inside:
+1. Import the `langchain4j-easy-rag` dependency:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.29.0</version>
+    <version>0.29.1</version>
 </dependency>
 ```
 
-Then, let's load our documents:
+2. Let's load your documents:
 ```java
-List<Document> documents = FileSystemDocumentLoader.loadDocuments("/home/langchain4j/documents");
+List<Document> documents = FileSystemDocumentLoader.loadDocuments("/home/langchain4j/documentation");
 ```
-This will load all documents from the specified directory.
+This will load all files from the specified directory.
 
 <details>
 <summary>What is happening under the hood?</summary>
@@ -60,7 +67,7 @@ provided by `langchain4j-easy-rag` dependency through SPI.
 
 If you want to load documents from all subdirectories, you can use the `loadDocumentsRecursively` method:
 ```java
-List<Document> documents = FileSystemDocumentLoader.loadDocumentsRecursively("/home/langchain4j/documents");
+List<Document> documents = FileSystemDocumentLoader.loadDocumentsRecursively("/home/langchain4j/documentation");
 ```
 Additionally, you can filter documents by using a glob or regex:
 ```java
@@ -74,33 +81,29 @@ in glob: `glob:**.pdf`.
 :::
 </details>
 
-Now, once we have loaded our documents into memory,
-we need to store them in a specialized embedding (vector) store to enable semantic search.
-We can use any of our 15+ [integrations](/category/embedding-stores) with various embedding stores,
+3. Now, we need to preprocess and store documents in a specialized embedding store, also known as vector database.
+This is necessary to quickly find relevant pieces of information on the fly when a user asks a question.
+We can use any of our 15+ [supported embedding stores](/category/embedding-stores),
 but for simplicity, we will use an in-memory one:
 ```java
 InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
-```
-
-Now, let's ingest our documents into the store:
-```java
 EmbeddingStoreIngestor.ingest(documents, embeddingStore);
 ```
 
 <details>
 <summary>What is happening under the hood?</summary>
 
-1. Through SPI, the `EmbeddingStoreIngestor` loads a `DocumentSplitter` from the `langchain4j-easy-rag` dependency.
-Each `Document` is split into smaller pieces (`TextSegment`s) each consisting of 300 tokens and with a 30-token overlap.
+1. The `EmbeddingStoreIngestor` loads a `DocumentSplitter` from the `langchain4j-easy-rag` dependency through SPI.
+Each `Document` is split into smaller pieces (`TextSegment`s) each consisting of no more than 300 tokens
+and with a 30-token overlap.
 
-2. Through SPI, the `EmbeddingStoreIngestor` loads an `EmbeddingModel` from the `langchain4j-easy-rag` dependency.
-For the Easy RAG, a [bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) embedding model is used.
+2. The `EmbeddingStoreIngestor` loads an `EmbeddingModel` from the `langchain4j-easy-rag` dependency through SPI.
 Each `TextSegment` is converted into an `Embedding` using the `EmbeddingModel`.
 
 :::note
-This embedding model has achieved an impressive score
-on the [MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard), and its quantized version
-occupies only 24 megabytes of space.
+We have chosen [bge-small-en-v1.5](https://huggingface.co/BAAI/bge-small-en-v1.5) as the default embedding model for Easy RAG.
+It has achieved an impressive score on the [MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard),
+and its quantized version occupies only 24 megabytes of space.
 Therefore, we can easily load it into memory and run it in the same process using [ONNX Runtime](https://onnxruntime.ai/).
 
 Yes, that's right, you can convert text into embeddings entirely offline, without any external services,
@@ -112,7 +115,7 @@ LangChain4j offers 5 popular embedding models
 3. All `TextSegment`-`Embedding` pairs are stored in the `EmbeddingStore`.
 </details>
 
-The last step is to create an [AI Service](/tutorials/ai-services) that will serve as our API to the LLM:
+4. The last step is to create an [AI Service](/tutorials/ai-services) that will serve as our API to the LLM:
 ```java
 interface Assistant {
 
@@ -125,27 +128,28 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .contentRetriever(EmbeddingStoreContentRetriever.from(embeddingStore))
     .build();
 ```
-Here, we configure our AI Service to use an OpenAI LLM, remember the 10 latest messages in the conversation,
-and use an `EmbeddingStore` with our documents.
+Here, we configure the `Assistant` to use an OpenAI LLM to answer user questions,
+remember the 10 latest messages in the conversation,
+and retrieve relevant content from an `EmbeddingStore` that contains our documents.
 
-And now we are ready to chat with it!
+5. And now we are ready to chat with it!
 ```java
-String answer = assistant.chat("How to do RAG with LangChain4j?");
+String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 ```
 
 ## RAG APIs
-LangChain4j offers a broad set of APIs to make it easier for you to build your custom RAG pipelines.
+LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
+ranging from very simple ones to very advanced ones. In this section, we will cover the main domain classes and APIs.
 
 ### Document
-LangChain4j's domain model includes a `Document` class, which represents an entire document,
-such as a single PDF file.
+A `Document` class represents an entire document, such as a single PDF file or a web page.
 At the moment, the `Document` can only represent textual information,
 but future updates will enable it to support images and tables as well.
 
 ### Document Loader
-You can create a `Document` from a `String`, but a simpler method is to use one of our `DocumentLoader`s included in the library:
-- `FileSystemDocumentLoader` from the main (`langchain4j`) module
-- `UrlDocumentLoader` from the main (`langchain4j`) module
+You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
+- `FileSystemDocumentLoader` from the `langchain4j` module
+- `UrlDocumentLoader` from the `langchain4j` module
 - `AmazonS3DocumentLoader` from the `langchain4j-document-loader-amazon-s3` module
 - `AzureBlobStorageDocumentLoader` from the `langchain4j-document-loader-azure-storage-blob` module
 - `GitHubDocumentLoader` from the `langchain4j-document-loader-github` module
@@ -154,7 +158,7 @@ You can create a `Document` from a `String`, but a simpler method is to use one 
 ### Document Parser
 `Document`s can represent files in various formats, such as PDF, DOC, TXT, etc.
 To parse each of these formats, there's a `DocumentParser` interface with several implementations included in the library:
-- `TextDocumentParser` from the main (`langchain4j`) module, which can parse files in plain text format (e.g. TXT, HTML, MD, etc.)
+- `TextDocumentParser` from the `langchain4j` module, which can parse files in plain text format (e.g. TXT, HTML, MD, etc.)
 - `ApachePdfBoxDocumentParser` from the `langchain4j-document-parser-apache-pdfbox` module, which can parse PDF files
 - `ApachePoiDocumentParser` from the `langchain4j-document-parser-apache-poi` module, which can parse MS Office file formats
 (e.g. DOC, DOCX, PPT, PPTX, XLS, XLSX, etc.)
@@ -184,10 +188,13 @@ If no `DocumentParser`s are found through SPI, a `TextDocumentParser` is used as
 
 
 ### Document Transformer
-More details are coming soon.
+`DocumentTransformer` implementations can perform a variety of tasks such as transforming documents,
+cleaning them, filtering, enriching, etc.
 
-See `HtmlTextExtractor` in the `langchain4j` module.
+Currently, the only implementation provided out-of-the-box is `HtmlTextExtractor` in the `langchain4j` module,
+which can extract desired text content and metadata from an HTML document.
 
+You can implement your own `DocumentTransformer` and plug it into the LangChain4j RAG pipeline.
 
 ### Text Segment
 Once your `Document`s are loaded, it is time to split (chunk) them into smaller segments (pieces).
@@ -204,20 +211,20 @@ instead of the entire knowledge base in the prompt:
 - The more information you provide in the prompt, the more you pay
 - Irrelevant information in the prompt might confuse or distract the LLM and increase the chance of hallucinations
 
-RAG addresses these concerns by splitting your knowledge base into smaller, more digestible segments.
+We can address these concerns by splitting a knowledge base into smaller, more digestible segments.
 How big should those segments be? That is a good question. As always, it depends.
 
 There are currently 2 widely used approaches:
 1. Each document (e.g., a PDF file, a web page, etc.) is atomic and indivisible.
 During retrieval in the RAG pipeline, the N most relevant documents are retrieved and injected into the prompt.
-You will most probably need to use a long-context LLM for this since documents can be quite long.
-This approach is suitable if processing complete documents is important,
+You will most probably need to use a long-context LLM in this case since documents can be quite long.
+This approach is suitable if retrieving complete documents is important,
 such as when you can't afford to miss some details.
 - Pros: No context is lost.
 - Cons:
   - More tokens are consumed.
   - Sometimes, documents can contain multiple sections/topics, and not all of them are relevant to the query.
-  - Vector search quality suffers because complete documents of various sizes are compressed into a single vector.
+  - Vector search quality suffers because complete documents of various sizes are compressed into a single, fixed-length vector.
 
 2. Documents are split into smaller segments, such as chapters, paragraphs, or sometimes even sentences.
 During retrieval in the RAG pipeline, the N most relevant segments are retrieved and injected into the prompt.
@@ -236,7 +243,7 @@ providing the LLM with additional information before and after the retrieved seg
 </details>
 
 ### Document Splitter
-LangChain4j has a DocumentSplitter interface with several out-of-the-box implementations:
+LangChain4j has a `DocumentSplitter` interface with several out-of-the-box implementations:
 - `DocumentByParagraphSplitter`
 - `DocumentByLineSplitter`
 - `DocumentBySentenceSplitter`
@@ -248,15 +255,16 @@ LangChain4j has a DocumentSplitter interface with several out-of-the-box impleme
 They all work as follows:
 1. You instantiate a `DocumentSplitter`, specifying the desired size of `TextSegment`s and,
 optionally, an overlap in characters or tokens.
-2. You use the `split(Document)` or `splitAll(List<Document>)` methods of the `DocumentSplitter`.
+2. You call the `split(Document)` or `splitAll(List<Document>)` methods of the `DocumentSplitter`.
 3. The `DocumentSplitter` splits the given `Document`s into smaller units,
 the nature of which varies with the splitter. For instance, `DocumentByParagraphSplitter` divides
-a document into paragraphs (defined by two or more consecutive newline characters (`\n`)),
+a document into paragraphs (defined by two or more consecutive newline characters),
 while `DocumentBySentenceSplitter` uses the OpenNLP library's sentence detector to split
 a document into sentences, and so on.
-4. The `DocumentSplitter` then processes these smaller units (paragraphs, sentences, words, etc.),
-recombining them into a `TextSegment` and trying to include as many units as possible
-into a single `TextSegment`, without exceeding the limit set in step 1.
+4. The `DocumentSplitter` then combines these smaller units (paragraphs, sentences, words, etc.) into `TextSegment`s,
+attempting to include as many units as possible in a single `TextSegment` without exceeding the limit set in step 1.
+If some of the units are still too large to fit into a `TextSegment`, it calls a sub-splitter.
+This is another `DocumentSplitter` capable of splitting units that do not fit into more granular units.
 
 ### Text Segment Transformer
 More details are coming soon.

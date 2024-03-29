@@ -1,4 +1,4 @@
-name: release_core
+name: release_core_and_parent
 
 on:
   workflow_dispatch:
@@ -23,8 +23,8 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: GPG_PASSPHRASE
 
-      - name: release_core
-        run: mvn -B -U -pl langchain4j-core -Psign clean deploy
+      - name: release_core_and_parent
+        run: mvn -B -U -pl langchain4j-core,langchain4j-parent -Psign clean deploy
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
