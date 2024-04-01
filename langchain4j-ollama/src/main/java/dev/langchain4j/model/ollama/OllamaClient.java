@@ -14,8 +14,10 @@ import retrofit2.Callback;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
@@ -121,34 +123,32 @@ class OllamaClient {
     public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler) {
         ollamaApi.streamingChat(request).enqueue(new Callback<ResponseBody>() {
 
-            @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
-                    StringBuilder contentBuilder = new StringBuilder();
-                    while (true) {
-                        byte[] bytes = new byte[1024];
-                        int len = inputStream.read(bytes);
-                        String partialResponse = new String(bytes, 0, len);
-                        ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
+                    try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
+                        StringBuilder contentBuilder = new StringBuilder();
+                        while (true) {
+                            String partialResponse = bufferedReader.readLine();
+                            ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
+                            String content = chatResponse.getMessage().getContent();
+                            contentBuilder.append(content);
+                            handler.onNext(content);
 
-                        String content = chatResponse.getMessage().getContent();
-                        contentBuilder.append(content);
-                        handler.onNext(content);
-
-                        if (TRUE.equals(chatResponse.getDone())) {
-                            Response<AiMessage> response = Response.from(
-                                    AiMessage.from(contentBuilder.toString()),
-                                    new TokenUsage(
-                                            chatResponse.getPromptEvalCount(),
-                                            chatResponse.getEvalCount()
-                                    )
-                            );
-                            handler.onComplete(response);
-                            return;
+                            if (TRUE.equals(chatResponse.getDone())) {
+                                Response<AiMessage> response = Response.from(
+                                        AiMessage.from(contentBuilder.toString()),
+                                        new TokenUsage(
+                                                chatResponse.getPromptEvalCount(),
+                                                chatResponse.getEvalCount()
+                                        )
+                                );
+                                handler.onComplete(response);
+                                return;
+                            }
                         }
                     }
-                } catch (Exception e) {
-                    handler.onError(e);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             }
 
