@@ -129,9 +129,7 @@ class OllamaClient {
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                         StringBuilder contentBuilder = new StringBuilder();
                         while (true) {
-                            byte[] bytes = new byte[1024];
-                            int len = inputStream.read(bytes);
-                            String partialResponse = new String(bytes, 0, len);
+                            String partialResponse = reader.readLine();
                             ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
 
                             String content = chatResponse.getMessage().getContent();
