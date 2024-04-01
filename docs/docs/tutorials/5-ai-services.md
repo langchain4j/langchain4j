@@ -88,6 +88,16 @@ So, `AiService` will automatically convert it into a `UserMessage` and invoke `C
 Since the output type of the `chat` method is a `String`, after `ChatLanguageModel` returns `AiMessage`,
 it will be converted into a `String` before being returned from the `chat` method.
 
+## Using AI Services in Quarkus Application
+[LangChain4j Quarkus extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/index.html)
+greatly simplifies using AI Services in Quarkus applications.
+
+More information can be found [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html).
+
+## Using AI Services in Spring Boot Application
+[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration)
+greatly simplifies using AI Services in Spring Boot applications.
+
 ## @SystemMessage
 
 Now, let's look at a more complicated example.
@@ -256,6 +266,7 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 :::
 
 Here is how to enable JSON mode:
+
 - For OpenAI:
 ```java
 OpenAiChatModel.builder()
@@ -263,6 +274,7 @@ OpenAiChatModel.builder()
         .responseFormat("json_object")
         .build();
 ```
+
 - For Azure OpenAI:
 ```java
 AzureOpenAiChatModel.builder()
@@ -270,6 +282,15 @@ AzureOpenAiChatModel.builder()
         .responseFormat(new ChatCompletionsJsonResponseFormat())
         .build();
 ```
+
+- For Mistral AI:
+```java
+MistralAiChatModel.builder()
+        ...
+        .responseFormat(JSON_OBJECT)
+        .build();
+```
+
 - For Ollama:
 ```java
 OllamaChatModel.builder()
@@ -277,6 +298,7 @@ OllamaChatModel.builder()
         .format("json")
         .build();
 ```
+
 - For other model providers: if the underlying model provider does not support JSON mode,
 prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
 

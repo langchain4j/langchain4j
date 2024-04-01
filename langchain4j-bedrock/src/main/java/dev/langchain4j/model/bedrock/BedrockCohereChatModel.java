@@ -23,7 +23,7 @@ public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohe
     @Builder.Default
     private final int topK = 0;
     @Builder.Default
-    private final Types model = Types.CommandTextV14;
+    private final String model = Types.CommandTextV14.getValue();
 
     @Override
     protected Map<String, Object> getRequestParameters(String prompt) {
@@ -42,7 +42,7 @@ public class BedrockCohereChatModel extends AbstractBedrockChatModel<BedrockCohe
 
     @Override
     protected String getModelId() {
-        return model.getValue();
+        return model;
     }
 
     @Override
