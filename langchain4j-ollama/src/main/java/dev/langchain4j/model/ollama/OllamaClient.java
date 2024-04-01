@@ -123,13 +123,17 @@ class OllamaClient {
     public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler) {
         ollamaApi.streamingChat(request).enqueue(new Callback<ResponseBody>() {
 
+            @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
-                    try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream))) {
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                         StringBuilder contentBuilder = new StringBuilder();
                         while (true) {
-                            String partialResponse = bufferedReader.readLine();
+                            byte[] bytes = new byte[1024];
+                            int len = inputStream.read(bytes);
+                            String partialResponse = new String(bytes, 0, len);
                             ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
+
                             String content = chatResponse.getMessage().getContent();
                             contentBuilder.append(content);
                             handler.onNext(content);
@@ -147,8 +151,8 @@ class OllamaClient {
                             }
                         }
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    handler.onError(e);
                 }
             }
 
