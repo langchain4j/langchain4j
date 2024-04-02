@@ -22,7 +22,7 @@ public class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreIT {
 
     @BeforeEach
     void beforeEach() {
-        embeddingStore = PgVectorEmbeddingStore.builder()
+        embeddingStore = PgVectorEmbeddingStore.standaloneBuilder()
                 .host(pgVector.getHost())
                 .port(pgVector.getFirstMappedPort())
                 .user("test")

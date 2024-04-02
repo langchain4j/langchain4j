@@ -38,7 +38,7 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
         source.setUser("test");
         source.setPassword("test");
         dataSource = source;
-        embeddingStore = DataSourcePgVectorEmbeddingStore.withDataSourceBuilder()
+        embeddingStore = PgVectorEmbeddingStore.builder()
                 .datasource(dataSource)
                 .table(TABLE_NAME)
                 .dimension(TABLE_DIMENSION)
