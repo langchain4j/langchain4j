@@ -67,124 +67,6 @@ LangChain4j features a modular design, comprising:
 - A wide array of `langchain4j-{integration}` modules, each providing integration with various LLM providers and embedding stores into LangChain4j.
   You can use the `langchain4j-{integration}` modules independently. For additional features, simply import the main `langchain4j` dependency.
 
-## News
-
-30 January:
- - Support for [Advanced RAG](https://github.com/langchain4j/langchain4j/pull/538).
-Examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
- - Support for image inputs.
-Currently supported by [OpenAI](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiChatModelExamples.java), Vertex AI Gemini, Ollama and Qwen.
- - [Mistral AI](https://mistral.ai/) [integration](https://github.com/langchain4j/langchain4j-examples/blob/main/mistral-ai-examples/src/main/java/MistralAiChatModelExamples.java) by [@czelabueno](https://github.com/czelabueno)
- - [Azure AI Search](https://azure.microsoft.com/en-us/products/ai-services/ai-search) integration by [@jdubois](https://github.com/jdubois)
- - [Qdrant](https://qdrant.tech/) integration by [@Anush008](https://github.com/Anush008)
-- [And much more](https://github.com/langchain4j/langchain4j/releases/tag/0.26.1)
-
-<details>
-  <summary>Previous News</summary>
-
-22 December:
-- Azure OpenAI:
-  - Using official Azure SDK by [@jdubois](https://github.com/jdubois)
-  - Image generation with DALL·E by [@jdubois](https://github.com/jdubois)
-- OpenAI:
-  - [Image generation with DALL·E](https://github.com/langchain4j/langchain4j-examples/blob/main/open-ai-examples/src/main/java/OpenAiImageModelExamples.java) by [@Heezer](https://github.com/Heezer)
-  - Parallel function calling, json output, precise token estimation by [@langchain4j](https://github.com/langchain4j)
-- [Integration with Google Gemini](https://github.com/langchain4j/langchain4j-examples/blob/main/vertex-ai-gemini-examples/src/main/java/VertexAiGeminiChatModelExamples.java) by [@kuraleta](https://github.com/kuraleta)
-- Ollama:
-  - [Chat API](https://github.com/langchain4j/langchain4j-examples/tree/main/ollama-examples) by [@fintanmm](https://github.com/fintanmm)
-  - Json output and more parameters by [@langchain4j](https://github.com/langchain4j)
-- [Integration with Neo4j](https://github.com/langchain4j/langchain4j-examples/blob/main/neo4j-example/src/main/java/Neo4jEmbeddingStoreExample.java) by [@vga91](https://github.com/vga91)
-- Integration with ChatGLM by [@Martin7-1](https://github.com/Martin7-1)
-- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.25.0)
-
-12 November:
-- Integration with [OpenSearch](https://opensearch.org/) by [@riferrei](https://github.com/riferrei)
-- Add support for loading documents from S3 by [@jmgang](https://github.com/jmgang)
-- Integration with [PGVector](https://github.com/pgvector/pgvector) by [@kevin-wu-os](https://github.com/kevin-wu-os)
-- Integration with [Ollama](https://ollama.ai/) by  [@Martin7-1](https://github.com/Martin7-1)
-- Integration with [Amazon Bedrock](https://aws.amazon.com/bedrock/) by [@pascalconfluent](https://github.com/pascalconfluent)
-- Adding Memory Id to Tool Method Call by [@benedictstrube](https://github.com/benedictstrube)
-- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.24.0)
-
-29 September:
-- Updates to models API: return `Response<T>` instead of `T`. `Response<T>` contains token usage and finish reason.
-- All model and embedding store integrations now live in their own modules
-- Integration with [Vespa](https://vespa.ai/) by [@Heezer](https://github.com/Heezer)
-- Integration with [Elasticsearch](https://www.elastic.co/) by [@Martin7-1](https://github.com/Martin7-1)
-- Integration with [Redis](https://redis.io/) by [@Martin7-1](https://github.com/Martin7-1)
-- Integration with [Milvus](https://milvus.io/) by [@IuriiKoval](https://github.com/IuriiKoval)
-- Integration with [Astra DB](https://www.datastax.com/products/datastax-astra) and [Cassandra](https://cassandra.apache.org/) by [@clun](https://github.com/clun)
-- Added support for overlap in document splitters
-- Some bugfixes and smaller improvements 
-
-29 August:
-- Offline [text classification with embeddings](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/classification/EmbeddingModelTextClassifierExample.java)
-- Integration with [Google Vertex AI](https://cloud.google.com/vertex-ai) by [@kuraleta](https://github.com/kuraleta)
-- Reworked [document splitters](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/data/document/splitter/DocumentSplitters.java)
-- In-memory embedding store can now be easily persisted
-- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.22.0)
-
-19 August:
-- Integration with [Azure OpenAI](https://learn.microsoft.com/en-us/azure/ai-services/openai/overview) by [@kuraleta](https://github.com/kuraleta)
-- Integration with Qwen models (DashScope) by [@jiangsier-xyz](https://github.com/jiangsier-xyz)
-- [Integration with Chroma](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/ChromaEmbeddingStoreExample.java) by [@kuraleta](https://github.com/kuraleta)
-- [Support for persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
-
-10 August:
-- [Integration with Weaviate](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/WeaviateEmbeddingStoreExample.java) by [@Heezer](https://github.com/Heezer)
-- [Support for DOC, XLS and PPT document types](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java) by [@oognuyh](https://github.com/oognuyh)
-- [Separate chat memory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
-- [Custom in-process embedding models](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/model/InProcessEmbeddingModelExamples.java)
-- Added lots of Javadoc
-- [And more](https://github.com/langchain4j/langchain4j/releases/tag/0.19.0)
-
-26 July:
-- We've added integration with [LocalAI](https://localai.io/). Now, you can use LLMs hosted locally!
-- Added support for [response streaming in AI Services](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java).
-
-21 July:
-- Now, you can do [text embedding inside your JVM](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/model/InProcessEmbeddingModelExamples.java).
-
-17 July:
-- You can now try out OpenAI's `gpt-3.5-turbo` and `text-embedding-ada-002` models with LangChain4j for free, without needing an OpenAI account and keys! Simply use the API key "demo".
-
-15 July:
-- Added EmbeddingStoreIngestor
-- Redesigned document loaders (see FileSystemDocumentLoader)
-- Simplified ConversationalRetrievalChain
-- Renamed DocumentSegment into TextSegment
-- Added output parsers for numeric types
-- Added @UserName for AI Services
-- Fixed [23](https://github.com/langchain4j/langchain4j/issues/23) and [24](https://github.com/langchain4j/langchain4j/issues/24)
-
-11 July:
-
-- Added ["Dynamic Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithDynamicToolsExample.java):
-  Now, the LLM can generate code for tasks that require precise calculations, such as math and string manipulation. This will be dynamically executed in a style akin to GPT-4's code interpreter!
-  We use [Judge0, hosted by Rapid API](https://rapidapi.com/judge0-official/api/judge0-ce/pricing), for code execution. You can subscribe and receive 50 free executions per day.
-
-5 July:
-
-- Now you can [add your custom knowledge base to "AI Services"](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java).
-  Relevant information will be automatically retrieved and injected into the prompt. This way, the LLM will have a
-  context of your data and will answer based on it!
-- The current date and time can now be automatically injected into the prompt using
-  special `{{current_date}}`, `{{current_time}}` and `{{current_date_time}}` placeholders.
-
-3 July:
-
-- Added support for Spring Boot 3
-
-2 July:
-
-- [Added Spring Boot Starter](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
-- Added support for HuggingFace models
-
-1 July:
-
-- [Added "Tools"](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java) (support for OpenAI functions)
-</details>
-
 ## Highlights
 
 You can define declarative "AI Services" that are powered by LLMs:
@@ -198,9 +80,8 @@ interface Assistant {
 Assistant assistant = AiServices.create(Assistant.class, model);
 
 String answer = assistant.chat("Hello");
-    
-System.out.println(answer);
-// Hello! How can I assist you today?
+
+System.out.println(answer); // Hello! How can I assist you today?
 ```
 
 You can use LLM as a classifier:
@@ -221,11 +102,9 @@ interface SentimentAnalyzer {
 
 SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!");
-// POSITIVE
+Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("It is good!"); // POSITIVE
 
-boolean positive = sentimentAnalyzer.isPositive("It is bad!");
-// false
+boolean positive = sentimentAnalyzer.isPositive("It is bad!"); // false
 ```
 
 You can easily extract structured information from unstructured data:
@@ -260,7 +139,7 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 ## Compatibility
 
 - Java: 8 or higher
-- Spring Boot: 2 or 3
+- Spring Boot: 2 or higher
 
 ## Getting started
 
@@ -270,12 +149,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.27.1</version>
+          <version>0.29.1</version>
       </dependency>
       ```
     - Gradle:
       ```groovy
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.27.1'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.29.1'
       ```
 
 2. Import your OpenAI API key:
@@ -295,22 +174,24 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     System.out.println(answer); // Hello! How can I assist you today?
     ```
 ## Supported LLM Integrations ([Docs](https://docs.langchain4j.dev/category/integrations))
-| Provider                                                                                                | Native Image     | [Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming](https://docs.langchain4j.dev/integrations/language-models/response-streaming)  | [Async Completion](https://docs.langchain4j.dev/category/language-models) | [Async Streaming](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [ReRanking](https://docs.langchain4j.dev/category/reranking-models) 
-|---------------------------------------------------------------------------------------------------------| ------------- | ----------- | ------------- | --------- |--------------------------------| ------------ |---------------------------------------------------------------------------------------------|---------------|
-| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |                                                                                               
-| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-openai)             |  | ✅ | ✅ |  |   | ✅ | ✅ | 
-| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/huggingface)              |  | ✅ |  | ✅ |  | ✅ |  |  |
-| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |  | ✅ |  |  |  | ✅ |
-| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |  | ✅ | ✅ | ✅ | ✅ |  |  |
-| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅ | ✅ |  | ✅ |  | ✅ | ✅ |
-| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ | ✅ | ✅ |
-| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |  | ✅ | ✅ |  | ✅ | ✅ |
-| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | ✅ |  |
-| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
-| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |  |  |  |  |  |  |  | ✅ |
-| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ | ✅ | ✅ |  |
-| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ |  |  |  |  |
-| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  |  |  |  |  | ✅ |  |
+| Provider                                                                                           | Native Image     | [Sync Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming Completion](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [Scoring](https://docs.langchain4j.dev/category/scoring-models) | [Function Calling](https://docs.langchain4j.dev/tutorials/tools)
+|----------------------------------------------------------------------------------------------------| ------------- |---------------------------------------------------------------------| ----------- | ------ |-------------------------------| ------ |--------------------------------------------------------------------------------------------|
+| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | | ✅ |                                                                                                
+| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-openai)             |  | ✅ | ✅ | ✅ | ✅ | | ✅ | 
+| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/huggingface)              |  | ✅ | | ✅ |  | | |  |
+| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |  | ✅  | |✅ | ✅ | | |
+| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |  | ✅ | ✅ | | ✅ | | ✅ |
+| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅ | ✅ | | ✅ | ✅ | | |
+| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ |  | |✅ |
+| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |  | ✅ | ✅ |✅ |  | | |
+| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | | ✅ |
+| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ |  | | |
+| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |  | | | |  | ✅| |
+| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ |  | |✅ |
+| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ | | |  | |
+| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  | | |✅ |  | | |
+| [Anthropic](https://docs.langchain4j.dev/integrations/language-models/anthropic)                   |  |✅ | | |  | | |
+| [Zhipu AI](https://docs.langchain4j.dev/integrations/language-models/zhipuai)                      |  |✅| ✅| ✅|  | |✅ |
 
 ## Disclaimer
 
@@ -339,7 +220,7 @@ Please note that the library is in active development and:
     - [Chats](https://cloud.google.com/vertex-ai/docs/generative-ai/chat/chat-prompts)
     - [Completions](https://cloud.google.com/vertex-ai/docs/generative-ai/text/text-overview)
     - [Embeddings](https://cloud.google.com/vertex-ai/docs/generative-ai/embeddings/get-text-embeddings)
-- Integration with [HuggingFace Inference API](https://huggingface.co/docs/api-inference/index) for:
+- Integration with [Hugging Face Inference API](https://huggingface.co/docs/api-inference/index) for:
     - [Chats](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Completions](https://huggingface.co/docs/api-inference/detailed_parameters#text-generation-task)
     - [Embeddings](https://huggingface.co/docs/api-inference/detailed_parameters#feature-extraction-task)
@@ -449,7 +330,7 @@ Here are some best practices for using LLMs:
   data or input from instructions.
 
 ## How to get an API key
-You will need an API key from OpenAI (paid) or HuggingFace (free) to use LLMs hosted by them.
+You will need an API key from OpenAI (paid) or Hugging Face (free) to use LLMs hosted by them.
 
 We recommend using OpenAI LLMs (`gpt-3.5-turbo` and `gpt-4`) as they are by far the most capable and are reasonably priced.
 
@@ -457,10 +338,10 @@ It will cost approximately $0.01 to generate 10 pages (A4 format) of text with `
 
 [How to get OpenAI API key](https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/).
 
-For embeddings, we recommend using one of the models from the [HuggingFace MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
+For embeddings, we recommend using one of the models from the [Hugging Face MTEB leaderboard](https://huggingface.co/spaces/mteb/leaderboard).
 You'll have to find the best one for your specific use case.
 
-Here's how to get a HuggingFace API key:
+Here's how to get a Hugging Face API key:
 - Create an account on https://huggingface.co
 - Go to https://huggingface.co/settings/tokens
 - Generate a new access token

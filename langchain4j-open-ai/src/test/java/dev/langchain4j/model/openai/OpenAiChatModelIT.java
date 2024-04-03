@@ -3,6 +3,7 @@ package dev.langchain4j.model.openai;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -35,7 +36,7 @@ class OpenAiChatModelIT {
             .addParameter("second", INTEGER)
             .build();
 
-    ChatLanguageModel model = OpenAiChatModel.builder()
+    OpenAiChatModel model = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -44,7 +45,7 @@ class OpenAiChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatLanguageModel visionModel = OpenAiChatModel.builder()
+    OpenAiChatModel visionModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -79,11 +80,16 @@ class OpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_length() {
 
         // given
+        int maxTokens = 1;
+
         ChatLanguageModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .maxTokens(3)
+                .maxTokens(maxTokens)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("What is the capital of Germany?");
@@ -96,7 +102,7 @@ class OpenAiChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(14);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(3);
+        assertThat(tokenUsage.outputTokenCount()).isLessThanOrEqualTo(maxTokens);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -124,8 +130,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(53);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(22);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(52);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(18);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -144,7 +150,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -172,8 +178,8 @@ class OpenAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(59);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(16);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(61);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(9);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -192,7 +198,7 @@ class OpenAiChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(41);
+        assertThat(secondTokenUsage.inputTokenCount()).isEqualTo(37);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
@@ -401,5 +407,60 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(response).containsIgnoringCase("Berlin");
+    }
+
+    @Test
+    void should_use_default_tokenizer() {
+
+        // when
+        int tokenCount = model.estimateTokenCount("Hello, how are you doing?");
+
+        // then
+        assertThat(tokenCount).isEqualTo(14);
+    }
+
+    @Test
+    void should_use_custom_tokenizer() {
+
+        // given
+
+        Tokenizer tokenizer = new Tokenizer() {
+
+            @Override
+            public int estimateTokenCountInText(String text) {
+                return 42;
+            }
+
+            @Override
+            public int estimateTokenCountInMessage(ChatMessage message) {
+                return 42;
+            }
+
+            @Override
+            public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
+                return 42;
+            }
+
+            @Override
+            public int estimateTokenCountInToolSpecifications(Iterable<ToolSpecification> toolSpecifications) {
+                return 42;
+            }
+
+            @Override
+            public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
+                return 42;
+            }
+        };
+
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .apiKey("does not matter")
+                .tokenizer(tokenizer)
+                .build();
+
+        // when
+        int tokenCount = model.estimateTokenCount("Hello, how are you doing?");
+
+        // then
+        assertThat(tokenCount).isEqualTo(42);
     }
 }

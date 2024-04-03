@@ -60,11 +60,16 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .userAgent(DEFAULT_USER_AGENT)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
-        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+    }
+
+    public String modelName() {
+        return modelName;
     }
 
     @Override

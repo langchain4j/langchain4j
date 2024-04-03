@@ -163,6 +163,14 @@ class QwenHelper {
         }
     }
 
+    static boolean hasAnswer(GenerationResult result) {
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .isPresent();
+    }
+
     static String answerFrom(GenerationResult result) {
         return Optional.of(result)
                 .map(GenerationResult::getOutput)
@@ -176,6 +184,18 @@ class QwenHelper {
                         .map(GenerationResult::getOutput)
                         .map(GenerationOutput::getText)
                         .orElseThrow(NullPointerException::new));
+    }
+
+    static boolean hasAnswer(MultiModalConversationResult result) {
+        return Optional.of(result)
+                .map(MultiModalConversationResult::getOutput)
+                .map(MultiModalConversationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(MultiModalConversationOutput.Choice::getMessage)
+                .map(MultiModalMessage::getContent)
+                .filter(contents -> !contents.isEmpty())
+                .isPresent();
     }
 
     static String answerFrom(MultiModalConversationResult result) {
