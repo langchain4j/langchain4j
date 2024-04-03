@@ -1,6 +1,8 @@
 package dev.langchain4j.model.huggingface;
 
-public class HuggingFaceModelName {
+public final class HuggingFaceModelName {
+
+    private HuggingFaceModelName() {}
 
     // Use with HuggingFaceChatModel and HuggingFaceLanguageModel
     public static final String TII_UAE_FALCON_7B_INSTRUCT = "tiiuae/falcon-7b-instruct";
