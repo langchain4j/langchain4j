@@ -99,6 +99,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param metadataConfig        The {@link MetadataConfig} config.
      */
     @Builder(builderMethodName = "standaloneBuilder", builderClassName = "StandaloneBuilder")
+    @SuppressWarnings("unused")
     protected PgVectorEmbeddingStore(
             String host,
             Integer port,
@@ -147,7 +148,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         Integer indexListSize) {
         String query = "init";
         try (Connection connection = getConnection(); Statement statement = connection.createStatement()) {
-            statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
             if (dropTableFirst) {
                 statement.executeUpdate(String.format("DROP TABLE IF EXISTS %s", table));
             }
@@ -264,26 +264,25 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
                             "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
                     referenceVector, metadataHandler.columnsNames(), table, whereClause, minScore, maxResults);
-            PreparedStatement selectStmt = connection.prepareStatement(query);
+           try (PreparedStatement selectStmt = connection.prepareStatement(query) ) {
+               try (ResultSet resultSet = selectStmt.executeQuery()) {
+                   while (resultSet.next()) {
+                       double score = resultSet.getDouble("score");
+                       String embeddingId = resultSet.getString("embedding_id");
 
-            ResultSet resultSet = selectStmt.executeQuery();
-            while (resultSet.next()) {
-                double score = resultSet.getDouble("score");
-                String embeddingId = resultSet.getString("embedding_id");
+                       PGvector vector = (PGvector) resultSet.getObject("embedding");
+                       Embedding embedding = new Embedding(vector.toArray());
 
-                PGvector vector = (PGvector) resultSet.getObject("embedding");
-                Embedding embedding = new Embedding(vector.toArray());
-
-                String text = resultSet.getString("text");
-                TextSegment textSegment = null;
-                if (isNotNullOrBlank(text)) {
-                    Metadata metadata = metadataHandler.fromResultSet(resultSet);
-                    textSegment = TextSegment.from(text, metadata);
-                }
-                result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
-            }
-            resultSet.close();
-            selectStmt.close();
+                       String text = resultSet.getString("text");
+                       TextSegment textSegment = null;
+                       if (isNotNullOrBlank(text)) {
+                           Metadata metadata = metadataHandler.fromResultSet(resultSet);
+                           textSegment = TextSegment.from(text, metadata);
+                       }
+                       result.add(new EmbeddingMatch<>(score, embeddingId, embedding, textSegment));
+                   }
+               }
+           }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -317,30 +316,29 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                     table, metadataHandler.columnsNames(),
                     join(",", nCopies(metadataHandler.nbMetadataColumns(), "?")),
                     metadataHandler.insertClause());
-            PreparedStatement upsertStmt = connection.prepareStatement(query);
+            try (PreparedStatement upsertStmt = connection.prepareStatement(query)) {
+                for (int i = 0; i < ids.size(); ++i) {
+                    upsertStmt.setObject(1, UUID.fromString(ids.get(i)));
+                    upsertStmt.setObject(2, new PGvector(embeddings.get(i).vector()));
 
-            for (int i = 0; i < ids.size(); ++i) {
-                upsertStmt.setObject(1, UUID.fromString(ids.get(i)));
-                upsertStmt.setObject(2, new PGvector(embeddings.get(i).vector()));
-
-                if (embedded != null && embedded.get(i) != null) {
-                    upsertStmt.setObject(3, embedded.get(i).text());
-                    metadataHandler.setMetadata(upsertStmt, 4, embedded.get(i).metadata());
-                } else {
-                    upsertStmt.setNull(3, Types.VARCHAR);
-                    IntStream.range(4, 4 + metadataHandler.nbMetadataColumns()).forEach(
-                            j -> {
-                                try {
-                                    upsertStmt.setNull(j, Types.OTHER);
-                                } catch (SQLException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            });
+                    if (embedded != null && embedded.get(i) != null) {
+                        upsertStmt.setObject(3, embedded.get(i).text());
+                        metadataHandler.setMetadata(upsertStmt, 4, embedded.get(i).metadata());
+                    } else {
+                        upsertStmt.setNull(3, Types.VARCHAR);
+                        IntStream.range(4, 4 + metadataHandler.nbMetadataColumns()).forEach(
+                                j -> {
+                                    try {
+                                        upsertStmt.setNull(j, Types.OTHER);
+                                    } catch (SQLException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                });
+                    }
+                    upsertStmt.addBatch();
                 }
-                upsertStmt.addBatch();
+                upsertStmt.executeBatch();
             }
-            upsertStmt.executeBatch();
-            upsertStmt.close();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -348,12 +346,20 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Datasource connection
+     * Creates the vector extension and add the vector type if it does not exist.
+     * Could be overridden in case extension creation and adding type is done at datasource initialization step.
      * @return Datasource connection
      * @throws SQLException exception
      */
     protected Connection getConnection() throws SQLException {
         Connection connection = datasource.getConnection();
-        PGvector.addVectorType(connection); // Find a way to do it in connection creation.
+        // Find a way to do the following code in connection initialization.
+        // Here we assume the datasource could handle a connection pool
+        // and we should add the vector type on each connection
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
+        }
+        PGvector.addVectorType(connection);
         return connection;
     }
 }
