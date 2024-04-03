@@ -117,7 +117,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiLanguageModel(String endpoint,
@@ -143,7 +143,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiLanguageModel(String endpoint,
@@ -169,7 +169,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiLanguageModel(String deploymentName,

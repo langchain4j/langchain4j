@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
@@ -16,9 +17,9 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Flux;
 
 import java.time.Duration;
 import java.util.List;
@@ -62,6 +63,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingChatModel.class);
 
     private OpenAIClient client;
+    private OpenAIAsyncClient asyncClient;
     private final String deploymentName;
     private final Tokenizer tokenizer;
     private final Integer maxTokens;
@@ -79,6 +81,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
     private final ChatCompletionsResponseFormat responseFormat;
 
     public AzureOpenAiStreamingChatModel(OpenAIClient client,
+                                         OpenAIAsyncClient asyncClient,
                                          String deploymentName,
                                          Tokenizer tokenizer,
                                          Integer maxTokens,
@@ -93,12 +96,20 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          List<AzureChatExtensionConfiguration> dataSources,
                                          AzureChatEnhancementConfiguration enhancements,
                                          Long seed,
-                                         ChatCompletionsResponseFormat responseFormat) {
+                                         ChatCompletionsResponseFormat responseFormat,
+                                         boolean useAsyncClient) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = client;
-    }
 
+        if(useAsyncClient) {
+            if(asyncClient != null)
+                this.asyncClient = asyncClient;
+            else
+                throw new IllegalArgumentException("Async client is required when useAsyncClient is true");
+        } else {
+            this.client = client;
+        }
+    }
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
                                          String apiKey,
@@ -120,11 +131,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Duration timeout,
                                          Integer maxRetries,
                                          ProxyOptions proxyOptions,
-                                         boolean logRequestsAndResponses) {
+                                         boolean logRequestsAndResponses,
+                                         boolean useAsyncClient) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-    }
+        if(useAsyncClient)
+            this.asyncClient = setupClient(OpenAIAsyncClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        else
+            this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -147,11 +161,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Duration timeout,
                                          Integer maxRetries,
                                          ProxyOptions proxyOptions,
-                                         boolean logRequestsAndResponses) {
+                                         boolean logRequestsAndResponses,
+                                         boolean useAsyncClient) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-    }
+        if(useAsyncClient)
+            this.asyncClient = setupClient(OpenAIAsyncClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        else
+            this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -174,11 +191,15 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Duration timeout,
                                          Integer maxRetries,
                                          ProxyOptions proxyOptions,
-                                         boolean logRequestsAndResponses) {
+                                         boolean logRequestsAndResponses,
+                                         boolean useAsyncClient) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-    }
+        if(useAsyncClient)
+            this.asyncClient = setupClient(OpenAIAsyncClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        else
+            this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);    }
+
 
     private AzureOpenAiStreamingChatModel(String deploymentName,
                                           Tokenizer tokenizer,
@@ -267,6 +288,51 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
 
+        // Sync version
+        if(client != null) {
+            syncCall(toolThatMustBeExecuted, handler, options, responseBuilder);
+        } else if(asyncClient != null) {
+            asyncCall(toolThatMustBeExecuted, handler, options, responseBuilder);
+        } else {
+            throw new IllegalStateException("No client available");
+        }
+    }
+
+    private void handleResponseException(Exception exception, StreamingResponseHandler<AiMessage> handler) {
+        if (exception instanceof HttpResponseException) {
+            HttpResponseException httpResponseException = (HttpResponseException) exception;
+            logger.info("Error generating response, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            Response<AiMessage> response =  Response.from(
+                    aiMessage(httpResponseException.getMessage()),
+                    null,
+                    exceptionFinishReason
+            );
+            handler.onComplete(response);
+        } else {
+            handler.onError(exception);
+        }
+    }
+
+    private void asyncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, AzureOpenAiStreamingResponseBuilder responseBuilder) {
+        Flux<ChatCompletions> chatCompletionsStream = asyncClient.getChatCompletionsStream(deploymentName, options);
+
+        chatCompletionsStream.subscribe(chatCompletion -> {
+                    try {
+                        responseBuilder.append(chatCompletion);
+                        handle(chatCompletion, handler);
+                    } catch (Exception exception) {
+                        handleResponseException(exception, handler);
+                    }
+                },
+                throwable -> logger.error("Error generating response, {}", throwable.getMessage()),
+                () -> {
+                    Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+                    handler.onComplete(response);
+                });
+    }
+
+    private void syncCall(ToolSpecification toolThatMustBeExecuted, StreamingResponseHandler<AiMessage> handler, ChatCompletionsOptions options, AzureOpenAiStreamingResponseBuilder responseBuilder) {
         try {
             client.getChatCompletionsStream(deploymentName, options)
                     .stream()
@@ -276,19 +342,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     });
             Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
             handler.onComplete(response);
-        } catch (HttpResponseException httpResponseException) {
-            logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
-            Response<AiMessage> response =  Response.from(
-                    aiMessage(httpResponseException.getMessage()),
-                    null,
-                    exceptionFinishReason
-            );
-            handler.onComplete(response);
         } catch (Exception exception) {
-            handler.onError(exception);
+            handleResponseException(exception, handler);
         }
     }
+
 
     private static void handle(ChatCompletions chatCompletions,
                                StreamingResponseHandler<AiMessage> handler) {
@@ -343,6 +401,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
+        private OpenAIAsyncClient openAIAsyncClient;
+        private boolean useAsyncClient = false;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -501,6 +561,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        public Builder useAsyncClient(boolean useAsyncClient) {
+            this.useAsyncClient = useAsyncClient;
+            return this;
+        }
+
         /**
          * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
          *
@@ -509,6 +574,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
          */
         public Builder openAIClient(OpenAIClient openAIClient) {
             this.openAIClient = openAIClient;
+            return this;
+        }
+
+        /**
+         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         *
+         * @param openAIAsyncClient The Azure OpenAI client.
+         * @return builder
+         */
+        public Builder openAIAsyncClient(OpenAIAsyncClient openAIAsyncClient) {
+            this.openAIAsyncClient = openAIAsyncClient;
             return this;
         }
 
@@ -537,7 +613,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            useAsyncClient
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiStreamingChatModel(
@@ -562,7 +639,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            useAsyncClient
                     );
                 }
                 return new AzureOpenAiStreamingChatModel(
@@ -587,11 +665,13 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         timeout,
                         maxRetries,
                         proxyOptions,
-                        logRequestsAndResponses
+                        logRequestsAndResponses,
+                        useAsyncClient
                 );
             } else {
                 return new AzureOpenAiStreamingChatModel(
                         openAIClient,
+                        openAIAsyncClient,
                         deploymentName,
                         tokenizer,
                         maxTokens,
@@ -606,7 +686,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         dataSources,
                         enhancements,
                         seed,
-                        responseFormat
+                        responseFormat,
+                        useAsyncClient
                 );
             }
         }

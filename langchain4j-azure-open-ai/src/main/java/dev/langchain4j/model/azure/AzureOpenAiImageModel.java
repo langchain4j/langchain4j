@@ -89,7 +89,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -107,7 +107,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  boolean logRequestsAndResponses) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -125,7 +125,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  boolean logRequestsAndResponses) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
