@@ -56,12 +56,11 @@ public class JSONMetadataHandler implements MetadataHandler {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Metadata fromResultSet(ResultSet resultSet) {
         try {
-            return Optional.ofNullable(resultSet.getString(columnsNames()))
-                    .map(m -> Json.fromJson(m, Map.class))
-                    .map(Metadata::new)
-                    .orElse(new Metadata());
+            String metadataJson = Optional.ofNullable(resultSet.getString(columnsNames())).orElse("{}");
+            return new Metadata(Json.fromJson(metadataJson, Map.class));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
