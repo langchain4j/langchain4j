@@ -230,7 +230,7 @@ public class ZhipuAiClient {
         private boolean logResponses;
 
         private Builder() {
-            this.baseUrl = "https://aip.baidubce.com/";
+            this.baseUrl = "https://open.bigmodel.cn/";
             this.callTimeout = Duration.ofSeconds(60L);
             this.connectTimeout = Duration.ofSeconds(60L);
             this.readTimeout = Duration.ofSeconds(60L);
