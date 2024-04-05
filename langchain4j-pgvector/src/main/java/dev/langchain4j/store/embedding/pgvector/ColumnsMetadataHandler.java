@@ -58,7 +58,7 @@ public class ColumnsMetadataHandler implements MetadataHandler {
         String indexTypeSql = indexType == null ? "" : "USING " + indexType;
         this.indexes.stream().map(String::trim)
                 .forEach(index -> {
-                    String indexSql = String.format("create index %s_%s on %s %s ( %s )",
+                    String indexSql = String.format("create index if not exists %s_%s on %s %s ( %s )",
                             table, index, table, indexTypeSql, index);
                     try {
                         statement.executeUpdate(indexSql);

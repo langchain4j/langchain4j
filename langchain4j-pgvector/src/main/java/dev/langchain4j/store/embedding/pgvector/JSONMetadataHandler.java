@@ -1,11 +1,9 @@
 package dev.langchain4j.store.embedding.pgvector;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.store.embedding.filter.Filter;
 
-import java.lang.reflect.Type;
 import java.sql.*;
 import java.util.*;
 
@@ -15,13 +13,10 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * This class handle JSON and JSONB Filter mapping
  */
 public class JSONMetadataHandler implements MetadataHandler {
-    private static final Gson GSON = new Gson();
 
-    private static final Type TYPE = new TypeToken<Map<String, String>>() {}.getType();
     final String columnDefinition;
     final String columnName;
     final JSONFilterMapper filterMapper;
-
     final List<String> indexes;
 
     /**
@@ -63,9 +58,10 @@ public class JSONMetadataHandler implements MetadataHandler {
     @Override
     public Metadata fromResultSet(ResultSet resultSet) {
         try {
-            String metadataJson = Optional.ofNullable(resultSet.getString(columnsNames())).orElse("{}");
-            Map<String, String> metadataMap = new HashMap<>(GSON.fromJson(metadataJson, TYPE));
-            return new Metadata(new HashMap<>(metadataMap));
+            return Optional.ofNullable(resultSet.getString(columnsNames()))
+                    .map(m -> Json.fromJson(m, Map.class))
+                    .map(Metadata::new)
+                    .orElse(new Metadata());
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -84,7 +80,7 @@ public class JSONMetadataHandler implements MetadataHandler {
     @Override
     public void setMetadata(PreparedStatement upsertStmt, Integer parameterInitialIndex, Metadata metadata) {
         try {
-            upsertStmt.setObject(parameterInitialIndex, GSON.toJson(metadata.asMap()), Types.OTHER);
+            upsertStmt.setObject(parameterInitialIndex, Json.toJson(metadata.asMap()), Types.OTHER);
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
