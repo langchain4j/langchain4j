@@ -20,12 +20,12 @@ public abstract class AnthropicClient {
     }
 
     public abstract static class Builder<T extends AnthropicClient, B extends Builder<T, B>> {
-        protected String baseUrl;
-        protected String apiKey;
-        protected String version;
-        protected Duration timeout;
-        protected Boolean logRequests;
-        protected Boolean logResponses;
+        public String baseUrl;
+        public String apiKey;
+        public String version;
+        public Duration timeout;
+        public Boolean logRequests;
+        public Boolean logResponses;
 
         public abstract T build();
 
