@@ -78,12 +78,10 @@ public final class EmbeddingRequest {
         }
 
         public Builder input(List<String> input) {
-            if (input == null) {
-                return this;
-            } else {
+            if (input != null) {
                 this.input = Collections.unmodifiableList(input);
-                return this;
             }
+            return this;
         }
 
         public Builder user(String user) {

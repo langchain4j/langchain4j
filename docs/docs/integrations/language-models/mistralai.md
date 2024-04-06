@@ -49,7 +49,7 @@ More details on how to get your MistralAI API key can be found [here](https://do
 
 #### Model Selection
 You can use `MistralAiChatModelName.class` enum class to found appropriate model names for your use case.
-MistralAI updated a new selection and clasiification of models according to performance and cost trade-offs.
+MistralAI updated a new selection and classification of models according to performance and cost trade-offs.
 
 Here a list of available models:
 - open-mistral-7b (aka mistral-tiny-2312)

@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName;
 import lombok.Getter;
 
 @Getter
-enum MistralAiToolChoiceName {
+public enum MistralAiToolChoiceName {
 
     @SerializedName("auto") AUTO,
     @SerializedName("any") ANY,
