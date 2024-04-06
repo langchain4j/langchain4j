@@ -25,7 +25,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,29 +47,17 @@ class InternalAzureOpenAiHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
-    public static <T> T setupClient(Class<T> clientType, String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-
-        if (credential instanceof String) {
-            openAIClientBuilder.credential(new AzureKeyCredential((String) credential));
-        } else if (credential instanceof KeyCredential) {
-            openAIClientBuilder.credential((KeyCredential) credential);
-        } else if (credential instanceof TokenCredential) {
-            openAIClientBuilder.credential((TokenCredential) credential);
-        } else {
-            throw new IllegalArgumentException("Unsupported credential type: " + credential.getClass());
-        }
-
-        if (clientType == OpenAIAsyncClient.class) {
-            return clientType.cast(openAIClientBuilder.buildAsyncClient());
-        } else if (clientType == OpenAIClient.class) {
-            return clientType.cast(openAIClientBuilder.buildClient());
-        } else {
-            throw new IllegalArgumentException("Unsupported client type: " + clientType);
-        }
+    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        return openAIClientBuilder.buildClient();
     }
 
-    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        return openAIClientBuilder.buildAsyncClient();
+    }
+
+    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -93,13 +80,26 @@ class InternalAzureOpenAiHelper {
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
 
-        return new OpenAIClientBuilder()
+        OpenAIClientBuilder openAIClientBuilder = new OpenAIClientBuilder()
                 .endpoint(ensureNotBlank(endpoint, "endpoint"))
                 .serviceVersion(getOpenAIServiceVersion(serviceVersion))
                 .httpClient(httpClient)
                 .clientOptions(clientOptions)
                 .httpLogOptions(httpLogOptions)
                 .retryOptions(retryOptions);
+
+        if (credential instanceof String) {
+            openAIClientBuilder.credential(new AzureKeyCredential((String) credential));
+        } else if (credential instanceof KeyCredential) {
+            openAIClientBuilder.credential((KeyCredential) credential);
+        } else if (credential instanceof TokenCredential) {
+            openAIClientBuilder.credential((TokenCredential) credential);
+        } else {
+            throw new IllegalArgumentException("Unsupported credential type: " + credential.getClass());
+        }
+
+        return openAIClientBuilder;
+
     }
 
     private static OpenAIClientBuilder authenticate(TokenCredential tokenCredential) {

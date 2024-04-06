@@ -11,12 +11,10 @@ import dev.langchain4j.model.azure.spi.AzureOpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -89,7 +87,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -107,7 +105,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  boolean logRequestsAndResponses) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -125,7 +123,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  boolean logRequestsAndResponses) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {

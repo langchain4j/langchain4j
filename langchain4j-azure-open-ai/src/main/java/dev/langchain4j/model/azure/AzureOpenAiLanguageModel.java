@@ -13,7 +13,6 @@ import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +116,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiLanguageModel(String endpoint,
@@ -143,7 +142,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiLanguageModel(String endpoint,
@@ -169,7 +168,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiLanguageModel(String deploymentName,

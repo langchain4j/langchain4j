@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupClient;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
@@ -76,7 +76,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
@@ -90,7 +90,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
@@ -104,7 +104,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer);
-        this.client = setupClient(OpenAIClient.class, endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
