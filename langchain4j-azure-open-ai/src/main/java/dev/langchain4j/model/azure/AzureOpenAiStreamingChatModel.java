@@ -96,20 +96,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          List<AzureChatExtensionConfiguration> dataSources,
                                          AzureChatEnhancementConfiguration enhancements,
                                          Long seed,
-                                         ChatCompletionsResponseFormat responseFormat,
-                                         boolean useAsyncClient) {
+                                         ChatCompletionsResponseFormat responseFormat) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
 
-        if(useAsyncClient) {
-            if(asyncClient != null)
-                this.asyncClient = asyncClient;
-            else
-                throw new IllegalArgumentException("Async client is required when useAsyncClient is true");
+        if (asyncClient != null) {
+            this.asyncClient = asyncClient;
         } else {
             this.client = client;
         }
     }
+
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
                                          String apiKey,
@@ -686,8 +683,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         dataSources,
                         enhancements,
                         seed,
-                        responseFormat,
-                        useAsyncClient
+                        responseFormat
                 );
             }
         }
