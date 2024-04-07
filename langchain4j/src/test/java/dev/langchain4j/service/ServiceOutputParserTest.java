@@ -1,13 +1,11 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Test;
 
 import java.io.Serializable;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.Calendar;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
