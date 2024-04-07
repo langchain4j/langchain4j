@@ -14,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static java.lang.String.format;
@@ -84,7 +85,7 @@ public class ServiceOutputParser {
             return new HashSet<>(asList(text.split("\n")));
         }
 
-        return Json.fromJson(text, returnType);
+        return Json.fromJson(text.replaceAll("\",\\\\n}","\"\\\\n}"), returnType);
     }
 
     public static String outputFormatInstructions(Class<?> returnType) {
@@ -130,6 +131,7 @@ public class ServiceOutputParser {
             }
             jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
         }
+        jsonSchema.delete(jsonSchema.lastIndexOf(","), jsonSchema.lastIndexOf(",")+1);
         jsonSchema.append("}");
         return jsonSchema.toString();
     }
