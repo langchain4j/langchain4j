@@ -10,6 +10,7 @@ import dev.langchain4j.model.huggingface.spi.HuggingFaceEmbeddingModelBuilderFac
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -25,7 +26,7 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
     private final boolean waitForModel;
 
     @Builder
-    public HuggingFaceEmbeddingModel(String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
+    public HuggingFaceEmbeddingModel(String accessToken, String modelId, Boolean waitForModel, Duration timeout, Proxy proxy) {
         if (accessToken == null || accessToken.trim().isEmpty()) {
             throw new IllegalArgumentException("HuggingFace access token must be defined. It can be generated here: https://huggingface.co/settings/tokens");
         }
@@ -43,6 +44,11 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
             @Override
             public Duration timeout() {
                 return timeout == null ? DEFAULT_TIMEOUT : timeout;
+            }
+
+            @Override
+            public Proxy proxy() {
+                return proxy;
             }
         });
         this.waitForModel = waitForModel == null ? true : waitForModel;
