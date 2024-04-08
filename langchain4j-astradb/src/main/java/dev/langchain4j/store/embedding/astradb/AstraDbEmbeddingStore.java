@@ -9,6 +9,8 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Getter;
 import lombok.NonNull;
@@ -176,6 +178,26 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     /** {@inheritDoc}  */
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         return findRelevant(referenceEmbedding, (Filter) null, maxResults, minScore);
+    }
+
+    /**
+     * Implementation of the Search to add the metadata Filtering.
+     *
+     * @param request
+     *      A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return
+     *      search with metadata filtering
+     */
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        // Mapping of the filter to internal representation
+        Filter astraFilter = AstraDBMetadataFilterMapper.map(request.filter());
+        // Call the search
+        List<EmbeddingMatch<TextSegment>> matches = findRelevant(
+                request.queryEmbedding(), astraFilter,
+                request.maxResults(),
+                request.minScore());
+        // Build the result
+        return new EmbeddingSearchResult<>(matches);
     }
 
     /**
