@@ -2,16 +2,14 @@ package dev.langchain4j.store.embedding.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.dtsx.astra.sdk.cassio.AnnQuery;
-import com.dtsx.astra.sdk.cassio.AnnResult;
-import com.dtsx.astra.sdk.cassio.CassIO;
-import com.dtsx.astra.sdk.cassio.MetadataVectorRecord;
-import com.dtsx.astra.sdk.cassio.MetadataVectorTable;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
-import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.cassio.AnnQuery;
+import dev.langchain4j.store.cassio.AnnResult;
+import dev.langchain4j.store.cassio.SimilarityMetric;
+import dev.langchain4j.store.cassio.MetadataVectorRecord;
+import dev.langchain4j.store.cassio.MetadataVectorTable;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
@@ -22,7 +20,6 @@ import lombok.NonNull;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -32,9 +29,9 @@ import static java.util.stream.Collectors.toList;
  * Implementation of {@link EmbeddingStore} using Cassandra.
  *
  * @see EmbeddingStore
- * @see MetadataVectorTable
+ * @see dev.langchain4j.store.cassio.MetadataVectorTable
  */
-public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class CassandraCassioEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Represents an embedding table in Cassandra, it is a table with a vector column.
@@ -57,8 +54,8 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param dimension
      *      dimension
      */
-    public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension) {
-        this(session, tableName, dimension, CassandraSimilarityMetric.COSINE);
+    public CassandraCassioEmbeddingStore(CqlSession session, String tableName, int dimension) {
+        this(session, tableName, dimension, SimilarityMetric.COSINE);
     }
 
     /**
@@ -73,7 +70,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param metric
      *      metric
      */
-    public CassandraEmbeddingStore(CqlSession session, String tableName, int dimension, CassandraSimilarityMetric metric) {
+    public CassandraCassioEmbeddingStore(CqlSession session, String tableName, int dimension, SimilarityMetric metric) {
         this.cassandraSession = session;
         this.embeddingTable = new MetadataVectorTable(session, session.getKeyspace().get().asInternal(), tableName, dimension, metric);
         embeddingTable.create();
@@ -103,7 +100,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         protected String keyspace;
         protected String table;
         protected Integer dimension;
-        protected CassandraSimilarityMetric metric = CassandraSimilarityMetric.COSINE;
+        protected SimilarityMetric metric = SimilarityMetric.COSINE;
 
         public Builder contactPoints(List<String> contactPoints) {
             this.contactPoints = contactPoints;
@@ -145,7 +142,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
-        public Builder metric(CassandraSimilarityMetric metric) {
+        public Builder metric(SimilarityMetric metric) {
             this.metric = metric;
             return this;
         }
@@ -153,7 +150,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         public Builder() {
         }
 
-        public CassandraEmbeddingStore build() {
+        public CassandraCassioEmbeddingStore build() {
             CqlSessionBuilder builder = CqlSession.builder()
                     .withKeyspace(keyspace)
                     .withLocalDatacenter(localDataCenter);
@@ -161,72 +158,12 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                 builder.withAuthCredentials(userName, password);
             }
             contactPoints.forEach(cp -> builder.addContactPoint(new InetSocketAddress(cp, port)));
-            return new CassandraEmbeddingStore(builder.build(),table, dimension, metric);
+            return new CassandraCassioEmbeddingStore(builder.build(),table, dimension, metric);
         }
     }
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public static BuilderAstra builderAstra() {
-        return new BuilderAstra();
-    }
-
-    public static class BuilderAstra {
-        private String token;
-        private UUID dbId;
-        private String tableName;
-        private int dimension;
-        private String keyspaceName = "default_keyspace";
-        private String dbRegion = "us-east1";
-        private CassandraSimilarityMetric metric = CassandraSimilarityMetric.COSINE;
-        private AstraEnvironment env = AstraEnvironment.PROD;
-
-        public BuilderAstra token(String token) {
-            this.token = token;
-            return this;
-        }
-
-        public BuilderAstra env(AstraEnvironment env) {
-            this.env = env;
-            return this;
-        }
-
-        public BuilderAstra databaseId(UUID dbId) {
-            this.dbId = dbId;
-            return this;
-        }
-
-        public BuilderAstra databaseRegion(String dbRegion) {
-            this.dbRegion = dbRegion;
-            return this;
-        }
-
-        public BuilderAstra keyspace(String keyspaceName) {
-            this.keyspaceName = keyspaceName;
-            return this;
-        }
-
-        public BuilderAstra table(String tableName) {
-            this.tableName = tableName;
-            return this;
-        }
-
-        public BuilderAstra dimension(int dimension) {
-            this.dimension = dimension;
-            return this;
-        }
-
-        public BuilderAstra metric(CassandraSimilarityMetric metric) {
-            this.metric = metric;
-            return this;
-        }
-
-        public CassandraEmbeddingStore build() {
-            CqlSession cqlSession = CassIO.init(token, dbId, dbRegion, keyspaceName, env);
-            return new CassandraEmbeddingStore(cqlSession, tableName, dimension, metric);
-        }
     }
 
     /**
@@ -323,10 +260,10 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
                         .embeddings(embedding.vectorAsList())
                         .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
                         .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")))
-                        .metric(CassandraSimilarityMetric.COSINE)
+                        .metric(SimilarityMetric.COSINE)
                         .build())
                 .stream()
-                .map(CassandraEmbeddingStore::mapSearchResult)
+                .map(CassandraCassioEmbeddingStore::mapSearchResult)
                 .collect(toList());
     }
 
@@ -369,7 +306,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding, int maxResults, double minScore, Metadata metadata) {
         AnnQuery.AnnQueryBuilder builder = AnnQuery.builder()
                 .embeddings(embedding.vectorAsList())
-                .metric(CassandraSimilarityMetric.COSINE)
+                .metric(SimilarityMetric.COSINE)
                 .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
                 .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")));
         if (metadata != null) {
@@ -378,7 +315,7 @@ public class CassandraEmbeddingStore implements EmbeddingStore<TextSegment> {
         return embeddingTable
                 .similaritySearch(builder.build())
                 .stream()
-                .map(CassandraEmbeddingStore::mapSearchResult)
+                .map(CassandraCassioEmbeddingStore::mapSearchResult)
                 .collect(toList());
     }
 }

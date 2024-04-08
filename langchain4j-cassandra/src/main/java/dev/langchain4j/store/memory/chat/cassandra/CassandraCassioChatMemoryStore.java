@@ -3,13 +3,11 @@ package dev.langchain4j.store.memory.chat.cassandra;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.uuid.Uuids;
-import com.dtsx.astra.sdk.cassio.CassIO;
-import com.dtsx.astra.sdk.cassio.ClusteredRecord;
-import com.dtsx.astra.sdk.cassio.ClusteredTable;
-import com.dtsx.astra.sdk.utils.AstraEnvironment;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
+import dev.langchain4j.store.cassio.ClusteredRecord;
+import dev.langchain4j.store.cassio.ClusteredTable;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +15,6 @@ import lombok.extern.slf4j.Slf4j;
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
 
 import static java.util.stream.Collectors.toList;
 
@@ -29,7 +26,7 @@ import static java.util.stream.Collectors.toList;
  * @see <a href="https://docs.datastax.com/en/astra-serverless/docs/vector-search/overview.html">Astra Vector Store Documentation</a>
  */
 @Slf4j
-public class CassandraChatMemoryStore implements ChatMemoryStore {
+public class CassandraCassioChatMemoryStore implements ChatMemoryStore {
 
     /**
      * Default message store.
@@ -46,7 +43,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      *
      * @param session      cassandra session
      */
-    public CassandraChatMemoryStore(CqlSession session) {
+    public CassandraCassioChatMemoryStore(CqlSession session) {
         this(session, DEFAULT_TABLE_NAME);
     }
 
@@ -56,7 +53,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
      * @param session      cassandra session
      * @param tableName    table name
      */
-    public CassandraChatMemoryStore(CqlSession session, String tableName) {
+    public CassandraCassioChatMemoryStore(CqlSession session, String tableName) {
         messageTable = new ClusteredTable(session, session.getKeyspace().get().asInternal(), tableName);
     }
 
@@ -183,37 +180,37 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
         protected String keyspace;
         protected String table = DEFAULT_TABLE_NAME;
 
-        public CassandraChatMemoryStore.Builder contactPoints(List<String> contactPoints) {
+        public CassandraCassioChatMemoryStore.Builder contactPoints(List<String> contactPoints) {
             this.contactPoints = contactPoints;
             return this;
         }
 
-        public CassandraChatMemoryStore.Builder localDataCenter(String localDataCenter) {
+        public CassandraCassioChatMemoryStore.Builder localDataCenter(String localDataCenter) {
             this.localDataCenter = localDataCenter;
             return this;
         }
 
-        public CassandraChatMemoryStore.Builder port(Integer port) {
+        public CassandraCassioChatMemoryStore.Builder port(Integer port) {
             this.port = port;
             return this;
         }
 
-        public CassandraChatMemoryStore.Builder userName(String userName) {
+        public CassandraCassioChatMemoryStore.Builder userName(String userName) {
             this.userName = userName;
             return this;
         }
 
-        public CassandraChatMemoryStore.Builder password(String password) {
+        public CassandraCassioChatMemoryStore.Builder password(String password) {
             this.password = password;
             return this;
         }
 
-        public CassandraChatMemoryStore.Builder keyspace(String keyspace) {
+        public CassandraCassioChatMemoryStore.Builder keyspace(String keyspace) {
             this.keyspace = keyspace;
             return this;
         }
 
-        public CassandraChatMemoryStore.Builder table(String table) {
+        public CassandraCassioChatMemoryStore.Builder table(String table) {
             this.table = table;
             return this;
         }
@@ -221,7 +218,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
         public Builder() {
         }
 
-        public CassandraChatMemoryStore build() {
+        public CassandraCassioChatMemoryStore build() {
             CqlSessionBuilder builder = CqlSession.builder()
                     .withKeyspace(keyspace)
                     .withLocalDatacenter(localDataCenter);
@@ -229,60 +226,12 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
                 builder.withAuthCredentials(userName, password);
             }
             contactPoints.forEach(cp -> builder.addContactPoint(new InetSocketAddress(cp, port)));
-            return new CassandraChatMemoryStore(builder.build(), table);
+            return new CassandraCassioChatMemoryStore(builder.build(), table);
         }
     }
 
-    public static CassandraChatMemoryStore.Builder builder() {
-        return new CassandraChatMemoryStore.Builder();
-    }
-
-    public static CassandraChatMemoryStore.BuilderAstra builderAstra() {
-        return new CassandraChatMemoryStore.BuilderAstra();
-    }
-
-    public static class BuilderAstra {
-        private String token;
-        private UUID dbId;
-        private String tableName = DEFAULT_TABLE_NAME;
-        private String keyspaceName = "default_keyspace";
-        private String dbRegion = "us-east1";
-        private AstraEnvironment env = AstraEnvironment.PROD;
-
-        public BuilderAstra token(String token) {
-            this.token = token;
-            return this;
-        }
-
-        public CassandraChatMemoryStore.BuilderAstra databaseId(UUID dbId) {
-            this.dbId = dbId;
-            return this;
-        }
-
-        public CassandraChatMemoryStore.BuilderAstra env(AstraEnvironment env) {
-            this.env = env;
-            return this;
-        }
-
-        public CassandraChatMemoryStore.BuilderAstra databaseRegion(String dbRegion) {
-            this.dbRegion = dbRegion;
-            return this;
-        }
-
-        public CassandraChatMemoryStore.BuilderAstra keyspace(String keyspaceName) {
-            this.keyspaceName = keyspaceName;
-            return this;
-        }
-
-        public CassandraChatMemoryStore.BuilderAstra table(String tableName) {
-            this.tableName = tableName;
-            return this;
-        }
-
-        public CassandraChatMemoryStore build() {
-            CqlSession cqlSession = CassIO.init(token, dbId, dbRegion, keyspaceName, env);
-            return new CassandraChatMemoryStore(cqlSession, tableName);
-        }
+    public static CassandraCassioChatMemoryStore.Builder builder() {
+        return new CassandraCassioChatMemoryStore.Builder();
     }
 
 }

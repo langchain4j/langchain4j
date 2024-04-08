@@ -3,7 +3,6 @@ package dev.langchain4j.store.embedding.cassandra;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiModelName;
@@ -32,7 +31,7 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
 
     protected static final String TEST_INDEX = "test_embedding_store";
 
-    CassandraEmbeddingStore embeddingStore;
+    CassandraCassioEmbeddingStore embeddingStore;
 
     EmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -54,7 +53,7 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
      */
     @Override
     protected void clearStore() {
-        ((CassandraEmbeddingStore) embeddingStore()).clear();
+        ((CassandraCassioEmbeddingStore) embeddingStore()).clear();
     }
 
     @Override
