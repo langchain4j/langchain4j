@@ -1,9 +1,11 @@
-package dev.langchain4j.store.memory.chat.cassandra;
+package dev.langchain4j.store.embedding.astradb;
 
-import com.dtsx.astra.sdk.AstraDBAdmin;
-import com.dtsx.astra.sdk.cassio.CassandraSimilarityMetric;
-import com.dtsx.astra.sdk.utils.TestUtils;
-import dev.langchain4j.data.document.Document;
+
+import com.datastax.astra.client.Collection;
+import com.datastax.astra.client.DataAPIClient;
+import com.datastax.astra.client.admin.AstraDBAdmin;
+import com.datastax.astra.client.admin.AstraDBDatabaseAdmin;
+import com.datastax.astra.client.model.Document;
 import dev.langchain4j.data.document.DocumentSplitter;
 import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -20,10 +22,7 @@ import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
-import dev.langchain4j.store.embedding.astradb.AstraDbEmbeddingStore;
-import dev.langchain4j.store.embedding.cassandra.CassandraEmbeddingStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -32,11 +31,11 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
-import static com.dtsx.astra.sdk.utils.TestUtils.TEST_REGION;
+import static com.datastax.astra.client.model.SimilarityMetric.COSINE;
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
-import static com.dtsx.astra.sdk.utils.TestUtils.setupDatabase;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.openai.OpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static java.time.Duration.ofSeconds;
@@ -45,16 +44,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentLoaderAndRagWithAstraTest {
 
-    public static final String DB_NAME = "langchain4j";
+    public static final String DB_NAME = "test_langchain4j";
+
+    private Collection<Document> initCollection() {
+        DataAPIClient        client        = new DataAPIClient(getAstraToken());
+        AstraDBAdmin         astraDBAdmin  = client.getAdmin();
+        AstraDBDatabaseAdmin databaseAdmin = (AstraDBDatabaseAdmin) astraDBAdmin.createDatabase(DB_NAME);
+        UUID databaseId = UUID.fromString(databaseAdmin.getDatabaseInformations().getId());
+        assertThat(databaseId).isNotNull();
+
+        Collection<Document> collection = databaseAdmin
+                .getDatabase()
+                .createCollection("story_collection", 1536, COSINE);
+        assertThat(collection).isNotNull();
+        return collection;
+    }
 
     @Test
     @EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = "sk.*")
     void shouldRagWithOpenAiAndAstra() {
-
-        // Database Id
-        UUID databaseId = new AstraDBAdmin(getAstraToken()).createDatabase(DB_NAME);
-        assertThat(databaseId).isNotNull();
 
         // OpenAI Key
         String openAIKey = System.getenv("OPENAI_API_KEY");
@@ -63,8 +72,10 @@ class DocumentLoaderAndRagWithAstraTest {
         // --- Documents Ingestion ---
 
         // Parsing input file
-        Path path = new File(getClass().getResource("/story-about-happy-carrot.txt").getFile()).toPath();
-        Document document = FileSystemDocumentLoader.loadDocument(path, new TextDocumentParser());
+        Path path = new File(Objects.requireNonNull(getClass()
+                .getResource("/story-about-happy-carrot.txt")).getFile()).toPath();
+        dev.langchain4j.data.document.Document document = FileSystemDocumentLoader
+                .loadDocument(path, new TextDocumentParser());
         DocumentSplitter splitter = DocumentSplitters
                 .recursive(100, 10, new OpenAiTokenizer(GPT_3_5_TURBO));
 
@@ -74,24 +85,15 @@ class DocumentLoaderAndRagWithAstraTest {
                 .modelName(TEXT_EMBEDDING_ADA_002)
                 .build();
 
-        // Embed the document and it in the store
-        EmbeddingStore<TextSegment> embeddingStore = CassandraEmbeddingStore.builderAstra()
-                .token(getAstraToken())
-                .databaseId(databaseId)
-                .databaseRegion(TEST_REGION)
-                .keyspace("default_keyspace")
-                .table( "table_story")
-                .dimension(1536) // openai model
-                .metric(CassandraSimilarityMetric.COSINE)
-                .build();
+        // Embedding store (AstraDB)
+        AstraDbEmbeddingStore embeddingStore = new AstraDbEmbeddingStore(initCollection());
 
         // Ingest method
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+        EmbeddingStoreIngestor.builder()
                 .documentSplitter(splitter)
                 .embeddingModel(embeddingModel)
                 .embeddingStore(embeddingStore)
-                .build();
-        ingestor.ingest(document);
+                .build().ingest(document);
 
         // --------- RAG -------------
 

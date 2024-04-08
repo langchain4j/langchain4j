@@ -1,8 +1,12 @@
 package dev.langchain4j.store.embedding.astradb;
 
-import com.dtsx.astra.sdk.AstraDB;
-import com.dtsx.astra.sdk.AstraDBAdmin;
-import com.dtsx.astra.sdk.AstraDBCollection;
+import com.datastax.astra.client.Collection;
+import com.datastax.astra.client.DataAPIClient;
+import com.datastax.astra.client.Database;
+import com.datastax.astra.client.admin.AstraDBAdmin;
+import com.datastax.astra.client.admin.AstraDBDatabaseAdmin;
+import com.datastax.astra.client.model.Document;
+import com.datastax.astra.internal.command.LoggingCommandObserver;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -12,8 +16,8 @@ import dev.langchain4j.model.openai.OpenAiModelName;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import io.stargate.sdk.data.domain.SimilarityMetric;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
@@ -23,6 +27,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import java.util.List;
 import java.util.UUID;
 
+import static com.datastax.astra.client.model.SimilarityMetric.COSINE;
 import static com.dtsx.astra.sdk.utils.TestUtils.getAstraToken;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -39,21 +44,29 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
     static EmbeddingModel embeddingModel;
 
     static UUID dbId;
-    static AstraDB db;
+    static DataAPIClient client;
+    static AstraDBAdmin astraDBAdmin;
+    static Database db;
 
     @BeforeAll
     public static void initStoreForTests() {
-        AstraDBAdmin astraDBAdminClient = new AstraDBAdmin(getAstraToken());
-        dbId = astraDBAdminClient.createDatabase(TEST_DB);
+        client       = new DataAPIClient(getAstraToken());
+        astraDBAdmin = client.getAdmin();
+        AstraDBDatabaseAdmin databaseAdmin = (AstraDBDatabaseAdmin) astraDBAdmin.createDatabase(TEST_DB);
+        dbId = UUID.fromString(databaseAdmin.getDatabaseInformations().getId());
         assertThat(dbId).isNotNull();
         log.info("[init] - Database exists id={}", dbId);
 
-        // Select the Database as working object
-        db = astraDBAdminClient.database(dbId);
-        assertThat(db).isNotNull();
+        // Select proper Database
+        db = databaseAdmin.getDatabase();
+        Assertions.assertThat(db).isNotNull();
+        db.registerListener("logger", new LoggingCommandObserver(AstraDbEmbeddingStoreIT.class));
 
-        AstraDBCollection collection =
-                db.createCollection(TEST_COLLECTION, 1536, SimilarityMetric.cosine);
+        // Select Collection
+        Collection<Document> collection = db.createCollection(TEST_COLLECTION, 1536, COSINE);
+        Assertions.assertThat(collection).isNotNull();
+        collection.registerListener("logger", new LoggingCommandObserver(AstraDbEmbeddingStoreIT.class));
+        collection.deleteAll();
         log.info("[init] - Collection create name={}", TEST_COLLECTION);
 
         // Creating the store (and collection) if not exists

@@ -1,0 +1,21 @@
+<configuration scan="true">
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+       		<pattern>%d{HH:mm:ss.SSS} %magenta(%-5level) %cyan(%-20logger) : %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="com.datastax.astra.client" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
+    <logger name="dev.langchain4j.store.embedding.astradb" level="DEBUG" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
+    <root level="ERROR">
+        <appender-ref ref="STDOUT" />
+    </root>
+    
+</configuration>

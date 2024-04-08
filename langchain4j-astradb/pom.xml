@@ -3,8 +3,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <artifactId>langchain4j-cassandra</artifactId>
-    <name>LangChain4j :: Integration :: Cassandra</name>
+    <artifactId>langchain4j-astradb</artifactId>
+    <name>LangChain4j :: Integration :: AstraDB</name>
     <description>Some dependencies have a "Public Domain" license</description>
 
     <parent>
@@ -15,30 +15,22 @@
     </parent>
 
     <properties>
-        <astra-db-client.version>1.2.4</astra-db-client.version>
-        <jackson.version>2.16.1</jackson.version>
-        <logback.version>1.4.14</logback.version>
-        <assertj.version>3.25.3</assertj.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>11</maven.compiler.release>
+        <astra-db-java.version>1.0.0-beta1</astra-db-java.version>
+        <logback.version>1.5.3</logback.version>
+        <jackson.version>2.17.0</jackson.version>
+        <lombok.version>1.18.32</lombok.version>
+        <assertj.version>3.25.3</assertj.version>
     </properties>
 
     <dependencies>
 
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-core</artifactId>
-            <version>${jackson.version}</version>
-        </dependency>
-
+        <!-- ASTRA DB DATA API -->
         <dependency>
             <groupId>com.datastax.astra</groupId>
-            <artifactId>astra-db-client</artifactId>
-            <version>${astra-db-client.version}</version>
+            <artifactId>astra-db-java</artifactId>
+            <version>${astra-db-java.version}</version>
         </dependency>
 
         <dependency>
@@ -48,13 +40,19 @@
         </dependency>
 
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
         </dependency>
 
-        <!-- TESTS -->
+        <!-- Enforce Jackson Latest to support @Unwrapped -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
 
-        <!-- Visibility for EmbeddingStoreIT -->
+
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
@@ -83,8 +81,6 @@
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- junit-jupiter-params should be declared explicitly
-        to run parameterized tests inherited from EmbeddingStore*IT-->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
@@ -102,19 +98,6 @@
             <version>${logback.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>cassandra</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <version>${testcontainers.version}</version>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
     <build>
@@ -123,7 +106,6 @@
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <configuration>
-                    <!-- org.json:json has a "Public Domain" license -->
                     <skipCompliance>true</skipCompliance>
                 </configuration>
             </plugin>
