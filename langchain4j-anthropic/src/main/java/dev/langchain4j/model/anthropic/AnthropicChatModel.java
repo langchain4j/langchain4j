@@ -22,6 +22,9 @@ import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
  * More details are available <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
  * <br>
  * <br>
+ * It supports tools. See more information <a href="https://docs.anthropic.com/claude/docs/tool-use">here</a>.
+ * <br>
+ * <br>
  * It supports {@link Image}s as inputs. {@link UserMessage}s can contain one or multiple {@link ImageContent}s.
  * {@link Image}s must not be represented as URLs; they should be Base64-encoded strings and include a {@code mimeType}.
  * <br>
