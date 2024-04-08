@@ -121,12 +121,10 @@ public final class ChatCompletionRequest {
 
 
         public Builder messages(List<Message> messages) {
-            if (messages == null) {
-                return this;
-            } else {
+            if (messages != null) {
                 this.messages = Collections.unmodifiableList(messages);
-                return this;
             }
+            return this;
         }
 
         public Builder messages(Message... messages) {
@@ -208,12 +206,10 @@ public final class ChatCompletionRequest {
         }
 
         public Builder functions(List<Function> functions) {
-            if (functions == null) {
-                return this;
-            } else {
+            if (functions != null) {
                 this.functions = Collections.unmodifiableList(functions);
-                return this;
             }
+            return this;
         }
 
         public Builder functions(Function... functions) {

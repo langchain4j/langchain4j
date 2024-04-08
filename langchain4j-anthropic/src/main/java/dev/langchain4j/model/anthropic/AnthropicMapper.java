@@ -15,7 +15,7 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 
-class AnthropicMapper {
+public class AnthropicMapper {
 
     static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
         return messages.stream()
@@ -84,7 +84,7 @@ class AnthropicMapper {
         }
     }
 
-    static AiMessage toAiMessage(List<AnthropicContent> contents) {
+    public static AiMessage toAiMessage(List<AnthropicContent> contents) {
         String text = contents.stream()
                 .filter(content -> "text".equals(content.type))
                 .map(content -> content.text)
@@ -92,14 +92,14 @@ class AnthropicMapper {
         return AiMessage.from(text);
     }
 
-    static TokenUsage toTokenUsage(AnthropicUsage anthropicUsage) {
+    public static TokenUsage toTokenUsage(AnthropicUsage anthropicUsage) {
         if (anthropicUsage == null) {
             return null;
         }
         return new TokenUsage(anthropicUsage.inputTokens, anthropicUsage.outputTokens);
     }
 
-    static FinishReason toFinishReason(String anthropicStopReason) {
+    public static FinishReason toFinishReason(String anthropicStopReason) {
         if (anthropicStopReason == null) {
             return null;
         }

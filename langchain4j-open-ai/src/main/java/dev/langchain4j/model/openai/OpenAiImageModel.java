@@ -56,7 +56,7 @@ public class OpenAiImageModel implements ImageModel {
     @SuppressWarnings("rawtypes")
     public OpenAiImageModel(
             String baseUrl,
-            @NonNull String apiKey,
+            String apiKey,
             String organizationId,
             String modelName,
             String size,
