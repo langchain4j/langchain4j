@@ -3,6 +3,7 @@ name: snapshot_release_core_and_parent
 # Only run on pushes to main:
 # Replace with 'on: [push]' if you need to run tests on your PR
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
