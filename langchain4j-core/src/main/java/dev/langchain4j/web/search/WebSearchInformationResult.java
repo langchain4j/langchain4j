@@ -9,7 +9,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Represents general information about the web search performed.
  * This includes the total number of results, the page number, and metadata.
  * <p>
- * The total number of results is the total number of web pages that are founded by the search engine in response to a search query.
+ * The total number of results is the total number of web pages that are found by the search engine in response to a search query.
  * The page number is the current page number of the search results.
  * The metadata is a map of key-value pairs that provide additional information about the search.
  * For example, it could include the search query, the search engine used, the time it took to perform the search, etc.
