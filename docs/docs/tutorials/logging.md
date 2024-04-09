@@ -4,53 +4,47 @@ sidebar_position: 30
 
 # Logging
 
-### Model requests and responses
-Console output can be switched on and off by setting `.logRequests()` and `.logResponses()` on the model
+LangChain4j uses [SLF4J](https://www.slf4j.org/) for logging,
+allowing you to plug in any logging backend you prefer.
 
+## Pure Java
+
+You can enable logging of each request and response to the LLM by setting
+`.logRequests(true)` and `.logResponses(true)` when creating an instance of the model:
 ```java
-        ChatLanguageModel model = OpenAiChatModel.builder()
-                .apiKey(ApiKeys.OPENAI_API_KEY)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
+OpenAiChatModel.builder()
+    ...
+    .logRequests(true)
+    .logResponses(true)
+    .build();
 ```
-
-### Default logging: slf4j 
-LangChain4j comes with an slf4j facade, but the user is free to use any logging backend (e.g. log4j, logback, tinylog, etc.)
-
-An example of Tinylog backend can be found in langchain4j-examples/tutorials, where logging properties are set in `tinylog.properties`, as follows:
-```
-writer.level = info
-```
-
-Typical log level settings are `error`, `warn`, `info` and `debug`. 
-
-An overview of all the options:
-- `off`: No log messages will be written. This effectively disables logging.
-- `trace`: All log messages, including trace, debug, info, warn, and error, will be written to the log output.
-- `debug`: Log messages of debug, info, warn, and error levels will be written to the log output. Trace messages will be ignored.
-- `info`: Log messages of info, warn, and error levels will be written to the log output. Debug and trace messages will be ignored.
-- `warn`: Log messages of warn and error levels will be written to the log output. Info, debug, and trace messages will be ignored.
-- `error`: Only log messages of error level will be written to the log output. Warn, info, debug, and trace messages will be ignored.
-- `fatal`: This level is not part of the standard log levels in Tinylog. You can use it to specify a custom level for log messages. By default, it behaves the same as the `error` level.
 
 ## Quarkus
-In Quarkus examples, logging properties are set in the `application.properties` file:
-```
+
+When using [Quarkus integration](/tutorials/quarkus-integration),
+logging is configured in the `application.properties` file:
+
+```properties
+...
+quarkus.langchain4j.openai.chat-model.log-requests = true
+quarkus.langchain4j.openai.chat-model.log-responses = true
 quarkus.log.console.enable = true
 quarkus.log.file.enable = false
-quarkus.langchain4j.openai.chat-model.log-responses = true
-quarkus.langchain4j.openai.chat-model.log-requests = true
 ```
 
-These properties can also be set and changed in the Quarkus Dev UI, when running the application in dev mode (command: `quarkus dev`).
-The Dev UI can then be accessed via `host:port/q/dev-ui`.
+These properties can also be set and changed in the Quarkus Dev UI,
+when running the application in dev mode (`mvn quarkus:dev`).
+The Dev UI is then available at `http://localhost:8080/q/dev-ui`.
 
 ## Spring Boot
-In Spring Boot examples, logging properties are set in the `application.properties` file
-```
-logging.level.dev.langchain4j=INFO
-logging.level.dev.ai4j.openai4j=INFO
-```
 
-_This documentation page is a stub - help us make it better_
+When using [Spring Boot integration](/tutorials/spring-boot-integration),
+logging is configured in the `application.properties` file:
+
+```properties
+...
+langchain4j.open-ai.chat-model.log-requests = true
+langchain4j.open-ai.chat-model.log-responses = true
+logging.level.dev.langchain4j = DEBUG
+logging.level.dev.ai4j.openai4j = DEBUG
+```
