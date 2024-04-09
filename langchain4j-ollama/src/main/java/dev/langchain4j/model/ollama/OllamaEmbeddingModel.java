@@ -6,6 +6,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
+import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -27,11 +28,13 @@ public class OllamaEmbeddingModel implements EmbeddingModel {
     private final Integer maxRetries;
 
     @Builder
-    public OllamaEmbeddingModel(String baseUrl,
+    public OllamaEmbeddingModel(OkHttpClient client,
+                                String baseUrl,
                                 String modelName,
                                 Duration timeout,
                                 Integer maxRetries) {
         this.client = OllamaClient.builder()
+                .client(client)
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();

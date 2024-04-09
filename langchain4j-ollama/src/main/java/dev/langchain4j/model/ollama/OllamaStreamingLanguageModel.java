@@ -4,6 +4,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingLanguageModelBuilderFactory;
 import lombok.Builder;
+import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.List;
@@ -26,7 +27,8 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
     private final String format;
 
     @Builder
-    public OllamaStreamingLanguageModel(String baseUrl,
+    public OllamaStreamingLanguageModel(OkHttpClient client,
+                                        String baseUrl,
                                         String modelName,
                                         Double temperature,
                                         Integer topK,
@@ -39,6 +41,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                                         String format,
                                         Duration timeout) {
         this.client = OllamaClient.builder()
+                .client(client)
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();

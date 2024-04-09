@@ -5,6 +5,7 @@ import dev.langchain4j.model.ollama.spi.OllamaLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.List;
@@ -29,7 +30,8 @@ public class OllamaLanguageModel implements LanguageModel {
     private final Integer maxRetries;
 
     @Builder
-    public OllamaLanguageModel(String baseUrl,
+    public OllamaLanguageModel(OkHttpClient client,
+                               String baseUrl,
                                String modelName,
                                Double temperature,
                                Integer topK,
@@ -43,6 +45,7 @@ public class OllamaLanguageModel implements LanguageModel {
                                Duration timeout,
                                Integer maxRetries) {
         this.client = OllamaClient.builder()
+                .client(client)
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();

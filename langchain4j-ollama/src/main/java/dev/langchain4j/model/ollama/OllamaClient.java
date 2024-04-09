@@ -17,6 +17,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.Optional;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
@@ -30,14 +31,14 @@ class OllamaClient {
     private final OllamaApi ollamaApi;
 
     @Builder
-    public OllamaClient(String baseUrl, Duration timeout) {
-
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .callTimeout(timeout)
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .build();
+    public OllamaClient(OkHttpClient client, String baseUrl, Duration timeout) {
+        OkHttpClient okHttpClient = Optional.ofNullable(client)
+                .orElse(new OkHttpClient.Builder()
+                        .callTimeout(timeout)
+                        .connectTimeout(timeout)
+                        .readTimeout(timeout)
+                        .writeTimeout(timeout)
+                        .build());
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)

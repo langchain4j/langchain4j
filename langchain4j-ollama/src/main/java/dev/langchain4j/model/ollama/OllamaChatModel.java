@@ -7,6 +7,7 @@ import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.List;
@@ -33,7 +34,8 @@ public class OllamaChatModel implements ChatLanguageModel {
     private final Integer maxRetries;
 
     @Builder
-    public OllamaChatModel(String baseUrl,
+    public OllamaChatModel(OkHttpClient client,
+                           String baseUrl,
                            String modelName,
                            Double temperature,
                            Integer topK,
@@ -47,6 +49,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                            Duration timeout,
                            Integer maxRetries) {
         this.client = OllamaClient.builder()
+                .client(client)
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();
