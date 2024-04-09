@@ -227,12 +227,11 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private UserMessage prepareUserMessageFromTemplate(Object[] args, String userMessageTemplate, Parameter[] parameters, Map<String, Object> variables, String userName) {
         if (userMessageTemplate.contains("{{it}}")) {
-            if (parameters.length != 1) {
-                throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
-                        "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
-            }
-
-            variables = singletonMap("it", toString(args[0]));
+            String it = parameters.length == 1 ? toString(args[0]) :
+                    findUserMessageFromAnnotation(args, parameters).orElseThrow(() -> illegalConfiguration(
+                            "Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
+                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter."));
+            variables = singletonMap("it", it);
         }
 
         Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
@@ -244,15 +243,9 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private UserMessage prepareUserMessage(Object[] args, Parameter[] parameters, String userName) {
-        for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                String text = toString(args[i]);
-                if (userName != null) {
-                    return userMessage(userName, text);
-                } else {
-                    return userMessage(text);
-                }
-            }
+        Optional<String> userMessage = findUserMessageFromAnnotation(args, parameters);
+        if (userMessage.isPresent()) {
+            return userName != null ? userMessage(userName, userMessage.get()) : userMessage(userMessage.get());
         }
 
         if (args == null || args.length == 0) {
@@ -269,6 +262,15 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
+    }
+
+    private Optional<String> findUserMessageFromAnnotation(Object[] args, Parameter[] parameters) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                return Optional.of(toString(args[i]));
+            }
+        }
+        return Optional.empty();
     }
 
     private Optional<String> prepareUserMessageTemplate(Object memoryId, Method method) {

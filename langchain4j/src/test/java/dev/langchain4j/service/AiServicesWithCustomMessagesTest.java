@@ -1,6 +1,8 @@
 package dev.langchain4j.service;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Scanner;
 
 import dev.langchain4j.memory.ChatMemory;
@@ -15,7 +17,7 @@ import static dev.langchain4j.service.AiServicesWithCustomMessagesTest.AirlineCh
 class AiServicesWithCustomMessagesTest {
 
     interface Agent {
-        String chat(String userMessage);
+        String chat(@MemoryId Object memoryId, @UserMessage String userMessage);
     }
 
     enum AirlineChatState {
@@ -54,16 +56,16 @@ class AiServicesWithCustomMessagesTest {
                 .timeout(Duration.ofMinutes(3))
                 .build();
 
-        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
         AirlineChatContext context = new AirlineChatContext();
 
-        AirlineChatMessagesProvider messagesProvider = new AirlineChatMessagesProvider(context);
+        int sessionId = 1;
+        Map<Object, AirlineChatMessagesProvider> messagesProviderByUser = new HashMap<>();
+        messagesProviderByUser.put(sessionId, new AirlineChatMessagesProvider(context));
 
         Agent agent = AiServices.builder(Agent.class)
                 .chatLanguageModel(chatLanguageModel)
-                .chatMemory(chatMemory)
-                .userMessages(memoryId -> messagesProvider.userMessage())
-                .systemMessages(memoryId -> messagesProvider.systemMessage())
+                .userMessages(memoryId -> messagesProviderByUser.get(memoryId).userMessage())
+                .systemMessages(memoryId -> messagesProviderByUser.get(memoryId).systemMessage())
                 .build();
 
         CustomerExtractor customerExtractor = AiServices.builder(CustomerExtractor.class)
@@ -104,7 +106,7 @@ class AiServicesWithCustomMessagesTest {
 
             String agentMessage = context.isComplete() ?
                     "Thank you " + context.getCustomer().getFullName() + ", you are eligible for a refund of $" + context.getRefund() :
-                    agent.chat(userMessage);
+                    agent.chat(sessionId, userMessage);
             System.out.println("Agent: " + agentMessage);
         }
 
