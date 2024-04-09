@@ -23,7 +23,7 @@
         <azure-ai-search.version>11.6.3</azure-ai-search.version>
         <azure.storage-blob.version>12.25.3</azure.storage-blob.version>
         <azure.storage-common.version>12.24.3</azure.storage-common.version>
-        <azure.identity.version>1.11.4</azure.identity.version>
+        <azure.identity.version>1.12.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>
