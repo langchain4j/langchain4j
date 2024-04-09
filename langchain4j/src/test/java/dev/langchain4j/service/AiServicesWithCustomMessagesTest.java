@@ -1,20 +1,18 @@
 package dev.langchain4j.service;
 
 import java.time.Duration;
-import java.util.Optional;
 import java.util.Scanner;
 
-import dev.langchain4j.data.message.MessagesProvider;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 
-import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.CALCULATE_REFUND;
-import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.EXTRACT_CUSTOMER;
-import static dev.langchain4j.service.AiServicesWithStatesTest.AirlineChatState.EXTRACT_FLIGHT;
+import static dev.langchain4j.service.AiServicesWithCustomMessagesTest.AirlineChatState.CALCULATE_REFUND;
+import static dev.langchain4j.service.AiServicesWithCustomMessagesTest.AirlineChatState.EXTRACT_CUSTOMER;
+import static dev.langchain4j.service.AiServicesWithCustomMessagesTest.AirlineChatState.EXTRACT_FLIGHT;
 
-class AiServicesWithStatesTest {
+class AiServicesWithCustomMessagesTest {
 
     interface Agent {
         String chat(String userMessage);
@@ -59,10 +57,13 @@ class AiServicesWithStatesTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
         AirlineChatContext context = new AirlineChatContext();
 
+        AirlineChatMessagesProvider messagesProvider = new AirlineChatMessagesProvider(context);
+
         Agent agent = AiServices.builder(Agent.class)
                 .chatLanguageModel(chatLanguageModel)
                 .chatMemory(chatMemory)
-                .messages(new AirlineChatMessagesProvider(context))
+                .userMessages(memoryId -> messagesProvider.userMessage())
+                .systemMessages(memoryId -> messagesProvider.systemMessage())
                 .build();
 
         CustomerExtractor customerExtractor = AiServices.builder(CustomerExtractor.class)
@@ -236,21 +237,19 @@ class AiServicesWithStatesTest {
         }
     }
 
-    public static class AirlineChatMessagesProvider implements MessagesProvider {
+    public static class AirlineChatMessagesProvider {
         private final AirlineChatContext context;
 
         public AirlineChatMessagesProvider(AirlineChatContext context) {
             this.context = context;
         }
 
-        @Override
-        public Optional<String> systemMessage() {
-            return Optional.of(context.getState().getSystemMessage());
+        public String systemMessage() {
+            return context.getState().getSystemMessage();
         }
 
-        @Override
-        public Optional<String> userMessage() {
-            return Optional.of(context.getState().getUserMessage());
+        public String userMessage() {
+            return context.getState().getUserMessage();
         }
     }
 }

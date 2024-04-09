@@ -5,17 +5,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.MessagesProvider;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
@@ -175,18 +175,13 @@ public abstract class AiServices<T> {
         return new DefaultAiServices<>(context);
     }
 
-    public AiServices<T> messages(MessagesProvider messagesProvider) {
-        context.messagesProvider = messagesProvider;
+    public AiServices<T> systemMessages(Function<Object, String> systemMessagesProvider) {
+        context.systemMessagesProvider = systemMessagesProvider.andThen(Optional::ofNullable);
         return this;
     }
 
-    public AiServices<T> systemMessages(Supplier<String> systemMessageSupplier) {
-        context.messagesProvider = new MessagesProvider.SystemMessageDecorator(context.messagesProvider, systemMessageSupplier);
-        return this;
-    }
-
-    public AiServices<T> userMessages(Supplier<String> userMessageSupplier) {
-        context.messagesProvider = new MessagesProvider.UserMessageDecorator(context.messagesProvider, userMessageSupplier);
+    public AiServices<T> userMessages(Function<Object, String> userMessagesProvider) {
+        context.userMessagesProvider = userMessagesProvider.andThen(Optional::ofNullable);
         return this;
     }
 

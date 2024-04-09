@@ -87,10 +87,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args);
-
                         Object memoryId = memoryId(method, args).orElse(DEFAULT);
+
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        UserMessage userMessage = prepareUserMessage(memoryId, method, args);
 
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
@@ -193,14 +193,14 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Method method, Object[] args) {
-        return prepareSystemMessageTemplate(method)
+    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
+        return prepareSystemMessageTemplate(memoryId, method)
                 .map(template -> PromptTemplate.from(template)
                         .apply(getPromptTemplateVariables(args, method.getParameters()))
                         .toSystemMessage());
     }
 
-    private Optional<String> prepareSystemMessageTemplate(Method method) {
+    private Optional<String> prepareSystemMessageTemplate(Object memoryId, Method method) {
         dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
 
@@ -213,14 +213,14 @@ class DefaultAiServices<T> extends AiServices<T> {
             ));
         }
 
-        return context.messagesProvider.systemMessage();
+        return context.systemMessagesProvider.apply(memoryId);
     }
 
-    private UserMessage prepareUserMessage(Method method, Object[] args) {
+    private UserMessage prepareUserMessage(Object memoryId, Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         String userName = getUserName(parameters, args);
 
-        return prepareUserMessageTemplate(method)
+        return prepareUserMessageTemplate(memoryId, method)
                 .map(template -> prepareUserMessageFromTemplate(args, template, parameters, getPromptTemplateVariables(args, parameters), userName))
                 .orElse(prepareUserMessage(args, parameters, userName));
     }
@@ -271,7 +271,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
     }
 
-    private Optional<String> prepareUserMessageTemplate(Method method) {
+    private Optional<String> prepareUserMessageTemplate(Object memoryId, Method method) {
         dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
         if (annotation != null) {
             return Optional.of(getPromptText(
@@ -283,7 +283,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             ));
         }
 
-        return context.messagesProvider.userMessage();
+        return context.userMessagesProvider.apply(memoryId);
     }
 
     private static String getPromptText(Method method, String type, String resource, String[] value, String delimiter) {
