@@ -204,6 +204,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
 
+            if (context.hasSystemMessagesProvider()) {
+                throw illegalConfiguration(
+                        "Error: the system message has been configured both via annotation and using the systemMessagesProvider. " +
+                                "Please choose only one of the two.");
+            }
+
             return Optional.of(getPromptText(
                     method,
                     "System",
@@ -276,6 +282,13 @@ class DefaultAiServices<T> extends AiServices<T> {
     private Optional<String> prepareUserMessageTemplate(Object memoryId, Method method) {
         dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
         if (annotation != null) {
+
+            if (context.hasUserMessagesProvider()) {
+                throw illegalConfiguration(
+                        "Error: the user message has been configured both via annotation and using the userMessagesProvider. " +
+                                "Please choose only one of the two.");
+            }
+
             return Optional.of(getPromptText(
                     method,
                     "User",

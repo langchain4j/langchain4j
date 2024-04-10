@@ -57,15 +57,19 @@ class AiServicesWithCustomMessagesTest {
                 .build();
 
         AirlineChatContext context = new AirlineChatContext();
-
         int sessionId = 1;
+
         Map<Object, AirlineChatMessagesProvider> messagesProviderByUser = new HashMap<>();
         messagesProviderByUser.put(sessionId, new AirlineChatMessagesProvider(context));
 
+        Map<Object, ChatMemory> chatMemories = new HashMap<>();
+        chatMemories.put(sessionId, MessageWindowChatMemory.withMaxMessages(20));
+
         Agent agent = AiServices.builder(Agent.class)
                 .chatLanguageModel(chatLanguageModel)
-                .userMessages(memoryId -> messagesProviderByUser.get(memoryId).userMessage())
-                .systemMessages(memoryId -> messagesProviderByUser.get(memoryId).systemMessage())
+                .chatMemoryProvider(chatMemories::get)
+                .userMessageProvider(memoryId -> messagesProviderByUser.get(memoryId).userMessage())
+                .systemMessageProvider(memoryId -> messagesProviderByUser.get(memoryId).systemMessage())
                 .build();
 
         CustomerExtractor customerExtractor = AiServices.builder(CustomerExtractor.class)

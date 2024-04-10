@@ -176,12 +176,12 @@ public abstract class AiServices<T> {
     }
 
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
-        context.systemMessagesProvider = systemMessagesProvider.andThen(Optional::ofNullable);
+        context.systemMessagesProvider = systemMessageProvider.andThen(Optional::ofNullable);
         return this;
     }
 
     public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
-        context.userMessagesProvider = userMessagesProvider.andThen(Optional::ofNullable);
+        context.userMessagesProvider = userMessageProvider.andThen(Optional::ofNullable);
         return this;
     }
 

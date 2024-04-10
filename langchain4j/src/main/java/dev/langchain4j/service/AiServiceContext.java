@@ -16,6 +16,8 @@ import java.util.function.Function;
 
 public class AiServiceContext {
 
+    private static final Function<Object, Optional<String>> DEFAULT_MESSAGE_PROVIDER = x -> Optional.empty();
+
     public final Class<?> aiServiceClass;
 
     public ChatLanguageModel chatModel;
@@ -31,9 +33,9 @@ public class AiServiceContext {
 
     public RetrievalAugmentor retrievalAugmentor;
 
-    public Function<Object, Optional<String>> userMessagesProvider = x -> Optional.empty();
+    public Function<Object, Optional<String>> userMessagesProvider = DEFAULT_MESSAGE_PROVIDER;
 
-    public Function<Object, Optional<String>> systemMessagesProvider = x -> Optional.empty();
+    public Function<Object, Optional<String>> systemMessagesProvider = DEFAULT_MESSAGE_PROVIDER;
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
@@ -45,5 +47,13 @@ public class AiServiceContext {
 
     public ChatMemory chatMemory(Object memoryId) {
         return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
+    }
+
+    public boolean hasUserMessagesProvider() {
+        return userMessagesProvider != DEFAULT_MESSAGE_PROVIDER;
+    }
+
+    public boolean hasSystemMessagesProvider() {
+        return systemMessagesProvider != DEFAULT_MESSAGE_PROVIDER;
     }
 }
