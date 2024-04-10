@@ -51,7 +51,7 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
                 return proxy;
             }
         });
-        this.waitForModel = waitForModel == null ? true : waitForModel;
+        this.waitForModel = waitForModel == null || waitForModel;
     }
 
     @Override
