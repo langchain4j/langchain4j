@@ -180,7 +180,7 @@ public abstract class AiServices<T> {
         return this;
     }
 
-    public AiServices<T> userMessages(Function<Object, String> userMessagesProvider) {
+    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
         context.userMessagesProvider = userMessagesProvider.andThen(Optional::ofNullable);
         return this;
     }
