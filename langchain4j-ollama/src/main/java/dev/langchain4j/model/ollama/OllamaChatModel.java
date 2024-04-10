@@ -45,10 +45,14 @@ public class OllamaChatModel implements ChatLanguageModel {
                            List<String> stop,
                            String format,
                            Duration timeout,
-                           Integer maxRetries) {
+                           Integer maxRetries,
+                           Boolean logRequests,
+                           Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()

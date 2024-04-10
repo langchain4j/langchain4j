@@ -7,6 +7,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -21,6 +22,7 @@ import java.time.Duration;
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
 
+@Slf4j
 class OllamaClient {
 
     private static final Gson GSON = new GsonBuilder()
@@ -28,18 +30,25 @@ class OllamaClient {
             .create();
 
     private final OllamaApi ollamaApi;
+    private final boolean logStreamingResponses;
 
     @Builder
-    public OllamaClient(String baseUrl, Duration timeout) {
-
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+    public OllamaClient(String baseUrl, Duration timeout, Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses) {
+        OkHttpClient.Builder builder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .addInterceptor(new OllamaRequestLoggingInterceptor())
-                .addInterceptor(new OllamaResponseLoggingInterceptor())
-                .build();
+                .writeTimeout(timeout);
+
+        if (logRequests != null && logRequests) {
+            builder.addInterceptor(new OllamaRequestLoggingInterceptor());
+        }
+        if (logResponses != null && logResponses) {
+            builder.addInterceptor(new OllamaResponseLoggingInterceptor());
+        }
+        this.logStreamingResponses = logStreamingResponses != null && logStreamingResponses;
+
+        OkHttpClient okHttpClient = builder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
@@ -92,7 +101,9 @@ class OllamaClient {
                         int len = inputStream.read(bytes);
                         String partialResponse = new String(bytes, 0, len);
                         CompletionResponse completionResponse = GSON.fromJson(partialResponse, CompletionResponse.class);
-
+                        if (logStreamingResponses) {
+                            log.debug("Streaming completion response: {}", completionResponse);
+                        }
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -133,6 +144,9 @@ class OllamaClient {
                         String partialResponse = new String(bytes, 0, len);
                         ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
 
+                        if (logStreamingResponses) {
+                            log.debug("Streaming chat response: {}", chatResponse);
+                        }
                         String content = chatResponse.getMessage().getContent();
                         contentBuilder.append(content);
                         handler.onNext(content);
