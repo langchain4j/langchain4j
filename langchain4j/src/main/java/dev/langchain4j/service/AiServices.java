@@ -175,7 +175,7 @@ public abstract class AiServices<T> {
         return new DefaultAiServices<>(context);
     }
 
-    public AiServices<T> systemMessages(Function<Object, String> systemMessagesProvider) {
+    public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessagesProvider = systemMessagesProvider.andThen(Optional::ofNullable);
         return this;
     }
