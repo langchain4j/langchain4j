@@ -27,6 +27,7 @@ public class QwenStreamingChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("rain");
+        assertThat(response.content().text()).endsWith("That's all!");
     }
 
     @ParameterizedTest
@@ -42,6 +43,7 @@ public class QwenStreamingChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("dog");
+        assertThat(response.content().text()).endsWith("That's all!");
     }
 
     @ParameterizedTest
@@ -57,5 +59,6 @@ public class QwenStreamingChatModelIT {
         System.out.println(response);
 
         assertThat(response.content().text()).containsIgnoringCase("parrot");
+        assertThat(response.content().text()).endsWith("That's all!");
     }
 }

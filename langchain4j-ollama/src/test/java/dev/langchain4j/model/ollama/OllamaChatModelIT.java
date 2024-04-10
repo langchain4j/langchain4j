@@ -11,14 +11,15 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaChatModelIT extends AbstractOllamaInfrastructure {
+class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     ChatLanguageModel model = OllamaChatModel.builder()
-            .baseUrl(getBaseUrl())
-            .modelName(MODEL)
+            .baseUrl(ollama.getEndpoint())
+            .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .build();
 
@@ -38,7 +39,7 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(38);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -53,8 +54,8 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
         int numPredict = 1; // max output tokens
 
         OllamaChatModel model = OllamaChatModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
                 .build();
@@ -112,8 +113,8 @@ class OllamaChatModelIT extends AbstractOllamaInfrastructure {
 
         // given
         ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
                 .build();

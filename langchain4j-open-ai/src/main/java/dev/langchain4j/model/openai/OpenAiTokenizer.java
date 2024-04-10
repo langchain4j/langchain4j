@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai;
 
 import com.knuddels.jtokkit.Encodings;
 import com.knuddels.jtokkit.api.Encoding;
+import com.knuddels.jtokkit.api.IntArrayList;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -30,6 +31,38 @@ public class OpenAiTokenizer implements Tokenizer {
     private final String modelName;
     private final Optional<Encoding> encoding;
 
+    /**
+     * Creates an instance of the {@code OpenAiTokenizer} for the "gpt-3.5-turbo" model.
+     * It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.
+     */
+    public OpenAiTokenizer() {
+        this(GPT_3_5_TURBO.toString());
+    }
+
+    /**
+     * Creates an instance of the {@code OpenAiTokenizer} for a given {@link OpenAiChatModelName}.
+     */
+    public OpenAiTokenizer(OpenAiChatModelName modelName) {
+        this(modelName.toString());
+    }
+
+    /**
+     * Creates an instance of the {@code OpenAiTokenizer} for a given {@link OpenAiEmbeddingModelName}.
+     */
+    public OpenAiTokenizer(OpenAiEmbeddingModelName modelName) {
+        this(modelName.toString());
+    }
+
+    /**
+     * Creates an instance of the {@code OpenAiTokenizer} for a given {@link OpenAiLanguageModelName}.
+     */
+    public OpenAiTokenizer(OpenAiLanguageModelName modelName) {
+        this(modelName.toString());
+    }
+
+    /**
+     * Creates an instance of the {@code OpenAiTokenizer} for a given model name.
+     */
     public OpenAiTokenizer(String modelName) {
         this.modelName = ensureNotBlank(modelName, "modelName");
         // If the model is unknown, we should NOT fail fast during the creation of OpenAiTokenizer.
@@ -81,7 +114,7 @@ public class OpenAiTokenizer implements Tokenizer {
             }
         }
 
-        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW)) {
+        if (userMessage.name() != null && !modelName.equals(GPT_4_VISION_PREVIEW.toString())) {
             tokenCount += extraTokensPerName();
             tokenCount += estimateTokenCountInText(userMessage.name());
         }
@@ -230,17 +263,23 @@ public class OpenAiTokenizer implements Tokenizer {
 
     public List<Integer> encode(String text) {
         return encoding.orElseThrow(unknownModelException())
-                .encodeOrdinary(text);
+                .encodeOrdinary(text).boxed();
     }
 
     public List<Integer> encode(String text, int maxTokensToEncode) {
         return encoding.orElseThrow(unknownModelException())
-                .encodeOrdinary(text, maxTokensToEncode).getTokens();
+                .encodeOrdinary(text, maxTokensToEncode).getTokens().boxed();
     }
 
     public String decode(List<Integer> tokens) {
+
+        IntArrayList intArrayList = new IntArrayList();
+        for (Integer token : tokens) {
+            intArrayList.add(token);
+        }
+
         return encoding.orElseThrow(unknownModelException())
-                .decode(tokens);
+                .decode(intArrayList);
     }
 
     private Supplier<IllegalArgumentException> unknownModelException() {

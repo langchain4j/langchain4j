@@ -144,13 +144,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             if (context.hasChatMemory()) {
                                 context.chatMemory(memoryId).add(aiMessage);
+                            } else {
+                                messages = new ArrayList<>(messages);
+                                messages.add(aiMessage);
                             }
 
                             if (!aiMessage.hasToolExecutionRequests()) {
                                 break;
                             }
-
-                            ChatMemory chatMemory = context.chatMemory(memoryId);
 
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                                 ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
@@ -159,10 +160,18 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         toolExecutionRequest,
                                         toolExecutionResult
                                 );
-                                chatMemory.add(toolExecutionResultMessage);
+                                if (context.hasChatMemory()) {
+                                    context.chatMemory(memoryId).add(toolExecutionResultMessage);
+                                } else {
+                                    messages.add(toolExecutionResultMessage);
+                                }
                             }
 
-                            response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
+                            if (context.hasChatMemory()) {
+                                messages = context.chatMemory(memoryId).messages();
+                            }
+
+                            response = context.chatModel.generate(messages, context.toolSpecifications);
                             tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
                         }
 

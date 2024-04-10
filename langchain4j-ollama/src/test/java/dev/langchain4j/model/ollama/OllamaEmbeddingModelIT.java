@@ -5,13 +5,14 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
+import static dev.langchain4j.model.ollama.OllamaImage.ALL_MINILM_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaEmbeddingModelIT extends AbstractOllamaInfrastructure {
+class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure {
 
     EmbeddingModel model = OllamaEmbeddingModel.builder()
-            .baseUrl(getBaseUrl())
-            .modelName(MODEL)
+            .baseUrl(ollama.getEndpoint())
+            .modelName(ALL_MINILM_MODEL)
             .build();
 
     @Test

@@ -6,6 +6,7 @@ class RoleMapper {
 
     static String map(ChatMessageType type) {
         switch (type) {
+            case TOOL_EXECUTION_RESULT:
             case USER:
                 return "user";
             case AI:

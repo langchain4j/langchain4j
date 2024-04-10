@@ -116,4 +116,16 @@ class AiMessageTest implements WithAssertions {
         }
     }
 
+    @Test
+    void should_allow_blank_content() {
+        assertThat(AiMessage.from("").text()).isEqualTo("");
+        assertThat(AiMessage.from(" ").text()).isEqualTo(" ");
+    }
+
+    @Test
+    void should_fail_when_text_is_null() {
+        assertThatThrownBy(() -> AiMessage.from((String) null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("text cannot be null");
+    }
 }
