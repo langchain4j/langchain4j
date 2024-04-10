@@ -228,7 +228,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         return prepareUserMessageTemplate(memoryId, method)
                 .map(template -> prepareUserMessageFromTemplate(args, template, parameters, getPromptTemplateVariables(args, parameters), userName))
-                .orElse(prepareUserMessage(args, parameters, userName));
+                .orElseGet(() -> prepareUserMessage(args, parameters, userName));
     }
 
     private UserMessage prepareUserMessageFromTemplate(Object[] args, String userMessageTemplate, Parameter[] parameters, Map<String, Object> variables, String userName) {
