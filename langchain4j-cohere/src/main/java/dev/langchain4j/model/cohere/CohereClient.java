@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
+import retrofit2.Call;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
@@ -49,10 +50,18 @@ class CohereClient {
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
     }
 
+    public CohereChatResponse chat(CohereChatRequest request) {
+        return execute(cohereApi.chat(request, authorizationHeader));
+    }
+
     public RerankResponse rerank(RerankRequest request) {
+        return execute(cohereApi.rerank(request, authorizationHeader));
+    }
+
+    private <T> T execute(Call<T> retrofitCall) {
         try {
-            retrofit2.Response<RerankResponse> retrofitResponse
-                    = cohereApi.rerank(request, authorizationHeader).execute();
+            retrofit2.Response<T> retrofitResponse
+                    = retrofitCall.execute();
 
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
