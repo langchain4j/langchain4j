@@ -118,7 +118,7 @@ public class FileSystemDocumentLoader {
      */
     public static List<Document> loadDocuments(Path directoryPath, DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
@@ -200,7 +200,7 @@ public class FileSystemDocumentLoader {
                                                PathMatcher pathMatcher,
                                                DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
@@ -294,7 +294,7 @@ public class FileSystemDocumentLoader {
      */
     public static List<Document> loadDocumentsRecursively(Path directoryPath, DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
@@ -379,7 +379,7 @@ public class FileSystemDocumentLoader {
                                                           PathMatcher pathMatcher,
                                                           DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
@@ -487,7 +487,8 @@ public class FileSystemDocumentLoader {
                         Document document = loadDocument(file, documentParser);
                         documents.add(document);
                     } catch (Exception e) {
-                        log.warn("Failed to load document from " + file, e);
+                        String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                        log.warn("Failed to load '{}': {}", file, message);
                     }
                 });
 
