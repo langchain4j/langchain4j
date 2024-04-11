@@ -22,11 +22,11 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
     void load_bad_file() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("bad_file"), new TextDocumentParser()))
-                .withMessageContaining("bad_file is not a file");
+                .withMessageContaining("'bad_file' is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("bad_file")))
-                .withMessageContaining("bad_file is not a file");
+                .withMessageContaining("'bad_file' is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("/"), new TextDocumentParser()))
@@ -57,12 +57,12 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
                         Paths.get("bad_directory"), new TextDocumentParser()))
-                .withMessageContaining("bad_directory is not a directory");
+                .withMessageContaining("'bad_directory' is not a directory");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
                         Paths.get("bad_directory")))
-                .withMessageContaining("bad_directory is not a directory");
+                .withMessageContaining("'bad_directory' is not a directory");
     }
 
     @Test
@@ -109,7 +109,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
 
         // when-then
         assertThat(loadDocuments(resourceDirectory, failFirstParser))
-                .hasSize(documents.size() - 1);
+                .hasSize(documents.size());
     }
 
     @ParameterizedTest

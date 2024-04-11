@@ -48,7 +48,7 @@ public class FileSystemDocumentLoader {
      */
     public static Document loadDocument(Path filePath, DocumentParser documentParser) {
         if (!isRegularFile(filePath)) {
-            throw illegalArgument("%s is not a file", filePath);
+            throw illegalArgument("'%s' is not a file", filePath);
         }
 
         return DocumentLoader.load(from(filePath), documentParser);
