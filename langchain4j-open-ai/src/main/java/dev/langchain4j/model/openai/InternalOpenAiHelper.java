@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Collection;
@@ -262,5 +263,21 @@ public class InternalOpenAiHelper {
             default:
                 return null;
         }
+    }
+
+    static boolean isOpenAiModel(String modelName) {
+        if (modelName == null) {
+            return false;
+        }
+        for (OpenAiChatModelName openAiChatModelName : OpenAiChatModelName.values()) {
+            if (modelName.contains(openAiChatModelName.toString())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static Response<AiMessage> removeTokenUsage(Response<AiMessage> response) {
+        return Response.from(response.content(), null, response.finishReason());
     }
 }

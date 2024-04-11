@@ -26,7 +26,7 @@ public enum MistralAiChatModelName {
     OPEN_MISTRAL_7B("open-mistral-7b"), // aka mistral-tiny-2312
 
     /**
-     * @deprecated As of release 0.28.0, replaced by {@link #OPEN_MISTRAL_7B}
+     * @deprecated As of release 0.29.0, replaced by {@link #OPEN_MISTRAL_7B}
      */
     @Deprecated
     MISTRAL_TINY("mistral-tiny"),
@@ -34,7 +34,7 @@ public enum MistralAiChatModelName {
     OPEN_MIXTRAL_8x7B("open-mixtral-8x7b"), // aka mistral-small-2312
 
     /**
-     * @deprecated As of release 0.28.0, replaced by {@link #MISTRAL_SMALL_LATEST}
+     * @deprecated As of release 0.29.0, replaced by {@link #MISTRAL_SMALL_LATEST}
      */
     @Deprecated
     MISTRAL_SMALL("mistral-small"), // aka mistral-small-2312
@@ -42,7 +42,7 @@ public enum MistralAiChatModelName {
     MISTRAL_SMALL_LATEST("mistral-small-latest"), // aka mistral-small-2402
 
     /**
-     * @deprecated As of release 0.28.0, replaced by {@link #MISTRAL_MEDIUM_LATEST}
+     * @deprecated As of release 0.29.0, replaced by {@link #MISTRAL_MEDIUM_LATEST}
      */
     @Deprecated
     MISTRAL_MEDIUM("mistral-medium"),
