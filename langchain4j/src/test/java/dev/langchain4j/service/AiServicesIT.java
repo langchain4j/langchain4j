@@ -228,8 +228,8 @@ public class AiServicesIT {
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}")));
     }
 
@@ -275,8 +275,8 @@ public class AiServicesIT {
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}")));
     }
 
@@ -327,7 +327,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -350,7 +350,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -415,7 +415,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -445,7 +445,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
     }
@@ -476,7 +476,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
     }
