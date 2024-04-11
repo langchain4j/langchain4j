@@ -9,6 +9,7 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -56,8 +57,8 @@ public class ToolSpecifications {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
                 continue;
             }
-            P p = parameter.getAnnotation(P.class);
-            if (Objects.nonNull(p) && p.required()) {
+            //if user define method parameter as Optional addOptionalParameter
+            if (parameter.getType().equals(Optional.class)) {
                 builder.addOptionalParameter(parameter.getName(), toJsonSchemaProperties(parameter));
             }
             builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
