@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiUsage {
+public class MistralAiUsage {
 
     private Integer promptTokens;
     private Integer totalTokens;

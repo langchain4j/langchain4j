@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class MistralAiModelResponse {
+public class MistralAiModelResponse {
 
     private String object;
     private List<MistralAiModelCard> data;

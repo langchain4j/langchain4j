@@ -7,13 +7,12 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.28.0-SNAPSHOT</version>
+        <version>0.30.0-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-document-parser-apache-poi</artifactId>
     <name>LangChain4j :: Document parser :: Apache POI</name>
-    <packaging>jar</packaging>
 
     <properties>
         <apache.poi.version>5.2.5</apache.poi.version>

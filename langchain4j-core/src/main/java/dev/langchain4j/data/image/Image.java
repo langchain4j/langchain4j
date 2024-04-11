@@ -6,7 +6,7 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.quoted;
 
 /**
- * Represents an image.
+ * Represents an image as a URL or as a Base64-encoded string.
  */
 public final class Image {
 

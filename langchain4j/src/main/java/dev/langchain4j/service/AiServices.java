@@ -1,5 +1,16 @@
 package dev.langchain4j.service;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -14,19 +25,12 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
-
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -169,6 +173,16 @@ public abstract class AiServices<T> {
             return factory.create(context);
         }
         return new DefaultAiServices<>(context);
+    }
+
+    public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+        context.systemMessagesProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
+        context.userMessagesProvider = userMessageProvider.andThen(Optional::ofNullable);
+        return this;
     }
 
     /**
@@ -319,8 +333,9 @@ public abstract class AiServices<T> {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         if (retriever != null) {
+            AiServices<T> withContentRetriever = contentRetriever(retriever.toContentRetriever());
             retrieverSet = true;
-            return contentRetriever(retriever.toContentRetriever());
+            return withContentRetriever;
         }
         return this;
     }
@@ -374,16 +389,6 @@ public abstract class AiServices<T> {
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
-        }
-
-        if (context.toolSpecifications != null && !context.hasChatMemory()) {
-            throw illegalConfiguration(
-                    "Please set up chatMemory or chatMemoryProvider in order to use tools. "
-                            + "A ChatMemory that can hold at least 3 messages is required for the tools to work properly. "
-                            + "While the LLM can technically execute a tool without chat memory, if it only receives the " +
-                            "result of the tool's execution without the initial message from the user, it won't interpret " +
-                            "the result properly."
-            );
         }
     }
 
