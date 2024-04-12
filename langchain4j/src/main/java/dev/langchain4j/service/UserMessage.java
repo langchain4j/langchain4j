@@ -9,6 +9,20 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+/**
+ * Specifies a user message template to be used each time an AI service is invoked.
+ * <br>
+ * An example:
+ * <pre>
+ * interface Assistant {
+ *
+ *     {@code @UserMessage}("Say hello to {{name}}")
+ *     String greet(@V("name") String name);
+ * }
+ * </pre>
+ *
+ * @see SystemMessage
+ */
 @Retention(RUNTIME)
 @Target({METHOD, PARAMETER})
 public @interface UserMessage {
