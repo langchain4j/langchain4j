@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.milvus;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.*;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.Generator.generateRandomIds;
@@ -17,10 +18,11 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.milvus.parameter.IndexParam;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
@@ -59,6 +61,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     String collectionName,
     Integer dimension,
     IndexType indexType,
+    IndexParam indexParam,
     MetricType metricType,
     String uri,
     String token,
@@ -87,8 +90,17 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
 
     if (!hasCollection(milvusClient, this.collectionName)) {
+      indexType = getOrDefault(indexType, FLAT);
+      if (indexParam == null) {
+        if (IndexParam.isIndexParamNullable(indexType)) {
+          indexParam = IndexParam.EMPTY_INSTANCE;
+        }
+      }
+      ensureNotNull(indexParam, "IndexParam is required for indexType " + indexType);
+      ensureTrue(indexParam.support(indexType), String.format("IndexParam %s does not support IndexType %s", indexParam.getClass(), indexType));
+      // validate IndexParam before creating the collection to prevent exceptions caused by invalid indices
       createCollection(milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
-      createIndex(milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
+      createIndex(milvusClient, this.collectionName, indexType, indexParam, this.metricType);
     }
 
     loadCollectionInMemory(milvusClient, collectionName);
@@ -185,6 +197,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private String collectionName;
     private Integer dimension;
     private IndexType indexType;
+    private IndexParam indexParam;
     private MetricType metricType;
     private String uri;
     private String token;
@@ -242,6 +255,17 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public Builder indexType(IndexType indexType) {
       this.indexType = indexType;
+      return this;
+    }
+
+    /**
+     * This parameter is required except for indexType {@link IndexType#FLAT} and {@link IndexType#BIN_FLAT}.
+     *
+     * @param indexParam The parameters of the index.
+     * @return builder
+     */
+    public Builder indexParam(IndexParam indexParam) {
+      this.indexParam = indexParam;
       return this;
     }
 
@@ -332,6 +356,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         collectionName,
         dimension,
         indexType,
+        indexParam,
         metricType,
         uri,
         token,
