@@ -226,7 +226,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         Parameter[] parameters = method.getParameters();
         String userName = getUserName(parameters, args);
 
-        return prepareUserMessageTemplate(memoryId, method)
+        return prepareUserMessageTemplate(args, memoryId, method)
                 .map(template -> prepareUserMessageFromTemplate(args, template, parameters, getPromptTemplateVariables(args, parameters), userName))
                 .orElseGet(() -> prepareUserMessage(args, parameters, userName));
     }
@@ -279,8 +279,11 @@ class DefaultAiServices<T> extends AiServices<T> {
         return Optional.empty();
     }
 
-    private Optional<String> prepareUserMessageTemplate(Object memoryId, Method method) {
-        dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
+    private Optional<String> prepareUserMessageTemplate(Object[] args, Object memoryId, Method method) {
+
+        dev.langchain4j.service.UserMessage annotation =
+                method.getAnnotation(dev.langchain4j.service.UserMessage.class);
+
         if (annotation != null) {
 
             if (context.hasUserMessagesProvider()) {
@@ -296,6 +299,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                     annotation.value(),
                     annotation.delimiter()
             ));
+        }
+
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                return Optional.ofNullable((String) args[i]);
+            }
         }
 
         return context.userMessagesProvider.apply(memoryId);
