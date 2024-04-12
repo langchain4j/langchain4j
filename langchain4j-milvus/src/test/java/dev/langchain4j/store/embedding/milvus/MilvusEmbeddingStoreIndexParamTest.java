@@ -29,8 +29,8 @@ class MilvusEmbeddingStoreIndexParamTest {
     void should_create_collection_with_default_param() {
         assertThatNoException().isThrownBy(() -> {
             embeddingStore = MilvusEmbeddingStore.builder()
-                    .host(System.getenv("MILVUS_HOST"))
-                    .port(19530)
+                    .uri(System.getenv("MILVUS_URI"))
+                    .token(System.getenv("MILVUS_API_KEY"))
                     .collectionName(COLLECTION_NAME)
                     .dimension(384)
                     .indexType(IndexType.FLAT)
@@ -45,8 +45,8 @@ class MilvusEmbeddingStoreIndexParamTest {
                     .nlist(1024)
                     .build();
             embeddingStore = MilvusEmbeddingStore.builder()
-                    .host(System.getenv("MILVUS_HOST"))
-                    .port(19530)
+                    .uri(System.getenv("MILVUS_URI"))
+                    .token(System.getenv("MILVUS_API_KEY"))
                     .collectionName(COLLECTION_NAME)
                     .dimension(384)
                     .indexType(IndexType.IVF_FLAT)
@@ -63,8 +63,8 @@ class MilvusEmbeddingStoreIndexParamTest {
                     .m(8)
                     .build();
             embeddingStore = MilvusEmbeddingStore.builder()
-                    .host(System.getenv("MILVUS_HOST"))
-                    .port(19530)
+                    .uri(System.getenv("MILVUS_URI"))
+                    .token(System.getenv("MILVUS_API_KEY"))
                     .collectionName(COLLECTION_NAME)
                     .dimension(384)
                     .indexType(IndexType.IVF_PQ)
@@ -78,8 +78,8 @@ class MilvusEmbeddingStoreIndexParamTest {
     void create_collection_missing_required_param() {
         assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> {
             embeddingStore = MilvusEmbeddingStore.builder()
-                    .host(System.getenv("MILVUS_HOST"))
-                    .port(19530)
+                    .uri(System.getenv("MILVUS_URI"))
+                    .token(System.getenv("MILVUS_API_KEY"))
                     .collectionName(COLLECTION_NAME)
                     .dimension(384)
                     .indexType(IndexType.IVF_FLAT)
