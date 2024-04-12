@@ -147,6 +147,26 @@ public class AiServicesIT {
                         "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
     }
 
+    interface TextOperator {
+        String doAnythingWithText(@UserMessage String userMessage, @V("text") String text);
+    }
+
+    @Test
+    void test_extract_date_from_text() {
+        TextOperator textOperator = AiServices.create(TextOperator.class, chatLanguageModel);
+
+        String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
+
+        String dateTime = textOperator.doAnythingWithText("Extract date and time from {{text}}", text);
+        System.out.println(dateTime);
+
+        assertThat(dateTime).contains("1968");
+        assertThat(dateTime).contains("fifteen minutes shy of midnight");
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Extract date and time from " + text)));
+    }
+
 
     enum Sentiment {
         POSITIVE, NEUTRAL, NEGATIVE
@@ -228,8 +248,8 @@ public class AiServicesIT {
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}")));
     }
 
@@ -275,8 +295,8 @@ public class AiServicesIT {
                         "\"address\": (type: dev.langchain4j.service.AiServicesIT$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}")));
     }
 
@@ -327,7 +347,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -350,7 +370,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -415,7 +435,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -445,7 +465,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
     }
@@ -476,7 +496,7 @@ public class AiServicesIT {
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")
         ));
     }

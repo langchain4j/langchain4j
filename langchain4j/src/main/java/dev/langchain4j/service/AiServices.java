@@ -1,5 +1,16 @@
 package dev.langchain4j.service;
 
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -14,19 +25,12 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
-
-import java.lang.reflect.Method;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -169,6 +173,16 @@ public abstract class AiServices<T> {
             return factory.create(context);
         }
         return new DefaultAiServices<>(context);
+    }
+
+    public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+        context.systemMessagesProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        return this;
+    }
+
+    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
+        context.userMessagesProvider = userMessageProvider.andThen(Optional::ofNullable);
+        return this;
     }
 
     /**
