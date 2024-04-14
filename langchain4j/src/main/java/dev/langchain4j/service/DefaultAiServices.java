@@ -87,10 +87,10 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(method, args);
-                        UserMessage userMessage = prepareUserMessage(method, args);
-
                         Object memoryId = memoryId(method, args).orElse(DEFAULT);
+
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+                        UserMessage userMessage = prepareUserMessage(memoryId, method, args);
 
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
@@ -193,72 +193,65 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Method method, Object[] args) {
+    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
+        return prepareSystemMessageTemplate(memoryId, method)
+                .map(template -> PromptTemplate.from(template)
+                        .apply(getPromptTemplateVariables(args, method.getParameters()))
+                        .toSystemMessage());
+    }
 
-        Parameter[] parameters = method.getParameters();
-        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
-
+    private Optional<String> prepareSystemMessageTemplate(Object memoryId, Method method) {
         dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
 
-            String systemMessageTemplate = getPromptText(
+            if (context.hasSystemMessagesProvider()) {
+                throw illegalConfiguration(
+                        "Error: the system message has been configured both via annotation and using the systemMessagesProvider. " +
+                                "Please choose only one of the two.");
+            }
+
+            return Optional.of(getPromptText(
                     method,
                     "System",
                     annotation.fromResource(),
                     annotation.value(),
                     annotation.delimiter()
-            );
-
-            Prompt prompt = PromptTemplate.from(systemMessageTemplate).apply(variables);
-            return Optional.of(prompt.toSystemMessage());
+            ));
         }
 
-        return Optional.empty();
+        return context.systemMessagesProvider.apply(memoryId);
     }
 
-    private static UserMessage prepareUserMessage(Method method, Object[] args) {
+    private UserMessage prepareUserMessage(Object memoryId, Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
-        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
-
-
         String userName = getUserName(parameters, args);
 
-        dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
-        if (annotation != null) {
-            String userMessageTemplate = getPromptText(
-                    method,
-                    "User",
-                    annotation.fromResource(),
-                    annotation.value(),
-                    annotation.delimiter()
-            );
+        return prepareUserMessageTemplate(args, memoryId, method)
+                .map(template -> prepareUserMessageFromTemplate(args, template, parameters, getPromptTemplateVariables(args, parameters), userName))
+                .orElseGet(() -> prepareUserMessage(args, parameters, userName));
+    }
 
-            if (userMessageTemplate.contains("{{it}}")) {
-                if (parameters.length != 1) {
-                    throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
-                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
-                }
-
-                variables = singletonMap("it", toString(args[0]));
-            }
-
-            Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            if (userName != null) {
-                return userMessage(userName, prompt.text());
-            } else {
-                return prompt.toUserMessage();
-            }
+    private UserMessage prepareUserMessageFromTemplate(Object[] args, String userMessageTemplate, Parameter[] parameters, Map<String, Object> variables, String userName) {
+        if (userMessageTemplate.contains("{{it}}")) {
+            String it = parameters.length == 1 ? toString(args[0]) :
+                    findUserMessageFromAnnotation(args, parameters).orElseThrow(() -> illegalConfiguration(
+                            "Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
+                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter."));
+            variables = singletonMap("it", it);
         }
 
-        for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                String text = toString(args[i]);
-                if (userName != null) {
-                    return userMessage(userName, text);
-                } else {
-                    return userMessage(text);
-                }
-            }
+        Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
+        if (userName != null) {
+            return userMessage(userName, prompt.text());
+        } else {
+            return prompt.toUserMessage();
+        }
+    }
+
+    private UserMessage prepareUserMessage(Object[] args, Parameter[] parameters, String userName) {
+        Optional<String> userMessage = findUserMessageFromAnnotation(args, parameters);
+        if (userMessage.isPresent()) {
+            return userName != null ? userMessage(userName, userMessage.get()) : userMessage(userMessage.get());
         }
 
         if (args == null || args.length == 0) {
@@ -275,6 +268,47 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
+    }
+
+    private Optional<String> findUserMessageFromAnnotation(Object[] args, Parameter[] parameters) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                return Optional.of(toString(args[i]));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Optional<String> prepareUserMessageTemplate(Object[] args, Object memoryId, Method method) {
+
+        dev.langchain4j.service.UserMessage annotation =
+                method.getAnnotation(dev.langchain4j.service.UserMessage.class);
+
+        if (annotation != null) {
+
+            if (context.hasUserMessagesProvider()) {
+                throw illegalConfiguration(
+                        "Error: the user message has been configured both via annotation and using the userMessagesProvider. " +
+                                "Please choose only one of the two.");
+            }
+
+            return Optional.of(getPromptText(
+                    method,
+                    "User",
+                    annotation.fromResource(),
+                    annotation.value(),
+                    annotation.delimiter()
+            ));
+        }
+
+        Parameter[] parameters = method.getParameters();
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                return Optional.ofNullable((String) args[i]);
+            }
+        }
+
+        return context.userMessagesProvider.apply(memoryId);
     }
 
     private static String getPromptText(Method method, String type, String resource, String[] value, String delimiter) {
