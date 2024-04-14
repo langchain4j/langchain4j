@@ -27,17 +27,15 @@ public class WebSearchResults {
     private final Map<String, Object> searchMetadata;
     private final WebSearchInformationResult searchInformation;
     private final List<WebSearchOrganicResult> results;
-    private final WebSearchPagination pagination;
 
     /**
      * Constructs a new instance of WebSearchResults.
      *
-     * @param results           The list of organic search results.
      * @param searchInformation The information about the web search.
-     * @param pagination        The pagination information for the search results.
+     * @param results           The list of organic search results.
      */
-    public WebSearchResults(List<WebSearchOrganicResult> results, WebSearchInformationResult searchInformation, WebSearchPagination pagination) {
-        this(null, searchInformation, results, pagination);
+    public WebSearchResults(WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results) {
+        this(null, searchInformation, results);
     }
 
     /**
@@ -46,31 +44,11 @@ public class WebSearchResults {
      * @param searchMetadata    The metadata associated with the web search.
      * @param searchInformation The information about the web search.
      * @param results           The list of organic search results.
-     * @param pagination        The pagination information for the search results.
      */
-    public WebSearchResults(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results, WebSearchPagination pagination) {
+    public WebSearchResults(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results) {
         this.searchMetadata = searchMetadata;
         this.searchInformation = ensureNotNull(searchInformation, "searchInformation");
         this.results = ensureNotEmpty(results, "results");
-        this.pagination = ensureNotNull(pagination, "pagination");
-    }
-
-    /**
-     * Gets the list of organic search results.
-     *
-     * @return The list of organic search results.
-     */
-    public List<WebSearchOrganicResult> results() {
-        return results;
-    }
-
-    /**
-     * Gets the information about the web search.
-     *
-     * @return The information about the web search.
-     */
-    public WebSearchInformationResult searchInformation() {
-        return searchInformation;
     }
 
     /**
@@ -83,12 +61,21 @@ public class WebSearchResults {
     }
 
     /**
-     * Gets the pagination information for the search results.
+     * Gets the information about the web search.
      *
-     * @return The pagination information for the search results.
+     * @return The information about the web search.
      */
-    public WebSearchPagination pagination() {
-        return pagination;
+    public WebSearchInformationResult searchInformation() {
+        return searchInformation;
+    }
+
+    /**
+     * Gets the list of organic search results.
+     *
+     * @return The list of organic search results.
+     */
+    public List<WebSearchOrganicResult> results() {
+        return results;
     }
 
     @Override
@@ -98,13 +85,12 @@ public class WebSearchResults {
         WebSearchResults that = (WebSearchResults) o;
         return Objects.equals(searchMetadata, that.searchMetadata)
                 && Objects.equals(searchInformation, that.searchInformation)
-                && Objects.equals(results, that.results)
-                && Objects.equals(pagination, that.pagination);
+                && Objects.equals(results, that.results);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(searchMetadata, searchInformation, results, pagination);
+        return Objects.hash(searchMetadata, searchInformation, results);
     }
 
     @Override
@@ -113,7 +99,6 @@ public class WebSearchResults {
                 "searchMetadata=" + searchMetadata +
                 ", searchInformation=" + searchInformation +
                 ", results=" + results +
-                ", pagination=" + pagination +
                 '}';
     }
 
@@ -144,11 +129,10 @@ public class WebSearchResults {
      *
      * @param results           The list of organic search results.
      * @param searchInformation The information about the web search.
-     * @param pagination        The pagination information for the search results.
      * @return The new instance of WebSearchResults.
      */
-    public static WebSearchResults from(List<WebSearchOrganicResult> results, WebSearchInformationResult searchInformation, WebSearchPagination pagination) {
-        return new WebSearchResults(results, searchInformation, pagination);
+    public static WebSearchResults from(WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results) {
+        return new WebSearchResults(searchInformation, results);
     }
 
     /**
@@ -157,10 +141,9 @@ public class WebSearchResults {
      * @param searchMetadata    The metadata associated with the search results.
      * @param searchInformation The information about the web search.
      * @param results           The list of organic search results.
-     * @param pagination        The pagination information for the search results.
      * @return The new instance of WebSearchResults.
      */
-    public static WebSearchResults from(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results, WebSearchPagination pagination) {
-        return new WebSearchResults(searchMetadata, searchInformation, results, pagination);
+    public static WebSearchResults from(Map<String, Object> searchMetadata, WebSearchInformationResult searchInformation, List<WebSearchOrganicResult> results) {
+        return new WebSearchResults(searchMetadata, searchInformation, results);
     }
 }

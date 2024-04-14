@@ -4,70 +4,70 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents an organic search results are the web pages that are returned by the search engine in response to a search query.
- * This includes the title, link, content, and metadata of the web page.
+ * This includes the title, link, snippet, content, and metadata of the web page.
  * <p>
  * These results are typically ranked by relevance to the search query.
  * <p>
  */
 public class WebSearchOrganicResult {
-
     private final String title;
-    private final String link;
-    private final String content;
-    private final Map<String, String> resultMetadata;
+    private final URI url;
+    private final String snippet;
+    private final Map<String, String> metadata;
+
 
     /**
-     * Constructs a WebSearchOrganicResult object with the given content.
+     * Constructs a WebSearchOrganicResult object with the given URL and content.
      *
-     * @param content The content of the search result.
+     * @param title The title of the search result.
+     * @param url The URL associated with the search result.
      */
-    public WebSearchOrganicResult(String content) {
-        this(null, null, content, null);
+    public WebSearchOrganicResult(String title, URI url) {
+        this.title = ensureNotBlank(title, "title");
+        this.url = ensureNotNull(url, "url");
+        this.snippet = null;
+        this.metadata = null;
     }
 
     /**
-     * Constructs a WebSearchOrganicResult object with the given content and link.
-     *
-     * @param content The content of the search result.
-     * @param link    The link associated with the search result.
-     */
-    public WebSearchOrganicResult(String content, String link) {
-        this(null, link, content, null);
-    }
-
-    /**
-     * Constructs a WebSearchOrganicResult object with the given title, link, and content.
+     * Constructs a WebSearchOrganicResult object with the given URL, title, and content.
      *
      * @param title   The title of the search result.
-     * @param link    The link associated with the search result.
-     * @param content The content of the search result.
+     * @param url    The URL associated with the search result.
+     * @param snippet The snippet of the search result, in plain text.
      */
-    public WebSearchOrganicResult(String title, String link, String content) {
-        this(title, link, content, null);
+    public WebSearchOrganicResult(String title, URI url, String snippet) {
+        this.title = ensureNotBlank(title, "title");
+        this.url = ensureNotNull(url, "url");
+        this.snippet = ensureNotBlank(snippet, "snippet");
+        this.metadata = null;
     }
 
     /**
-     * Constructs a WebSearchOrganicResult object with the given title, link, content, and result metadata.
+     * Constructs a WebSearchOrganicResult object with the given URL, title, content, and metadata.
+     *
      *
      * @param title           The title of the search result.
-     * @param link            The link associated with the search result.
-     * @param content         The content of the search result.
-     * @param resultMetadata  The metadata associated with the search result.
+     * @param url             The URL associated with the search result.
+     * @param snippet         The snippet of the search result, in plain text.
+     * @param metadata  The metadata associated with the search result.
      */
-    public WebSearchOrganicResult(String title, String link, String content, Map<String, String> resultMetadata) {
-        this.title = title;
-        this.link = link;
-        this.content = ensureNotBlank(content, "content");
-        this.resultMetadata = getOrDefault(resultMetadata, new HashMap<>());
+    public WebSearchOrganicResult(String title, URI url, String snippet, Map<String, String> metadata) {
+        this.title = ensureNotBlank(title, "title");
+        this.url = ensureNotNull(url,"url");
+        this.snippet = ensureNotBlank(snippet, "snippet");
+        this.metadata = getOrDefault(metadata, new HashMap<>());
     }
 
     /**
@@ -80,21 +80,21 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Returns the link associated with the search result.
+     * Returns the URL associated with the search result.
      *
-     * @return The link associated with the search result.
+     * @return The URL associated with the search result.
      */
-    public String link() {
-        return link;
+    public URI url() {
+        return url;
     }
 
     /**
-     * Returns the content of the search result.
+     * Returns the snippet associated of the search result.
      *
-     * @return The content of the search result.
+     * @return The snippet associated of the search result.
      */
-    public String content() {
-        return content;
+    public String snippet() {
+        return snippet;
     }
 
     /**
@@ -102,8 +102,8 @@ public class WebSearchOrganicResult {
      *
      * @return The result metadata associated with the search result.
      */
-    public Map<String, String> resultMetadata() {
-        return resultMetadata;
+    public Map<String, String> metadata() {
+        return metadata;
     }
 
     @Override
@@ -112,23 +112,23 @@ public class WebSearchOrganicResult {
         if (o == null || getClass() != o.getClass()) return false;
         WebSearchOrganicResult that = (WebSearchOrganicResult) o;
         return Objects.equals(title, that.title)
-                && Objects.equals(link, that.link)
-                && Objects.equals(content, that.content)
-                && Objects.equals(resultMetadata, that.resultMetadata);
+                && Objects.equals(url, that.url)
+                && Objects.equals(snippet, that.snippet)
+                && Objects.equals(metadata, that.metadata);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(title, link, content, resultMetadata);
+        return Objects.hash(title, url, snippet, metadata);
     }
 
     @Override
     public String toString() {
         return "WebSearchOrganicResult{" +
                 "title='" + title + '\'' +
-                ", link='" + link + '\'' +
-                ", content='" + content + '\'' +
-                ", resultMetadata=" + resultMetadata +
+                ", url=" + url +
+                ", snippet='" + snippet + '\'' +
+                ", metadata=" + metadata +
                 '}';
     }
 
@@ -138,10 +138,8 @@ public class WebSearchOrganicResult {
      * @return The TextSegment representation of this WebSearchOrganicResult.
      */
     public TextSegment toTextSegment() {
-        return TextSegment.from(content,
-                Metadata.from(resultMetadata)
-                        .add("title", title)
-                        .add("link", link));
+        return TextSegment.from(snippet,
+                copyToMetadata());
     }
 
     /**
@@ -150,55 +148,55 @@ public class WebSearchOrganicResult {
      * @return The Document representation of this WebSearchOrganicResult.
      */
     public Document toDocument() {
-        return Document.from(content,
-                Metadata.from(resultMetadata)
-                        .add("title", title)
-                        .add("link", link));
+        return Document.from(snippet,
+                copyToMetadata());
     }
 
-    /**
-     * Creates a WebSearchOrganicResult object from the given content.
-     *
-     * @param content The content of the search result.
-     * @return The created WebSearchOrganicResult object.
-     */
-    public static WebSearchOrganicResult from(String content) {
-        return new WebSearchOrganicResult(content);
+    private Metadata copyToMetadata() {
+        Metadata docMetadata = new Metadata();
+        docMetadata.add("title", title);
+        docMetadata.add("url", url);
+        if (metadata != null) {
+            Map<String, String> tempMap= docMetadata.asMap();
+            tempMap.putAll(metadata);
+            docMetadata = Metadata.from(tempMap);
+        }
+        return docMetadata;
     }
 
     /**
      * Creates a WebSearchOrganicResult object from the given content and link.
      *
-     * @param content The content of the search result.
-     * @param link    The link associated with the search result.
+     * @param title   The title of the search result.
+     * @param url    The URL associated with the search result.
      * @return The created WebSearchOrganicResult object.
      */
-    public static WebSearchOrganicResult from(String content, String link) {
-        return new WebSearchOrganicResult(content, link);
+    public static WebSearchOrganicResult from(String title, URI url) {
+        return new WebSearchOrganicResult(title, url);
     }
 
     /**
      * Creates a WebSearchOrganicResult object from the given title, link, and content.
      *
      * @param title   The title of the search result.
-     * @param link    The link associated with the search result.
-     * @param content The content of the search result.
+     * @param url    The URL associated with the search result.
+     * @param snippet The snippet of the search result, in plain text.
      * @return The created WebSearchOrganicResult object.
      */
-    public static WebSearchOrganicResult from(String title, String link, String content) {
-        return new WebSearchOrganicResult(title, link, content);
+    public static WebSearchOrganicResult from(String title, URI url, String snippet) {
+        return new WebSearchOrganicResult(title, url, snippet);
     }
 
     /**
      * Creates a WebSearchOrganicResult object from the given title, link, content, and result metadata.
      *
      * @param title           The title of the search result.
-     * @param link            The link associated with the search result.
-     * @param content         The content of the search result.
-     * @param resultMetadata  The metadata associated with the search result.
+     * @param url            The URL associated with the search result.
+     * @param snippet         The snippet of the search result, in plain text.
+     * @param metadata  The metadata associated with the search result.
      * @return The created WebSearchOrganicResult object.
      */
-    public static WebSearchOrganicResult from(String title, String link, String content, Map<String, String> resultMetadata) {
-        return new WebSearchOrganicResult(title, link, content, resultMetadata);
+    public static WebSearchOrganicResult from(String title, URI url, String snippet, Map<String, String> metadata) {
+        return new WebSearchOrganicResult(title, url, snippet, metadata);
     }
 }

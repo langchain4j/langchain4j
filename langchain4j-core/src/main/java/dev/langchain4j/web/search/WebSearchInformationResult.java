@@ -18,7 +18,6 @@ public class WebSearchInformationResult {
 
     private final Long totalResults;
     private final Integer pageNumber;
-
     private final Map<String, Object> metadata;
 
     /**
