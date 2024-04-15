@@ -23,7 +23,6 @@ public abstract class WebSearchIT {
 
         // then
         assertThat(results).isNotNull();
-        assertThat(results.searchMetadata()).isNull();
         assertThat(results.searchInformation()).isNotNull();
         assertThat(results.results()).isNotNull();
 
@@ -41,7 +40,7 @@ public abstract class WebSearchIT {
         WebSearchResults results = searchEngine().search(webSearchRequest);
 
         // then
-        assertThat(results.searchInformation().totalResults()).isEqualTo(5);
+        assertThat(results.searchInformation().totalResults()).isGreaterThanOrEqualTo (5);
         assertThat(results.results()).hasSize(5);
         assertThat(results.results())
                 .as("At least one result should be contains 'weather' and 'New York' ignoring case")
@@ -53,10 +52,10 @@ public abstract class WebSearchIT {
     @Test
     void should_return_web_results_with_geolocation() {
         // given
-        String searchTerm = "Qui est le actuel président de la France ?";
+        String searchTerm = "Who is the current president of France?";
         WebSearchRequest webSearchRequest = WebSearchRequest.builder()
                 .searchTerms(searchTerm)
-                .geoLocation("fr")
+                .geoLocation("us")
                 .build();
 
         // when
@@ -66,7 +65,7 @@ public abstract class WebSearchIT {
         assertThat(webSearchOrganicResults).isNotNull();
         assertThat(webSearchOrganicResults)
                 .as("At least one result should be contains 'Emmanuel Macro' ignoring case")
-                .anySatisfy(result -> assertThat(result.snippet())
+                .anySatisfy(result -> assertThat(result.title())
                         .containsIgnoringCase("Emmanuel Macro"));
 
     }

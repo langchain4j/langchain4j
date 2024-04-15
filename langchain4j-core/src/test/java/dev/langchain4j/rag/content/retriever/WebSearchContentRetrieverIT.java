@@ -3,6 +3,7 @@ package dev.langchain4j.rag.content.retriever;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.web.search.WebSearchIT;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -10,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class WebSearchContentRetrieverIT extends WebSearchIT {
 
+    @Test
     void should_retrieve_web_page_as_content() {
         // given
         WebSearchContentRetriever contentRetriever = WebSearchContentRetriever.from(searchEngine());
