@@ -1,6 +1,7 @@
 package dev.langchain4j.data.document.loader;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.DocumentIsBlankException;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -486,6 +487,8 @@ public class FileSystemDocumentLoader {
                     try {
                         Document document = loadDocument(file, documentParser);
                         documents.add(document);
+                    } catch (DocumentIsBlankException ignored) {
+                        // blank/empty documents are ignored
                     } catch (Exception e) {
                         String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
                         log.warn("Failed to load '{}': {}", file, message);
