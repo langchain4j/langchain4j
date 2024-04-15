@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.web.search.*;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +39,11 @@ class WebSearchContentRetrieverTest{
                         )
                 )
         );
+    }
+
+    @AfterEach
+    void resetWebSearchEngine(){
+        reset(webSearchEngine);
     }
 
     @Test

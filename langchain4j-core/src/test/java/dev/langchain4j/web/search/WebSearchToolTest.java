@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -29,6 +30,11 @@ class WebSearchToolTest {
                         )
                 )
         );
+    }
+
+    @AfterEach
+    void resetWebSearchEngine(){
+        reset(webSearchEngine);
     }
 
     @Test

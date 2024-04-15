@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -113,6 +114,6 @@ class WebSearchResultsTest {
         assertThrows(IllegalArgumentException.class, () -> new WebSearchResults(
                 searchMetadata,
                 WebSearchInformationResult.from(1L),
-                anyList()));
+                emptyList()));
     }
 }
