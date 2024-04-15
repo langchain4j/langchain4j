@@ -2,8 +2,6 @@ package dev.langchain4j.jsonschema;
 
 import com.google.gson.JsonElement;
 
-import dev.langchain4j.exception.JsonSchemaSanitizationException;
-
 import java.util.List;
 import java.util.Map;
 

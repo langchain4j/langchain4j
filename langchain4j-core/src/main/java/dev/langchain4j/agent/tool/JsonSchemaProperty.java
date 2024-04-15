@@ -1,9 +1,6 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.quoted;
 import static java.util.Collections.singletonMap;
@@ -221,5 +218,43 @@ public class JsonSchemaProperty {
      */
     public static JsonSchemaProperty items(JsonSchemaProperty type) {
         return from("items", singletonMap(type.key, type.value));
+    }
+
+    /**
+     * Wraps the given typeProperties in a property with key "items".
+     *
+     * @param typeProperties the JsonSchema properties of the type
+     * @return a property with key "items" and value typeProperties.
+     */
+    public static JsonSchemaProperty items(List<JsonSchemaProperty> typeProperties) {
+        return from("items", toMap(typeProperties));
+    }
+
+    /**
+     * Construct a property with key "additionalProperties" and value properties.
+     *
+     * <p>This is used to define the schema for additional properties in an object. For example, if
+     * the schema is for a map, this property can be used to define the schema for the values.
+     *
+     * @param properties the properties.
+     * @return a property with key "additionalProperties" and value properties.
+     */
+    public static JsonSchemaProperty additionalProperties(List<JsonSchemaProperty> properties) {
+        return from("additionalProperties", toMap(properties));
+    }
+
+    /**
+     * Convert a list of properties to a map.
+     *
+     * @param properties the properties.
+     * @return a map of properties.
+     */
+    public static Map<String, Object> toMap(List<JsonSchemaProperty> properties) {
+        return properties.stream()
+                .filter(Objects::nonNull)
+                .collect(
+                        LinkedHashMap::new,
+                        (map, property) -> map.put(property.key(), property.value()),
+                        LinkedHashMap::putAll);
     }
 }

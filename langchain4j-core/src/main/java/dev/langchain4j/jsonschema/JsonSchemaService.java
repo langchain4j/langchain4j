@@ -1,6 +1,8 @@
 package dev.langchain4j.jsonschema;
 
-import dev.langchain4j.exception.*;
+import dev.langchain4j.exception.JsonSchemaDeserializationException;
+import dev.langchain4j.exception.JsonSchemaGenerationException;
+import dev.langchain4j.exception.JsonSchemaSerializationException;
 
 import java.lang.reflect.Type;
 

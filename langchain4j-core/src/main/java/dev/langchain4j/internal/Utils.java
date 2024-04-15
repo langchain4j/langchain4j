@@ -10,10 +10,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Utility methods.
@@ -242,5 +241,23 @@ public class Utils {
     }
 
     return unmodifiableList(list);
+  }
+
+  /**
+   * Returns a map with the given key-value pair.
+   *
+   * <p>If there are duplicates, the last one will be kept.
+   *
+   * @param entries The key-value pairs.
+   * @param <K>     The type of the key.
+   * @param <V>     The type of the value.
+   * @return A Linked hash map with the given key-value pair, preserving the order.
+   */
+  @SafeVarargs
+  public static <K, V> Map<K, V> mapOf(Map.Entry<K, V>... entries) {
+    return Arrays.stream(entries)
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, LinkedHashMap::new));
   }
 }

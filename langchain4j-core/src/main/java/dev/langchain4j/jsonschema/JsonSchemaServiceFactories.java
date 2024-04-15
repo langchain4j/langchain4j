@@ -18,8 +18,7 @@ public class JsonSchemaServiceFactories {
         for (JsonSchemaServiceFactory factory : loadFactories(JsonSchemaServiceFactory.class)) {
             return factory.create();
         }
-        // return DefaultJsonSchemaService.builder().build();
-        return null;
+        return DefaultJsonSchemaService.builder().build();
     }
 
     /**
