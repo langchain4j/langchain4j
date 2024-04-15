@@ -25,7 +25,7 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
                         "}");
     }
 
@@ -43,7 +43,7 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: array of string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
                         "}");
     }
 
@@ -61,7 +61,7 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: array of string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
                         "}");
     }
 
@@ -79,7 +79,7 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: java.util.Calendar),\n" +
+                        "\"birthDate\": (type: java.util.Calendar)\n" +
                         "}");
     }
 
@@ -98,7 +98,7 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
                         "}");
     }
 
@@ -127,8 +127,8 @@ class ServiceOutputParserTest {
                         "\"address\": (type: dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}");
     }
 
@@ -151,8 +151,8 @@ class ServiceOutputParserTest {
                         "\"address\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}");
     }
 
@@ -175,8 +175,8 @@ class ServiceOutputParserTest {
                         "\"address\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
-                        "\"city\": (type: string),\n" +
-                        "}),\n" +
+                        "\"city\": (type: string)\n" +
+                        "})\n" +
                         "}");
     }
 
@@ -200,7 +200,7 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"birthDate\": (type: date string (2023-12-31)),\n" +
+                        "\"birthDate\": (type: date string (2023-12-31))\n" +
                         "}");
     }
 
@@ -221,8 +221,8 @@ class ServiceOutputParserTest {
                         "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents: {\n" +
                             "\"firstName\": (type: string),\n" +
                             "\"lastName\": (type: string),\n" +
-                            "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents),\n" +
-                            "}),\n" +
+                            "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents)\n" +
+                            "})\n" +
                         "}");
     }
 
@@ -243,8 +243,8 @@ class ServiceOutputParserTest {
                         "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray: {\n" +
                             "\"firstName\": (type: string),\n" +
                             "\"lastName\": (type: string),\n" +
-                            "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray),\n" +
-                            "}),\n" +
+                            "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray)\n" +
+                            "})\n" +
                         "}");
     }
 
@@ -267,9 +267,9 @@ class ServiceOutputParserTest {
                             "\"firstName\": (type: string),\n" +
                             "\"lastName\": (type: string),\n" +
                             "\"mother\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
-                            "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                            "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}),\n" +
-                        "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                        "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}");
     }
 
