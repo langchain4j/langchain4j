@@ -74,6 +74,9 @@
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- tools jsonschema generators -->
+        <module>jsonschema-services/langchain4j-jsonschema-service-victools</module>
+
     </modules>
 
     <build>

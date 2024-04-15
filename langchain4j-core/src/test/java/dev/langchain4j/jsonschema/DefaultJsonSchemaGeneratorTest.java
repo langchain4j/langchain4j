@@ -184,4 +184,20 @@ public class DefaultJsonSchemaGeneratorTest implements WithAssertions {
                                 entry("description", PARAM_MAPPING_DOUBLES_DESC)))
                 .containsEntry("arg8", singletonMap("type", "number"));
     }
+
+    @SuppressWarnings("unused")
+    public static class CustomType {
+        String stringField;
+        List<Integer> itemsField;
+    }
+
+    @Test
+    public void test_generator_withCustomType() {
+        DefaultJsonSchemaGenerator generator = new DefaultJsonSchemaGenerator();
+        assertThatCode(() -> generator.generate(CustomType.class))
+                .isInstanceOf(JsonSchemaGenerationException.class)
+                .hasMessageMatching(
+                        "Unsupported Custom-type tool parameter:.*"
+                                + "add `langchain4j-jsonschema-service-\\*' dependency");
+    }
 }

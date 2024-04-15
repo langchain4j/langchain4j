@@ -105,6 +105,17 @@ public class DefaultJsonSchemaGenerator implements JsonSchemaService.JsonSchemaG
     private static JsonSchemaProperty toJsonSchemaObjectAdditionalProperties(
             Class<?> clazz, Supplier<Type> resolveGenericType)
             throws JsonSchemaGenerationException {
+        if (Object.class == clazz || Void.class == clazz) {
+            return null;
+        }
+        if (!Map.class.isAssignableFrom(clazz)) {
+            throw new JsonSchemaGenerationException(
+                    String.format(
+                            "Unsupported Custom-type tool parameter: %s, "
+                                    + "please use Map<String, ?> or add `langchain4j-jsonschema-service-*' dependency",
+                            clazz));
+        }
+
         Type genericType = resolveGenericType.get();
         if (genericType instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) genericType;
