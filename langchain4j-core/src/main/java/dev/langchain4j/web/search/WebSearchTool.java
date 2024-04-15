@@ -31,7 +31,9 @@ public class WebSearchTool {
     private String format(WebSearchResults results){
         return results.results()
                 .stream()
-                .map(organicResult -> "Title: " + organicResult.title() + "\n" + "URL Source: " + organicResult.url().toString() + "\n" + "Snippet:" + "\n" + organicResult.snippet())
+                .map(organicResult -> "Title: " + organicResult.title() + "\n"
+                        + "URL Source: " + organicResult.url().toString() + "\n"
+                        + (organicResult.content() != null ? "Content:" + "\n" + organicResult.content() : "Snippet:" + "\n" + organicResult.snippet()))
                 .collect(Collectors.joining("\n\n"));
     }
 
