@@ -8,13 +8,13 @@ Maintaining and managing `ChatMessage`s manually is cumbersome.
 Therefore, LangChain4j offers a `ChatMemory` abstraction along with multiple out-of-the-box implementations.
 
 `ChatMemory` can be used as a standalone low-level component,
-or as a part of a high-level component like [AI Services](/integrations/ai-services).
+or as a part of a high-level component like [AI Services](/tutorials/ai-services).
 
 `ChatMemory` acts as a container for `ChatMessage`s (backed by a `List`), with additional features like:
 - Eviction policy
 - Persistence
 - Special treatment of `SystemMessage`
-- Special treatment of [tool](/integrations/tools) messages
+- Special treatment of [tool](/tutorials/tools) messages
 
 ## Eviction policy
 
@@ -48,7 +48,7 @@ class PersistentChatMemoryStore implements ChatMemoryStore {
 
         @Override
         public List<ChatMessage> getMessages(Object memoryId) {
-            // TODO: Implement getting all messages from the persistent store by memory ID.
+          // TODO: Implement getting all messages from the persistent store by memory ID.
           // ChatMessageDeserializer.messageFromJson(String) and 
           // ChatMessageDeserializer.messagesFromJson(String) helper methods can be used to
           // easily deserialize chat messages from JSON.
