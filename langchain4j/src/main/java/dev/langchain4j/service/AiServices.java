@@ -14,10 +14,13 @@ import java.util.function.Function;
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.ToolJsonSchemas;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.internal.Utils;
+import dev.langchain4j.jsonschema.JsonSchemaServiceFactories;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -32,7 +35,6 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
-import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -307,13 +309,16 @@ public abstract class AiServices<T> {
         // TODO validate uniqueness of tool names
         context.toolSpecifications = new ArrayList<>();
         context.toolExecutors = new HashMap<>();
+        context.toolJsonSchemas = Utils.getOrDefault(context.toolJsonSchemas, ToolJsonSchemas::new);
 
         for (Object objectWithTool : objectsWithTools) {
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
                 if (method.isAnnotationPresent(Tool.class)) {
-                    ToolSpecification toolSpecification = toolSpecificationFrom(method);
+                    ToolSpecification toolSpecification =
+                            context.toolJsonSchemas.toToolJsonSchema(method).toToolSpecification();
                     context.toolSpecifications.add(toolSpecification);
-                    context.toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
+                    context.toolExecutors.put(toolSpecification.name(),
+                            new DefaultToolExecutor(objectWithTool, method, context.toolJsonSchemas));
                 }
             }
         }
@@ -383,6 +388,21 @@ public abstract class AiServices<T> {
         }
         retrievalAugmentorSet = true;
         context.retrievalAugmentor = ensureNotNull(retrievalAugmentor, "retrievalAugmentor");
+        return this;
+    }
+
+    /**
+     * Configures a JsonSchemaService for tool/function calls.
+     * A {@link JsonSchemaServiceFactories.Service} creates {@link dev.langchain4j.jsonschema.JsonSchema} for a type.
+     * It will be used by {@link ToolJsonSchemas} to generate {@link ToolJsonSchema}s for {@link ToolSpecification}s,
+     * which will be sent to {@link ChatLanguageModel} to predict {@link ToolExecutionRequest}s
+     * for fetching additional information related to user's query.
+     *
+     * @param jsonSchemaService The JsonSchemaService to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> jsonSchemaService(JsonSchemaServiceFactories.Service jsonSchemaService) {
+        context.toolJsonSchemas = new ToolJsonSchemas(ensureNotNull(jsonSchemaService, "jsonSchemaService"));
         return this;
     }
 

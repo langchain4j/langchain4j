@@ -1,13 +1,15 @@
 package dev.langchain4j.model;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolJsonSchema;
+import dev.langchain4j.agent.tool.ToolJsonSchemas;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
-import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationsFrom;
 import static java.util.Collections.singletonList;
 
 /**
@@ -52,9 +54,16 @@ public interface Tokenizer {
      * @return the estimated count of tokens.
      */
     default int estimateTokenCountInTools(Iterable<Object> objectsWithTools) {
-        List<ToolSpecification> toolSpecifications = new ArrayList<>();
-        objectsWithTools.forEach(objectWithTools ->
-                toolSpecifications.addAll(toolSpecificationsFrom(objectWithTools)));
+        ToolJsonSchemas toolSpecificationsFactory = new ToolJsonSchemas();
+        List<ToolSpecification> toolSpecifications =
+                StreamSupport.stream(objectsWithTools.spliterator(), false)
+                        .flatMap(
+                                objectWithTools ->
+                                        toolSpecificationsFactory
+                                                .toToolJsonSchemas(objectWithTools)
+                                                .stream())
+                        .map(ToolJsonSchema::toToolSpecification)
+                        .collect(Collectors.toList());
         return estimateTokenCountInToolSpecifications(toolSpecifications);
     }
 

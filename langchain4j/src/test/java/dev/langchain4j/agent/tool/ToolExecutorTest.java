@@ -300,7 +300,7 @@ class ToolExecutorTest {
                 .build();
 
         DefaultToolExecutor toolExecutor =
-                new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
+                new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type), new ToolJsonSchemas());
 
         String result = toolExecutor.execute(request, "DEFAULT");
 
@@ -313,7 +313,7 @@ class ToolExecutorTest {
                 .build();
 
         DefaultToolExecutor toolExecutor =
-                new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type));
+                new DefaultToolExecutor(testTool, TestTool.class.getDeclaredMethod(methodName, arg0Type, arg1Type), new ToolJsonSchemas());
 
         assertThatThrownBy(() -> toolExecutor.execute(request, "DEFAULT"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)

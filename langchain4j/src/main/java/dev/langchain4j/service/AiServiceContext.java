@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.agent.tool.ToolJsonSchemas;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -28,6 +29,7 @@ public class AiServiceContext {
 
     public ModerationModel moderationModel;
 
+    public ToolJsonSchemas toolJsonSchemas;
     public List<ToolSpecification> toolSpecifications;
     public Map<String, ToolExecutor> toolExecutors;
 

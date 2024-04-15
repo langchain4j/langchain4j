@@ -1,9 +1,10 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.*;
-
 import static dev.langchain4j.internal.Utils.quoted;
+
 import static java.util.Collections.singletonMap;
+
+import java.util.*;
 
 /**
  * Represents a property in a JSON schema.

@@ -2,7 +2,7 @@ package dev.langchain4j.model;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecifications;
+import dev.langchain4j.agent.tool.ToolJsonSchemas;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +44,7 @@ class TokenizerTest implements WithAssertions {
 
         // (ToolSpecification)
         assertThat(tokenizer.estimateTokenCountInForcefulToolSpecification(
-                ToolSpecifications.toolSpecificationFrom(ExampleTools.class.getMethod("launchRockets"))))
+                new ToolJsonSchemas().toToolJsonSchema(ExampleTools.class.getMethod("launchRockets")).toToolSpecification()))
                 .isEqualTo(3);
     }
 }
