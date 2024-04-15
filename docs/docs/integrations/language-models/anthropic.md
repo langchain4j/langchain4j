@@ -10,7 +10,7 @@ sidebar_position: 5
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>0.28.0</version>
+    <version>0.29.1</version>
 </dependency>
 ```
 

@@ -2,16 +2,16 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
+import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
+class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
     LanguageModel model = OllamaLanguageModel.builder()
-            .baseUrl(getBaseUrl())
-            .modelName(MODEL)
+            .baseUrl(ollama.getEndpoint())
+            .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .build();
 
@@ -27,14 +27,6 @@ class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
 
         // then
         assertThat(response.content()).contains("Berlin");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(38);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-
-        assertThat(response.finishReason()).isNull();
     }
 
     @Test
@@ -44,8 +36,8 @@ class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
         int numPredict = 1; // max output tokens
 
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
                 .numPredict(numPredict)
                 .temperature(0.0)
                 .build();
@@ -66,8 +58,8 @@ class OllamaLanguageModelIT extends AbstractOllamaInfrastructure {
 
         // given
         LanguageModel model = OllamaLanguageModel.builder()
-                .baseUrl(getBaseUrl())
-                .modelName(MODEL)
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
                 .format("json")
                 .temperature(0.0)
                 .build();

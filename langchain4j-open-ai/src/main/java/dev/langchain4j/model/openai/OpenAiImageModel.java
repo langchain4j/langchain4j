@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.OPENAI_URL;
 import static dev.langchain4j.model.openai.OpenAiModelName.DALL_E_2;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -55,7 +56,7 @@ public class OpenAiImageModel implements ImageModel {
     @SuppressWarnings("rawtypes")
     public OpenAiImageModel(
             String baseUrl,
-            @NonNull String apiKey,
+            String apiKey,
             String organizationId,
             String modelName,
             String size,
@@ -85,6 +86,7 @@ public class OpenAiImageModel implements ImageModel {
                 .proxy(proxy)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
+                .userAgent(DEFAULT_USER_AGENT)
                 .persistTo(persistTo);
 
         if (withPersisting != null && withPersisting) {
@@ -100,6 +102,10 @@ public class OpenAiImageModel implements ImageModel {
         this.style = style;
         this.user = user;
         this.responseFormat = responseFormat;
+    }
+
+    public String modelName() {
+        return modelName;
     }
 
     @Override

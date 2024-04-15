@@ -120,9 +120,8 @@ public class ServiceOutputParser {
 
     private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
-        String simpleTypeName = simpleTypeName(structured);
-        visited.add(structured);
-        jsonSchema.append(simpleTypeName + ": {\n");
+
+        jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
             if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
@@ -171,7 +170,8 @@ public class ServiceOutputParser {
                 || visited.contains(structured)) {
             return simpleTypeName;
         } else {
-            return jsonStructure(structured, visited);
+            visited.add(structured);
+            return simpleTypeName + ": " + jsonStructure(structured, visited);
         }
     }
 

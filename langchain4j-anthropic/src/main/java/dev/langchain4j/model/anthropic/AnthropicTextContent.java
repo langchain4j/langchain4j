@@ -1,11 +1,11 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicTextContent {
+public class AnthropicTextContent {
 
-    private final String type = "text";
-    private final String text;
+    public String type = "text";
+    public String text;
 
-    AnthropicTextContent(String text) {
+    public AnthropicTextContent(String text) {
         this.text = text;
     }
 }

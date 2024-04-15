@@ -6,14 +6,9 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.28.0</version>
+    <version>0.29.1</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
-
-    <properties>
-        <lombok.version>1.18.30</lombok.version>
-        <lombok.plugin.version>1.18.20.0</lombok.plugin.version>
-    </properties>
 
     <modules>
 
@@ -22,6 +17,8 @@
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
+
+        <module>langchain4j-easy-rag</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -58,6 +55,7 @@
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-azure-cosmos-mongo-vcore</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
@@ -68,6 +66,7 @@
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+        <module>document-parsers/langchain4j-document-parser-apache-tika</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
@@ -87,38 +86,9 @@
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok-maven-plugin</artifactId>
-                <version>${lombok.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>delombok</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <encoding>UTF-8</encoding>
-                    <addOutputDirectory>false</addOutputDirectory>
-                    <outputDirectory>${project.build.directory}/delombok</outputDirectory>
-                    <sourceDirectory>src/main/java</sourceDirectory>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.projectlombok</groupId>
-                        <artifactId>lombok</artifactId>
-                        <version>${lombok.version}</version>
-                    </dependency>
-                </dependencies>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration>
-                    <sourcepath>${project.build.directory}/generated-sources/delombok</sourcepath>
-                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -144,9 +114,6 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration>
-                    <sourcepath>${project.build.directory}/generated-sources/delombok</sourcepath>
-                </configuration>
                 <reportSets>
                     <reportSet>
                         <id>aggregate</id>
