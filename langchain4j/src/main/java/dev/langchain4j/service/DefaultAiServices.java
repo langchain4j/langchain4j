@@ -236,7 +236,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             String it = parameters.length == 1 ? toString(args[0]) :
                     findUserMessageFromAnnotation(args, parameters).orElseThrow(() -> illegalConfiguration(
                             "Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
-                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter."));
+                                    "Please ensure that methods using the {{it}} placeholder have exactly one parameter."));
             variables = singletonMap("it", it);
         }
 
@@ -304,7 +304,7 @@ class DefaultAiServices<T> extends AiServices<T> {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                return Optional.ofNullable((String) args[i]);
+                return Optional.ofNullable(toString(args[i]));
             }
         }
 
