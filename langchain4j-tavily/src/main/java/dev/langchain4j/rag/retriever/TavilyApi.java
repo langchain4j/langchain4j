@@ -5,7 +5,7 @@ import retrofit2.http.Body;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
-public interface TavilyApi {
+interface TavilyApi {
     @POST("/search")
     @Headers({"Content-Type: application/json"})
     Call<TavilyResponse> search(@Body TavilySearchRequest request);

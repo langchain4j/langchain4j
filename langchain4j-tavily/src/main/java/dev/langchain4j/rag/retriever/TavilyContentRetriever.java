@@ -29,9 +29,9 @@ import static java.util.stream.Collectors.toList;
  * An integration with Tavily Search API.
  * See more details <a href="https://docs.tavily.com/docs/tavily-api/rest_api">here</a>.
  */
-public class TavilyWebSearchContentRetriever implements ContentRetriever {
+public class TavilyContentRetriever implements ContentRetriever {
 
-    private static final String BASE_URL = "https://api.tavily.com";
+    private static final String DEFAULT_BASE_URL = "https://api.tavily.com";
     public static final int DEFAULT_MAX_RESULTS = 3;
     public static final double DEFAULT_MIN_SCORE = 0;
     public static final int DEFAULT_MAX_SEARCH_RESULTS = 5;
@@ -51,21 +51,21 @@ public class TavilyWebSearchContentRetriever implements ContentRetriever {
     private final String[] includeDomains;
     private final String[] excludeDomains;
 
-    public TavilyWebSearchContentRetriever(String baseUrl,
-                                           String apiKey,
-                                           Duration timeout,
-                                           EmbeddingModel embeddingModel,
-                                           DocumentSplitter splitter,
-                                           Integer maxResults,
-                                           Double minScore,
-                                           String searchDepth,
-                                           Boolean includeImages,
-                                           Boolean includeAnswer,
-                                           Integer maxSearchResults,
-                                           String[] includeDomains,
-                                           String[] excludeDomains) {
+    public TavilyContentRetriever(String baseUrl,
+                                  String apiKey,
+                                  Duration timeout,
+                                  EmbeddingModel embeddingModel,
+                                  DocumentSplitter splitter,
+                                  Integer maxResults,
+                                  Double minScore,
+                                  String searchDepth,
+                                  Boolean includeImages,
+                                  Boolean includeAnswer,
+                                  Integer maxSearchResults,
+                                  String[] includeDomains,
+                                  String[] excludeDomains) {
         this.tavilyClient = TavilyClient.builder()
-                .baseUrl(getOrDefault(baseUrl, BASE_URL))
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();
         this.embeddingModel = embeddingModel;
@@ -124,7 +124,7 @@ public class TavilyWebSearchContentRetriever implements ContentRetriever {
                 .collect(toList());
     }
 
-    public static TavilyWebSearchContentRetriever withApiKey(String apiKey) {
+    public static TavilyContentRetriever withApiKey(String apiKey) {
         return builder().apiKey(apiKey).build();
     }
 
@@ -217,8 +217,8 @@ public class TavilyWebSearchContentRetriever implements ContentRetriever {
             return this;
         }
 
-        public TavilyWebSearchContentRetriever build() {
-            return new TavilyWebSearchContentRetriever(baseUrl, apiKey, timeout, embeddingModel, splitter, maxResults,
+        public TavilyContentRetriever build() {
+            return new TavilyContentRetriever(baseUrl, apiKey, timeout, embeddingModel, splitter, maxResults,
                     minScore, searchDepth, includeImages, includeAnswer, maxSearchResults, includeDomains, excludeDomains);
         }
     }

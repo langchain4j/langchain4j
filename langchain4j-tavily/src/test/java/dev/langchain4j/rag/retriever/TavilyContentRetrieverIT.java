@@ -14,15 +14,15 @@ import static java.lang.System.getenv;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class TavilyWebSearchContentRetrieverTest {
+class TavilyContentRetrieverIT {
     @Test
     void tavily_should_search_split_and_embed() {
         //given
         DocumentSplitter splitter = DocumentSplitters.recursive(500, 0);
         EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-        TavilyWebSearchContentRetriever tavilyWebSearchContentRetriever =
-                TavilyWebSearchContentRetriever.builder()
+        TavilyContentRetriever tavilyContentRetriever =
+                TavilyContentRetriever.builder()
                         .baseUrl("https://api.tavily.com")
                         .apiKey(getenv("TAVILY_API_KEY"))
                         .timeout(ofSeconds(60))
@@ -30,7 +30,7 @@ class TavilyWebSearchContentRetrieverTest {
                         .build();
 
         //when
-        List<Content> contents = tavilyWebSearchContentRetriever.retrieve(new Query("what is LangChain4j?"));
+        List<Content> contents = tavilyContentRetriever.retrieve(new Query("what is LangChain4j?"));
 
         //then
         assertThat(contents).isNotNull();
@@ -40,11 +40,11 @@ class TavilyWebSearchContentRetrieverTest {
     @Test
     void tavily_should_only_search() {
         //given
-        TavilyWebSearchContentRetriever tavilyWebSearchContentRetriever =
-                TavilyWebSearchContentRetriever.withApiKey(getenv("TAVILY_API_KEY"));
+        TavilyContentRetriever tavilyContentRetriever =
+                TavilyContentRetriever.withApiKey(getenv("TAVILY_API_KEY"));
 
         //when
-        List<Content> contents = tavilyWebSearchContentRetriever.retrieve(new Query("Has LangChain4j? chat memory"));
+        List<Content> contents = tavilyContentRetriever.retrieve(new Query("Has LangChain4j? chat memory"));
 
         //then
         assertThat(contents).isNotNull();

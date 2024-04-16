@@ -6,7 +6,7 @@ import static java.lang.System.getenv;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class TavilyClientTest {
+class TavilyClientIT {
 
     public static final int maxResults = 5;
 
