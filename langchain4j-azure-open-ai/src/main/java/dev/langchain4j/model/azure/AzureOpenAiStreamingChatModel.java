@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -399,7 +400,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
         private OpenAIAsyncClient openAIAsyncClient;
-        private boolean useAsyncClient = false;
+        private boolean useAsyncClient = true;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -558,17 +559,25 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        /**
+         * @deprecated Use {@AzureOpenAiChatModel.Builder} instead, if you want to continue using sync client in the future.
+         * @param useAsyncClient {@code true} if you want to use the async client, {@code false} if you want to use the sync client.
+         * @return builder with the useAsyncClient parameter set
+         */
+        @SuppressWarnings("DeprecatedIsStillUsed")
+        @Deprecated
         public Builder useAsyncClient(boolean useAsyncClient) {
             this.useAsyncClient = useAsyncClient;
             return this;
         }
 
         /**
-         * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
-         *
+         * @deprecated Use {@AzureOpenAiChatModel.Builder} instead, if you want to continue using sync client in the future.
          * @param openAIClient The Azure OpenAI client.
          * @return builder
          */
+        @SuppressWarnings("DeprecatedIsStillUsed")
+        @Deprecated
         public Builder openAIClient(OpenAIClient openAIClient) {
             this.openAIClient = openAIClient;
             return this;
