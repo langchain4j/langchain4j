@@ -147,26 +147,6 @@ public class AiServicesIT {
                         "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
     }
 
-    interface TextOperator {
-        String doAnythingWithText(@UserMessage String userMessage, @V("text") String text);
-    }
-
-    @Test
-    void test_extract_date_from_text() {
-        TextOperator textOperator = AiServices.create(TextOperator.class, chatLanguageModel);
-
-        String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
-
-        String dateTime = textOperator.doAnythingWithText("Extract date and time from {{text}}", text);
-        System.out.println(dateTime);
-
-        assertThat(dateTime).contains("1968");
-        assertThat(dateTime).contains("fifteen minutes shy of midnight");
-
-        verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Extract date and time from " + text)));
-    }
-
 
     enum Sentiment {
         POSITIVE, NEUTRAL, NEGATIVE
@@ -375,30 +355,41 @@ public class AiServicesIT {
     }
 
     interface BadChef {
-        public static final String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
-        public static final String CHEFS_PROMPT_IS_EMPTY_TXT = "chefs-prompt-is-empty.txt";
+        String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
 
-        @UserMessage(fromResource = CHEFS_PROMPT_DOES_NOT_EXIST_TXT)
-        Recipe createRecipeFromNonExistingResource(String... ingredients);
+        @UserMessage(fromResource = "chefs-prompt-does-not-exist.txt")
+        Recipe createRecipeWithNonExistingResource(String... ingredients);
 
-        @UserMessage(fromResource = CHEFS_PROMPT_IS_EMPTY_TXT)
-        Recipe createRecipeFromEmptyResource(String... ingredients);
+        @UserMessage(fromResource = "chefs-prompt-is-empty.txt")
+        Recipe createRecipeWithEmptyResource(String... ingredients);
+
+        @UserMessage(fromResource = "chefs-prompt-is-blank.txt")
+        Recipe createRecipeWithBlankResource(String... ingredients);
     }
 
     @Test
-    void test_call_model_with_missing_resource() {
+    void should_fail_when_user_message_resource_is_not_found() {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
-        assertThatThrownBy(() -> badChef.createRecipeFromNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
+        assertThatThrownBy(() -> badChef.createRecipeWithNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
     }
 
     @Test
-    void test_call_model_with_empty_resource() {
+    void should_fail_when_user_message_resource_is_empty() {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
-        assertThatThrownBy(() -> badChef.createRecipeFromEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+        assertThatThrownBy(() -> badChef.createRecipeWithEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("@UserMessage's template cannot be empty");
+    }
+
+    @Test
+    void should_fail_when_user_message_resource_is_blank() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeWithBlankResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's template cannot be empty");
     }

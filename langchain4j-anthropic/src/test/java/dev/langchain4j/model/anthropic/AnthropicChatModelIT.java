@@ -1,5 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -7,26 +9,32 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Stream;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
+import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class AnthropicChatModelIT {
 
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     ChatLanguageModel model = AnthropicChatModel.builder()
             .apiKey(System.getenv("ANTHROPIC_API_KEY"))
@@ -40,6 +48,20 @@ class AnthropicChatModelIT {
             .maxTokens(20)
             .logRequests(false) // base64-encoded images are huge
             .logResponses(true)
+            .build();
+
+    ToolSpecification calculator = ToolSpecification.builder()
+            .name("calculator")
+            .description("returns a sum of two numbers")
+            .addParameter("first", INTEGER)
+            .addParameter("second", INTEGER)
+            .build();
+
+    ToolSpecification weather = ToolSpecification.builder()
+            .name("weather")
+            .description("returns a weather forecast for a given location")
+            // TODO simplify defining nested properties
+            .addParameter("location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
             .build();
 
     @AfterEach
@@ -290,5 +312,191 @@ class AnthropicChatModelIT {
                 .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)?
                 .hasRootCauseExactlyInstanceOf(AnthropicHttpException.class)
                 .hasMessageContaining("rate_limit_error");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models_supporting_tools")
+    void should_execute_a_tool_then_answer(AnthropicChatModelName modelName) {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        UserMessage userMessage = userMessage("2+2=?");
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotBlank();
+        assertThat(toolExecutionRequest.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        // when
+        Response<AiMessage> secondResponse = model.generate(messages, toolSpecifications);
+
+        // then
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("4");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models_supporting_tools")
+    void should_execute_multiple_tools_in_parallel_then_answer(AnthropicChatModelName modelName) {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        List<ToolSpecification> toolSpecifications = singletonList(calculator);
+
+        UserMessage userMessage = userMessage("How much is 2+2 and 3+3? Call tools in parallel!");
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(2);
+
+        ToolExecutionRequest toolExecutionRequest1 = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest1.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest1.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        ToolExecutionRequest toolExecutionRequest2 = aiMessage.toolExecutionRequests().get(1);
+        assertThat(toolExecutionRequest2.name()).isEqualTo("calculator");
+        assertThat(toolExecutionRequest2.arguments()).isEqualToIgnoringWhitespace("{\"first\": 3, \"second\": 3}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage1 = from(toolExecutionRequest1, "4");
+        ToolExecutionResultMessage toolExecutionResultMessage2 = from(toolExecutionRequest2, "6");
+
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage1, toolExecutionResultMessage2);
+
+        // when
+        Response<AiMessage> secondResponse = model.generate(messages, toolSpecifications);
+
+        // then
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("4", "6");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models_supporting_tools")
+    void should_execute_a_tool_with_nested_properties_then_answer(AnthropicChatModelName modelName) {
+
+        // given
+        ChatLanguageModel model = AnthropicChatModel.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(modelName)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        List<ToolSpecification> toolSpecifications = singletonList(weather);
+
+        UserMessage userMessage = userMessage("What is the weather in Munich?");
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
+
+        // then
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotBlank();
+        assertThat(toolExecutionRequest.name()).isEqualTo("weather");
+        assertThat(toolExecutionRequest.arguments())
+                .isEqualToIgnoringWhitespace("{\"location\": {\"city\": \"Munich\"}}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "Super hot, 42 Celsius");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        // when
+        Response<AiMessage> secondResponse = model.generate(messages, toolSpecifications);
+
+        // then
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("42");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    static Stream<Arguments> models_supporting_tools() {
+        return stream(AnthropicChatModelName.values())
+                .filter(modelName -> modelName.toString().startsWith("claude-3"))
+                .map(Arguments::of);
     }
 }

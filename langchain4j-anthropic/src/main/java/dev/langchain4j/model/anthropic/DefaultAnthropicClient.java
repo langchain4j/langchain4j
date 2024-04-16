@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic;
 
-import com.google.gson.FieldNamingPolicy;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.data.message.AiMessage;
@@ -23,16 +22,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 
 public class DefaultAnthropicClient extends AnthropicClient {
+
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAnthropicClient.class);
-    private static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES)
+
+    static final Gson GSON = new GsonBuilder()
+            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
+            .setObjectToNumberStrategy(LONG_OR_DOUBLE)
             .setPrettyPrinting()
             .create();
 
@@ -41,6 +44,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
     private final String apiKey;
     private final String version;
+    private final String beta;
     private final boolean logResponses;
 
     public static Builder builder() {
@@ -48,6 +52,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     public static class Builder extends AnthropicClient.Builder<DefaultAnthropicClient, Builder> {
+
         public DefaultAnthropicClient build() {
             return new DefaultAnthropicClient(this);
         }
@@ -61,6 +66,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         this.apiKey = builder.apiKey;
         this.version = ensureNotBlank(builder.version, "version");
+        this.beta = builder.beta;
         this.logResponses = builder.logResponses;
 
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
@@ -91,7 +97,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
     public AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request) {
         try {
             retrofit2.Response<AnthropicCreateMessageResponse> retrofitResponse
-                    = anthropicApi.createMessage(apiKey, version, request).execute();
+                    = anthropicApi.createMessage(apiKey, version, toBeta(request), request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -105,6 +111,17 @@ public class DefaultAnthropicClient extends AnthropicClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String toBeta(AnthropicCreateMessageRequest request) {
+        return hasTools(request) ? beta : null;
+    }
+
+    private static boolean hasTools(AnthropicCreateMessageRequest request) {
+        return !isNullOrEmpty(request.tools) || request.messages.stream()
+                .flatMap(message -> message.content.stream())
+                .anyMatch(content ->
+                        (content instanceof AnthropicToolUseContent) || (content instanceof AnthropicToolResultContent));
     }
 
     @Override
