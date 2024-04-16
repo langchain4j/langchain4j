@@ -22,6 +22,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.rag.retriever.SearchDepth.BASIC;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -35,7 +36,6 @@ public class TavilyContentRetriever implements ContentRetriever {
     public static final int DEFAULT_MAX_RESULTS = 3;
     public static final double DEFAULT_MIN_SCORE = 0;
     public static final int DEFAULT_MAX_SEARCH_RESULTS = 5;
-    public static final String BASIC_SEARCH_DEPTH = "basic";
     private static final Boolean ALWAYS_INCLUDE_RAW_CONTENT = true;
     private final EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
     private final String apiKey;
@@ -44,7 +44,7 @@ public class TavilyContentRetriever implements ContentRetriever {
     private final DocumentSplitter splitter;
     private final int maxResults;
     private final double minScore;
-    private final String searchDepth;
+    private final SearchDepth searchDepth;
     private final Boolean includeImages;
     private final Boolean includeAnswer;
     private final Integer maxSearchResults;
@@ -58,7 +58,7 @@ public class TavilyContentRetriever implements ContentRetriever {
                                   DocumentSplitter splitter,
                                   Integer maxResults,
                                   Double minScore,
-                                  String searchDepth,
+                                  SearchDepth searchDepth,
                                   Boolean includeImages,
                                   Boolean includeAnswer,
                                   Integer maxSearchResults,
@@ -73,7 +73,7 @@ public class TavilyContentRetriever implements ContentRetriever {
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, DEFAULT_MAX_RESULTS), "maxResults");
         this.minScore = ensureBetween(getOrDefault(minScore, DEFAULT_MIN_SCORE), 0, 1, "minScore");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
-        this.searchDepth = getOrDefault(searchDepth, BASIC_SEARCH_DEPTH);
+        this.searchDepth = getOrDefault(searchDepth, BASIC);
         this.includeImages = getOrDefault(includeImages, false);
         this.includeAnswer = getOrDefault(includeAnswer, false);
         this.maxSearchResults = getOrDefault(maxSearchResults, DEFAULT_MAX_SEARCH_RESULTS);
@@ -143,7 +143,7 @@ public class TavilyContentRetriever implements ContentRetriever {
         private DocumentSplitter splitter = null;
         private Integer maxResults = DEFAULT_MAX_RESULTS;
         private Double minScore = DEFAULT_MIN_SCORE;
-        private String searchDepth = "basic";
+        private SearchDepth searchDepth = BASIC;
         private Boolean includeImages = false;
         private Boolean includeAnswer = false;
         private Integer maxSearchResults = 5;
@@ -187,7 +187,7 @@ public class TavilyContentRetriever implements ContentRetriever {
             return this;
         }
 
-        public Builder searchDepth(String searchDepth) {
+        public Builder searchDepth(SearchDepth searchDepth) {
             this.searchDepth = searchDepth;
             return this;
         }

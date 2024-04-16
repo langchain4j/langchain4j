@@ -9,7 +9,7 @@ public class TavilySearchRequest {
 
     private String apiKey;
     private String query;
-    private String searchDepth;
+    private SearchDepth searchDepth;
     private Boolean includeImages;
     private Boolean includeAnswer;
     private Boolean includeRawContent;

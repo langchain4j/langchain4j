@@ -23,7 +23,7 @@ class TavilyClientIT {
                 TavilySearchRequest.builder()
                         .apiKey(getenv("TAVILY_API_KEY"))
                         .query("What are the best shopping centers in Munich?")
-                        .searchDepth("basic")
+                        .searchDepth(SearchDepth.BASIC)
                         .maxResults(maxResults)
                         .includeAnswer(false)
                         .includeImages(true)
