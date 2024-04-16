@@ -34,12 +34,14 @@ class AzureOpenAiStreamingChatModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingChatModelIT.class);
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-35-turbo, gpt-3.5-turbo, true",
+            "gpt-35-turbo, gpt-3.5-turbo, false",
+            "gpt-4,        gpt-4, true",
+            "gpt-4,        gpt-4, false"
     })
-    void should_stream_answer(String deploymentName, String gptVersion) throws Exception {
+    void should_stream_answer(String deploymentName, String gptVersion, boolean useAsyncClient) throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
@@ -48,6 +50,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
+                .useAsyncClient(useAsyncClient)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
