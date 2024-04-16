@@ -190,7 +190,7 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
 | [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ |  | |✅ |
 | [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ | | |  | |
 | [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  | | |✅ |  | | |
-| [Anthropic](https://docs.langchain4j.dev/integrations/language-models/anthropic)                   |  |✅ | | |  | | |
+| [Anthropic](https://docs.langchain4j.dev/integrations/language-models/anthropic)                   |✅  |✅ |✅ | |  | |✅ |
 | [Zhipu AI](https://docs.langchain4j.dev/integrations/language-models/zhipu-ai)                     |  |✅| ✅| ✅|  | |✅ |
 
 ## Disclaimer
