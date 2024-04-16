@@ -82,9 +82,13 @@ public class TokenUsage {
      * <p>Fields which are null in both responses will be null in the result.
      *
      * @param that The token usage to add to this one.
-     * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
+     * @return a new {@link TokenUsage} instance with the token usage of both responses added together,
+     * or null if origin token usage is null (such as LocalAiChatModule).
      */
     public TokenUsage add(TokenUsage that) {
+        if (that == null) {
+            return null;
+        }
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),
                 sum(this.outputTokenCount, that.outputTokenCount),

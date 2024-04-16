@@ -91,4 +91,10 @@ class TokenUsageTest implements WithAssertions {
                 .isEqualTo(new TokenUsage(null, null, null));
     }
 
+    @Test
+    public void test_add_null() {
+        assertThat(new TokenUsage(1, 2, 3)
+                .add(null))
+                .isNull();
+    }
 }
