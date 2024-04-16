@@ -17,7 +17,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -25,6 +24,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.service.StreamingAiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -76,7 +76,7 @@ class StreamingAiServicesWithToolsIT {
                     default:
                         throw new IllegalArgumentException("Unknown transaction ID: " + id);
                 }
-            }).collect(Collectors.toList());
+            }).collect(toList());
         }
     }
 
