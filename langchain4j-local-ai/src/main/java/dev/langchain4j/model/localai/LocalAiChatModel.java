@@ -104,7 +104,7 @@ public class LocalAiChatModel implements ChatLanguageModel {
 
         return Response.from(
                 aiMessageFrom(response),
-                null,
+                tokenUsageFrom(response.usage()),
                 finishReasonFrom(response.choices().get(0).finishReason())
         );
     }
