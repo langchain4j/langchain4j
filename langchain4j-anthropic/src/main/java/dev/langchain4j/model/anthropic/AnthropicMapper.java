@@ -4,19 +4,19 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.AnthropicRole.USER;
-import static dev.langchain4j.model.anthropic.DefaultAnthropicClient.GSON;
-import static dev.langchain4j.model.anthropic.DefaultAnthropicClient.MAP_TYPE;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -92,7 +92,7 @@ public class AnthropicMapper {
                     .map(toolExecutionRequest -> AnthropicToolUseContent.builder()
                             .id(toolExecutionRequest.id())
                             .name(toolExecutionRequest.name())
-                            .input(GSON.fromJson(toolExecutionRequest.arguments(), MAP_TYPE))
+                            .input(Json.fromJson(toolExecutionRequest.arguments(), Map.class))
                             .build())
                     .collect(toList());
             contents.addAll(toolUseContents);
@@ -126,7 +126,7 @@ public class AnthropicMapper {
                 .map(content -> ToolExecutionRequest.builder()
                         .id(content.id)
                         .name(content.name)
-                        .arguments(GSON.toJson(content.input))
+                        .arguments(Json.toJson(content.input))
                         .build())
                 .collect(toList());
 
