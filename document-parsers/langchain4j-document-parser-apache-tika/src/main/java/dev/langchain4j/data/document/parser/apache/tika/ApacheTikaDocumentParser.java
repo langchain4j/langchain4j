@@ -1,7 +1,9 @@
 package dev.langchain4j.data.document.parser.apache.tika;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
+import org.apache.tika.exception.ZeroByteFileException;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -12,6 +14,7 @@ import org.xml.sax.ContentHandler;
 import java.io.InputStream;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 /**
  * Parses files into {@link Document}s using Apache Tika library, automatically detecting the file format.
@@ -63,7 +66,16 @@ public class ApacheTikaDocumentParser implements DocumentParser {
         try {
             parser.parse(inputStream, contentHandler, metadata, parseContext);
             String text = contentHandler.toString();
+
+            if (isNullOrBlank(text)) {
+                throw new BlankDocumentException();
+            }
+
             return Document.from(text);
+        } catch (BlankDocumentException e) {
+            throw e;
+        } catch (ZeroByteFileException e) {
+            throw new BlankDocumentException();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
