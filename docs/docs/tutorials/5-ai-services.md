@@ -13,7 +13,7 @@ and often involve multiple interactions, orchestrating them all becomes even mor
 We want you to focus on business logic, not on low-level implementation details.
 Thus, there are currently two high-level concepts in LangChain4j that can help with that: AI Services and Chains.
 
-## Chains
+## Chains (legacy)
 
 The concept of Chains originates from Python's LangChain (before the introduction of LCEL).
 The idea is to have a `Chain` for each common use case, like a chatbot, RAG, etc.
