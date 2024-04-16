@@ -351,6 +351,13 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <!-- web searchers -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-web-searcher-google-customsearch</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
