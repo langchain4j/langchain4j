@@ -24,9 +24,9 @@ class WebSearchToolTest {
                 new WebSearchResults(
                         WebSearchInformationResult.from(3L,1, new HashMap<>()),
                         asList(
-                                WebSearchOrganicResult.from("title 1", URI.create("https://google.com"), "snippet 1"),
-                                WebSearchOrganicResult.from("title 2", URI.create("https://docs.langchain4j.dev"), "snippet 2"),
-                                WebSearchOrganicResult.from("title 3", URI.create("https://github.com/dewitt/opensearch/blob/master/README.md"), "snippet 3")
+                                WebSearchOrganicResult.from("title 1", URI.create("https://google.com"), "snippet 1", "content 1"),
+                                WebSearchOrganicResult.from("title 2", URI.create("https://docs.langchain4j.dev"), "snippet 2", "content 2"),
+                                WebSearchOrganicResult.from("title 3", URI.create("https://github.com/dewitt/opensearch/blob/master/README.md"), "snippet 3","content 3")
                         )
                 )
         );
@@ -49,8 +49,8 @@ class WebSearchToolTest {
         // then
         assertThat(strResult).isNotBlank();
         assertThat(strResult)
-                .as("At least one result should be contains 'title 1' and 'https://google.com' and 'snippet 1'")
-                .contains("Title: title 1\nURL Source: https://google.com\nSnippet:\nsnippet 1");
+                .as("At least one result should be contains 'title 1' and 'https://google.com' and 'content 1'")
+                .contains("Title: title 1\nURL Source: https://google.com\nContent:\ncontent 1");
 
         verify(webSearchEngine).search(searchTerm);
         verifyNoMoreInteractions(webSearchEngine);

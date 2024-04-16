@@ -33,9 +33,9 @@ class WebSearchContentRetrieverTest{
                 new WebSearchResults(
                         WebSearchInformationResult.from(3L,1, new HashMap<>()),
                         asList(
-                                WebSearchOrganicResult.from("title 1", URI.create("https://google.com"), "snippet 1"),
-                                WebSearchOrganicResult.from("title 2", URI.create("https://docs.langchain4j.dev"), "snippet 2"),
-                                WebSearchOrganicResult.from("title 3", URI.create("https://github.com/dewitt/opensearch/blob/master/README.md"), "snippet 3")
+                                WebSearchOrganicResult.from("title 1", URI.create("https://google.com"), "snippet 1", null),
+                                WebSearchOrganicResult.from("title 2", URI.create("https://docs.langchain4j.dev"), null, "content 2"),
+                                WebSearchOrganicResult.from("title 3", URI.create("https://github.com/dewitt/opensearch/blob/master/README.md"), "snippet 3", "content 3")
                         )
                 )
         );
@@ -60,17 +60,17 @@ class WebSearchContentRetrieverTest{
         assertThat(contents).containsExactly(
                 Content.from(TextSegment.from("snippet 1",
                         Metadata.from(Stream.of(
-                            new AbstractMap.SimpleEntry<>("title", "title 1"),
-                            new AbstractMap.SimpleEntry<>("url", "https://google.com")
+                                new AbstractMap.SimpleEntry<>("title", "title 1"),
+                                new AbstractMap.SimpleEntry<>("url", "https://google.com")
                         ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)))
                 )),
-                Content.from(TextSegment.from("snippet 2",
+                Content.from(TextSegment.from("content 2",
                         Metadata.from(Stream.of(
                                 new AbstractMap.SimpleEntry<>("title", "title 2"),
                                 new AbstractMap.SimpleEntry<>("url", "https://docs.langchain4j.dev")
                         ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)))
                 )),
-                Content.from(TextSegment.from("snippet 3",
+                Content.from(TextSegment.from("content 3",
                         Metadata.from(Stream.of(
                                 new AbstractMap.SimpleEntry<>("title", "title 3"),
                                 new AbstractMap.SimpleEntry<>("url", "https://github.com/dewitt/opensearch/blob/master/README.md")
@@ -102,13 +102,13 @@ class WebSearchContentRetrieverTest{
                                 new AbstractMap.SimpleEntry<>("url", "https://google.com")
                         ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)))
                 )),
-                Content.from(TextSegment.from("snippet 2",
+                Content.from(TextSegment.from("content 2",
                         Metadata.from(Stream.of(
                                 new AbstractMap.SimpleEntry<>("title", "title 2"),
                                 new AbstractMap.SimpleEntry<>("url", "https://docs.langchain4j.dev")
                         ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)))
                 )),
-                Content.from(TextSegment.from("snippet 3",
+                Content.from(TextSegment.from("content 3",
                         Metadata.from(Stream.of(
                                 new AbstractMap.SimpleEntry<>("title", "title 3"),
                                 new AbstractMap.SimpleEntry<>("url", "https://github.com/dewitt/opensearch/blob/master/README.md")

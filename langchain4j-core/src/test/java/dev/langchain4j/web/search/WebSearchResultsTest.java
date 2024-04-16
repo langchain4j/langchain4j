@@ -20,15 +20,15 @@ class WebSearchResultsTest {
 
     @Test
     void should_build_webSearchResults(){
-       WebSearchResults webSearchResults = WebSearchResults.from(
-               WebSearchInformationResult.from(1L),
-               singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"))));
+        WebSearchResults webSearchResults = WebSearchResults.from(
+                WebSearchInformationResult.from(1L),
+                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"))));
 
-       assertThat(webSearchResults.results()).hasSize(1);
-       assertThat(webSearchResults.results().get(0).url().toString()).isEqualTo("https://google.com");
-       assertThat(webSearchResults.searchInformation().totalResults()).isEqualTo(1L);
+        assertThat(webSearchResults.results()).hasSize(1);
+        assertThat(webSearchResults.results().get(0).url().toString()).isEqualTo("https://google.com");
+        assertThat(webSearchResults.searchInformation().totalResults()).isEqualTo(1L);
 
-       assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', metadata=null}]}");
+        assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata=null}]}");
     }
 
     @Test
@@ -60,10 +60,10 @@ class WebSearchResultsTest {
     }
 
     @Test
-    void should_return_array_of_textSegments(){
+    void should_return_array_of_textSegments_with_snippet(){
         WebSearchResults webSearchResults = WebSearchResults.from(
                 WebSearchInformationResult.from(1L),
-                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet")));
+                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet", null)));
 
         assertThat(webSearchResults.toTextSegments()).hasSize(1);
         assertThat(webSearchResults.toTextSegments().get(0).text()).isEqualTo("snippet");
@@ -76,13 +76,13 @@ class WebSearchResultsTest {
     }
 
     @Test
-    void should_return_array_of_documents(){
+    void should_return_array_of_documents_with_content(){
         WebSearchResults webSearchResults = WebSearchResults.from(
                 WebSearchInformationResult.from(1L),
-                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet")));
+                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),null, "content")));
 
         assertThat(webSearchResults.toDocuments()).hasSize(1);
-        assertThat(webSearchResults.toDocuments().get(0).text()).isEqualTo("snippet");
+        assertThat(webSearchResults.toDocuments().get(0).text()).isEqualTo("content");
         assertThat(webSearchResults.toDocuments().get(0).metadata()).isEqualTo(
                 Metadata.from(Stream.of(
                         new AbstractMap.SimpleEntry<>("title", "title"),
@@ -101,7 +101,7 @@ class WebSearchResultsTest {
         assertThrows(IllegalArgumentException.class, () -> new WebSearchResults(
                 searchMetadata,
                 null,
-                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet"))));
+                singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet",null))));
     }
 
     @Test

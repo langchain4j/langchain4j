@@ -67,7 +67,6 @@ public abstract class WebSearchIT {
                 .as("At least one result should be contains 'Emmanuel Macro' ignoring case")
                 .anySatisfy(result -> assertThat(result.title())
                         .containsIgnoringCase("Emmanuel Macro"));
-
     }
 
     @Test
@@ -84,7 +83,6 @@ public abstract class WebSearchIT {
                 .as("At least one result should be contains 'argentina' ignoring case")
                 .anySatisfy(textSegment -> assertThat(textSegment.text())
                         .containsIgnoringCase("argentina"));
-
     }
 
     @Test
