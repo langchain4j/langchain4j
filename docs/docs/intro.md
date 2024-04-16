@@ -59,7 +59,7 @@ and Spring Boot ([starters](https://github.com/langchain4j/langchain4j-spring)).
 - Dynamic Tools (execution of dynamically generated LLM code)
 - "Lite" agents (OpenAI functions)
 - AI Services
-- Chains
+- Chains (legacy)
 - Implementation of persistent and in-memory chat memory algorithms: message window and token window
 - Text classification
 - RAG (Retrieval-Augmented-Generation):

@@ -22,7 +22,7 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
     }
 
     @Override
-    public ChatMessage deserialize(JsonElement messageJsonElement, Type ignored, JsonDeserializationContext context) throws JsonParseException {
+    public ChatMessage deserialize(JsonElement messageJsonElement, Type ignored, JsonDeserializationContext context) {
         String chatMessageTypeString = messageJsonElement.getAsJsonObject().get(CHAT_MESSAGE_TYPE).getAsString();
         ChatMessageType chatMessageType = ChatMessageType.valueOf(chatMessageTypeString);
         ChatMessage chatMessage = GSON.fromJson(messageJsonElement, chatMessageType.messageClass());
