@@ -56,7 +56,7 @@ public class ApachePoiDocumentParserTest {
             "blank-file.pptx"
             // "blank-file.xlsx" TODO
     })
-    void should_throw_DocumentIsBlankException(String fileName) {
+    void should_throw_BlankDocumentException(String fileName) {
 
         DocumentParser parser = new ApachePoiDocumentParser();
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);

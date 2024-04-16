@@ -42,7 +42,7 @@ class TextDocumentParserTest {
             "empty-file.txt",
             "blank-file.txt"
     })
-    void should_throw_DocumentIsBlankException(String fileName) {
+    void should_throw_BlankDocumentException(String fileName) {
 
         DocumentParser parser = new TextDocumentParser();
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);

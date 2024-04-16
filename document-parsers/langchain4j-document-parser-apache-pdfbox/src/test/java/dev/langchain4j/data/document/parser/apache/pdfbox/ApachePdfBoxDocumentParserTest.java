@@ -25,7 +25,7 @@ class ApachePdfBoxDocumentParserTest {
     }
 
     @Test
-    void should_throw_DocumentIsBlankException() {
+    void should_throw_BlankDocumentException() {
 
         DocumentParser parser = new ApachePdfBoxDocumentParser();
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream("blank-file.pdf");
