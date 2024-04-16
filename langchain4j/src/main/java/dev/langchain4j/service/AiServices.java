@@ -1,16 +1,5 @@
 package dev.langchain4j.service;
 
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.function.Function;
-
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -32,6 +21,13 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -41,18 +37,22 @@ import static java.util.stream.Collectors.toList;
 /**
  * AI Services provide a simpler and more flexible alternative to chains.
  * You can define your own API (a Java interface with one or more methods),
- * and AiServices will provide an implementation for it (we call this "AI Service").
+ * and {@code AiServices} will provide an implementation for it.
  * <p>
  * Currently, AI Services support:
  * <pre>
- * - Prompt templates for user and system messages using {@link UserMessage} and {@link SystemMessage}
- * - Structured prompts as method arguments (see {@link StructuredPrompt})
- * - Shared or per-user (see {@link MemoryId}) chat memory
- * - RAG (see {@link RetrievalAugmentor})
- * - Tools (see {@link Tool})
- * - Various return types (output parsers), see below
+ * - Static system message templates, configured via @{@link SystemMessage} annotation on top of the method
+ * - Dynamic system message templates, configured via {@link #systemMessageProvider(Function)}
+ * - Static user message templates, configured via @{@link UserMessage} annotation on top of the method
+ * - Dynamic user message templates, configured via method parameter annotated with @{@link UserMessage}
+ * - Single (shared) {@link ChatMemory}, configured via {@link #chatMemory(ChatMemory)}
+ * - Separate (per-user) {@code ChatMemory}, configured via {@link #chatMemoryProvider(ChatMemoryProvider)} and a method parameter annotated with @{@link MemoryId}
+ * - RAG, configured via {@link #contentRetriever(ContentRetriever)} or {@link #retrievalAugmentor(RetrievalAugmentor)}
+ * - Tools, configured via {@link #tools(List)} or {@link #tools(Object...)} and methods annotated with @{@link Tool}
+ * - Various method return types (output parsers), see more details below
  * - Streaming (use {@link TokenStream} as a return type)
- * - Auto-moderation using {@link Moderate}
+ * - Structured prompts as method arguments (see @{@link StructuredPrompt})
+ * - Auto-moderation, configured via @{@link Moderate} annotation
  * </pre>
  * <p>
  * Here is the simplest example of an AI Service:
@@ -99,7 +99,7 @@ import static java.util.stream.Collectors.toList;
  * System.out.println(sentiment); // POSITIVE
  * </pre>
  * <p>
- * As demonstrated, you can put {@link UserMessage} and {@link SystemMessage} annotations above a method to define
+ * As demonstrated, you can put @{@link UserMessage} and @{@link SystemMessage} annotations above a method to define
  * templates for user and system messages, respectively.
  * In this example, the special {@code {{it}}} prompt template variable is used because there's only one method parameter.
  * However, you can use more parameters as demonstrated in the following example:
@@ -175,16 +175,6 @@ public abstract class AiServices<T> {
         return new DefaultAiServices<>(context);
     }
 
-    public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
-        context.systemMessagesProvider = systemMessageProvider.andThen(Optional::ofNullable);
-        return this;
-    }
-
-    public AiServices<T> userMessageProvider(Function<Object, String> userMessageProvider) {
-        context.userMessagesProvider = userMessageProvider.andThen(Optional::ofNullable);
-        return this;
-    }
-
     /**
      * Configures chat model that will be used under the hood of the AI Service.
      * <p>
@@ -211,6 +201,26 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> streamingChatLanguageModel(StreamingChatLanguageModel streamingChatLanguageModel) {
         context.streamingChatModel = streamingChatLanguageModel;
+        return this;
+    }
+
+    /**
+     * Configures the system message provider, which provides a system message to be used each time an AI service is invoked.
+     * <br>
+     * When both {@code @SystemMessage} and the system message provider are configured,
+     * {@code @SystemMessage} takes precedence.
+     *
+     * @param systemMessageProvider A {@link Function} that accepts a chat memory ID
+     *                              (a value of a method parameter annotated with @{@link MemoryId})
+     *                              and returns a system message to be used.
+     *                              If there is no parameter annotated with @MemoryId, it accepts {@code null}.
+     *                              The returned {@link String} can be either a complete system message
+     *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
+     *                              which will be resolved using the values of method parameters annotated with @{@link V}.
+     * @return builder
+     */
+    public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
+        context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
         return this;
     }
 
@@ -336,7 +346,7 @@ public abstract class AiServices<T> {
      */
     @Deprecated
     public AiServices<T> retriever(Retriever<TextSegment> retriever) {
-        if(contentRetrieverSet || retrievalAugmentorSet) {
+        if (contentRetrieverSet || retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         if (retriever != null) {
@@ -361,7 +371,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> contentRetriever(ContentRetriever contentRetriever) {
-        if(retrieverSet || retrievalAugmentorSet) {
+        if (retrieverSet || retrievalAugmentorSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         contentRetrieverSet = true;
@@ -378,7 +388,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> retrievalAugmentor(RetrievalAugmentor retrievalAugmentor) {
-        if(retrieverSet || contentRetrieverSet) {
+        if (retrieverSet || contentRetrieverSet) {
             throw illegalConfiguration("Only one out of [retriever, contentRetriever, retrievalAugmentor] can be set");
         }
         retrievalAugmentorSet = true;

@@ -116,8 +116,18 @@ Friend friend = AiServices.create(Friend.class, model);
 
 String answer = friend.chat("Hello"); // Hey! What's up?
 ```
-In this example, we have added the `@SystemMessage` annotation with a prompt we want to use.
+In this example, we have added the `@SystemMessage` annotation with a system prompt we want to use.
 This will be converted into a `SystemMessage` behind the scenes and sent to the LLM along with the `UserMessage`.
+
+### System Message Provider
+System messages can also be defined dynamically with the system message provider:
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatLanguageModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .build();
+```
+As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
 ## @UserMessage
 

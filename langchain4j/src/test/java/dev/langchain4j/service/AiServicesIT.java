@@ -147,26 +147,6 @@ public class AiServicesIT {
                         "You must answer strictly in the following format: yyyy-MM-ddTHH:mm:ss")));
     }
 
-    interface TextOperator {
-        String doAnythingWithText(@UserMessage String userMessage, @V("text") String text);
-    }
-
-    @Test
-    void test_extract_date_from_text() {
-        TextOperator textOperator = AiServices.create(TextOperator.class, chatLanguageModel);
-
-        String text = "The tranquility pervaded the evening of 1968, just fifteen minutes shy of midnight, following the celebrations of Independence Day.";
-
-        String dateTime = textOperator.doAnythingWithText("Extract date and time from {{text}}", text);
-        System.out.println(dateTime);
-
-        assertThat(dateTime).contains("1968");
-        assertThat(dateTime).contains("fifteen minutes shy of midnight");
-
-        verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Extract date and time from " + text)));
-    }
-
 
     enum Sentiment {
         POSITIVE, NEUTRAL, NEGATIVE
