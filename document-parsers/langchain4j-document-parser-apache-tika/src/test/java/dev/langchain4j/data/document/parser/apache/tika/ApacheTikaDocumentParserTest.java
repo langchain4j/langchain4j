@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.tika;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.apache.tika.parser.AutoDetectParser;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -64,6 +64,6 @@ class ApacheTikaDocumentParserTest {
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
         assertThatThrownBy(() -> parser.parse(inputStream))
-                .isExactlyInstanceOf(DocumentIsBlankException.class);
+                .isExactlyInstanceOf(BlankDocumentException.class);
     }
 }

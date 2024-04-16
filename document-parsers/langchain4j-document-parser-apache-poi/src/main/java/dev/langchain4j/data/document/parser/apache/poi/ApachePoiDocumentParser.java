@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.poi;
 
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.apache.poi.EmptyFileException;
 import org.apache.poi.extractor.ExtractorFactory;
@@ -26,12 +26,12 @@ public class ApachePoiDocumentParser implements DocumentParser {
             String text = extractor.getText();
 
             if (isNullOrBlank(text)) {
-                throw new DocumentIsBlankException();
+                throw new BlankDocumentException();
             }
 
             return Document.from(text);
         } catch (EmptyFileException e) {
-            throw new DocumentIsBlankException();
+            throw new BlankDocumentException();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

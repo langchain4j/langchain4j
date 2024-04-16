@@ -14,7 +14,7 @@ public interface DocumentParser {
      *
      * @param inputStream The {@link InputStream} that contains the content of the {@link Document}.
      * @return The parsed {@link Document}.
-     * @throws DocumentIsBlankException when the parsed {@link Document} is blank/empty.
+     * @throws BlankDocumentException when the parsed {@link Document} is blank/empty.
      */
     Document parse(InputStream inputStream);
 }

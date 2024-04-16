@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.pdfbox;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +31,6 @@ class ApachePdfBoxDocumentParserTest {
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream("blank-file.pdf");
 
         assertThatThrownBy(() -> parser.parse(inputStream))
-                .isExactlyInstanceOf(DocumentIsBlankException.class);
+                .isExactlyInstanceOf(BlankDocumentException.class);
     }
 }

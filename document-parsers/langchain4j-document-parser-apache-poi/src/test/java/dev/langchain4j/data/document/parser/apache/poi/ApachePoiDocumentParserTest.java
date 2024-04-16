@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.poi;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -62,6 +62,6 @@ public class ApachePoiDocumentParserTest {
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
         assertThatThrownBy(() -> parser.parse(inputStream))
-                .isExactlyInstanceOf(DocumentIsBlankException.class);
+                .isExactlyInstanceOf(BlankDocumentException.class);
     }
 }

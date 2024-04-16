@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.pdfbox;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -25,7 +25,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
             pdfDocument.close();
 
             if (isNullOrBlank(text)) {
-                throw new DocumentIsBlankException();
+                throw new BlankDocumentException();
             }
 
             return Document.from(text);

@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,7 +48,7 @@ class TextDocumentParserTest {
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
         assertThatThrownBy(() -> parser.parse(inputStream))
-                .isExactlyInstanceOf(DocumentIsBlankException.class);
+                .isExactlyInstanceOf(BlankDocumentException.class);
     }
 
     @Test

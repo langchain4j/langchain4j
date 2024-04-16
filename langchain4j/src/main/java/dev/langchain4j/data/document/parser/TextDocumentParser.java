@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 
 import java.io.ByteArrayOutputStream;
@@ -39,11 +39,11 @@ public class TextDocumentParser implements DocumentParser {
             String text = new String(buffer.toByteArray(), charset);
 
             if (isNullOrBlank(text)) {
-                throw new DocumentIsBlankException();
+                throw new BlankDocumentException();
             }
 
             return Document.from(text);
-        } catch (DocumentIsBlankException e) {
+        } catch (BlankDocumentException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException(e);

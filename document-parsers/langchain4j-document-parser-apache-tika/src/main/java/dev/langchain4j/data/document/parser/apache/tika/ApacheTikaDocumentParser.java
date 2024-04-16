@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.tika;
 
 import dev.langchain4j.data.document.Document;
-import dev.langchain4j.data.document.DocumentIsBlankException;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentParser;
 import org.apache.tika.exception.ZeroByteFileException;
 import org.apache.tika.metadata.Metadata;
@@ -68,14 +68,14 @@ public class ApacheTikaDocumentParser implements DocumentParser {
             String text = contentHandler.toString();
 
             if (isNullOrBlank(text)) {
-                throw new DocumentIsBlankException();
+                throw new BlankDocumentException();
             }
 
             return Document.from(text);
-        } catch (DocumentIsBlankException e) {
+        } catch (BlankDocumentException e) {
             throw e;
         } catch (ZeroByteFileException e) {
-            throw new DocumentIsBlankException();
+            throw new BlankDocumentException();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
