@@ -109,7 +109,7 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
 
         // when-then
         assertThat(loadDocuments(resourceDirectory, failFirstParser))
-                .hasSize(documents.size());
+                .hasSize(documents.size() - 1);
     }
 
     @ParameterizedTest
