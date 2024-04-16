@@ -169,10 +169,10 @@ public class MetadataVectorTable extends AbstractCassandraTable<MetadataVectorRe
         log.debug("Query on table '{}' with vector size '{}' and max record='{}'",
                tableName,
                 "[" + query.getEmbeddings().size() + "]",
-                "" + (query.getRecordCount() > 0 ? query.getRecordCount() : DEFAULT_RECORD_COUNT));
+                "" + (query.getTopK() > 0 ? query.getTopK() : DEFAULT_RECORD_COUNT));
         return cqlSession.execute(SimpleStatement.builder(cqlQuery.toString())
                         .addNamedValue("vector", CqlVector.newInstance(query.getEmbeddings()))
-                        .addNamedValue("maxRecord", query.getRecordCount() > 0 ? query.getRecordCount() : DEFAULT_RECORD_COUNT)
+                        .addNamedValue("maxRecord", query.getTopK() > 0 ? query.getTopK() : DEFAULT_RECORD_COUNT)
                         .build())
                 .all().stream() // max record is small and pagination is not needed
                 .map(this::mapResult)

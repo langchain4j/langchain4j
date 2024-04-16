@@ -77,5 +77,5 @@ public class CassIO {
                         new IllegalArgumentException("CqlSession does not select any keyspace")).asInternal(),
                 tableName, vectorDimension);
     }
-    
+
 }

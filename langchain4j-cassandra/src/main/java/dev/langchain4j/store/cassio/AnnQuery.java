@@ -16,7 +16,7 @@ public class AnnQuery {
     /**
      * Maximum number of item returned
      */
-    private int recordCount;
+    private int topK;
 
     /**
      * Minimum distance computation

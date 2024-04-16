@@ -32,7 +32,7 @@ import static com.datastax.astra.client.model.Filters.or;
 /**
  * This class is responsible for mapping {@link Filter} objects into AstraDB filter expressions.
  */
-class AstraDBMetadataFilterMapper {
+class AstraDBFilterMapper {
 
     /**
      * Maps a {@link dev.langchain4j.store.embedding.filter.Filter} object into an AstraDB {@link Filter} object.

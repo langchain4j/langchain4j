@@ -38,9 +38,9 @@ import static com.datastax.astra.client.model.FindOptions.Builder.sort;
 public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
    /**
-    * Saving the text chunk as an attribut.
+    * Saving the text chunk as an attribute.
     */
-   public static final String KEY_ATTRIBUTES_BLOB = "body_blob";
+   public static final String KEY_ATTRIBUTES_BLOB = "content";
 
     /**
      * Metadata used for similarity.
@@ -79,6 +79,8 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      *      astra db collection client
      * @param itemsPerChunk
      *     size of 1 chunk in between 1 and 20
+     * @param concurrentThreads
+     *      concurrent threads
      */
     public AstraDbEmbeddingStore(@NonNull Collection<Document>  client, int itemsPerChunk, int concurrentThreads) {
         if (itemsPerChunk>20 || itemsPerChunk<1) {
@@ -190,7 +192,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         // Mapping of the filter to internal representation
-        Filter astraFilter = AstraDBMetadataFilterMapper.map(request.filter());
+        Filter astraFilter = AstraDBFilterMapper.map(request.filter());
         // Call the search
         List<EmbeddingMatch<TextSegment>> matches = findRelevant(
                 request.queryEmbedding(), astraFilter,

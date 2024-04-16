@@ -258,7 +258,7 @@ public class CassandraCassioEmbeddingStore implements EmbeddingStore<TextSegment
         return embeddingTable
                 .similaritySearch(AnnQuery.builder()
                         .embeddings(embedding.vectorAsList())
-                        .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
+                        .topK(ensureGreaterThanZero(maxResults, "maxResults"))
                         .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")))
                         .metric(SimilarityMetric.COSINE)
                         .build())
@@ -307,7 +307,7 @@ public class CassandraCassioEmbeddingStore implements EmbeddingStore<TextSegment
         AnnQuery.AnnQueryBuilder builder = AnnQuery.builder()
                 .embeddings(embedding.vectorAsList())
                 .metric(SimilarityMetric.COSINE)
-                .recordCount(ensureGreaterThanZero(maxResults, "maxResults"))
+                .topK(ensureGreaterThanZero(maxResults, "maxResults"))
                 .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(minScore, 0, 1, "minScore")));
         if (metadata != null) {
             builder.metaData(metadata.asMap());
