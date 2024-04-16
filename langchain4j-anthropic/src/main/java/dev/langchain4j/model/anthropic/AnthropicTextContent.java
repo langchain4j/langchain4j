@@ -1,11 +1,16 @@
 package dev.langchain4j.model.anthropic;
 
-public class AnthropicTextContent {
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
-    public String type = "text";
+@ToString
+@EqualsAndHashCode(callSuper = true)
+public class AnthropicTextContent extends AnthropicMessageContent {
+
     public String text;
 
     public AnthropicTextContent(String text) {
+        super("text");
         this.text = text;
     }
 }

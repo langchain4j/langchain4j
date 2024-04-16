@@ -8,8 +8,7 @@ import java.util.Objects;
 import static dev.langchain4j.data.message.ChatMessageType.AI;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.quoted;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.Arrays.asList;
 
 /**
@@ -39,6 +38,17 @@ public class AiMessage implements ChatMessage {
      */
     public AiMessage(List<ToolExecutionRequest> toolExecutionRequests) {
         this.text = null;
+        this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
+    }
+
+    /**
+     * Create a new {@link AiMessage} with the given text and tool execution requests.
+     *
+     * @param text                  the text of the message.
+     * @param toolExecutionRequests the tool execution requests of the message.
+     */
+    public AiMessage(String text, List<ToolExecutionRequest> toolExecutionRequests) {
+        this.text = ensureNotBlank(text, "text");
         this.toolExecutionRequests = ensureNotEmpty(toolExecutionRequests, "toolExecutionRequests");
     }
 
