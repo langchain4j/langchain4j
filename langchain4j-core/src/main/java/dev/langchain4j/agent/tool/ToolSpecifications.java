@@ -24,7 +24,7 @@ public class ToolSpecifications {
     }
 
     /**
-     * Get {@link ToolSpecification}s for all {@link Tool} methods of the given class.
+     * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool} within the specified class.
      *
      * @param classWithTools the class.
      * @return the {@link ToolSpecification}s.
@@ -37,7 +37,8 @@ public class ToolSpecifications {
     }
 
     /**
-     * Get {@link ToolSpecification}s for all {@link Tool} methods of the given object.
+     * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool}
+     * within the class of the specified object.
      *
      * @param objectWithTools the object.
      * @return the {@link ToolSpecification}s.
@@ -47,7 +48,7 @@ public class ToolSpecifications {
     }
 
     /**
-     * Get the {@link ToolSpecification} for the given {@link Tool} method.
+     * Returns the {@link ToolSpecification} for the given method annotated with @{@link Tool}.
      *
      * @param method the method.
      * @return the {@link ToolSpecification}.

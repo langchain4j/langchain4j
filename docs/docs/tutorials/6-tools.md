@@ -131,10 +131,10 @@ of the `ChatLanguageModel`. A similar method is also present in the `StreamingCh
 `ToolSpecification` is an object that contains all the information about the tool:
 - The `name` of the tool
 - The `description` of the tool
-- The `parameters` of the tool
+- The `parameters` (arguments) of the tool and their descriptions
 
 It is recommended to provide as much information about the tool as possible:
-a clear name, a complete description, and a description for each parameter, etc.
+a clear name, a comprehensive description, and a description for each parameter, etc.
 
 There are two ways to create a `ToolSpecification`:
 

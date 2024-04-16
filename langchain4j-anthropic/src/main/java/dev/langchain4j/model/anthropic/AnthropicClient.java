@@ -43,7 +43,7 @@ public abstract class AnthropicClient {
 
         public B apiKey(String apiKey) {
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("Anthropic API Key must be defined. " +
+                throw new IllegalArgumentException("Anthropic API key must be defined. " +
                         "It can be generated here: https://console.anthropic.com/settings/keys");
             }
             this.apiKey = apiKey;
