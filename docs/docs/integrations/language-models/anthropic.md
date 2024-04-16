@@ -75,8 +75,9 @@ Identical to the `AnthropicChatModel`, see above.
 
 ## Tools
 
-Anthropic support [tools](/tutorials/tools).
-More info [here](https://docs.anthropic.com/claude/docs/tool-use).
+Anthropic supports [tools](/tutorials/tools), but only in a non-streaming mode.
+
+Anthropic documentation on tools can be found [here](https://docs.anthropic.com/claude/docs/tool-use).
 
 ## Quarkus
 
