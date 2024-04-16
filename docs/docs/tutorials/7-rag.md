@@ -42,7 +42,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.29.1</version>
+    <version>0.30.0</version>
 </dependency>
 ```
 

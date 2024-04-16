@@ -213,7 +213,8 @@ public abstract class AiServices<T> {
      * @param systemMessageProvider A {@link Function} that accepts a chat memory ID
      *                              (a value of a method parameter annotated with @{@link MemoryId})
      *                              and returns a system message to be used.
-     *                              If there is no parameter annotated with @MemoryId, it accepts {@code null}.
+     *                              If there is no parameter annotated with {@code @MemoryId},
+     *                              the value of memory ID is "default".
      *                              The returned {@link String} can be either a complete system message
      *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
      *                              which will be resolved using the values of method parameters annotated with @{@link V}.
