@@ -94,12 +94,12 @@ Import Spring Boot starter for Anthropic:
 </dependency>
 ```
 
-Configure `AnthropicChatModel`:
+Configure `AnthropicChatModel` bean:
 ```
 langchain4j.anthropic.chat-model.api-key = ${ANTHROPIC_API_KEY}
 ```
 
-Configure `AnthropicStreamingChatModel`:
+Configure `AnthropicStreamingChatModel` bean:
 ```
 langchain4j.anthropic.streaming-chat-model.api-key = ${ANTHROPIC_API_KEY}
 ```
