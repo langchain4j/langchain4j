@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +43,7 @@ public class ChatModelMock implements ChatLanguageModel {
             throw exception;
         }
 
-        return Response.from(AiMessage.from(staticResponse), new TokenUsage());
+        return Response.from(AiMessage.from(staticResponse));
     }
 
     public String userMessageText() {

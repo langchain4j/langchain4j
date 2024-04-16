@@ -11,7 +11,7 @@ import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * Specifies a system message (system prompt) to be used each time an AI service is invoked.
+ * Specifies either a complete system message (prompt) or a system message template to be used each time an AI service is invoked.
  * <br>
  * An example:
  * <pre>

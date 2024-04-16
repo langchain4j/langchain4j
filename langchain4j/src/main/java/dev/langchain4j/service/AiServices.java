@@ -44,11 +44,11 @@ import static java.util.stream.Collectors.toList;
  * - Static system message templates, configured via @{@link SystemMessage} annotation on top of the method
  * - Dynamic system message templates, configured via {@link #systemMessageProvider(Function)}
  * - Static user message templates, configured via @{@link UserMessage} annotation on top of the method
- * - Dynamic user message templates, provided as a method parameter annotated with @{@link UserMessage}
+ * - Dynamic user message templates, configured via method parameter annotated with @{@link UserMessage}
  * - Single (shared) {@link ChatMemory}, configured via {@link #chatMemory(ChatMemory)}
  * - Separate (per-user) {@code ChatMemory}, configured via {@link #chatMemoryProvider(ChatMemoryProvider)} and a method parameter annotated with @{@link MemoryId}
  * - RAG, configured via {@link #contentRetriever(ContentRetriever)} or {@link #retrievalAugmentor(RetrievalAugmentor)}
- * - Tools, configured via {@link #tools(List)} or {@link #tools(Object...)} and arbitrary methods annotated with @{@link Tool}
+ * - Tools, configured via {@link #tools(List)} or {@link #tools(Object...)} and methods annotated with @{@link Tool}
  * - Various method return types (output parsers), see more details below
  * - Streaming (use {@link TokenStream} as a return type)
  * - Structured prompts as method arguments (see @{@link StructuredPrompt})
