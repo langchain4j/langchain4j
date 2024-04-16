@@ -285,6 +285,10 @@ public abstract class AiServices<T> {
         return this;
     }
 
+    // TODO tools provider vs tools selector
+    // TODO tool (spec+tool exec?) to be able to load them dynamically (e.g. try different wordings, etc)
+    // TODO check spring AI
+
     /**
      * Configures the tools that the LLM can use.
      * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
@@ -309,7 +313,8 @@ public abstract class AiServices<T> {
      * @return builder
      * @see Tool
      */
-    public AiServices<T> tools(List<Object> objectsWithTools) {
+    public AiServices<T> tools(List<Object> objectsWithTools) { // TODO Collection
+        // TODO validate uniqueness of tool names
         context.toolSpecifications = new ArrayList<>();
         context.toolExecutors = new HashMap<>();
 
@@ -325,6 +330,8 @@ public abstract class AiServices<T> {
 
         return this;
     }
+
+    // TODO Map<toolSpecification,ToolExecutor >
 
     /**
      * Deprecated. Use {@link #contentRetriever(ContentRetriever)}

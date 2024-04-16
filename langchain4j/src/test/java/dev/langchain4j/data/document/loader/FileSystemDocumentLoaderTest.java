@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.nio.file.*;
@@ -22,11 +23,11 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
     void load_bad_file() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("bad_file"), new TextDocumentParser()))
-                .withMessageContaining("bad_file is not a file");
+                .withMessageContaining("'bad_file' is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("bad_file")))
-                .withMessageContaining("bad_file is not a file");
+                .withMessageContaining("'bad_file' is not a file");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocument(Paths.get("/"), new TextDocumentParser()))
@@ -57,12 +58,12 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
                         Paths.get("bad_directory"), new TextDocumentParser()))
-                .withMessageContaining("bad_directory is not a directory");
+                .withMessageContaining("'bad_directory' is not a directory");
 
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> loadDocuments(
                         Paths.get("bad_directory")))
-                .withMessageContaining("bad_directory is not a directory");
+                .withMessageContaining("'bad_directory' is not a directory");
     }
 
     @Test
@@ -92,24 +93,32 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
         assertThat(loadDocuments(resourceDirectory)).isEqualTo(documents);
         assertThat(loadDocuments(resourceDirectory.toString())).isEqualTo(documents);
 
-        // Silently skips documents that fail to load.
-        DocumentParser failFirstParser = new DocumentParser() {
+        DocumentParser parserThatFailsOnFirstNonBlankDocument = new DocumentParser() {
+
             private boolean first = true;
             private final DocumentParser parser = new TextDocumentParser();
 
             @Override
             public Document parse(InputStream inputStream) {
-                if (first) {
+                if (first && isNotBlank(inputStream)) {
                     first = false;
                     throw new RuntimeException("fail first");
                 }
                 return parser.parse(inputStream);
             }
+
+            private boolean isNotBlank(InputStream inputStream) {
+                try {
+                    return inputStream.available() > 10; // rough approximation
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
         };
 
         // when-then
-        assertThat(loadDocuments(resourceDirectory, failFirstParser))
-                .hasSize(documents.size() - 1);
+        assertThat(loadDocuments(resourceDirectory, parserThatFailsOnFirstNonBlankDocument))
+                .hasSize(documents.size() - 1); // -1 because first document fails
     }
 
     @ParameterizedTest
