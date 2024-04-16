@@ -233,6 +233,99 @@ The value provided to the AI Service method will be automatically passed to the 
 This feature is useful if you have multiple users and/or multiple chats/memories per user
 and wish to distinguish between them inside the `@Tool` method.
 
+## Advanced: Custom Type Tool Parameters
+
+Regardless of the two levels of Tool API, 
+the tool will ultimately be transformed into a JSON schema.
+[OpenAI's tool/function calling method](https://platform.openai.com/docs/api-reference/chat/create#chat-create-tools)
+requires tools to be outlined in [JSON schema format](https://json-schema.org/understanding-json-schema/).
+This schema helps the language model understand the tool's parameters and how to construct them.
+It also helps `AiServices` validate and deserialize the arguments before calling the tool.
+
+When designing tool interfaces, 
+it's generally a good practice to keep them simple and straightforward 
+to elicit a reliable response from the language model.
+Hence, the `@P` annotation typically supports and recommends primitive and standard library types.
+This includes `int`, `long`, `byte`, `double`, `float`, `boolean`, `String`, `List`, `Set`, `Collection`, and `Map`.
+
+Langchain4j also allows passing custom types as parameters to a `@Tool` method, but it requires additional steps.
+Langchain4j delegates the JSON schema generation of custom types
+to third-party libraries like [Victools](https://github.com/victools/jsonschema-generator).
+To enable it, you need to add dependency:
+
+```xml
+<!-- Maven -->
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-jsonschema-service-victools</artifactId>
+    <version>{your-version}</version> <!-- Specify langchain4j version here -->
+</dependency>
+```
+
+Then, you can apply the [Jackson Annotations](https://github.com/FasterXML/jackson-annotations)
+on custom types to specify which fields to be included into the JSON schema and what attributes they have
+(see [Jackson Annotations](https://github.com/victools/jsonschema-generator/tree/main/jsonschema-module-jackson)
+for more details):
+
+```java
+import com.fasterxml.jackson.annotation.*;
+
+@JsonClassDescription("This is a custom type, it ...")
+class CustomType {
+
+    @JsonProperty("string_field")
+    @JsonPropertyDescription("This is a string field, it ...")
+    @Nullable
+    private String stringField;
+
+    @JsonProperty(value = "int_field", required = true)
+    @NotNull
+    private int intField;
+
+    // additional fields
+}
+```
+
+After that, you can use the custom type as a parameter in a `@Tool` method:
+
+```java
+@Tool("This tool uses a custom type")
+public void useCustomType(@P CustomType customTypeParam) {
+    // ...
+}
+```
+
+When reviewing the messages sent to the language model, you may describe the tool as:
+
+```json
+{
+  "name": "useCustomType",
+  "description": "This tool uses a custom type",
+  "parameters": {
+    "customTypeParam": {
+      "type": "object",
+      "description": "This is a custom type, it ...",
+      "properties": {
+        "string_field": {
+          "type": ["string", "null"],
+          "description": "This field is a string."
+        },
+        "int_field": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "int_field"
+      ]
+    }
+  }
+}
+```
+
+The language model will then generate a tool execution request based on the JSON schema provided.
+The request's arguments will be validated against the schema
+and then deserialized into the custom type object for execution.
+
 ## Related Tutorials
 
 - [Great guide on Tools](https://www.youtube.com/watch?v=cjI_6Siry-s)

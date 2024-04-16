@@ -1,14 +1,13 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.*;
+import com.google.cloud.vertexai.api.Tool;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolExecutionRequestUtil;
-import dev.langchain4j.agent.tool.ToolParameters;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.jsonschema.DefaultJsonSchemaSerde;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -65,7 +64,7 @@ class FunctionCallHelper {
             Map<String, Value> callArgsFieldsMap = callArgs.getFieldsMap();
             callArgsFieldsMap.forEach((key, value) -> callArgsMap.put(key, unwrapProtoValue(value)));
 
-            String serializedArgsMap = ToolExecutionRequestUtil.GSON.toJson(callArgsMap);
+            String serializedArgsMap = DefaultJsonSchemaSerde.GSON.toJson(callArgsMap);
             builder.arguments(serializedArgsMap);
 
             toolExecutionRequests.add(builder.build());
