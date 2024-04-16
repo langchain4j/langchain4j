@@ -1,6 +1,7 @@
 package dev.langchain4j.data.document.loader;
 
 import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.BlankDocumentException;
 import dev.langchain4j.data.document.DocumentLoader;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
@@ -48,7 +49,7 @@ public class FileSystemDocumentLoader {
      */
     public static Document loadDocument(Path filePath, DocumentParser documentParser) {
         if (!isRegularFile(filePath)) {
-            throw illegalArgument("%s is not a file", filePath);
+            throw illegalArgument("'%s' is not a file", filePath);
         }
 
         return DocumentLoader.load(from(filePath), documentParser);
@@ -118,7 +119,7 @@ public class FileSystemDocumentLoader {
      */
     public static List<Document> loadDocuments(Path directoryPath, DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
@@ -200,7 +201,7 @@ public class FileSystemDocumentLoader {
                                                PathMatcher pathMatcher,
                                                DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.list(directoryPath)) {
@@ -294,7 +295,7 @@ public class FileSystemDocumentLoader {
      */
     public static List<Document> loadDocumentsRecursively(Path directoryPath, DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
@@ -379,7 +380,7 @@ public class FileSystemDocumentLoader {
                                                           PathMatcher pathMatcher,
                                                           DocumentParser documentParser) {
         if (!isDirectory(directoryPath)) {
-            throw illegalArgument("%s is not a directory", directoryPath);
+            throw illegalArgument("'%s' is not a directory", directoryPath);
         }
 
         try (Stream<Path> pathStream = Files.walk(directoryPath)) {
@@ -486,8 +487,11 @@ public class FileSystemDocumentLoader {
                     try {
                         Document document = loadDocument(file, documentParser);
                         documents.add(document);
+                    } catch (BlankDocumentException ignored) {
+                        // blank/empty documents are ignored
                     } catch (Exception e) {
-                        log.warn("Failed to load document from " + file, e);
+                        String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                        log.warn("Failed to load '{}': {}", file, message);
                     }
                 });
 
