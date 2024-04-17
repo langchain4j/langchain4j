@@ -11,6 +11,6 @@ public class TavilySearchResult {
     private String url;
     private String content;
     private String rawContent;
-    private String score;
+    private double score;
 
 }

@@ -11,7 +11,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-tavily</artifactId>
+    <artifactId>langchain4j-content-retriever-tavily</artifactId>
     <packaging>jar</packaging>
 
     <name>LangChain4j :: Integration :: Tavily</name>
