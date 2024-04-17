@@ -34,6 +34,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         }
 
         awaitUntilPersisted();
+        awaitUntilPersisted(embedding, 1);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
         assertThat(relevant).hasSize(1);

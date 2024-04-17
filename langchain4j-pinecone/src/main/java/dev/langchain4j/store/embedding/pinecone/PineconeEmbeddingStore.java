@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.pinecone;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.CosineSimilarity;
@@ -13,10 +14,10 @@ import io.pinecone.PineconeClientConfig;
 import io.pinecone.PineconeConnection;
 import io.pinecone.PineconeConnectionConfig;
 import io.pinecone.proto.*;
+import io.pinecone.proto.Vector;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static java.util.Collections.emptyList;
@@ -41,13 +42,13 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Creates an instance of PineconeEmbeddingStore.
      *
-     * @param apiKey      The Pinecone API key.
-     * @param environment The environment (e.g., "northamerica-northeast1-gcp").
-     * @param projectId   The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
-     *                    The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
-     * @param index       The name of the index (e.g., "test").
-     * @param nameSpace   (Optional) Namespace. If not provided, "default" will be used.
-     * @param metadataTextKey   (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
+     * @param apiKey          The Pinecone API key.
+     * @param environment     The environment (e.g., "northamerica-northeast1-gcp").
+     * @param projectId       The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
+     *                        The ID can be found in the Pinecone URL: <a href="https://app.pinecone.io/organizations/.../projects/">...</a>...:{projectId}/indexes.
+     * @param index           The name of the index (e.g., "test").
+     * @param nameSpace       (Optional) Namespace. If not provided, "default" will be used.
+     * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
      */
     public PineconeEmbeddingStore(String apiKey,
                                   String environment,
@@ -136,12 +137,16 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 vectorBuilder.setMetadata(Struct.newBuilder()
                         .putFields(metadataTextKey, Value.newBuilder()
                                 .setStringValue(textSegments.get(i).text())
-                                .build()));
+                                .build())
+                        .putAllFields(textSegments.get(i).metadata().asMap().entrySet()
+                                .stream()
+                                .collect(Collectors.toMap(Map.Entry::getKey, e -> Value.newBuilder().setStringValue(e.getValue()).build()))));
             }
 
             upsertRequestBuilder.addVectors(vectorBuilder.build());
         }
 
+        //noinspection ResultOfMethodCallIgnored
         connection.getBlockingStub().upsert(upsertRequestBuilder.build());
     }
 
@@ -184,10 +189,17 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         return matches;
     }
 
+
     private EmbeddingMatch<TextSegment> toEmbeddingMatch(Vector vector, Embedding referenceEmbedding) {
-        Value textSegmentValue = vector.getMetadata()
+        Struct metadataStruct = vector.getMetadata();
+
+        Value textSegmentValue = metadataStruct
                 .getFieldsMap()
                 .get(metadataTextKey);
+
+        boolean filterOutMetadataTextKey = true;
+        Map<String, String> metadataMap = structToMap(metadataStruct, filterOutMetadataTextKey);
+        Metadata metadata = Metadata.from(metadataMap);
 
         Embedding embedding = Embedding.from(vector.getValuesList());
         double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
@@ -196,8 +208,26 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 RelevanceScore.fromCosineSimilarity(cosineSimilarity),
                 vector.getId(),
                 embedding,
-                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue())
+                textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue(), metadata)
         );
+    }
+
+    private Map<String, String> structToMap(Struct struct, boolean filterOutMetadataTextKey) {
+        Map<String, String> result = new HashMap<>();
+        Map<String, Value> fields = struct.getFieldsMap();
+
+        for (Map.Entry<String, Value> entry : fields.entrySet()) {
+            if (filterOutMetadataTextKey && isMetadataTextKey(entry.getKey())) {
+                continue;
+            }
+            result.put(entry.getKey(), entry.getValue().getStringValue());
+        }
+
+        return result;
+    }
+
+    private boolean isMetadataTextKey(String key) {
+        return metadataTextKey.equals(key);
     }
 
     public static Builder builder() {
@@ -231,7 +261,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         /**
          * @param projectId The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
-         *                  The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
+         *                  The ID can be found in the Pinecone URL: <a href="https://app.pinecone.io/organizations/.../projects/">...</a>...:{projectId}/indexes.
          */
         public Builder projectId(String projectId) {
             this.projectId = projectId;
@@ -257,6 +287,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         /**
          * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
          */
+        @SuppressWarnings("unused")
         public Builder metadataTextKey(String metadataTextKey) {
             this.metadataTextKey = metadataTextKey;
             return this;
