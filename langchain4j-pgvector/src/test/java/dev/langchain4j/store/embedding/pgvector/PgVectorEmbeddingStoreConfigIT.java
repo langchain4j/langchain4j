@@ -30,7 +30,7 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
     static final String TABLE_NAME = "test";
     static final int TABLE_DIMENSION = 384;
 
-    static void configureStore(MetadataConfig config) {
+    static void configureStore(MetadataStorageConfig config) {
         PGSimpleDataSource source = new PGSimpleDataSource();
         source.setServerNames(new String[] {pgVector.getHost()});
         source.setPortNumbers(new int[] {pgVector.getFirstMappedPort()});
@@ -38,12 +38,12 @@ public abstract class PgVectorEmbeddingStoreConfigIT extends EmbeddingStoreWithF
         source.setUser("test");
         source.setPassword("test");
         dataSource = source;
-        embeddingStore = PgVectorEmbeddingStore.builder()
+        embeddingStore = PgVectorEmbeddingStore.datasourceBuilder()
                 .datasource(dataSource)
                 .table(TABLE_NAME)
                 .dimension(TABLE_DIMENSION)
                 .dropTableFirst(true)
-                .metadataConfig(config)
+                .metadataStorageConfig(config)
                 .build();
     }
 

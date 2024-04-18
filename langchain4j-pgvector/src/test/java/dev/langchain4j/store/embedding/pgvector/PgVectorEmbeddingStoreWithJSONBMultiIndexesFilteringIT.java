@@ -10,8 +10,8 @@ import java.util.Collections;
 public class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends PgVectorEmbeddingStoreConfigIT {
     @BeforeAll
     static void beforeAll() {
-        MetadataConfig config = DefaultMetadataConfig.builder()
-                .type("JSONB")
+        MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()
+                .storageMode(MetadataStorageMode.COMBINED_JSONB)
                 .definition(Collections.singletonList("metadata_b JSONB NULL"))
                 .indexes(Arrays.asList("(metadata_b->'key')", "(metadata_b->'name')", "(metadata_b->'age')"))
                 .indexType("GIN")

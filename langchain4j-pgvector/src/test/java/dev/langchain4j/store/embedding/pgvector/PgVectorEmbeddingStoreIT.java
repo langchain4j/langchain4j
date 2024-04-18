@@ -4,14 +4,14 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-public class PgVectorEmbeddingStoreIT extends EmbeddingStoreIT {
+public class PgVectorEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Container
     static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
@@ -22,7 +22,7 @@ public class PgVectorEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @BeforeEach
     void beforeEach() {
-        embeddingStore = PgVectorEmbeddingStore.standaloneBuilder()
+        embeddingStore = PgVectorEmbeddingStore.builder()
                 .host(pgVector.getHost())
                 .port(pgVector.getFirstMappedPort())
                 .user("test")

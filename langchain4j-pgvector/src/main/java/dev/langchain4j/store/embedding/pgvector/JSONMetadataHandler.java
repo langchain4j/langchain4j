@@ -8,11 +8,12 @@ import java.sql.*;
 import java.util.*;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
  * This class handle JSON and JSONB Filter mapping
  */
-public class JSONMetadataHandler implements MetadataHandler {
+class JSONMetadataHandler implements MetadataHandler {
 
     final String columnDefinition;
     final String columnName;
@@ -21,9 +22,9 @@ public class JSONMetadataHandler implements MetadataHandler {
 
     /**
      * MetadataHandler constructor
-     * @param config {@link MetadataConfig} configuration
+     * @param config {@link MetadataStorageConfig} configuration
      */
-    public JSONMetadataHandler(MetadataConfig config) {
+    public JSONMetadataHandler(MetadataStorageConfig config) {
         this.columnDefinition = ensureNotNull(config.definition(), "Metadata definition").get(0);
         if (config.definition().size()>1 || this.columnDefinition().contains(",")) {
             throw new RuntimeException("Multiple columns definition are not allowed in JSON, JSONB Type");
@@ -39,8 +40,8 @@ public class JSONMetadataHandler implements MetadataHandler {
     }
 
     @Override
-    public String columnsNames() {
-        return this.columnName;
+    public List<String> columnsNames() {
+        return Collections.singletonList(this.columnName);
     }
 
     @Override
@@ -59,16 +60,11 @@ public class JSONMetadataHandler implements MetadataHandler {
     @SuppressWarnings("unchecked")
     public Metadata fromResultSet(ResultSet resultSet) {
         try {
-            String metadataJson = Optional.ofNullable(resultSet.getString(columnsNames())).orElse("{}");
+            String metadataJson = getOrDefault(resultSet.getString(columnsNames().get(0)),"{}");
             return new Metadata(Json.fromJson(metadataJson, Map.class));
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Override
-    public Integer nbMetadataColumns() {
-        return 1;
     }
 
     @Override

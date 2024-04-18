@@ -6,19 +6,19 @@ import java.util.Optional;
 /**
  * Metadata configuration.
  */
-public interface MetadataConfig {
+public interface MetadataStorageConfig {
     /**
-     * Metadata type
+     * Metadata storage mode
      * <ul>
-     * <li>COLUMNS: for static metadata, when you know in advance the list of metadata
-     * <li>JSON: For dynamic metadata, when you don't know the list of metadata that will be used.
-     * <li>JSONB: Same as JSON, but stored in a binary way. Optimized for query on large dataset.
+     * <li>COLUMN_PER_KEY: for static metadata, when you know in advance the list of metadata
+     * <li>COMBINED_JSON: For dynamic metadata, when you don't know the list of metadata that will be used.
+     * <li>COMBINED_JSONB: Same as JSON, but stored in a binary way. Optimized for query on large dataset.
      * </ul>
      * <p>
-     * Default value: JSON
-     * @return Metadata type
+     * Default value: COMBINED_JSON
+     * @return Metadata storage mode
      */
-    String type();
+    MetadataStorageMode storageMode();
     /**
      * SQL definition of metadata field(s).
      * By default, "metadata JSON NULL" configured for JSON metadata type

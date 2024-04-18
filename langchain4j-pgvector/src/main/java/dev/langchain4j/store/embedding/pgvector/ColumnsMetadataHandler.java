@@ -15,7 +15,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 /**
  * Handle Metadata stored in independent columns
  */
-public class ColumnsMetadataHandler implements MetadataHandler {
+class ColumnsMetadataHandler implements MetadataHandler {
 
     final List<String> columnsDefinition;
     final List<String> columnsName;
@@ -27,9 +27,9 @@ public class ColumnsMetadataHandler implements MetadataHandler {
 
     /**
      * MetadataHandler constructor
-     * @param config {@link MetadataConfig} configuration
+     * @param config {@link MetadataStorageConfig} configuration
      */
-    public ColumnsMetadataHandler(MetadataConfig config) {
+    public ColumnsMetadataHandler(MetadataStorageConfig config) {
         this.columnsDefinition = ensureNotNull(config.definition(), "Metadata definition");
         this.columnsName = config.definition().stream()
                 .map(d -> d.trim().split(" ")[0]).collect(Collectors.toList());
@@ -44,13 +44,8 @@ public class ColumnsMetadataHandler implements MetadataHandler {
     }
 
     @Override
-    public String columnsNames() {
-        return String.join(",", this.columnsName);
-    }
-
-    @Override
-    public Integer nbMetadataColumns() {
-        return this.columnsName.size();
+    public List<String> columnsNames() {
+        return this.columnsName;
     }
 
     @Override

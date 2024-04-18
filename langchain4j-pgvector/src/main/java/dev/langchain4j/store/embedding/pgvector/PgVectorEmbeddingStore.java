@@ -47,7 +47,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Metadata handler
      */
-    protected final MetadataHandler metadataHandler;
+    final MetadataHandler metadataHandler;
 
     /**
      * Constructor for PgVectorEmbeddingStore Class
@@ -59,9 +59,9 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
-     * @param metadataConfig        The {@link MetadataConfig} config.
+     * @param metadataStorageConfig        The {@link MetadataStorageConfig} config.
      */
-    @Builder
+    @Builder(builderMethodName = "datasourceBuilder", builderClassName = "DatasourceBuilder")
     protected PgVectorEmbeddingStore(DataSource datasource,
                                   String table,
                                   Integer dimension,
@@ -69,10 +69,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                                   Integer indexListSize,
                                   Boolean createTable,
                                   Boolean dropTableFirst,
-                                  MetadataConfig metadataConfig) {
-        this.datasource = datasource;
+                                  MetadataStorageConfig metadataStorageConfig) {
+        this.datasource = ensureNotNull(datasource, "datasource");
         this.table = ensureNotBlank(table, "table");
-        MetadataConfig config = Optional.ofNullable(metadataConfig).orElse(DefaultMetadataConfig.defaultConfig());
+        MetadataStorageConfig config = getOrDefault(metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config);
         useIndex = getOrDefault(useIndex, false);
         createTable = getOrDefault(createTable, true);
@@ -96,10 +96,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param indexListSize         The IVFFlat number of lists
      * @param createTable           Should create table automatically
      * @param dropTableFirst        Should drop table first, usually for testing
-     * @param metadataConfig        The {@link MetadataConfig} config.
+     * @param metadataStorageConfig        The {@link MetadataStorageConfig} config.
      */
-    @Builder(builderMethodName = "standaloneBuilder", builderClassName = "StandaloneBuilder")
     @SuppressWarnings("unused")
+    @Builder
     protected PgVectorEmbeddingStore(
             String host,
             Integer port,
@@ -112,10 +112,10 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             Integer indexListSize,
             Boolean createTable,
             Boolean dropTableFirst,
-            MetadataConfig metadataConfig
+            MetadataStorageConfig metadataStorageConfig
     ) {
         this(createDataSource(host, port, user, password, database),
-                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataConfig);
+                table, dimension, useIndex, indexListSize, createTable, dropTableFirst, metadataStorageConfig);
     }
 
     private static DataSource createDataSource(String host, Integer port, String user, String password, String database) {
@@ -157,6 +157,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         table, ensureGreaterThanZero(dimension, "dimension"),
                         metadataHandler.columnDefinition());
                 statement.executeUpdate(query);
+                metadataHandler.createMetadataIndexes(statement, table);
             }
             if (useIndex) {
                 final String indexName = table + "_ivfflat_index";
@@ -167,9 +168,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         indexName, table, ensureGreaterThanZero(indexListSize, "indexListSize"));
                 statement.executeUpdate(query);
             }
-            metadataHandler.createMetadataIndexes(statement, table);
         } catch (SQLException e) {
-            throw new RuntimeException(String.format("Sql statement issue: %s \nLast query: %s", e, query));
+            throw new RuntimeException(String.format("Failed to execute '%s'", query), e);
         }
     }
 
@@ -263,7 +263,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
             String query = String.format(
                     "WITH temp AS (SELECT (2 - (embedding <=> '%s')) / 2 AS score, embedding_id, embedding, text, " +
                             "%s FROM %s %s) SELECT * FROM temp WHERE score >= %s ORDER BY score desc LIMIT %s;",
-                    referenceVector, metadataHandler.columnsNames(), table, whereClause, minScore, maxResults);
+                    referenceVector, join(",", metadataHandler.columnsNames()), table, whereClause, minScore, maxResults);
            try (PreparedStatement selectStmt = connection.prepareStatement(query) ) {
                try (ResultSet resultSet = selectStmt.executeQuery()) {
                    while (resultSet.next()) {
@@ -313,8 +313,8 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                             "embedding = EXCLUDED.embedding," +
                             "text = EXCLUDED.text," +
                             "%s;",
-                    table, metadataHandler.columnsNames(),
-                    join(",", nCopies(metadataHandler.nbMetadataColumns(), "?")),
+                    table, join(",", metadataHandler.columnsNames()),
+                    join(",", nCopies(metadataHandler.columnsNames().size(), "?")),
                     metadataHandler.insertClause());
             try (PreparedStatement upsertStmt = connection.prepareStatement(query)) {
                 for (int i = 0; i < ids.size(); ++i) {
@@ -326,7 +326,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                         metadataHandler.setMetadata(upsertStmt, 4, embedded.get(i).metadata());
                     } else {
                         upsertStmt.setNull(3, Types.VARCHAR);
-                        IntStream.range(4, 4 + metadataHandler.nbMetadataColumns()).forEach(
+                        IntStream.range(4, 4 + metadataHandler.columnsNames().size()).forEach(
                                 j -> {
                                     try {
                                         upsertStmt.setNull(j, Types.OTHER);

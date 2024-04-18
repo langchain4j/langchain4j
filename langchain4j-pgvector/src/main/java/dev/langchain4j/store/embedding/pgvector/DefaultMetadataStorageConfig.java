@@ -14,9 +14,9 @@ import java.util.Optional;
 @Getter
 @Accessors(fluent = true)
 @AllArgsConstructor
-public class DefaultMetadataConfig implements MetadataConfig {
+public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
     @NonNull
-    private String type;
+    private MetadataStorageMode storageMode;
     @NonNull
     private List<String> definition;
     private List<String> indexes;
@@ -26,7 +26,7 @@ public class DefaultMetadataConfig implements MetadataConfig {
      * Just for warnings ?
      */
     @SuppressWarnings("unused")
-    public DefaultMetadataConfig(){
+    public DefaultMetadataStorageConfig(){
         // Just for javadoc warning ?
     }
 
@@ -35,9 +35,9 @@ public class DefaultMetadataConfig implements MetadataConfig {
      *
      * @return Default configuration
      */
-    public static MetadataConfig defaultConfig() {
-        return DefaultMetadataConfig.builder()
-                .type("JSON")
+    public static MetadataStorageConfig defaultConfig() {
+        return DefaultMetadataStorageConfig.builder()
+                .storageMode(MetadataStorageMode.COMBINED_JSON)
                 .definition(Collections.singletonList("metadata JSON NULL"))
                 .build();
     }

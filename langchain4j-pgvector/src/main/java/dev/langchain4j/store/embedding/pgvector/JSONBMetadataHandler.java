@@ -6,15 +6,15 @@ import java.sql.Statement;
 /**
  *  Handle metadata as JSONB columns.
  */
-public class JSONBMetadataHandler extends JSONMetadataHandler {
+class JSONBMetadataHandler extends JSONMetadataHandler {
 
     final String indexType;
 
     /**
      * MetadataHandler constructor
-     * @param config {@link MetadataConfig} configuration
+     * @param config {@link MetadataStorageConfig} configuration
      */
-    public JSONBMetadataHandler(MetadataConfig config) {
+    public JSONBMetadataHandler(MetadataStorageConfig config) {
         super(config);
         if (!this.columnDefinition().toLowerCase().contains("jsonb")) {
             throw new RuntimeException("Your column definition should contains JSONB Type");

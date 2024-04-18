@@ -2,9 +2,9 @@ package dev.langchain4j.store.embedding.pgvector;
 
 /**
  * MetadataHandlerFactory class
- * Use the {@link MetadataConfig#type()} to switch between different Handler implementation
+ * Use the {@link MetadataStorageConfig#storageMode()} to switch between different Handler implementation
  */
-public class MetadataHandlerFactory {
+class MetadataHandlerFactory {
     /**
      * Default Constructor
      */
@@ -14,15 +14,16 @@ public class MetadataHandlerFactory {
      * @param config MetadataConfig config
      * @return MetadataHandler
      */
-    public static MetadataHandler get(MetadataConfig config) {
-        if (config.type().equals("JSON")) {
-            return new JSONMetadataHandler(config);
-        } else if (config.type().equals("JSONB")) {
-            return new JSONBMetadataHandler(config);
-        } else if (config.type().equals("COLUMNS")) {
-            return new ColumnsMetadataHandler(config);
-        } else {
-            throw new RuntimeException(String.format("Type %s not handled.", config.type()));
+    static MetadataHandler get(MetadataStorageConfig config) {
+        switch(config.storageMode()) {
+            case COMBINED_JSON:
+                return new JSONMetadataHandler(config);
+            case COMBINED_JSONB:
+                return new JSONBMetadataHandler(config);
+            case COLUMN_PER_KEY:
+                return new ColumnsMetadataHandler(config);
+            default:
+                throw new RuntimeException(String.format("Type %s not handled.", config.storageMode()));
         }
     }
 }

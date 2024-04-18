@@ -6,31 +6,20 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.List;
 
 /**
  * Handle PV Store metadata.
  */
-public interface MetadataHandler {
+interface MetadataHandler {
 
     /**
      * Definition used to create the metadata field(s) in embeddings table
      *
      * @return the sql clause that creates metadata field(s)
-     *         example:
      *
      */
     String columnDefinition();
-
-    /**
-     * Add extensions needed by metadata fields
-     * By default, no extension is provided.
-     *
-     * @param statement used to execute extension setup.
-     */
-    @SuppressWarnings("unused")
-    default void createMetadataExtensions(Statement statement) {
-        // No extensions
-    }
 
     /**
      * Setup indexes for metadata fields
@@ -39,23 +28,14 @@ public interface MetadataHandler {
      * @param statement used to execute indexes creation.
      * @param table table name.
      */
-    default void createMetadataIndexes(Statement statement, String table) {
-        // No indexes
-    }
+    void createMetadataIndexes(Statement statement, String table);
 
     /**
      * Metadata columns name
      *
      * @return list of columns used as metadata
      */
-    String columnsNames();
-
-    /**
-     * Number of metadata columns
-     *
-     * @return metadata columns number
-     */
-    Integer nbMetadataColumns();
+    List<String> columnsNames();
 
     /**
      * Generate the SQL where clause following @{@link Filter}
