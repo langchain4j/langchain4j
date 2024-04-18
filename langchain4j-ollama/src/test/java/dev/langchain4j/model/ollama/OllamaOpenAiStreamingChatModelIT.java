@@ -4,7 +4,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
@@ -18,13 +18,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
 
-    StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+    StreamingChatLanguageModel model = OpenAiChatModel.builder()
             .apiKey("does not matter") // TODO make apiKey optional when using custom baseUrl?
             .baseUrl(ollama.getEndpoint() + "/v1") // TODO add "/v1" by default?
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
+            .isStreaming(true)
             .build();
 
     @Test

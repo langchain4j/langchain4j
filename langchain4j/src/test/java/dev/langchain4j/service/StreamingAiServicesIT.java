@@ -11,7 +11,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -32,12 +32,13 @@ public class StreamingAiServicesIT {
 
     static Stream<StreamingChatLanguageModel> models() {
         return Stream.of(
-                OpenAiStreamingChatModel.builder()
+                OpenAiChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .logRequests(true)
                         .logResponses(true)
+                        .isStreaming(true)
                         .build(),
                 AzureOpenAiStreamingChatModel.builder()
                         .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -232,13 +233,14 @@ public class StreamingAiServicesIT {
     void should_execute_multiple_tools_sequentially_then_answer() throws Exception {
 
         // TODO test more models
-        StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+        StreamingChatLanguageModel streamingChatModel = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
                 .temperature(0.0)
                 .logRequests(true)
+                .isStreaming(true)
                 .logResponses(true)
                 .build();
 
@@ -331,13 +333,14 @@ public class StreamingAiServicesIT {
         Calculator calculator = spy(new Calculator());
 
         // TODO test more models
-        StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+        StreamingChatLanguageModel streamingChatModel = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
+                .isStreaming(true)
                 .build();
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
