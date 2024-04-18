@@ -37,21 +37,21 @@ import static java.util.Collections.singletonList;
  */
 public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguageModel, TokenCountEstimator {
 
-    protected final OpenAiClient client;
-    protected final String modelName;
-    protected final Double temperature;
-    protected final Double topP;
-    protected final List<String> stop;
-    protected final Integer maxTokens;
-    protected final Double presencePenalty;
-    protected final Double frequencyPenalty;
-    protected final Map<String, Integer> logitBias;
-    protected final String responseFormat;
-    protected final Integer seed;
-    protected final String user;
-    protected final Integer maxRetries;
-    protected final Tokenizer tokenizer;
-    protected final boolean isOpenAiModel;
+    private final OpenAiClient client;
+    private final String modelName;
+    private final Double temperature;
+    private final Double topP;
+    private final List<String> stop;
+    private final Integer maxTokens;
+    private final Double presencePenalty;
+    private final Double frequencyPenalty;
+    private final Map<String, Integer> logitBias;
+    private final String responseFormat;
+    private final Integer seed;
+    private final String user;
+    private final Integer maxRetries;
+    private final Tokenizer tokenizer;
+    private final boolean isOpenAiModel;
 
     @Builder
     public OpenAiChatModel(String baseUrl,
