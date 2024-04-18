@@ -6,12 +6,12 @@ Thank you for investing your time and effort in contributing to our project, we 
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 8. We plan to increase the baseline to Java 17 a bit later.
 - Avoid adding new dependencies as much as possible. If absolutely necessary, try to use the same libraries which are already used in the project.
-- Write unit and/or integration tests for your code. This is critical: no nests, no review!
+- Write unit and/or integration tests for your code. This is critical: no tests, no review!
 - Avoid making breaking changes. Always keep backward compatibility in mind.
 - Follow existing naming conventions.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.
 - Follow existing code style present in the project.
-- Large features should be discussed with maintainers before implementation.
+- Large features should be discussed with maintainers before implementation. Please ping @langchain4j in the comments on the issue.
 
 # Priorities
 All [issues](https://github.com/langchain4j/langchain4j/issues) are prioritized by maintainers. There are 4 priorities: [P1](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP1), [P2](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP2), [P3](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP3) and [P4](https://github.com/langchain4j/langchain4j/issues?q=is%3Aissue+is%3Aopen+label%3AP4).
