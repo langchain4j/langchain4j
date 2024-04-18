@@ -7,7 +7,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.sql.*;
 import java.util.*;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
@@ -15,7 +15,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
  */
 class JSONMetadataHandler implements MetadataHandler {
 
-    final String columnDefinition;
+    final MetadataColumDefinition columnDefinition;
     final String columnName;
     final JSONFilterMapper filterMapper;
     final List<String> indexes;
@@ -25,18 +25,20 @@ class JSONMetadataHandler implements MetadataHandler {
      * @param config {@link MetadataStorageConfig} configuration
      */
     public JSONMetadataHandler(MetadataStorageConfig config) {
-        this.columnDefinition = ensureNotNull(config.definition(), "Metadata definition").get(0);
-        if (config.definition().size()>1 || this.columnDefinition().contains(",")) {
-            throw new RuntimeException("Multiple columns definition are not allowed in JSON, JSONB Type");
+        List<String> definition = ensureNotEmpty(config.columnDefinitions(), "Metadata definition");
+        if (definition.size()>1) {
+            throw new IllegalArgumentException("Metadata definition should be an unique column definition, " +
+                    "example: metadata JSON NULL");
         }
-        this.columnName = this.columnDefinition.split(" ")[0];
+        this.columnDefinition = MetadataColumDefinition.from(definition.get(0));
+        this.columnName = this.columnDefinition.getName();
         this.filterMapper = new JSONFilterMapper(columnName);
         this.indexes = getOrDefault(config.indexes(), Collections.emptyList());
     }
 
     @Override
-    public String columnDefinition() {
-        return columnDefinition;
+    public String columnDefinitionsString() {
+        return columnDefinition.getFullDefinition();
     }
 
     @Override

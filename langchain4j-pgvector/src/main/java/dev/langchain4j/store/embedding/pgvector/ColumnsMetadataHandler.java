@@ -11,19 +11,17 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 
 /**
  * Handle Metadata stored in independent columns
  */
 class ColumnsMetadataHandler implements MetadataHandler {
 
-    final List<String> columnsDefinition;
+    final List<MetadataColumDefinition> columnsDefinition;
     final List<String> columnsName;
     final PgVectorFilterMapper filterMapper;
-
     final List<String> indexes;
-
     final String indexType;
 
     /**
@@ -31,17 +29,20 @@ class ColumnsMetadataHandler implements MetadataHandler {
      * @param config {@link MetadataStorageConfig} configuration
      */
     public ColumnsMetadataHandler(MetadataStorageConfig config) {
-        this.columnsDefinition = ensureNotNull(config.definition(), "Metadata definition");
-        this.columnsName = config.definition().stream()
-                .map(d -> d.trim().split(" ")[0]).collect(Collectors.toList());
+        List<String> columnsDefinitionList = ensureNotEmpty(config.columnDefinitions(), "Metadata definition");
+        this.columnsDefinition = columnsDefinitionList.stream()
+                .map(MetadataColumDefinition::from).collect(Collectors.toList());
+        this.columnsName = columnsDefinition.stream()
+                .map(MetadataColumDefinition::getName).collect(Collectors.toList());
         this.filterMapper = new ColumnFilterMapper();
         this.indexes = getOrDefault(config.indexes(), Collections.emptyList());
         this.indexType = config.indexType();
     }
 
     @Override
-    public String columnDefinition() {
-        return String.join(",", this.columnsDefinition);
+    public String columnDefinitionsString() {
+        return this.columnsDefinition.stream()
+                .map(MetadataColumDefinition::getFullDefinition).collect(Collectors.joining(","));
     }
 
     @Override

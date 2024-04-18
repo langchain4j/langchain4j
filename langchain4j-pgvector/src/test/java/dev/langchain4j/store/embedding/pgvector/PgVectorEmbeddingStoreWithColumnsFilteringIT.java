@@ -12,7 +12,7 @@ public class PgVectorEmbeddingStoreWithColumnsFilteringIT extends PgVectorEmbedd
     static void beforeAll() {
         MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COLUMN_PER_KEY)
-                .definition(
+                .columnDefinitions(
                         Arrays.asList("key text NULL", "name text NULL", "age float NULL", "city varchar null", "country varchar null",
                                 "string_empty varchar null", "string_space varchar null", "string_abc varchar null",
                                 "integer_min int null", "integer_minus_1 int null", "integer_0 int null", "integer_1 int null", "integer_max int null",

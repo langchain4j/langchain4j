@@ -17,7 +17,7 @@ public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
     @NonNull
     private MetadataStorageMode storageMode;
     @NonNull
-    private List<String> definition;
+    private List<String> columnDefinitions;
     private List<String> indexes;
     private String indexType;
 
@@ -37,7 +37,7 @@ public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
     public static MetadataStorageConfig defaultConfig() {
         return DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COMBINED_JSON)
-                .definition(Collections.singletonList("metadata JSON NULL"))
+                .columnDefinitions(Collections.singletonList("metadata JSON NULL"))
                 .build();
     }
 

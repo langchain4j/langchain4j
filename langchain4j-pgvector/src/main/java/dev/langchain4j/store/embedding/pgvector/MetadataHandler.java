@@ -14,12 +14,12 @@ import java.util.List;
 interface MetadataHandler {
 
     /**
-     * Definition used to create the metadata field(s) in embeddings table
+     * String definition used to create the metadata field(s) in embeddings table
      *
      * @return the sql clause that creates metadata field(s)
      *
      */
-    String columnDefinition();
+    String columnDefinitionsString();
 
     /**
      * Setup indexes for metadata fields

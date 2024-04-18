@@ -12,7 +12,7 @@ public class PgVectorEmbeddingStoreWithJSONBMultiIndexesFilteringIT extends PgVe
     static void beforeAll() {
         MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COMBINED_JSONB)
-                .definition(Collections.singletonList("metadata_b JSONB NULL"))
+                .columnDefinitions(Collections.singletonList("metadata_b JSONB NULL"))
                 .indexes(Arrays.asList("(metadata_b->'key')", "(metadata_b->'name')", "(metadata_b->'age')"))
                 .indexType("GIN")
                 .build();

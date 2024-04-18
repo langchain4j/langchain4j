@@ -16,8 +16,8 @@ class JSONBMetadataHandler extends JSONMetadataHandler {
      */
     public JSONBMetadataHandler(MetadataStorageConfig config) {
         super(config);
-        if (!this.columnDefinition().toLowerCase().contains("jsonb")) {
-            throw new RuntimeException("Your column definition should contains JSONB Type");
+        if (!this.columnDefinition.getType().equals("jsonb")) {
+            throw new RuntimeException("Your column definition type should be JSONB");
         }
         indexType = config.indexType();
     }

@@ -11,7 +11,7 @@ public class PgVectorEmbeddingStoreWithJSONBFilteringIT extends PgVectorEmbeddin
     static void beforeAll() {
         MetadataStorageConfig config = DefaultMetadataStorageConfig.builder()
                 .storageMode(MetadataStorageMode.COMBINED_JSONB)
-                .definition(Collections.singletonList("metadata JSONB NULL"))
+                .columnDefinitions(Collections.singletonList("metadata JSONB NULL"))
                 .indexes(Collections.singletonList("metadata"))
                 .indexType("GIN")
                 .build();

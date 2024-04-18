@@ -155,7 +155,7 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
                 query = String.format("CREATE TABLE IF NOT EXISTS %s (embedding_id UUID PRIMARY KEY, " +
                                 "embedding vector(%s), text TEXT NULL, %s )",
                         table, ensureGreaterThanZero(dimension, "dimension"),
-                        metadataHandler.columnDefinition());
+                        metadataHandler.columnDefinitionsString());
                 statement.executeUpdate(query);
                 metadataHandler.createMetadataIndexes(statement, table);
             }

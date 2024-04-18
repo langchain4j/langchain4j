@@ -9,31 +9,35 @@ public interface MetadataStorageConfig {
     /**
      * Metadata storage mode
      * <ul>
-     * <li>COLUMN_PER_KEY: for static metadata, when you know in advance the list of metadata
      * <li>COMBINED_JSON: For dynamic metadata, when you don't know the list of metadata that will be used.
      * <li>COMBINED_JSONB: Same as JSON, but stored in a binary way. Optimized for query on large dataset.
+     * <li>COLUMN_PER_KEY: for static metadata, when you know in advance the list of metadata
      * </ul>
-     * <p>
-     * Default value: COMBINED_JSON
      * @return Metadata storage mode
      */
     MetadataStorageMode storageMode();
     /**
-     * SQL definition of metadata field(s).
-     * By default, "metadata JSON NULL" configured for JSON metadata type
-     * Ex: condominium_id uuid null, user uuid null
-     * @return Metadata Definition
-     */
-    List<String> definition();
-    /**
-     * Metadata Indexes, list of fields to use as index
-     * example:
+     * SQL definition of metadata field(s) list.
+     * Example:
      * <ul>
-     * <li>JSON: metadata or (metadata-&gt;'key'), (metadata-&gt;'name'), (metadata-&gt;'age')
-     * <li>JSONB: (metadata_b-&gt;'key'), (metadata_b-&gt;'name'), (metadata_b-&gt;'age')
-     * <li>COLUMNS: key, name, age
+     * <li>COMBINED_JSON: <code>Collections.singletonList("metadata JSON NULL")</code>
+     * <li>COMBINED_JSONB: <code>Collections.singletonList("metadata JSONB NULL")</code>
+     * <li>COLUMN_PER_KEY: <code>Arrays.asList("condominium_id uuid null", "user uuid null")</code>
      * </ul>
-     * @return Metadata Indexes
+     * @return list of column definitions
+     */
+    List<String> columnDefinitions();
+    /**
+     * Metadata Indexes, list of fields to use as index.
+     * Example:
+     * <ul>
+     * <li>COMBINED_JSON: <code>Collections.singletonList("metadata")</code> or
+     * <code>Arrays.asList("(metadata-&gt;'key')", "(metadata-&gt;'name')", "(metadata-&gt;'age')")</code>
+     * <li>COMBINED_JSONB: <code>Collections.singletonList("metadata")</code> or
+     * <code>Arrays.asList("(metadata-&gt;'key')", "(metadata-&gt;'name')", "(metadata-&gt;'age')")</code>
+     * <li>COLUMN_PER_KEY: <code>Arrays.asList("key", "name", "age")</code>
+     * </ul>
+     * @return Metadata Indexes list
      */
     List<String> indexes();
     /**
