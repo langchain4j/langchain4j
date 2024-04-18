@@ -9,7 +9,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -32,13 +32,14 @@ class StreamingAiServicesWithToolsIT {
 
     static Stream<StreamingChatLanguageModel> models() {
         return Stream.of(
-                OpenAiStreamingChatModel.builder()
+                OpenAiChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
+                        .isStreaming(true)
                         .build(),
                 MistralAiStreamingChatModel.builder()
                         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))

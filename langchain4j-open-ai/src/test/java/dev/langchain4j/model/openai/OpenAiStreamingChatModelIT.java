@@ -35,16 +35,17 @@ import static org.assertj.core.data.Percentage.withPercentage;
 
 class OpenAiStreamingChatModelIT {
 
-    OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+    OpenAiChatModel model = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
+            .isStreaming(true)
             .build();
 
-    StreamingChatLanguageModel visionModel = OpenAiStreamingChatModel.builder()
+    StreamingChatLanguageModel visionModel = OpenAiChatModel.builder()
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -52,6 +53,7 @@ class OpenAiStreamingChatModelIT {
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
+            .isStreaming(true)
             .build();
 
     ToolSpecification calculator = ToolSpecification.builder()
@@ -301,7 +303,7 @@ class OpenAiStreamingChatModelIT {
     void should_execute_multiple_tools_in_parallel_then_stream_answer() throws Exception {
 
         // given
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+        StreamingChatLanguageModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -309,6 +311,7 @@ class OpenAiStreamingChatModelIT {
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
+                .isStreaming(true)
                 .build();
 
         UserMessage userMessage = userMessage("2+2=? 3+3=?");
@@ -412,7 +415,7 @@ class OpenAiStreamingChatModelIT {
         String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
                 "Before returning, tell me a joke."; // nudging it to say something additionally to json
 
-        StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+        StreamingChatLanguageModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -420,6 +423,7 @@ class OpenAiStreamingChatModelIT {
                 .responseFormat("json_object")
                 .logRequests(true)
                 .logResponses(true)
+                .isStreaming(true)
                 .build();
 
         // when
@@ -565,13 +569,14 @@ class OpenAiStreamingChatModelIT {
     void should_use_enum_as_model_name() {
 
         // given
-        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+        OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO)
                 .logRequests(true)
                 .logResponses(true)
+                .isStreaming(true)
                 .build();
 
         String question = "What is the capital of Germany?";
