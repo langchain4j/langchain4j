@@ -4,25 +4,12 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.Utils;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.zhipu.chat.AssistantMessage;
-import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
-import dev.langchain4j.model.zhipu.chat.Function;
-import dev.langchain4j.model.zhipu.chat.FunctionCall;
-import dev.langchain4j.model.zhipu.chat.Message;
-import dev.langchain4j.model.zhipu.chat.Parameters;
-import dev.langchain4j.model.zhipu.chat.Tool;
-import dev.langchain4j.model.zhipu.chat.ToolCall;
-import dev.langchain4j.model.zhipu.chat.ToolMessage;
-import dev.langchain4j.model.zhipu.chat.ToolType;
+import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
 
@@ -32,27 +19,14 @@ import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.OTHER;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.model.output.FinishReason.*;
 
 class DefaultZhipuAiHelper {
 
-    public static List<Embedding> toEmbed(EmbeddingResponse response) {
-        return response.getData().stream()
+    public static List<Embedding> toEmbed(List<EmbeddingResponse> response) {
+        return response.stream()
                 .map(zhipuAiEmbedding -> Embedding.from(zhipuAiEmbedding.getEmbedding()))
                 .collect(Collectors.toList());
-    }
-
-    public static String toEmbedTexts(List<TextSegment> textSegments) {
-        List<String> embedText = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(Collectors.toList());
-        if (Utils.isNullOrEmpty(embedText)) {
-            return null;
-        }
-        return embedText.get(0);
     }
 
     public static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
@@ -95,7 +69,7 @@ class DefaultZhipuAiHelper {
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
             return dev.langchain4j.model.zhipu.chat.UserMessage.builder()
-                    .content(userMessage.text())
+                    .content(userMessage.singleText())
                     .build();
         }
 
@@ -137,13 +111,12 @@ class DefaultZhipuAiHelper {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
-        Message message = response.getChoices().get(0).getMessage();
-        AssistantMessage assistantMessage = (AssistantMessage) message;
-        if (isNullOrEmpty(assistantMessage.getToolCalls())) {
-            return AiMessage.from(assistantMessage.getContent());
+        AssistantMessage message = response.getChoices().get(0).getMessage();
+        if (isNullOrEmpty(message.getToolCalls())) {
+            return AiMessage.from(message.getContent());
         }
 
-        return AiMessage.from(specificationsFrom(assistantMessage.getToolCalls()));
+        return AiMessage.from(specificationsFrom(message.getToolCalls()));
     }
 
     public static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
@@ -158,6 +131,19 @@ class DefaultZhipuAiHelper {
             );
         }
         return specifications;
+    }
+
+    public static Usage getEmbeddingUsage(List<EmbeddingResponse> responses) {
+        Usage tokenUsage = Usage.builder()
+                .completionTokens(0)
+                .promptTokens(0)
+                .totalTokens(0)
+                .build();
+
+        for (EmbeddingResponse response : responses) {
+            tokenUsage.add(response.getUsage());
+        }
+        return tokenUsage;
     }
 
 
