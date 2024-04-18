@@ -316,14 +316,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         Flux<ChatCompletions> chatCompletionsStream = asyncClient.getChatCompletionsStream(deploymentName, options);
 
         chatCompletionsStream.subscribe(chatCompletion -> {
-                    try {
-                        responseBuilder.append(chatCompletion);
-                        handle(chatCompletion, handler);
-                    } catch (Exception exception) {
-                        handleResponseException(exception, handler);
-                    }
+                    responseBuilder.append(chatCompletion);
+                    handle(chatCompletion, handler);
                 },
-                throwable -> logger.error("Error generating response, {}", throwable.getMessage()),
+                throwable -> handleResponseException(new Exception(throwable), handler),
                 () -> {
                     Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
                     handler.onComplete(response);
