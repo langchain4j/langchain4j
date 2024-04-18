@@ -103,8 +103,10 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
 
         if (asyncClient != null) {
             this.asyncClient = asyncClient;
-        } else {
+        } else if(client != null) {
             this.client = client;
+        } else {
+            throw new IllegalStateException("No client available");
         }
     }
 
@@ -291,8 +293,6 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             syncCall(toolThatMustBeExecuted, handler, options, responseBuilder);
         } else if(asyncClient != null) {
             asyncCall(toolThatMustBeExecuted, handler, options, responseBuilder);
-        } else {
-            throw new IllegalStateException("No client available");
         }
     }
 
