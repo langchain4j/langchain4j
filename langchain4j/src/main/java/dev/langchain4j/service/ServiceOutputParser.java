@@ -119,20 +119,16 @@ public class ServiceOutputParser {
     }
 
     private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
-        StringBuilder jsonSchema = new StringBuilder();
-
-        jsonSchema.append("{\n");
+        List<String> descriptions = new ArrayList<>();
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
             if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip coverage instrumentation field.
                 continue;
             }
-            jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
+            descriptions.add(format("\"%s\": (%s)", name, descriptionFor(field, visited)));
         }
-        jsonSchema.delete(jsonSchema.lastIndexOf(","), jsonSchema.lastIndexOf(",")+1);
-        jsonSchema.append("}");
-        return jsonSchema.toString();
+        return "{\n" + String.join(",\n", descriptions) + "\n}";
     }
 
     private static String descriptionFor(Field field, Set<Class<?>> visited) {
