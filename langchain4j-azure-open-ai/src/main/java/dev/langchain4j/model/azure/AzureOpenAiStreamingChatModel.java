@@ -568,7 +568,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         }
 
         /**
-         * @deprecated Use {@AzureOpenAiChatModel.Builder} instead, if you want to continue using sync client in the future.
+         * @deprecated Please use {@link #openAIAsyncClient(OpenAIAsyncClient)} instead, if you require response streaming.
+         * Please use {@link AzureOpenAiChatModel} instead, if you require sync responses.
          * @param openAIClient The Azure OpenAI client.
          * @return builder
          */
