@@ -32,6 +32,7 @@ public enum MistralAiChatModelName {
     MISTRAL_TINY("mistral-tiny"),
 
     OPEN_MIXTRAL_8x7B("open-mixtral-8x7b"), // aka mistral-small-2312
+    OPEN_MIXTRAL_8X22B("open-mixtral-8x22b"), // aka open-mixtral-8x22b
 
     /**
      * @deprecated As of release 0.29.0, replaced by {@link #MISTRAL_SMALL_LATEST}
