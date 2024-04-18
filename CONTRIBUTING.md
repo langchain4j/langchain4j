@@ -7,6 +7,7 @@ Thank you for investing your time and effort in contributing to our project, we 
 - Keep the code compatible with Java 8. We plan to increase the baseline to Java 17 a bit later.
 - Avoid adding new dependencies as much as possible. If absolutely necessary, try to use the same libraries which are already used in the project.
 - Write unit and/or integration tests for your code. This is critical: no nests, no review!
+- Avoid making breaking changes. Always keep backward compatibility in mind.
 - Follow existing naming conventions.
 - Add Javadoc where necessary. There's no need to duplicate Javadoc from the implemented interfaces.
 - Follow existing code style present in the project.
