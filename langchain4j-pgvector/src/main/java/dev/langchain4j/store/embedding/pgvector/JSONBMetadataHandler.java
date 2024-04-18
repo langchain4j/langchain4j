@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 /**
- *  Handle metadata as JSONB columns.
+ *  Handle metadata as JSONB column.
  */
 class JSONBMetadataHandler extends JSONMetadataHandler {
 

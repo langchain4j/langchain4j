@@ -11,7 +11,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
- * This class handle JSON and JSONB Filter mapping
+ * Handle metadata as JSON column.
  */
 class JSONMetadataHandler implements MetadataHandler {
 
