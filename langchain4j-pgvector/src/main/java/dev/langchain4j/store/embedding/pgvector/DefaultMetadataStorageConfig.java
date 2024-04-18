@@ -5,7 +5,6 @@ import lombok.experimental.Accessors;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Metadata configuration implementation
@@ -42,11 +41,4 @@ public class DefaultMetadataStorageConfig implements MetadataStorageConfig {
                 .build();
     }
 
-    /**
-     * indexes as Optional
-     * @return indexes as Optional
-     */
-    public Optional<List<String>>indexes() {
-        return Optional.ofNullable(indexes);
-    }
 }

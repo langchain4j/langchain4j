@@ -1,7 +1,6 @@
 package dev.langchain4j.store.embedding.pgvector;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Metadata configuration.
@@ -36,7 +35,7 @@ public interface MetadataStorageConfig {
      * </ul>
      * @return Metadata Indexes
      */
-    Optional<List<String>> indexes();
+    List<String> indexes();
     /**
      * Index Type:
      * <ul>

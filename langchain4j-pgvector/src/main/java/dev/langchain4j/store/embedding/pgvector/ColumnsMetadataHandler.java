@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
@@ -34,7 +35,7 @@ class ColumnsMetadataHandler implements MetadataHandler {
         this.columnsName = config.definition().stream()
                 .map(d -> d.trim().split(" ")[0]).collect(Collectors.toList());
         this.filterMapper = new ColumnFilterMapper();
-        this.indexes = config.indexes().orElse(Collections.emptyList());
+        this.indexes = getOrDefault(config.indexes(), Collections.emptyList());
         this.indexType = config.indexType();
     }
 

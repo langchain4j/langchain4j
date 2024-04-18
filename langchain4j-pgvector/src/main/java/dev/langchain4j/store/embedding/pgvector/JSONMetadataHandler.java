@@ -31,7 +31,7 @@ class JSONMetadataHandler implements MetadataHandler {
         }
         this.columnName = this.columnDefinition.split(" ")[0];
         this.filterMapper = new JSONFilterMapper(columnName);
-        this.indexes = config.indexes().orElse(Collections.emptyList());
+        this.indexes = getOrDefault(config.indexes(), Collections.emptyList());
     }
 
     @Override
@@ -46,7 +46,7 @@ class JSONMetadataHandler implements MetadataHandler {
 
     @Override
     public void createMetadataIndexes(Statement statement, String table) {
-        if (this.indexes != null && !this.indexes.isEmpty()) {
+        if (!this.indexes.isEmpty()) {
             throw new RuntimeException("Indexes are not allowed for JSON metadata, use JSONB instead");
         }
     }
