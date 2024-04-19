@@ -103,7 +103,39 @@ class RetryUtilsTest {
 
         assertThatThrownBy(() -> policy.withRetry(mockAction, 3))
                 .isInstanceOf(RuntimeException.class);
-        verify(mockAction, times(3)).call();
+        verify(mockAction, times(4)).call();
+        verifyNoMoreInteractions(mockAction);
+    }
+
+    @Test
+    void testZeroAttemptsReached() throws Exception {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+        when(mockAction.call()).thenThrow(new RuntimeException());
+
+        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
+                .delayMillis(100)
+                .build();
+
+        assertThatThrownBy(() -> policy.withRetry(mockAction, 0))
+                .isInstanceOf(RuntimeException.class);
+        verify(mockAction, times(1)).call();
+        verifyNoMoreInteractions(mockAction);
+    }
+
+    @Test
+    void testIlegalAttemptsReached() throws Exception {
+        @SuppressWarnings("unchecked")
+        Callable<String> mockAction = mock(Callable.class);
+        when(mockAction.call()).thenThrow(new RuntimeException());
+
+        RetryUtils.RetryPolicy policy = RetryUtils.retryPolicyBuilder()
+                .delayMillis(100)
+                .build();
+
+        assertThatThrownBy(() -> policy.withRetry(mockAction, -1))
+                .isInstanceOf(RuntimeException.class);
+        verify(mockAction, times(1)).call();
         verifyNoMoreInteractions(mockAction);
     }
 }
