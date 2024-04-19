@@ -186,12 +186,12 @@ public final class RetryUtils {
          * @throws RuntimeException if the action fails on all attempts.
          */
         public <T> T withRetry(Callable<T> action, int maxAttempts) {
-            int attempt = 1;
+            int attempt = 0;
             while (true) {
                 try {
                     return action.call();
                 } catch (Exception e) {
-                    if (attempt == maxAttempts) {
+                    if (attempt >= maxAttempts) {
                         throw new RuntimeException(e);
                     }
 
