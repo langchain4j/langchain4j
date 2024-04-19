@@ -157,10 +157,10 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         );
     }
 
-    private static Embedding from(List<Double> vector) {
+    private static Embedding from(List<Float> vector) {
         float[] langChainVector = new float[vector.size()];
         for (int index = 0; index < vector.size(); index++) {
-            langChainVector[index] = vector.get(index).floatValue();
+            langChainVector[index] = vector.get(index);
         }
         return Embedding.from(langChainVector);
     }
