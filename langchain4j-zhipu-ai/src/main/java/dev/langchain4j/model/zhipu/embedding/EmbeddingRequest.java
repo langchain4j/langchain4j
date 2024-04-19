@@ -1,30 +1,21 @@
 package dev.langchain4j.model.zhipu.embedding;
 
-import java.util.List;
+import lombok.Getter;
+
 import java.util.Objects;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.unmodifiableList;
-
+@Getter
 public final class EmbeddingRequest {
     private final String input;
     private final String model;
 
     private EmbeddingRequest(Builder builder) {
         this.model = builder.model;
-        this.input = builder.input.get(0);
+        this.input = builder.input;
     }
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public String getInput() {
-        return input;
-    }
-
-    public String getModel() {
-        return model;
     }
 
     @Override
@@ -58,7 +49,7 @@ public final class EmbeddingRequest {
     public static final class Builder {
 
         private String model = EmbeddingModel.EMBEDDING_2.toString();
-        private List<String> input;
+        private String input;
 
         private Builder() {
         }
@@ -72,18 +63,8 @@ public final class EmbeddingRequest {
             return this;
         }
 
-        public Builder input(String... input) {
-            return input(asList(input));
-        }
-
-        public Builder input(List<String> input) {
-            if (input == null || input.isEmpty()) {
-                throw new RuntimeException();
-            }
-            if (input.size() > 1) {
-                throw new RuntimeException();
-            }
-            this.input = unmodifiableList(input);
+        public Builder input(String input) {
+            this.input = input;
             return this;
         }
 

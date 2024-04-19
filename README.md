@@ -49,7 +49,7 @@ Please see examples of how LangChain4j can be used in [langchain4j-examples](htt
 
 - [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
 - [Examples with Quarkus](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples) (uses [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency)
-- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
+- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/tree/main/spring-boot-example/src/main/java/dev/langchain4j/example)
 
 ## Documentation
 Documentation can be found [here](https://docs.langchain4j.dev).
@@ -268,18 +268,10 @@ Please note that the library is in active development and:
 
 Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need!
 
-## Contribute
+## Contribution Guidelines
 
-Please help us make this open-source library better by contributing.
+Contribution guidelines can be found [here](https://github.com/langchain4j/langchain4j/blob/main/CONTRIBUTING.md).
 
-Some guidelines:
-1. Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/).
-2. Keep the code compatible with Java 8.
-3. Avoid adding new dependencies as much as possible. If absolutely necessary, try to (re)use the same libraries which are already present.
-4. Follow existing code styles present in the project.
-5. Ensure to add Javadoc where necessary.
-6. Provide unit and/or integration tests for your code.
-7. Large features should be discussed with maintainers before implementation.
 
 ## Use cases
 

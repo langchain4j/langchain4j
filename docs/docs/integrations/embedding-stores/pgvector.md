@@ -1,5 +1,5 @@
 ---
-sidebar_position: 36
+sidebar_position: 13
 ---
 
 # PGVector
