@@ -5,6 +5,8 @@ import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import org.elasticsearch.client.RestClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -13,6 +15,8 @@ import java.io.IOException;
  * using the Knn implementation.
  */
 public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddingStore {
+    private static final Logger log = LoggerFactory.getLogger(ElasticsearchKnnEmbeddingStore.class);
+
     /**
      * Creates an instance of ElasticsearchEmbeddingStore.
      *
@@ -57,6 +61,8 @@ public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddi
         } else {
             query = ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter());
         }
+
+        log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, query);
 
         return client.search(sr -> sr
                         .index(indexName)

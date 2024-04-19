@@ -218,6 +218,8 @@ abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingStore<Tex
                 embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
         try {
             SearchResponse<Document> response = internalSearch(embeddingSearchRequest);
+            log.trace("found [{}] results", response);
+
             List<EmbeddingMatch<TextSegment>> results = toEmbeddingSearchResult(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
