@@ -187,7 +187,7 @@ ChatLanguageModel model = OpenAiChatModel.builder()
 
 Now let's take a look at some examples.
 
-`Enum` and `boolean` as return types:
+### `Enum` and `boolean` as return types
 ```java
 enum Sentiment {
     POSITIVE, NEUTRAL, NEGATIVE
@@ -211,7 +211,7 @@ boolean positive = sentimentAnalyzer.isPositive("It's awful!");
 // false
 ```
 
-Custom POJO as a return type:
+### Custom POJO as a return type
 ```java
 class Person {
     String firstName;
@@ -297,7 +297,7 @@ AzureOpenAiChatModel.builder()
 ```java
 MistralAiChatModel.builder()
         ...
-        .responseFormat(JSON_OBJECT)
+        .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
         .build();
 ```
 
@@ -318,10 +318,10 @@ prompt engineering is your best bet. Also, try lowering the `temperature` for mo
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
 
 ## Chat Memory
-[Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
-[Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
-[Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
-[Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
+- [Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
+- [Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
+- [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
+- [Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
 
 ## Tools (Function Calling)
 [Tools](/tutorials/tools)
@@ -437,7 +437,6 @@ Also, I can integration test `GreetingExpert` and `ChatBot` separately.
 I can evaluate both of them separately and find the most optimal parameters for each subtask,
 or, in the long run, even fine-tune a small specialized model for each specific subtask.
 
-TODO
 
 ## Related Tutorials
 - [LangChain4j AiServices Tutorial](https://www.sivalabs.in/langchain4j-ai-services-tutorial/) by [Siva](https://www.sivalabs.in/)
