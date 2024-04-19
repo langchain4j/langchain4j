@@ -283,5 +283,17 @@ abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingStore<Tex
         }
     }
 
-    abstract protected List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response);
+    private List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response) {
+        return response.hits().hits().stream()
+                .map(hit -> Optional.ofNullable(hit.source())
+                        .map(document -> new EmbeddingMatch<>(
+                                hit.score(),
+                                hit.id(),
+                                new Embedding(document.getVector()),
+                                document.getText() == null
+                                        ? null
+                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
+                        )).orElse(null))
+                .collect(toList());
+    }
 }

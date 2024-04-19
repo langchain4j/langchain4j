@@ -80,18 +80,4 @@ public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddi
                         .minScore(embeddingSearchRequest.minScore() + 1)
                 , Document.class);
     }
-
-    protected List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response) {
-        return response.hits().hits().stream()
-                .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> new EmbeddingMatch<>(
-                                hit.score() - 1.0,
-                                hit.id(),
-                                new Embedding(document.getVector()),
-                                document.getText() == null
-                                        ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))
-                        )).orElse(null))
-                .collect(toList());
-    }
 }
