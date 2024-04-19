@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.29.0-SNAPSHOT</version>
+    <version>0.30.0</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -17,6 +17,8 @@
 
         <module>langchain4j-core</module>
         <module>langchain4j</module>
+
+        <module>langchain4j-easy-rag</module>
 
         <!-- model providers -->
         <module>langchain4j-anthropic</module>
@@ -53,6 +55,7 @@
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-azure-cosmos-mongo-vcore</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
@@ -63,6 +66,7 @@
         <!-- document parsers -->
         <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
         <module>document-parsers/langchain4j-document-parser-apache-poi</module>
+        <module>document-parsers/langchain4j-document-parser-apache-tika</module>
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>

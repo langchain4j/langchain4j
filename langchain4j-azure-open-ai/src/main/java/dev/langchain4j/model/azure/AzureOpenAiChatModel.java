@@ -4,6 +4,7 @@ import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.*;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -12,12 +13,17 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -49,6 +55,8 @@ import static java.util.Collections.singletonList;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
+
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -243,13 +251,22 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
             }
         }
-        ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);
-
-        return Response.from(
-                aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
-                tokenUsageFrom(chatCompletions.getUsage()),
-                finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
-        );
+        try {
+            ChatCompletions chatCompletions = client.getChatCompletions(deploymentName, options);
+            return Response.from(
+                    aiMessageFrom(chatCompletions.getChoices().get(0).getMessage()),
+                    tokenUsageFrom(chatCompletions.getUsage()),
+                    finishReasonFrom(chatCompletions.getChoices().get(0).getFinishReason())
+            );
+        } catch (HttpResponseException httpResponseException) {
+            logger.info("Error generating response, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            return Response.from(
+                    aiMessage(httpResponseException.getMessage()),
+                    null,
+                    exceptionFinishReason
+            );
+        }
     }
 
     @Override

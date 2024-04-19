@@ -1,5 +1,5 @@
 ---
-sidebar_position: 9
+sidebar_position: 6
 ---
 
 # Google Vertex AI Gemini
@@ -139,6 +139,12 @@ Caused by: io.grpc.StatusRuntimeException:
  FAILED_PRECONDITION: Project `1234567890` is not allowed to use Publisher Model
   `projects/{YOUR_PROJECT_ID}/locations/us-central1/publishers/google/models/gemini-ultra`
 ```
+
+## Warning
+
+Please note that Gemini does not support `SystemMessage`s.
+If there are `SystemMessage`s provided to the `generate()` methods, they will be merged into the first
+`UserMessage` (before the content of the `UserMessage`).
 
 ## Apply for early access
 

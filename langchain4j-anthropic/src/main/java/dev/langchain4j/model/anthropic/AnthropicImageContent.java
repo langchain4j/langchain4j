@@ -1,21 +1,16 @@
 package dev.langchain4j.model.anthropic;
 
-import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
-class AnthropicImageContent {
+@ToString
+@EqualsAndHashCode(callSuper = true)
+public class AnthropicImageContent extends AnthropicMessageContent {
 
-    private final String type = "image";
-    private final Source source;
+    public AnthropicImageContentSource source;
 
-    AnthropicImageContent(String mediaType, String data) {
-        this.source = new Source("base64", mediaType, data);
-    }
-
-    @AllArgsConstructor
-    static class Source {
-
-        private final String type;
-        private final String mediaType;
-        private final String data;
+    public AnthropicImageContent(String mediaType, String data) {
+        super("image");
+        this.source = new AnthropicImageContentSource("base64", mediaType, data);
     }
 }

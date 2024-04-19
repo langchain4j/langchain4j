@@ -13,7 +13,7 @@ and often involve multiple interactions, orchestrating them all becomes even mor
 We want you to focus on business logic, not on low-level implementation details.
 Thus, there are currently two high-level concepts in LangChain4j that can help with that: AI Services and Chains.
 
-## Chains
+## Chains (legacy)
 
 The concept of Chains originates from Python's LangChain (before the introduction of LCEL).
 The idea is to have a `Chain` for each common use case, like a chatbot, RAG, etc.
@@ -88,6 +88,16 @@ So, `AiService` will automatically convert it into a `UserMessage` and invoke `C
 Since the output type of the `chat` method is a `String`, after `ChatLanguageModel` returns `AiMessage`,
 it will be converted into a `String` before being returned from the `chat` method.
 
+## Using AI Services in Quarkus Application
+[LangChain4j Quarkus extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/index.html)
+greatly simplifies using AI Services in Quarkus applications.
+
+More information can be found [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/ai-services.html).
+
+## Using AI Services in Spring Boot Application
+[LangChain4j Spring Boot starter](/tutorials/spring-boot-integration)
+greatly simplifies using AI Services in Spring Boot applications.
+
 ## @SystemMessage
 
 Now, let's look at a more complicated example.
@@ -106,8 +116,18 @@ Friend friend = AiServices.create(Friend.class, model);
 
 String answer = friend.chat("Hello"); // Hey! What's up?
 ```
-In this example, we have added the `@SystemMessage` annotation with a prompt we want to use.
+In this example, we have added the `@SystemMessage` annotation with a system prompt we want to use.
 This will be converted into a `SystemMessage` behind the scenes and sent to the LLM along with the `UserMessage`.
+
+### System Message Provider
+System messages can also be defined dynamically with the system message provider:
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatLanguageModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .build();
+```
+As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
 ## @UserMessage
 
@@ -256,6 +276,7 @@ but now we have the JSON mode feature, which is more suitable for this purpose.
 :::
 
 Here is how to enable JSON mode:
+
 - For OpenAI:
 ```java
 OpenAiChatModel.builder()
@@ -263,6 +284,7 @@ OpenAiChatModel.builder()
         .responseFormat("json_object")
         .build();
 ```
+
 - For Azure OpenAI:
 ```java
 AzureOpenAiChatModel.builder()
@@ -270,6 +292,15 @@ AzureOpenAiChatModel.builder()
         .responseFormat(new ChatCompletionsJsonResponseFormat())
         .build();
 ```
+
+- For Mistral AI:
+```java
+MistralAiChatModel.builder()
+        ...
+        .responseFormat(JSON_OBJECT)
+        .build();
+```
+
 - For Ollama:
 ```java
 OllamaChatModel.builder()
@@ -277,6 +308,7 @@ OllamaChatModel.builder()
         .format("json")
         .build();
 ```
+
 - For other model providers: if the underlying model provider does not support JSON mode,
 prompt engineering is your best bet. Also, try lowering the `temperature` for more determinism.
 

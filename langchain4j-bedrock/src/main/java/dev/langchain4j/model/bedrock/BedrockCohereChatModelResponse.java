@@ -44,7 +44,7 @@ public class BedrockCohereChatModelResponse implements BedrockChatModelResponse 
     @Override
     public FinishReason getFinishReason() {
         final String finishReason = generations.get(0).finish_reason;
-        if (finishReason != null && finishReason.equals("COMPLETE")) {
+        if ("COMPLETE".equals(finishReason)) {
             return FinishReason.STOP;
         }
 

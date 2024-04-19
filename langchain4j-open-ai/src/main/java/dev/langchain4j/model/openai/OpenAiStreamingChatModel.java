@@ -49,6 +49,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final Integer seed;
     private final String user;
     private final Tokenizer tokenizer;
+    private final boolean isOpenAiModel;
 
     @Builder
     public OpenAiStreamingChatModel(String baseUrl,
@@ -69,7 +70,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Proxy proxy,
                                     Boolean logRequests,
                                     Boolean logResponses,
-                                    Tokenizer tokenizer) {
+                                    Tokenizer tokenizer,
+                                    Map<String, String> customHeaders) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -85,6 +87,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
@@ -97,7 +100,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.responseFormat = responseFormat;
         this.seed = seed;
         this.user = user;
-        this.tokenizer = getOrDefault(tokenizer, () -> new OpenAiTokenizer(this.modelName));
+        this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.isOpenAiModel = isOpenAiModel(this.modelName);
     }
 
     public String modelName() {
@@ -139,19 +143,16 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .seed(seed)
                 .user(user);
 
-        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
-
         if (toolThatMustBeExecuted != null) {
             requestBuilder.tools(toTools(singletonList(toolThatMustBeExecuted)));
             requestBuilder.toolChoice(toolThatMustBeExecuted.name());
-            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         } else if (!isNullOrEmpty(toolSpecifications)) {
             requestBuilder.tools(toTools(toolSpecifications));
-            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         ChatCompletionRequest request = requestBuilder.build();
 
+        int inputTokenCount = countInputTokens(messages, toolSpecifications, toolThatMustBeExecuted);
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
         client.chatCompletion(request)
@@ -161,10 +162,25 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 })
                 .onComplete(() -> {
                     Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
+                    if (!isOpenAiModel) {
+                        response = removeTokenUsage(response);
+                    }
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)
                 .execute();
+    }
+
+    private int countInputTokens(List<ChatMessage> messages,
+                                 List<ToolSpecification> toolSpecifications,
+                                 ToolSpecification toolThatMustBeExecuted) {
+        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
+        if (toolThatMustBeExecuted != null) {
+            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+        } else if (!isNullOrEmpty(toolSpecifications)) {
+            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
+        }
+        return inputTokenCount;
     }
 
     private static void handle(ChatCompletionResponse partialResponse,

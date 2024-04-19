@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -12,12 +13,16 @@ import java.util.List;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
 
 /**
- * Represents an Anthropic language model with a Messages API.
+ * Represents an Anthropic language model with a Messages (chat) API.
  * <br>
  * More details are available <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
+ * <br>
+ * <br>
+ * It supports tools. See more information <a href="https://docs.anthropic.com/claude/docs/tool-use">here</a>.
  * <br>
  * <br>
  * It supports {@link Image}s as inputs. {@link UserMessage}s can contain one or multiple {@link ImageContent}s.
@@ -26,9 +31,6 @@ import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
  * <br>
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
  * If there are multiple {@link SystemMessage}s, they are concatenated with a double newline (\n\n).
- * <br>
- * <br>
- * Does not support tools.
  */
 public class AnthropicChatModel implements ChatLanguageModel {
 
@@ -47,7 +49,8 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param baseUrl       The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
      * @param apiKey        The API key for authentication with the Anthropic API.
      * @param version       The version of the Anthropic API. Default: "2023-06-01"
-     * @param modelName     The name of the Anthropic model to use. Default: "claude-3-sonnet-20240229"
+     * @param beta          The value of the "anthropic-beta" HTTP header. It is used when tools are present in the request. Default: "tools-2024-04-04"
+     * @param modelName     The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
      * @param temperature   The temperature
      * @param topP          The top-P
      * @param topK          The top-K
@@ -62,6 +65,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private AnthropicChatModel(String baseUrl,
                                String apiKey,
                                String version,
+                               String beta,
                                String modelName,
                                Double temperature,
                                Double topP,
@@ -76,11 +80,12 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))
+                .beta(getOrDefault(beta, "tools-2024-04-04"))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, "claude-3-sonnet-20240229");
+        this.modelName = getOrDefault(modelName, CLAUDE_3_HAIKU_20240307.toString());
         this.temperature = temperature;
         this.topP = topP;
         this.topK = topK;
@@ -114,10 +119,16 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
+        return generate(messages, (List<ToolSpecification>) null);
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        ensureNotEmpty(messages, "messages");
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(ensureNotEmpty(messages, "messages")))
+                .messages(toAnthropicMessages(messages))
                 .system(toAnthropicSystemPrompt(messages))
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
@@ -125,14 +136,17 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .temperature(temperature)
                 .topP(topP)
                 .topK(topK)
+                .tools(toAnthropicTools(toolSpecifications))
                 .build();
 
         AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
 
         return Response.from(
-                toAiMessage(response.getContent()),
-                toTokenUsage(response.getUsage()),
-                toFinishReason(response.getStopReason())
+                toAiMessage(response.content),
+                toTokenUsage(response.usage),
+                toFinishReason(response.stopReason)
         );
     }
+
+    // TODO forcing tool use?
 }

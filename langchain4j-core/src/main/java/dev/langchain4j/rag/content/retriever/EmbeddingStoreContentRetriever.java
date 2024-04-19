@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.spi.model.embedding.EmbeddingModelFactory;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
@@ -12,11 +13,13 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -104,10 +107,27 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                            Function<Query, Double> dynamicMinScore,
                                            Function<Query, Filter> dynamicFilter) {
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
-        this.embeddingModel = ensureNotNull(embeddingModel, "embeddingModel");
+        this.embeddingModel = ensureNotNull(
+                getOrDefault(embeddingModel, EmbeddingStoreContentRetriever::loadEmbeddingModel),
+                "embeddingModel"
+        );
         this.maxResultsProvider = getOrDefault(dynamicMaxResults, DEFAULT_MAX_RESULTS);
         this.minScoreProvider = getOrDefault(dynamicMinScore, DEFAULT_MIN_SCORE);
         this.filterProvider = getOrDefault(dynamicFilter, DEFAULT_FILTER);
+    }
+
+    private static EmbeddingModel loadEmbeddingModel() {
+        Collection<EmbeddingModelFactory> factories = loadFactories(EmbeddingModelFactory.class);
+        if (factories.size() > 1) {
+            throw new RuntimeException("Conflict: multiple embedding models have been found in the classpath. " +
+                    "Please explicitly specify the one you wish to use.");
+        }
+
+        for (EmbeddingModelFactory factory : factories) {
+            return factory.create();
+        }
+
+        return null;
     }
 
     public static class EmbeddingStoreContentRetrieverBuilder {
@@ -132,6 +152,14 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
             }
             return this;
         }
+    }
+
+    /**
+     * Creates an instance of an {@code EmbeddingStoreContentRetriever} from the specified {@link EmbeddingStore}
+     * and {@link EmbeddingModel} found through SPI (see {@link EmbeddingModelFactory}).
+     */
+    public static EmbeddingStoreContentRetriever from(EmbeddingStore<TextSegment> embeddingStore) {
+        return builder().embeddingStore(embeddingStore).build();
     }
 
     @Override
