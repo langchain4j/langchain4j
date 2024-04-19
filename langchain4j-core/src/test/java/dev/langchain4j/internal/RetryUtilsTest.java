@@ -124,7 +124,7 @@ class RetryUtilsTest {
     }
 
     @Test
-    void testIlegalAttemptsReached() throws Exception {
+    void testIllegalAttemptsReached() throws Exception {
         @SuppressWarnings("unchecked")
         Callable<String> mockAction = mock(Callable.class);
         when(mockAction.call()).thenThrow(new RuntimeException());
