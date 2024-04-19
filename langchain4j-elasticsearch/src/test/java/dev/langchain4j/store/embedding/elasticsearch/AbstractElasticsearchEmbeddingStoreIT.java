@@ -11,6 +11,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import lombok.SneakyThrows;
+import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -28,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.ThrowingFunction;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -83,8 +85,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
             elasticsearch.start();
             byte[] certAsBytes = elasticsearch.copyFileFromContainer(
                     "/usr/share/elasticsearch/config/certs/http_ca.crt",
-                    // This needs Java 9+ to work
-                    InputStream::readAllBytes);
+                    IOUtils::toByteArray);
             restClient = getClient("https://" + elasticsearch.getHttpHostAddress(), null, localPassword, certAsBytes);
         }
         assertThat(restClient).isNotNull();
