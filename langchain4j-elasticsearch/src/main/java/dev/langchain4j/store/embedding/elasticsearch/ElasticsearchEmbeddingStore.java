@@ -72,23 +72,31 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
     }
 
     @Override
-    public SearchResponse<Document> internalSearch(Embedding referenceEmbedding, int maxResults, double minScore) throws ElasticsearchException, IOException {
+    public SearchResponse<Document> internalSearch(EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
         // Use Script Score and cosineSimilarity to calculate
         // see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
-        ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(referenceEmbedding.vector(), (float) minScore);
+        ScriptScoreQuery scriptScoreQuery = buildDefaultScriptScoreQuery(embeddingSearchRequest.queryEmbedding().vector(),
+                (float) embeddingSearchRequest.minScore(), embeddingSearchRequest.filter());
         return client.search(
                 SearchRequest.of(s -> s.index(indexName)
                         .query(n -> n.scriptScore(scriptScoreQuery))
-                        .size(maxResults)),
+                        .size(embeddingSearchRequest.maxResults())),
                 Document.class
         );
     }
 
-    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore) throws JsonProcessingException {
+    private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore,
+                                                          Filter filter) throws JsonProcessingException {
         JsonData queryVector = toJsonData(vector);
+        Query query;
+        if (filter == null) {
+            query = Query.of(q -> q.matchAll(m -> m));
+        } else {
+            query = ElasticsearchMetadataFilterMapper.map(filter);
+        }
         return ScriptScoreQuery.of(q -> q
                 .minScore(minScore)
-                .query(Query.of(qu -> qu.matchAll(m -> m)))
+                .query(query)
                 .script(s -> s.inline(InlineScript.of(i -> i
                         // The script adds 1.0 to the cosine similarity to prevent the score from being negative.
                         // divided by 2 to keep score in the range [0, 1]
@@ -100,7 +108,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         return JsonData.fromJson(objectMapper.writeValueAsString(rawData));
     }
 
-    protected List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {
+    protected List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
                         .map(document -> new EmbeddingMatch<>(

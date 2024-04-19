@@ -15,6 +15,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.apache.http.Header;
@@ -212,13 +213,14 @@ abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingStore<Tex
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        log.debug("findRelevant([...{}...], {}, {})", referenceEmbedding.vector().length, maxResults, minScore);
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest embeddingSearchRequest) {
+        log.debug("findRelevant([...{}...], {}, {})", embeddingSearchRequest.queryEmbedding().vector().length,
+                embeddingSearchRequest.maxResults(), embeddingSearchRequest.minScore());
         try {
-            SearchResponse<Document> response = internalSearch(referenceEmbedding, maxResults, minScore);
-            List<EmbeddingMatch<TextSegment>> embeddingMatch = toEmbeddingMatch(response);
-            embeddingMatch.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
-            return embeddingMatch;
+            SearchResponse<Document> response = internalSearch(embeddingSearchRequest);
+            List<EmbeddingMatch<TextSegment>> results = toEmbeddingSearchResult(response);
+            results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
+            return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
             log.error("[ElasticSearch encounter exception] {}", e.response());
             throw new ElasticsearchRequestFailedException(e.response().toString(), e);
@@ -228,7 +230,7 @@ abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingStore<Tex
         }
     }
 
-    abstract public SearchResponse<Document> internalSearch(Embedding referenceEmbedding, int maxResults, double minScore)
+    abstract public SearchResponse<Document> internalSearch(EmbeddingSearchRequest embeddingSearchRequest)
             throws ElasticsearchException, IOException;
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -281,5 +283,5 @@ abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingStore<Tex
         }
     }
 
-    abstract protected List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response);
+    abstract protected List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response);
 }

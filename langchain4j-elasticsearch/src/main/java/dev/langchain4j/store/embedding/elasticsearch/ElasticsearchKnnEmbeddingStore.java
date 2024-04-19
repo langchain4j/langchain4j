@@ -1,11 +1,14 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import org.elasticsearch.client.RestClient;
 
 import java.io.IOException;
@@ -56,22 +59,29 @@ public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddi
     }
 
     @Override
-    public SearchResponse<Document> internalSearch(Embedding referenceEmbedding, int maxResults, double minScore) throws ElasticsearchException, IOException {
+    public SearchResponse<Document> internalSearch(EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
+        Query query;
+        if (embeddingSearchRequest.filter() == null) {
+            query = Query.of(q -> q.matchAll(m -> m));
+        } else {
+            query = ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter());
+        }
+
         return client.search(sr -> sr
                         .index(indexName)
-                        .size(maxResults)
-                        .query(q -> q.matchAll(maq -> maq))
+                        .size(embeddingSearchRequest.maxResults())
+                        .query(query)
                         .knn(kr -> kr
                                 .field("vector")
-                                .queryVector(referenceEmbedding.vectorAsList())
-                                .k(maxResults)
-                                .numCandidates(maxResults)
+                                .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList())
+                                .k(embeddingSearchRequest.maxResults())
+                                .numCandidates(embeddingSearchRequest.maxResults())
                         )
-                        .minScore(minScore + 1)
+                        .minScore(embeddingSearchRequest.minScore() + 1)
                 , Document.class);
     }
 
-    protected List<EmbeddingMatch<TextSegment>> toEmbeddingMatch(SearchResponse<Document> response) {
+    protected List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
                         .map(document -> new EmbeddingMatch<>(
