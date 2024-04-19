@@ -139,7 +139,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
     @Override
     @SneakyThrows
     protected void awaitUntilPersisted() {
-        Thread.sleep(1000);
+        client.indices().refresh(rr -> rr.index(indexName).ignoreUnavailable(true));
     }
 
     /**
