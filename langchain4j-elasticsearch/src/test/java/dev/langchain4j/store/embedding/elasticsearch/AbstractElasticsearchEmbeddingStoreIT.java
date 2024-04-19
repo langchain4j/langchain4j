@@ -36,7 +36,7 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createContextFromCaCert;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createTrustAllCertsContext;
-import static org.junit.Assume.assumeNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * For this test, because Elasticsearch container might not be super fast to start,
@@ -48,47 +48,47 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
 
     private static final Logger log = LoggerFactory.getLogger(AbstractElasticsearchEmbeddingStoreIT.class);
 
-    private static final String PASSWORD = "changeme";
     // TODO Read that value from the maven properties
     private static final String VERSION = "8.12.1";
 
     static RestClient restClient;
     private static ElasticsearchContainer elasticsearch;
     private static ElasticsearchClient client;
-    private static String cloudUrl;
-    private static String cloudApiKey;
 
     private EmbeddingStore<TextSegment> embeddingStore;
     String indexName;
 
     @BeforeAll
     static void startServices() {
-        cloudUrl = System.getenv("ELASTICSEARCH_CLOUD_URL");
-        cloudApiKey = System.getenv("ELASTICSEARCH_CLOUD_API_KEY");
+        String cloudUrl = System.getenv("ELASTICSEARCH_CLOUD_URL");
+        String cloudApiKey = System.getenv("ELASTICSEARCH_CLOUD_API_KEY");
+        String localUrl = System.getenv("ELASTICSEARCH_LOCAL_URL");
+        String localPassword = System.getenv("ELASTICSEARCH_LOCAL_PASSWORD");
 
-        if (cloudUrl != null && cloudApiKey != null) {
+        if (!isNullOrBlank(cloudUrl) && !isNullOrBlank(cloudApiKey)) {
             // If we have a cloud URL, we use that
+            log.info("Starting Elasticsearch tests on cloud [{}].", cloudUrl);
             restClient = getClient(cloudUrl, cloudApiKey, null, null);
+        } else if (!isNullOrBlank(localUrl)) {
+            // We try to connect to the local cluster which is already running
+            log.info("Starting Elasticsearch tests on url [{}].", localUrl);
+            restClient = getClient(localUrl, null, localPassword, null);
         } else {
-            restClient = getClient("https://localhost:9200", null, PASSWORD, null);
-        }
-
-        if (restClient == null) {
             // Start the container. This step might take some time...
-            log.info("Starting testcontainers with Elasticsearch {}.", VERSION);
+            log.info("Starting testcontainers with Elasticsearch [{}].", VERSION);
             elasticsearch = new ElasticsearchContainer(
                     DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
                             .withTag(VERSION))
-                    .withPassword(PASSWORD);
+                    .withPassword(localPassword);
             elasticsearch.start();
             byte[] certAsBytes = elasticsearch.copyFileFromContainer(
                     "/usr/share/elasticsearch/config/certs/http_ca.crt",
                     // This needs Java 9+ to work
                     InputStream::readAllBytes);
-            restClient = getClient("https://" + elasticsearch.getHttpHostAddress(), null, PASSWORD, certAsBytes);
+            restClient = getClient("https://" + elasticsearch.getHttpHostAddress(), null, localPassword, certAsBytes);
         }
-        assumeNotNull(restClient);
-        assumeNotNull(client);
+        assertThat(restClient).isNotNull();
+        assertThat(client).isNotNull();
     }
 
     @AfterAll
