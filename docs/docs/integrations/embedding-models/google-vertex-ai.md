@@ -1,8 +1,8 @@
 ---
-sidebar_position: 9
+sidebar_position: 5
 ---
 
-# Google Vertex AI Embedding Models
+# Google Vertex AI
 
 ## Get started
 

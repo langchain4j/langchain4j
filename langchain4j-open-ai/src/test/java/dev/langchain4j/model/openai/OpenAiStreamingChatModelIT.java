@@ -355,7 +355,7 @@ class OpenAiStreamingChatModelIT {
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isCloseTo(57, tokenizerPrecision);
-        assertThat(tokenUsage.outputTokenCount()).isCloseTo(51, tokenizerPrecision);
+        assertThat(tokenUsage.outputTokenCount()).isCloseTo(34, tokenizerPrecision);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -397,7 +397,7 @@ class OpenAiStreamingChatModelIT {
         assertThat(secondAiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(83, tokenizerPrecision);
+        assertThat(secondTokenUsage.inputTokenCount()).isCloseTo(88, tokenizerPrecision);
         assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(secondTokenUsage.totalTokenCount())
                 .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());

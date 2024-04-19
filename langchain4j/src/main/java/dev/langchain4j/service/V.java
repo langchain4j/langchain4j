@@ -1,16 +1,18 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.model.input.PromptTemplate;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.util.function.Function;
 
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
- * The values of method parameters annotated with @V, together with prompt templates defined by @UserMessage
- * and @SystemMessage, are used to produce a message that will be sent to the LLM.
- * Variables (placeholders), like {{xxx}} in prompt templates, are filled with the corresponding values
- * of parameters annotated with @V("xxx").
+ * When a parameter of a method in an AI Service is annotated with {@code @V},
+ * it becomes a prompt template variable. Its value will be injected into prompt templates defined
+ * via @{@link UserMessage}, @{@link SystemMessage} and {@link AiServices#systemMessageProvider(Function)}.
  * <p>
  * Example:
  * <pre>
@@ -31,7 +33,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  *
  * @see UserMessage
  * @see SystemMessage
- * @see dev.langchain4j.model.input.PromptTemplate
+ * @see PromptTemplate
  */
 @Target(PARAMETER)
 @Retention(RUNTIME)
