@@ -1,10 +1,10 @@
 package dev.langchain4j.model.jinaAi;
 
-import com.google.gson.annotations.SerializedName;
+import lombok.Builder;
 
 import java.util.List;
-
+@Builder
 public class EmbeddingRequest {
     String model;
-    List<String> input;
+    List<String> texts;
 }
