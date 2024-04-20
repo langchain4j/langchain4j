@@ -99,10 +99,11 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
                 .customHeaders(customHeaders);
 
         if (isStreaming) {
-            openAiClientBuilder.logResponses(logResponses);
-        } else {
             openAiClientBuilder.logStreamingResponses(logResponses);
+        } else {
+            openAiClientBuilder.logResponses(logResponses);
         }
+
         this.client = openAiClientBuilder.build();
 
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
@@ -128,22 +129,22 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generateStreaming(messages, null, null);
+        return generateMessage(messages, null, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generateStreaming(messages, toolSpecifications, null);
+        return generateMessage(messages, toolSpecifications, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generateStreaming(messages, singletonList(toolSpecification), toolSpecification);
+        return generateMessage(messages, singletonList(toolSpecification), toolSpecification);
     }
 
-    private Response<AiMessage> generateStreaming(List<ChatMessage> messages,
-                                         List<ToolSpecification> toolSpecifications,
-                                         ToolSpecification toolThatMustBeExecuted
+    private Response<AiMessage> generateMessage(List<ChatMessage> messages,
+                                                List<ToolSpecification> toolSpecifications,
+                                                ToolSpecification toolThatMustBeExecuted
     ) {
         ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
                 .model(modelName)
