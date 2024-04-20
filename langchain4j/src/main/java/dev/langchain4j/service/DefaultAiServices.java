@@ -14,6 +14,7 @@ import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.query.Metadata;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.InputStream;
 import java.lang.reflect.*;
@@ -21,12 +22,14 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
+import static dev.langchain4j.service.SystemSpecService.fetchSystemSpecUsingAI;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -86,8 +89,14 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
+
                         UserMessage userMessage = prepareUserMessage(method, args);
+                        Optional<SystemMessage> systemMessage = Optional.empty();
+                        if (method.isAnnotationPresent(dev.langchain4j.service.SystemMessage.class) || context.isSystemMessageProviderEnabled)  {
+                            systemMessage = prepareSystemMessage(memoryId, method, args);
+                        } else if (method.isAnnotationPresent(RegisterSystemSpecs.class) || context.isSystemSpecProviderEnabled){
+                            systemMessage = prepareSystemSpecs(memoryId, method, args, userMessage);
+                        }
 
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
@@ -197,6 +206,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                         .toSystemMessage());
     }
 
+    private Optional<SystemMessage> prepareSystemSpecs(Object memoryId, Method method, Object[] args, UserMessage userMessage) {
+        return findDynamicSystemMessageTemplate(memoryId, method, userMessage)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(findTemplateVariables(systemMessageTemplate, method, args))
+                        .toSystemMessage());
+    }
+
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
         dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
@@ -204,6 +220,34 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         return context.systemMessageProvider.apply(memoryId);
+    }
+
+    private Optional<String> findDynamicSystemMessageTemplate(Object memoryId, Method method, UserMessage userMessage) {
+        List<dev.langchain4j.model.SystemSpec> systemSpecs;
+        RegisterSystemSpecs annotation = method.getAnnotation(RegisterSystemSpecs.class);
+
+        if (annotation != null) {
+            SystemSpec[] systemSpecAnnotations = annotation.value();
+            systemSpecs = Arrays.stream(systemSpecAnnotations)
+                    .map(systemSpec -> dev.langchain4j.model.SystemSpec.builder()
+                            .name(systemSpec.name())
+                            .description(systemSpec.description())
+                            .template(systemSpec.template())
+                            .delimiter(systemSpec.delimiter())
+                            .build()).collect(Collectors.toList());
+        } else {
+            systemSpecs = context.systemSpecProvider
+                    .apply(memoryId)
+                    .orElse(Collections.emptyList());
+        }
+
+        return Optional.of(
+                getSpecsTemplate(
+                        method,
+                        context,
+                        systemSpecs,
+                        userMessage)
+        );
     }
 
     private static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
@@ -335,6 +379,23 @@ class DefaultAiServices<T> extends AiServices<T> {
             throw illegalConfiguration("@%sMessage's template cannot be empty", type);
         }
         return messageTemplate;
+    }
+
+    @NotNull
+    private static String getSpecsTemplate(Method method, AiServiceContext context, List<dev.langchain4j.model.SystemSpec> systemSpecs, UserMessage userMessage) {
+        dev.langchain4j.model.SystemSpec systemSpecResult = fetchSystemSpecUsingAI(
+                userMessage.singleText(),
+                systemSpecs,
+                context.chatModel
+        );
+
+        return getTemplate(
+                method,
+                "System",
+                "",
+                systemSpecResult.getTemplate(),
+                systemSpecResult.getDelimiter()
+        );
     }
 
     private static String getResourceText(Class<?> clazz, String name) {

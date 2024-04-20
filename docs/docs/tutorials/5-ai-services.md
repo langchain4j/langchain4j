@@ -129,6 +129,84 @@ Friend friend = AiServices.builder(Friend.class)
 ```
 As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
+
+## @RegisterSystemSpecs
+
+Now, let's explore a more complex scenario. In this case, we'll entrust the AI with the task of selecting the appropriate SystemMessage.
+
+This is accomplished by associating multiple system message specifications, denoted by the `@SystemSpec` annotations, with a single `@RegisterSystemSpecs` annotation.
+
+Here is an example :
+```java
+interface Professor {
+    
+    // Chat method that takes a user message and returns an AI-generated response based on the specified system specifications.
+    // SystemSpec annotations define the context in which the AI should generate responses for physics and math questions.
+    @RegisterSystemSpecs({
+            @SystemSpec(name = "physics", description = "Good for answering questions about physics", template = {
+                    "You are a very smart physics professor. You are great at answering questions about physics in a concise and easy to understand manner. When you don't know the answer to a question you admit that you don't know.\n" +
+                            "\n" +
+                            "Here is a question:"
+            }),
+            @SystemSpec(name = "math", description = "Good for answering math questions", template = {
+                    "You are a very good mathematician. You are great at answering math questions. You are so good because you are able to break down hard problems into their component parts, answer the component parts, and then put them together to answer the broader question.\n" +
+                            "\n" +
+                            "Here is a question:"
+            })
+    })
+    String chat(String userMessage);
+}
+
+// Create a Professor instance using AiServices
+Professor professor = AiServices.create(Professor.class, model);
+
+// Invoke the chat method with a specific question
+String answer = Professor.chat("What is the speed of light?"); 
+// Answer: The speed of light in a vacuum is approximately 299,792 kilometers per second (km/s)...
+```
+In this example, the `@RegisterSystemSpecs` annotation is used in conjunction with multiple `@SystemSpec` annotations. Here’s a breakdown of the attributes for each `@SystemSpec`:
+
+- `name`: This attribute assigns a unique identifier to the system message and is required.
+- `description`: This required attribute offers a concise explanation of the system message's intent.
+- `template`: This mandatory attribute consists of an array of strings that outline the template for creating system messages.
+- `delimiter`: This optional attribute determines the string used to concatenate elements within the template, with a default setting of a newline ("\n").
+
+Internally, a request is made to the AI model to determine the most suitable system to address the user's query. If none of the specified system specifications align with the user's question, a default message is generated. This message prompts for the specification of a relevant expert and is sent to the language model along with the user's message.
+
+### System Specification Provider
+Registering system specifications can also be defined dynamically with the system spec provider:
+```java
+
+// Initialize the list of SystemSpecs
+List<SystemSpec> systemSpecs = new ArrayList<>();
+
+// Add a SystemSpec for physics
+systemSpecs.add(
+        SystemSpec.builder()
+        .name("physics")
+        .description("Good for answering questions about physics")
+        .template(...)  // Add the template details here
+        .build()
+);
+
+// Add a SystemSpec for math
+systemSpecs.add(
+        SystemSpec.builder()
+        .name("math")
+        .description("Good for answering math questions")
+        .template(...)  // Add the template details here
+        .build()
+);
+
+// Configure and build the Professor instance with a chat language model and a system spec provider
+Professor professor = AiServices.builder(Professor.class)
+        .chatLanguageModel(model)
+        .systemSpecProvider(chatMemoryId -> systemSpecs)
+        .build();
+
+```
+As you can see, you can provide different system specs based on a chat memory ID (user or conversation).
+
 ## @UserMessage
 
 Now, let's assume the model we use does not support system messages,

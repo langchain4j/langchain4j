@@ -9,6 +9,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.model.SystemSpec;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -222,6 +223,27 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> systemMessageProvider(Function<Object, String> systemMessageProvider) {
         context.systemMessageProvider = systemMessageProvider.andThen(Optional::ofNullable);
+        context.isSystemMessageProviderEnabled = true;
+        return this;
+    }
+
+    /**
+     * Configures the system specification provider function within the AI services context.
+     * This provider selects a system specification from a provided list, based on the context of the user message.
+     * <br>
+     * When both {@code @RegisterSystemSpec} and the system spec provider are configured,
+     * {@code @RegisterSystemSpec} takes precedence.
+     *
+     * @param systemSpecProvider the system specification provider function
+     *                           that takes an object as input and returns a list
+     *                           of system specifications. The function should
+     *                           handle null input and return an optional list
+     *                           of system specifications.
+     * @return builder
+     */
+    public AiServices<T> systemSpecProvider(Function<Object, List<SystemSpec>> systemSpecProvider) {
+        context.systemSpecProvider = systemSpecProvider.andThen(Optional::ofNullable);
+        context.isSystemSpecProviderEnabled = true;
         return this;
     }
 

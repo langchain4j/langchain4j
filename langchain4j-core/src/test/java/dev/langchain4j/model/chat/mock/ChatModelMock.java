@@ -8,6 +8,8 @@ import dev.langchain4j.model.output.Response;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -23,16 +25,25 @@ public class ChatModelMock implements ChatLanguageModel {
 
     private final String staticResponse;
     private final RuntimeException exception;
+    private final Map<String, String> staticResponseMap;
     private final List<List<ChatMessage>> requests = synchronizedList(new ArrayList<>());
 
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
         this.exception = null;
+        this.staticResponseMap = null;
     }
 
     public ChatModelMock(RuntimeException exception) {
         this.staticResponse = null;
         this.exception = ensureNotNull(exception, "exception");
+        this.staticResponseMap = null;
+    }
+
+    public ChatModelMock(Map<String, String> staticResponseMap) {
+        this.staticResponse = null;
+        this.exception = null;
+        this.staticResponseMap = ensureNotNull(staticResponseMap, "staticResponseMap");
     }
 
     @Override
@@ -41,6 +52,12 @@ public class ChatModelMock implements ChatLanguageModel {
 
         if (exception != null) {
             throw exception;
+        }
+
+        if (staticResponseMap != null) {
+            String key = messages.stream().map(ChatMessage::text)
+                    .collect(Collectors.joining("\n"));
+            return Response.from(AiMessage.from(staticResponseMap.get(key)));
         }
 
         return Response.from(AiMessage.from(staticResponse));
@@ -66,6 +83,10 @@ public class ChatModelMock implements ChatLanguageModel {
 
     public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
+    }
+
+    public static ChatModelMock thatAlwaysRespondsMap(Map<String, String> responseMap) {
+        return new ChatModelMock(responseMap);
     }
 
     public static ChatModelMock thatAlwaysThrowsException() {
