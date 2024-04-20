@@ -7,8 +7,7 @@ import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
 public interface JinaAiApi {
-    // TODO CHECK IF THIS IS REQ
-    @POST("embedding/text")
+    @POST("v1/embeddings")
     @Headers({"Content-Type: application/json"})
     Call<EmbeddingResponse> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
 
