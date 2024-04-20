@@ -17,11 +17,16 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
+/**
+ * An integration with Nomic Atlas's Text Embeddings API.
+ * See more details <a href="https://api.jina.ai/redoc#tag/embeddings">Jina API reference</a>
+ */
+
 public class JinaAiEmbeddingModel implements EmbeddingModel {
 
-    /**
-     * <a href="https://api.jina.ai/redoc#tag/embeddings">Jina API reference</a>
-     */
+
+    private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
+
     private final JinaAiClient client;
     private final String modelName;
     private final Integer maxRetries;
@@ -33,11 +38,11 @@ public class JinaAiEmbeddingModel implements EmbeddingModel {
                                 Duration timeout,
                                 Integer maxRetries) {
         this.client = JinaAiClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(getOrDefault(baseUrl,DEFAULT_BASE_URL))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();
-        this.modelName = ensureNotBlank(modelName, "modelName");
+        this.modelName = ensureNotBlank(modelName, "jina-embedding-s-en-v1");
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
