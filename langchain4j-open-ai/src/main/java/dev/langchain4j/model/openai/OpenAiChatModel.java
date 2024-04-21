@@ -99,11 +99,10 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
                 .customHeaders(customHeaders);
 
         if (isStreaming) {
-            openAiClientBuilder.logStreamingResponses(logResponses);
-        } else {
             openAiClientBuilder.logResponses(logResponses);
+        } else {
+            openAiClientBuilder.logStreamingResponses(logResponses);
         }
-
         this.client = openAiClientBuilder.build();
 
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
