@@ -40,12 +40,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String nameSpace;
     private final String metadataTextKey;
     private final Index pineconeIndex;
+    private final Pinecone pinecone;
     private final Consumer<List<VectorWithUnsignedIndices>> afterUpsertAction;
 
     /**
      * Creates an instance of PineconeEmbeddingStore.
      *
      * @param apiKey            The Pinecone API key.
+     * @param environment       The environment (e.g., "northamerica-northeast1-gcp").
+     * @param projectId         The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
      *                          The ID can be found in the Pinecone URL: <a href="https://app.pinecone.io/organizations/.../projects/">...</a>...:{projectId}/indexes.
      * @param index             The name of the index (e.g., "test").
      * @param nameSpace         (Optional) Namespace. If not provided, "default" will be used.
@@ -53,13 +56,15 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param afterUpsertAction
      */
     public PineconeEmbeddingStore(String apiKey,
+                                  String environment,
+                                  String projectId,
                                   String index,
                                   String nameSpace,
                                   String metadataTextKey,
                                   Consumer<List<VectorWithUnsignedIndices>> afterUpsertAction) {
 
 
-        Pinecone pinecone = new Pinecone.Builder(apiKey).build();
+        this.pinecone = new Pinecone.Builder(apiKey).build();
         this.pineconeIndex = pinecone.getIndexConnection(index);
         this.nameSpace = nameSpace == null ? DEFAULT_NAMESPACE : nameSpace;
         this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
@@ -274,7 +279,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, environment, projectId, index, afterUpsertAction);
+            return new PineconeEmbeddingStore(apiKey, environment, projectId, index, nameSpace, metadataTextKey, afterUpsertAction);
         }
 
         @SuppressWarnings("unused")
