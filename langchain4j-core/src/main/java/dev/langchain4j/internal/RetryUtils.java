@@ -48,6 +48,9 @@ public final class RetryUtils {
              * @return {@code this}
              */
             public Builder maxAttempts(int maxAttempts) {
+                if(maxAttempts < 1) {
+                    throw new IllegalArgumentException("MaxAttempts must be greater than 0. 1 means no retry.");
+                }
                 this.maxAttempts = maxAttempts;
                 return this;
             }
