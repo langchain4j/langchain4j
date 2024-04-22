@@ -8,12 +8,10 @@ import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
@@ -42,7 +40,7 @@ public class JinaAiEmbeddingModel implements EmbeddingModel {
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .build();
-        this.modelName = ensureNotBlank(modelName, "jina-embedding-s-en-v1");
+        this.modelName = getOrDefault(modelName, "jina-embeddings-v2-base-en");
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
@@ -55,12 +53,12 @@ public class JinaAiEmbeddingModel implements EmbeddingModel {
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .model(modelName)
-                .texts(textSegments.stream().map(TextSegment::text).collect(toList()))
+                .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
         EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
 
-        List<Embedding> embeddings = response.getEmbeddingList().stream()
+        List<Embedding> embeddings = response.getData().stream()
                 .map(JinaAiEmbedding::toEmbedding).collect(toList());
 
         TokenUsage tokenUsage = new TokenUsage(response.getUsage().getPromptTokens(),0 );

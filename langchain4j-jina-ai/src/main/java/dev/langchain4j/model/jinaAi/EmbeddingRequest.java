@@ -6,5 +6,5 @@ import java.util.List;
 @Builder
 public class EmbeddingRequest {
     String model;
-    List<String> texts;
+    List<String> input;
 }

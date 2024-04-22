@@ -5,7 +5,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import java.util.List;
 
 public class JinaAiEmbedding {
-    String index;
+    long index;
     float[] embedding;
     String object;
 

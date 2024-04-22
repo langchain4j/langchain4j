@@ -20,7 +20,7 @@ public class JinaAiEmbeddingModelIT {
     public void should_embed_single_text() {
 
         // given
-        EmbeddingModel model = JinaAiEmbeddingModel.withApiKey(System.getenv("NOMIC_API_KEY"));
+        EmbeddingModel model = JinaAiEmbeddingModel.withApiKey(System.getenv("JINA_AI_API_KEY"));
 
         String text = "hello";
 
@@ -30,9 +30,9 @@ public class JinaAiEmbeddingModelIT {
         // then
         assertThat(response.content().dimension()).isEqualTo(768);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(1);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(3);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(3);
     }
 
     @Test
@@ -40,9 +40,9 @@ public class JinaAiEmbeddingModelIT {
 
         // given
         EmbeddingModel model = JinaAiEmbeddingModel.builder()
-                .baseUrl("https://api-atlas.nomic.ai/v1/")
-                .apiKey(System.getenv("NOMIC_API_KEY"))
-                .modelName("nomic-embed-text-v1")
+                .baseUrl("https://api.jina.ai/")
+                .apiKey(System.getenv("JINA_AI_API_KEY"))
+                .modelName("jina-embeddings-v2-base-en")
                 .timeout(ofSeconds(10))
                 .maxRetries(2)
                 .build();
@@ -64,8 +64,8 @@ public class JinaAiEmbeddingModelIT {
 
         assertThat(CosineSimilarity.between(embedding1, embedding2)).isGreaterThan(0.9);
 
-        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(2);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(6);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
-        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(2);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(6);
     }
 }
