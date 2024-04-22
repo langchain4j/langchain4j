@@ -22,4 +22,5 @@ public class AnthropicCreateMessageRequest {
     Double temperature;
     Double topP;
     Integer topK;
+    List<AnthropicTool> tools;
 }

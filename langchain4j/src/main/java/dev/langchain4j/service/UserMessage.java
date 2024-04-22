@@ -9,6 +9,32 @@ import static java.lang.annotation.ElementType.METHOD;
 import static java.lang.annotation.ElementType.PARAMETER;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
+/**
+ * Specifies either a complete user message or a user message template to be used each time an AI service is invoked.
+ * The user message can contain template variables,
+ * which will be resolved with values from method parameters annotated with @{@link V}.
+ * <br>
+ * An example:
+ * <pre>
+ * interface Assistant {
+ *
+ *     {@code @UserMessage}("Say hello to {{name}}")
+ *     String greet(@V("name") String name);
+ * }
+ * </pre>
+ * {@code @UserMessage} can also be used with method parameters:
+ * <pre>
+ * interface Assistant {
+ *
+ *     {@code @SystemMessage}("You are a {{characteristic}} assistant")
+ *     String chat(@UserMessage String userMessage, @V("characteristic") String characteristic);
+ * }
+ * </pre>
+ * In this case {@code String userMessage} can contain unresolved template variables (e.g. "{{characteristic}}"),
+ * which will be resolved using the values of method parameters annotated with @{@link V}.
+ *
+ * @see SystemMessage
+ */
 @Retention(RUNTIME)
 @Target({METHOD, PARAMETER})
 public @interface UserMessage {
