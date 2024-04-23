@@ -29,7 +29,7 @@ class JSONBMetadataHandler extends JSONMetadataHandler {
             String index = str.trim();
             String indexName = formatIndex(index);
             try {
-                String indexSql = String.format("create index if not exists %s_%s on %s %s ( %s )",
+                String indexSql = String.format("create index if not exists %s_%s on %s %s (%s)",
                         table, indexName, table, indexTypeSql, index);
                 statement.executeUpdate(indexSql);
             } catch (SQLException e) {
@@ -42,10 +42,10 @@ class JSONBMetadataHandler extends JSONMetadataHandler {
         // (metadata_b->'name')
         String indexName;
         if (index.contains("->")) {
-            indexName = columnName + "_" + index.substring(index.indexOf("->") + 3, index.length() - 1)
+            indexName = columnName + "_" + index.substring(index.indexOf("->") + 2, index.length() - 1)
                     .trim().replaceAll("'", "");
         } else {
-            indexName = index;
+            indexName = index.replaceAll(" ", "_");
         }
         return indexName;
     }
