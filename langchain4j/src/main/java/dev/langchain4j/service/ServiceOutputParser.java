@@ -130,7 +130,11 @@ public class ServiceOutputParser {
             }
             jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
         }
-        jsonSchema.delete(jsonSchema.lastIndexOf(","), jsonSchema.lastIndexOf(",")+1);
+
+        int trailingCommaIndex = jsonSchema.lastIndexOf(",");
+        if (trailingCommaIndex > 0) {
+            jsonSchema.delete(trailingCommaIndex, trailingCommaIndex +1);
+        }
         jsonSchema.append("}");
         return jsonSchema.toString();
     }
