@@ -1,8 +1,8 @@
 package dev.langchain4j.internal;
 
 import com.google.gson.JsonSyntaxException;
-import com.google.gson.reflect.TypeToken;
 import org.assertj.core.api.WithAssertions;
+import org.assertj.core.data.MapEntry;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -11,6 +11,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+
+import static java.util.Arrays.asList;
 
 class GsonJsonCodecTest implements WithAssertions {
     public static class Example {
@@ -61,26 +63,20 @@ class GsonJsonCodecTest implements WithAssertions {
     public void test_map() {
         GsonJsonCodec codec = new GsonJsonCodec();
         {
-            TypeToken<Map<String, String>> tt = new TypeToken<Map<String, String>>() {
-            };
-            assertThat(GsonJsonCodec.MAP_TYPE).isEqualTo(tt.getType());
-        }
-
-        {
-            Map<String, String> expectedMap = new HashMap<>();
+            Map<Object, Object> expectedMap = new HashMap<>();
             expectedMap.put("a", "b");
 
             assertThat(codec.toJson(expectedMap))
                     .isEqualTo("{\n  \"a\": \"b\"\n}");
 
-            assertThat(codec.fromJson("{\"a\": \"b\"}", (Class<?>)expectedMap.getClass()))
+            assertThat(codec.fromJson("{\"a\": \"b\"}", (Class<?>) expectedMap.getClass()))
                     .isEqualTo(expectedMap);
         }
         {
-            assertThatExceptionOfType(JsonSyntaxException.class)
-                    .isThrownBy(() -> codec.fromJson("{\"a\": [1, 2]}", Map.class));
-        }
+            Map<Object, Object> map = codec.fromJson("{\"a\": [1, 2]}", Map.class);
 
+            assertThat(map).containsExactly(MapEntry.entry("a", asList(1.0, 2.0)));
+        }
     }
 
     public static class DateExample {
