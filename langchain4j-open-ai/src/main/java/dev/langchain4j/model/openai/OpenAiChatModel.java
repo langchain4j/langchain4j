@@ -183,7 +183,11 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
     }
 
     public static OpenAiChatModel withApiKey(String apiKey) {
-        return builder().apiKey(apiKey).build();
+        return withApiKey(apiKey, false);
+    }
+
+    public static OpenAiChatModel withApiKey(String apiKey, boolean isStreaming) {
+        return builder().apiKey(apiKey).isStreaming(isStreaming).build();
     }
 
     public static OpenAiChatModelBuilder builder() {

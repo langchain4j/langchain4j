@@ -73,14 +73,15 @@ OpenAiChatModel model = OpenAiChatModel.builder()
     .logResponses(...)
     .tokenizer(...)
     .customHeaders(...)
+    .isStreaming(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
 
-## OpenAiStreamingChatModel
+## Streaming ChatModel
 
 ```java
-OpenAiStreamingChatModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+OpenAiChatModel model = OpenAiChatModel.withApiKey(System.getenv("OPENAI_API_KEY"), true);
 
 model.generate("Say 'Hello World'", new StreamingResponseHandler<AiMessage>() {
 
