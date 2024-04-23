@@ -89,8 +89,8 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
         String id = embeddingStore.add(embedding, textSegment);
         assertThat(id != null && !id.isEmpty()).isTrue();
 
-        Embedding refereceEmbedding = Embedding.from(new float[]{8.7F, 4.5F, 3.4F, 1.2F, 5.5F, 5.6F, 6.4F, 5.5F, 8.1F, 9.1F, 1.1F});
-        List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.findRelevant(refereceEmbedding, 1);
+        Embedding referenceEmbedding = Embedding.from(new float[]{8.7F, 4.5F, 3.4F, 1.2F, 5.5F, 5.6F, 6.4F, 5.5F, 8.1F, 9.1F, 1.1F});
+        List<EmbeddingMatch<TextSegment>> embeddingMatches = embeddingStore.findRelevant(referenceEmbedding, 1);
         assertThat(embeddingMatches).hasSize(1);
 
         EmbeddingMatch<TextSegment> embeddingMatch = embeddingMatches.get(0);

@@ -141,8 +141,7 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
         try {
             return ChatMessageDeserializer.messageFromJson(record.getBody());
         } catch (Exception e) {
-            log.error("Unable to parse message body", e);
-            throw new IllegalArgumentException("Unable to parse message body");
+            throw new IllegalArgumentException("Unable to parse message body", e);
         }
     }
 
@@ -161,7 +160,6 @@ public class CassandraChatMemoryStore implements ChatMemoryStore {
             record.setBody(ChatMessageSerializer.messageToJson(chatMessage));
             return record;
         } catch (Exception e) {
-            log.error("Unable to parse message body", e);
             throw new IllegalArgumentException("Unable to parse message body", e);
         }
     }

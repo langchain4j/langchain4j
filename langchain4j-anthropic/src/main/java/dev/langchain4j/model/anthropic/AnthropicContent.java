@@ -1,7 +1,19 @@
 package dev.langchain4j.model.anthropic;
 
-class AnthropicContent {
+import lombok.Builder;
 
-    String type;
-    String text;
+import java.util.Map;
+
+@Builder
+public class AnthropicContent {
+
+    public String type;
+
+    // when type = "text"
+    public String text;
+
+    // when type = "tool_use"
+    public String id;
+    public String name;
+    public Map<String, Object> input;
 }

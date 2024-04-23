@@ -7,6 +7,8 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
@@ -18,8 +20,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class DocumentByParagraphSplitterTest {
 
-    @Test
-    void should_split_into_segments_with_one_paragraph_per_segment() {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "\n\n",
+            "\n \n",
+            " \n\n",
+            "\n\n ",
+            " \n \n ",
+            "\r\n\r\n"
+    })
+    void should_split_into_segments_with_one_paragraph_per_segment(String separator) {
 
         int maxSegmentSize = 30;
 
@@ -29,10 +39,10 @@ class DocumentByParagraphSplitterTest {
         String secondParagraph = "This is a second paragraph.";
         assertThat(secondParagraph).hasSizeLessThan(maxSegmentSize);
 
-        assertThat(firstParagraph + "\n \n" + secondParagraph).hasSizeGreaterThan(maxSegmentSize);
+        assertThat(firstParagraph + separator + secondParagraph).hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s \n \n %s ", firstParagraph, secondParagraph),
+                format(" %s %s %s ", firstParagraph, separator, secondParagraph),
                 metadata("document", "0")
         );
 
@@ -48,8 +58,16 @@ class DocumentByParagraphSplitterTest {
         );
     }
 
-    @Test
-    void should_split_into_segments_with_multiple_paragraphs_per_segment() {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "\n\n",
+            "\n \n",
+            " \n\n",
+            "\n\n ",
+            " \n \n ",
+            "\r\n\r\n"
+    })
+    void should_split_into_segments_with_multiple_paragraphs_per_segment(String separator) {
 
         int maxSegmentSize = 60;
 
@@ -64,7 +82,7 @@ class DocumentByParagraphSplitterTest {
                 .hasSizeGreaterThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s \n \n %s \n \n %s ", firstParagraph, secondParagraph, thirdParagraph),
+                format(" %s %s %s %s %s ", firstParagraph, separator, secondParagraph, separator, thirdParagraph),
                 metadata("document", "0")
         );
 
@@ -80,8 +98,16 @@ class DocumentByParagraphSplitterTest {
         );
     }
 
-    @Test
-    void should_split_paragraph_into_sentences_if_it_does_not_fit_into_segment() {
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "\n\n",
+            "\n \n",
+            " \n\n",
+            "\n\n ",
+            " \n \n ",
+            "\r\n\r\n"
+    })
+    void should_split_paragraph_into_sentences_if_it_does_not_fit_into_segment(String separator) {
 
         int maxSegmentSize = 50;
 
@@ -101,7 +127,7 @@ class DocumentByParagraphSplitterTest {
         assertThat(thirdParagraph).hasSizeLessThan(maxSegmentSize);
 
         Document document = Document.from(
-                format(" %s \n \n %s \n \n %s ", firstParagraph, secondParagraph, thirdParagraph),
+                format(" %s %s %s %s %s ", firstParagraph, separator, secondParagraph, separator, thirdParagraph),
                 metadata("document", "0")
         );
 
@@ -443,6 +469,25 @@ class DocumentByParagraphSplitterTest {
             "Some places and stories remain etched in our souls, offering lessons and moments of sheer wonder.",
             "They defy definition."
     };
+
+    @Test
+    void should_split_text_with_CRLF_line_endings() {
+
+        // given
+        Document document = Document.from("Title\r\n\r\nHeader 1\r\nText 1\r\n\r\nHeader 2\r\nText 2");
+
+        DocumentSplitter splitter = new DocumentByParagraphSplitter(7, 0, new OpenAiTokenizer());
+
+        // when
+        List<TextSegment> segments = splitter.split(document);
+
+        // then
+        assertThat(segments).containsExactly(
+                TextSegment.from("Title", Metadata.from("index", "0")),
+                TextSegment.from("Header 1\r\nText 1", Metadata.from("index", "1")),
+                TextSegment.from("Header 2\r\nText 2", Metadata.from("index", "2"))
+        );
+    }
 
     private static String sentences(int fromInclusive, int toInclusive) {
         StringBuilder sb = new StringBuilder();

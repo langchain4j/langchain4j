@@ -25,20 +25,10 @@ import static dev.langchain4j.model.output.FinishReason.*;
 
 class DefaultZhipuAiHelper {
 
-    public static List<Embedding> toEmbed(EmbeddingResponse response) {
-        return response.getData().stream()
+    public static List<Embedding> toEmbed(List<EmbeddingResponse> response) {
+        return response.stream()
                 .map(zhipuAiEmbedding -> Embedding.from(zhipuAiEmbedding.getEmbedding()))
                 .collect(Collectors.toList());
-    }
-
-    public static String toEmbedTexts(List<TextSegment> textSegments) {
-        List<String> embedText = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(Collectors.toList());
-        if (Utils.isNullOrEmpty(embedText)) {
-            return null;
-        }
-        return embedText.get(0);
     }
 
     public static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
@@ -81,7 +71,7 @@ class DefaultZhipuAiHelper {
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
             return dev.langchain4j.model.zhipu.chat.UserMessage.builder()
-                    .content(userMessage.text())
+                    .content(userMessage.singleText())
                     .build();
         }
 
@@ -123,13 +113,12 @@ class DefaultZhipuAiHelper {
     }
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
-        Message message = response.getChoices().get(0).getMessage();
-        AssistantMessage assistantMessage = (AssistantMessage) message;
-        if (isNullOrEmpty(assistantMessage.getToolCalls())) {
-            return AiMessage.from(assistantMessage.getContent());
+        AssistantMessage message = response.getChoices().get(0).getMessage();
+        if (isNullOrEmpty(message.getToolCalls())) {
+            return AiMessage.from(message.getContent());
         }
 
-        return AiMessage.from(specificationsFrom(assistantMessage.getToolCalls()));
+        return AiMessage.from(specificationsFrom(message.getToolCalls()));
     }
 
     public static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
@@ -144,6 +133,19 @@ class DefaultZhipuAiHelper {
             );
         }
         return specifications;
+    }
+
+    public static Usage getEmbeddingUsage(List<EmbeddingResponse> responses) {
+        Usage tokenUsage = Usage.builder()
+                .completionTokens(0)
+                .promptTokens(0)
+                .totalTokens(0)
+                .build();
+
+        for (EmbeddingResponse response : responses) {
+            tokenUsage.add(response.getUsage());
+        }
+        return tokenUsage;
     }
 
 
