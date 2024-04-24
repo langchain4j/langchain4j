@@ -48,12 +48,16 @@ class DefaultZhipuAiHelper {
     }
 
     private static ChatFunctionParameters toFunctionParameters(ToolParameters toolParameters) {
+        if (toolParameters == null) {
+            return new ChatFunctionParameters();
+        }
         return new ChatFunctionParameters(
                 toolParameters.type(),
                 toolParameters.properties(),
                 toolParameters.required()
         );
     }
+
 
 
     static List<com.zhipu.oapi.service.v4.model.ChatMessage> toZhipuAiMessages(List<ChatMessage> messages) {
