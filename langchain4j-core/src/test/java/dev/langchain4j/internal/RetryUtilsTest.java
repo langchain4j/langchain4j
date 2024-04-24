@@ -103,7 +103,7 @@ class RetryUtilsTest {
 
         assertThatThrownBy(() -> policy.withRetry(mockAction, 3))
                 .isInstanceOf(RuntimeException.class);
-        verify(mockAction, times(4)).call();
+        verify(mockAction, times(3)).call();
         verifyNoMoreInteractions(mockAction);
     }
 
