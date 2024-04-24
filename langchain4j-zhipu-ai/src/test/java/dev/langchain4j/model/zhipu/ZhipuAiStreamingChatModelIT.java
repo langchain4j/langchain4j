@@ -42,11 +42,11 @@ public class ZhipuAiStreamingChatModelIT {
 
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
 
-        model.generate("写一篇100字的自我介绍模板", handler);
+        model.generate("Where is the capital of China? Please answer in English", handler);
 
         Response<AiMessage> response = handler.get();
 
-//        assertThat(response.content().text()).containsIgnoringCase("Beijing");
+        assertThat(response.content().text()).containsIgnoringCase("Beijing");
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
