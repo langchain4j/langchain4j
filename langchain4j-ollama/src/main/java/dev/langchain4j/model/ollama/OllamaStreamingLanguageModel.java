@@ -45,7 +45,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)
-                .logStreamingResponses(logStreamingResponses)
+                .logStreamingResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()
