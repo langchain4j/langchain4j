@@ -13,6 +13,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -49,7 +50,11 @@ class DefaultZhipuAiHelper {
 
     private static ChatFunctionParameters toFunctionParameters(ToolParameters toolParameters) {
         if (toolParameters == null) {
-            return new ChatFunctionParameters();
+            return new ChatFunctionParameters(
+                    "object",
+                    new HashMap<>(),
+                    new ArrayList<>()
+            );
         }
         return new ChatFunctionParameters(
                 toolParameters.type(),
@@ -57,8 +62,6 @@ class DefaultZhipuAiHelper {
                 toolParameters.required()
         );
     }
-
-
 
     static List<com.zhipu.oapi.service.v4.model.ChatMessage> toZhipuAiMessages(List<ChatMessage> messages) {
         return messages.stream()
