@@ -209,7 +209,8 @@ instead of the entire knowledge base in the prompt:
 - LLMs have a limited context window, so the entire knowledge base might not fit
 - The more information you provide in the prompt, the longer it takes for the LLM to process it and respond
 - The more information you provide in the prompt, the more you pay
-- Irrelevant information in the prompt might confuse or distract the LLM and increase the chance of hallucinations
+- Irrelevant information in the prompt might distract the LLM and increase the chance of hallucinations
+- The more information you provide in the prompt, the harder it is to explain based on which information the LLM responded
 
 We can address these concerns by splitting a knowledge base into smaller, more digestible segments.
 How big should those segments be? That is a good question. As always, it depends.
