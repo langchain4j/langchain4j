@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.30.0-SNAPSHOT</version>
+    <version>0.30.0</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 

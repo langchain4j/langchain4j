@@ -24,14 +24,14 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * If there isn't enough space for a new message, the oldest one is evicted.
  * <p>
  * Once added, a {@link SystemMessage} is always retained.
- * Only one {@link SystemMessage} can be held at a time.
- * If a new {@link SystemMessage} with the same content is added, it is ignored.
- * If a new {@link SystemMessage} with different content is added, it replaces the previous one.
+ * Only one {@code SystemMessage} can be held at a time.
+ * If a new {@code SystemMessage} with the same content is added, it is ignored.
+ * If a new {@code SystemMessage} with different content is added, the previous {@code SystemMessage} is removed.
  * <p>
  * If an {@link AiMessage} containing {@link ToolExecutionRequest}(s) is evicted,
  * the following orphan {@link ToolExecutionResultMessage}(s) are also automatically evicted
  * to avoid problems with some LLM providers (such as OpenAI)
- * that prohibit sending orphan {@link ToolExecutionResultMessage}(s) in the request.
+ * that prohibit sending orphan {@code ToolExecutionResultMessage}(s) in the request.
  * <p>
  * The state of chat memory is stored in {@link ChatMemoryStore} ({@link InMemoryChatMemoryStore} is used by default).
  */

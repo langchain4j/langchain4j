@@ -9,10 +9,14 @@ import java.util.Set;
 /**
  * Marshaller to read and write embeddings to Infinispan
  */
-class LangChainItemMarshaller implements MessageMarshaller<LangChainInfinispanItem> {
+public class LangChainItemMarshaller implements MessageMarshaller<LangChainInfinispanItem> {
 
     private final String typeName;
 
+    /**
+     * Constructor for the LangChainItemMarshaller Marshaller
+     * @param typeName, the full type of the protobuf entity
+     */
     public LangChainItemMarshaller(String typeName) {
         this.typeName = typeName;
     }
