@@ -1,153 +1,162 @@
 package dev.langchain4j.model.zhipu;
 
+import com.fasterxml.jackson.databind.node.TextNode;
+import com.zhipu.oapi.service.v4.embedding.EmbeddingApiResponse;
+import com.zhipu.oapi.service.v4.model.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.zhipu.chat.*;
-import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
-import dev.langchain4j.model.zhipu.shared.Usage;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
+import static java.util.stream.Collectors.toList;
 
 class DefaultZhipuAiHelper {
 
-    public static List<Embedding> toEmbed(List<EmbeddingResponse> response) {
+    static List<Embedding> toEmbed(List<EmbeddingApiResponse> response) {
         return response.stream()
-                .map(zhipuAiEmbedding -> Embedding.from(zhipuAiEmbedding.getEmbedding()))
-                .collect(Collectors.toList());
+                .map(zhipuAiEmbedding -> Embedding.from(zhipuAiEmbedding.getData().getData().get(0).getEmbedding().stream().map(Double::floatValue).collect(toList())))
+                .collect(toList());
     }
 
-    public static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
+    static List<ChatTool> toTools(List<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
-                .map(toolSpecification -> Tool.from(toFunction(toolSpecification)))
-                .collect(Collectors.toList());
+                .map(toolSpecification -> {
+                    ChatTool chatTool = new ChatTool();
+                    chatTool.setType(ChatToolType.FUNCTION.value());
+                    chatTool.setFunction(toFunction(toolSpecification));
+                    return chatTool;
+                })
+                .collect(toList());
     }
 
-    private static Function toFunction(ToolSpecification toolSpecification) {
-        return Function.builder()
+    private static ChatFunction toFunction(ToolSpecification toolSpecification) {
+        return ChatFunction.builder()
                 .name(toolSpecification.name())
                 .description(toolSpecification.description())
                 .parameters(toFunctionParameters(toolSpecification.parameters()))
                 .build();
     }
 
-    private static Parameters toFunctionParameters(ToolParameters toolParameters) {
-        return Parameters.builder()
-                .properties(toolParameters.properties())
-                .required(toolParameters.required())
-                .build();
+    private static ChatFunctionParameters toFunctionParameters(ToolParameters toolParameters) {
+        return new ChatFunctionParameters(
+                toolParameters.type(),
+                toolParameters.properties(),
+                toolParameters.required()
+        );
     }
 
 
-    public static List<Message> toZhipuAiMessages(List<ChatMessage> messages) {
+    static List<com.zhipu.oapi.service.v4.model.ChatMessage> toZhipuAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(DefaultZhipuAiHelper::toZhipuAiMessage)
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
-    private static Message toZhipuAiMessage(ChatMessage message) {
+    private static com.zhipu.oapi.service.v4.model.ChatMessage toZhipuAiMessage(ChatMessage message) {
 
         if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
-            return dev.langchain4j.model.zhipu.chat.SystemMessage.builder()
-                    .content(systemMessage.text())
-                    .build();
+            com.zhipu.oapi.service.v4.model.ChatMessage chatMessage = new com.zhipu.oapi.service.v4.model.ChatMessage();
+            chatMessage.setRole("system");
+            chatMessage.setContent(systemMessage.text());
+            return chatMessage;
         }
 
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
-            return dev.langchain4j.model.zhipu.chat.UserMessage.builder()
-                    .content(userMessage.singleText())
-                    .build();
+            com.zhipu.oapi.service.v4.model.ChatMessage chatMessage = new com.zhipu.oapi.service.v4.model.ChatMessage();
+            chatMessage.setRole("user");
+            chatMessage.setContent(userMessage.singleText());
+            return chatMessage;
         }
 
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             if (!aiMessage.hasToolExecutionRequests()) {
-                return AssistantMessage.builder()
-                        .content(aiMessage.text())
-                        .build();
+                com.zhipu.oapi.service.v4.model.ChatMessage chatMessage = new com.zhipu.oapi.service.v4.model.ChatMessage();
+                chatMessage.setRole("assistant");
+                chatMessage.setContent(aiMessage.text());
+                return chatMessage;
             }
-            List<ToolCall> toolCallArrayList = new ArrayList<>();
+            List<ToolCalls> toolCallsArrayList = new ArrayList<>();
             for (ToolExecutionRequest executionRequest : aiMessage.toolExecutionRequests()) {
-                toolCallArrayList.add(ToolCall.builder()
-                        .function(
-                                FunctionCall.builder()
-                                        .name(executionRequest.name())
-                                        .arguments(executionRequest.arguments())
-                                        .build()
-                        )
-                        .type(ToolType.FUNCTION)
-                        .id(executionRequest.id())
-                        .build()
+                ToolCalls function = new ToolCalls(
+                        new ChatFunctionCall(
+                                executionRequest.name(),
+                                new TextNode(executionRequest.arguments())
+                        ),
+                        executionRequest.id(),
+                        "function"
                 );
+                toolCallsArrayList.add(function);
             }
-            return AssistantMessage.builder()
-                    .content(aiMessage.text())
-                    .toolCalls(toolCallArrayList)
-                    .build();
+            com.zhipu.oapi.service.v4.model.ChatMessage chatMessage = new com.zhipu.oapi.service.v4.model.ChatMessage();
+            chatMessage.setRole("assistant");
+            chatMessage.setContent(aiMessage.text());
+            chatMessage.setTool_calls(toolCallsArrayList);
+            return chatMessage;
         }
 
         if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage resultMessage = (ToolExecutionResultMessage) message;
-            return ToolMessage.builder()
-                    .content(resultMessage.text())
-                    .build();
+            com.zhipu.oapi.service.v4.model.ChatMessage chatMessage = new com.zhipu.oapi.service.v4.model.ChatMessage();
+            chatMessage.setRole("tool");
+            chatMessage.setContent(resultMessage.text());
+            return chatMessage;
         }
 
         throw illegalArgument("Unknown message type: " + message.type());
     }
 
-    public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
-        AssistantMessage message = response.getChoices().get(0).getMessage();
-        if (isNullOrEmpty(message.getToolCalls())) {
-            return AiMessage.from(message.getContent());
+    static AiMessage aiMessageFrom(ModelData response) {
+        com.zhipu.oapi.service.v4.model.ChatMessage message = response.getChoices().get(0).getMessage();
+        if (isNullOrEmpty(message.getTool_calls())) {
+            return AiMessage.from((String) message.getContent());
         }
 
-        return AiMessage.from(specificationsFrom(message.getToolCalls()));
+        return AiMessage.from(specificationsFrom(message.getTool_calls()));
     }
 
-    public static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
+    static List<ToolExecutionRequest> specificationsFrom(List<ToolCalls> toolCalls) {
         List<ToolExecutionRequest> specifications = new ArrayList<>(toolCalls.size());
-        for (ToolCall toolCall : toolCalls) {
+        for (ToolCalls toolCall : toolCalls) {
             specifications.add(
                     ToolExecutionRequest.builder()
                             .id(toolCall.getId())
                             .name(toolCall.getFunction().getName())
-                            .arguments(toolCall.getFunction().getArguments())
+                            .arguments(toolCall.getFunction().getArguments().toString())
                             .build()
             );
         }
         return specifications;
     }
 
-    public static Usage getEmbeddingUsage(List<EmbeddingResponse> responses) {
-        Usage tokenUsage = Usage.builder()
-                .completionTokens(0)
-                .promptTokens(0)
-                .totalTokens(0)
-                .build();
+    static Usage getEmbeddingUsage(List<EmbeddingApiResponse> responses) {
+        Usage tokenUsage = new Usage();
+        tokenUsage.setCompletionTokens(0);
+        tokenUsage.setPromptTokens(0);
+        tokenUsage.setTotalTokens(0);
 
-        for (EmbeddingResponse response : responses) {
-            tokenUsage.add(response.getUsage());
+        for (EmbeddingApiResponse response : responses) {
+            tokenUsage.setPromptTokens(tokenUsage.getPromptTokens() + response.getData().getUsage().getPromptTokens());
+            tokenUsage.setCompletionTokens(tokenUsage.getCompletionTokens() + response.getData().getUsage().getCompletionTokens());
+            tokenUsage.setTotalTokens(tokenUsage.getTotalTokens() + response.getData().getUsage().getTotalTokens());
         }
         return tokenUsage;
     }
 
 
-    public static TokenUsage tokenUsageFrom(Usage zhipuUsage) {
+    static TokenUsage tokenUsageFrom(Usage zhipuUsage) {
         if (zhipuUsage == null) {
             return null;
         }
@@ -158,7 +167,7 @@ class DefaultZhipuAiHelper {
         );
     }
 
-    public static FinishReason finishReasonFrom(String finishReason) {
+    static FinishReason finishReasonFrom(String finishReason) {
         if (finishReason == null) {
             return null;
         }

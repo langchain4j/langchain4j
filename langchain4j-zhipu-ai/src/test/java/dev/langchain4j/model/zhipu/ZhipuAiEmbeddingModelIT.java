@@ -18,8 +18,6 @@ public class ZhipuAiEmbeddingModelIT {
 
     ZhipuAiEmbeddingModel model = ZhipuAiEmbeddingModel.builder()
             .apiKey(apiKey)
-            .logRequests(true)
-            .logResponses(true)
             .maxRetries(1)
             .build();
 

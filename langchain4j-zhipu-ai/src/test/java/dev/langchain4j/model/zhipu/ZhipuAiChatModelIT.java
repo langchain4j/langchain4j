@@ -28,8 +28,6 @@ class ZhipuAiChatModelIT {
 
     ZhipuAiChatModel chatModel = ZhipuAiChatModel.builder()
             .apiKey(apiKey)
-            .logRequests(true)
-            .logResponses(true)
             .maxRetries(1)
             .build();
 

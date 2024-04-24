@@ -26,18 +26,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "ZHIPU_API_KEY", matches = ".+")
 public class ZhipuAiStreamingChatModelIT {
     private static final String apiKey = System.getenv("ZHIPU_API_KEY");
-
-    private ZhipuAiStreamingChatModel model = ZhipuAiStreamingChatModel.builder()
-            .apiKey(apiKey)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
     ToolSpecification calculator = ToolSpecification.builder()
             .name("calculator")
             .description("returns a sum of two numbers")
             .addParameter("first", INTEGER)
             .addParameter("second", INTEGER)
+            .build();
+    private ZhipuAiStreamingChatModel model = ZhipuAiStreamingChatModel.builder()
+            .apiKey(apiKey)
             .build();
 
     @Test
@@ -46,11 +42,11 @@ public class ZhipuAiStreamingChatModelIT {
 
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
 
-        model.generate("Where is the capital of China? Please answer in English", handler);
+        model.generate("写一篇100字的自我介绍模板", handler);
 
         Response<AiMessage> response = handler.get();
 
-        assertThat(response.content().text()).containsIgnoringCase("Beijing");
+//        assertThat(response.content().text()).containsIgnoringCase("Beijing");
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());

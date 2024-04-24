@@ -51,6 +51,7 @@
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
+        <oapi-java-sdk.version>release-V4-2.0.2</oapi-java-sdk.version>
     </properties>
 
     <dependencyManagement>
@@ -338,6 +339,12 @@
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>
                 <version>${github-api.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.bigmodel.openapi</groupId>
+                <artifactId>oapi-java-sdk</artifactId>
+                <version>${oapi-java-sdk.version}</version>
             </dependency>
 
             <dependency>
