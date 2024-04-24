@@ -51,7 +51,7 @@ public class OllamaChatModel implements ChatLanguageModel {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
-                .logRequests(logRequests)
+                .logRequests(getOrDefault(logRequests, false))
                 .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
