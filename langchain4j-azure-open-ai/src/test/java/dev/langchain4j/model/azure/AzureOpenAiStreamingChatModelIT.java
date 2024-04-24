@@ -15,6 +15,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -244,6 +245,128 @@ class AzureOpenAiStreamingChatModelIT {
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
         assertThat(tokenUsage2.inputTokenCount()).isCloseTo(33, tokenizerPrecision);
+        assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage2.totalTokenCount())
+                .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
+
+        assertThat(response2.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) throws Exception {
+
+        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .logRequestsAndResponses(true)
+                .build();
+
+        UserMessage userMessage = userMessage("Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
+
+        List<ToolSpecification> toolSpecifications = asList(
+                ToolSpecification.builder()
+                        .name("sum")
+                        .description("returns a sum of two numbers")
+                        .addParameter("first", INTEGER)
+                        .addParameter("second", INTEGER)
+                        .build(),
+                ToolSpecification.builder()
+                        .name("square")
+                        .description("returns the square of one number")
+                        .addParameter("number", INTEGER)
+                        .build(),
+                ToolSpecification.builder()
+                        .name("cube")
+                        .description("returns the cube of one number")
+                        .addParameter("number", INTEGER)
+                        .build()
+        );
+
+        model.generate(singletonList(userMessage), toolSpecifications, new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                logger.info("onNext: '" + token + "'");
+                Exception e = new IllegalStateException("onNext() should never be called when tool is executed");
+                futureResponse.completeExceptionally(e);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                logger.info("onComplete: '" + response + "'");
+                futureResponse.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(userMessage);
+        messages.add(aiMessage);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(3);
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.name()).isNotEmpty();
+            ToolExecutionResultMessage toolExecutionResultMessage;
+            if (toolExecutionRequest.name().equals("sum")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "4");
+            } else if (toolExecutionRequest.name().equals("square")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 4}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "16");
+            } else if (toolExecutionRequest.name().equals("cube")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 8}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "512");
+            } else {
+                throw new AssertionError("Unexpected tool name: " + toolExecutionRequest.name());
+            }
+            messages.add(toolExecutionResultMessage);
+        }
+        CompletableFuture<Response<AiMessage>> futureResponse2 = new CompletableFuture<>();
+
+        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                logger.info("onNext: '" + token + "'");
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                logger.info("onComplete: '" + response + "'");
+                futureResponse2.complete(response);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse2.completeExceptionally(error);
+            }
+        });
+
+        Response<AiMessage> response2 = futureResponse2.get(30, SECONDS);
+        AiMessage aiMessage2 = response2.content();
+
+        // then
+        logger.debug("Final answer is: " + aiMessage2);
+        assertThat(aiMessage2.text()).contains("4", "16", "512");
+        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage2 = response2.tokenUsage();
+        assertThat(tokenUsage2.inputTokenCount()).isCloseTo(119, tokenizerPrecision);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());

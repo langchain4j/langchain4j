@@ -6,10 +6,12 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReasonFrom;
 import static java.util.Collections.singletonList;
@@ -22,10 +24,13 @@ import static java.util.stream.Collectors.toList;
  */
 class AzureOpenAiStreamingResponseBuilder {
 
+    Logger logger = LoggerFactory.getLogger(AzureOpenAiStreamingResponseBuilder.class);
+
     private final StringBuffer contentBuilder = new StringBuffer();
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
-    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
+    private String toolExecutionsIndex = "call_undefined";
+    private final Map<String, ToolExecutionRequestBuilder> toolExecutionRequestBuilderHashMap = new HashMap<>();
     private volatile CompletionsFinishReason finishReason;
 
     private final Integer inputTokenCount;
@@ -66,23 +71,31 @@ class AzureOpenAiStreamingResponseBuilder {
         }
 
         if (delta.getToolCalls() != null && !delta.getToolCalls().isEmpty()) {
-            ChatCompletionsToolCall toolCall = delta.getToolCalls().get(0);
-            ToolExecutionRequestBuilder toolExecutionRequestBuilder
-                    = indexToToolExecutionRequestBuilder.computeIfAbsent(1, idx -> new ToolExecutionRequestBuilder());
-
-            if (toolCall.getId() != null) {
-                toolExecutionRequestBuilder.idBuilder.append(toolCall.getId());
-            }
-            if (toolCall instanceof ChatCompletionsFunctionToolCall) {
-                ChatCompletionsFunctionToolCall functionCall = (ChatCompletionsFunctionToolCall) toolCall;
-                if (functionCall.getFunction().getName() != null) {
-                    toolExecutionRequestBuilder.nameBuilder.append(functionCall.getFunction().getName());
+            for (ChatCompletionsToolCall toolCall : delta.getToolCalls()) {
+                ToolExecutionRequestBuilder toolExecutionRequestBuilder;
+                if (toolCall.getId() != null) {
+                    toolExecutionsIndex = toolCall.getId();
+                    toolExecutionRequestBuilder = new ToolExecutionRequestBuilder();
+                    toolExecutionRequestBuilder.idBuilder.append(toolExecutionsIndex);
+                    toolExecutionRequestBuilderHashMap.put(toolExecutionsIndex, toolExecutionRequestBuilder);
+                } else {
+                    toolExecutionRequestBuilder = toolExecutionRequestBuilderHashMap.get(toolExecutionsIndex);
+                    if (toolExecutionRequestBuilder == null) {
+                        throw new IllegalStateException("Function without an id defined in the tool call");
+                    }
                 }
-                if (functionCall.getFunction().getArguments() != null) {
-                    toolExecutionRequestBuilder.argumentsBuilder.append(functionCall.getFunction().getArguments());
+                if (toolCall instanceof ChatCompletionsFunctionToolCall) {
+                    ChatCompletionsFunctionToolCall functionCall = (ChatCompletionsFunctionToolCall) toolCall;
+                    if (functionCall.getFunction().getName() != null) {
+                        toolExecutionRequestBuilder.nameBuilder.append(functionCall.getFunction().getName());
+                    }
+                    if (functionCall.getFunction().getArguments() != null) {
+                        toolExecutionRequestBuilder.argumentsBuilder.append(functionCall.getFunction().getArguments());
+                    }
                 }
             }
         }
+        logger.debug("toolExecutionRequestBuilderHashMap: " + toolExecutionRequestBuilderHashMap);
     }
 
     public void append(Completions completions) {
@@ -135,8 +148,8 @@ class AzureOpenAiStreamingResponseBuilder {
             );
         }
 
-        if (!indexToToolExecutionRequestBuilder.isEmpty()) {
-            List<ToolExecutionRequest> toolExecutionRequests = indexToToolExecutionRequestBuilder.values().stream()
+        if (!toolExecutionRequestBuilderHashMap.isEmpty()) {
+            List<ToolExecutionRequest> toolExecutionRequests = toolExecutionRequestBuilderHashMap.values().stream()
                     .map(it -> ToolExecutionRequest.builder()
                             .id(it.idBuilder.toString())
                             .name(it.nameBuilder.toString())
