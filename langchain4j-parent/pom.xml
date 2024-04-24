@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.29.1</version>
+    <version>0.30.0</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -23,7 +23,7 @@
         <azure-ai-search.version>11.6.3</azure-ai-search.version>
         <azure.storage-blob.version>12.25.3</azure.storage-blob.version>
         <azure.storage-common.version>12.24.3</azure.storage-common.version>
-        <azure.identity.version>1.11.4</azure.identity.version>
+        <azure.identity.version>1.12.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>
@@ -488,6 +488,16 @@
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
     </distributionManagement>
+
+    <repositories>
+        <repository>
+            <id>snapshot-repo</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <profiles>
         <profile>

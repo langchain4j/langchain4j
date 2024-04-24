@@ -42,7 +42,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.29.1</version>
+    <version>0.30.0</version>
 </dependency>
 ```
 
@@ -209,7 +209,8 @@ instead of the entire knowledge base in the prompt:
 - LLMs have a limited context window, so the entire knowledge base might not fit
 - The more information you provide in the prompt, the longer it takes for the LLM to process it and respond
 - The more information you provide in the prompt, the more you pay
-- Irrelevant information in the prompt might confuse or distract the LLM and increase the chance of hallucinations
+- Irrelevant information in the prompt might distract the LLM and increase the chance of hallucinations
+- The more information you provide in the prompt, the harder it is to explain based on which information the LLM responded
 
 We can address these concerns by splitting a knowledge base into smaller, more digestible segments.
 How big should those segments be? That is a good question. As always, it depends.
@@ -309,6 +310,7 @@ In the meantime, please read [this](https://github.com/langchain4j/langchain4j/p
 - [Advanced RAG with Query Routing](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_02_Advanced_RAG_with_Query_Routing_Example.java)
 - [Advanced RAG with Re-Ranking](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_03_Advanced_RAG_with_ReRanking_Example.java)
 - [Advanced RAG with Including Metadata](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_04_Advanced_RAG_with_Metadata_Example.java)
-- [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
+- [Skipping Retrieval](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_06_Advanced_RAG_Skip_Retrieval_Example.java)
+- [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentApplicationTest.java)
 - [Loading Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)
 - [ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)

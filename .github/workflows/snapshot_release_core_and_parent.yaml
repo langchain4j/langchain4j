@@ -1,14 +1,15 @@
-name: release_snapshot
+name: snapshot_release_core_and_parent
 
 # Only run on pushes to main:
 # Replace with 'on: [push]' if you need to run tests on your PR
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
 
 jobs:
-  release_snapshot:
+  snapshot_release_core_and_parent:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,10 +24,10 @@ jobs:
           server-id: ossrh
           server-username: OSSRH_USERNAME
           server-password: OSSRH_PASSWORD
-      - name: release_snapshot
+      - name: snapshot_release_core_and_parent
         env:
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
         # Notes:
         #  - tests already run in a separate action (main)
-        run: mvn -B -U --fail-at-end -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs clean deploy
+        run: mvn -B -U --fail-at-end -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -pl langchain4j-core,langchain4j-parent clean deploy
