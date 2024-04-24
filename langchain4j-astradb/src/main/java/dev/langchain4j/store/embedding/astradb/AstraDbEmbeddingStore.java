@@ -192,7 +192,10 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         // Mapping of the filter to internal representation
-        Filter astraFilter = AstraDBFilterMapper.map(request.filter());
+        Filter astraFilter = null;
+        if (request.filter() != null) {
+            astraFilter = AstraDBFilterMapper.map(request.filter());
+        }
         // Call the search
         List<EmbeddingMatch<TextSegment>> matches = findRelevant(
                 request.queryEmbedding(), astraFilter,

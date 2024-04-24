@@ -12,13 +12,18 @@ import dev.langchain4j.store.cassio.MetadataVectorRecord;
 import dev.langchain4j.store.cassio.MetadataVectorTable;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.logical.And;
 import lombok.Getter;
 import lombok.NonNull;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
@@ -265,6 +270,49 @@ public class CassandraCassioEmbeddingStore implements EmbeddingStore<TextSegment
                 .stream()
                 .map(CassandraCassioEmbeddingStore::mapSearchResult)
                 .collect(toList());
+    }
+
+    /**
+     * Implementation of the Search to add the metadata Filtering.
+     *
+     * @param request
+     *      A request to search in an {@link EmbeddingStore}. Contains all search criteria.
+     * @return
+     *      search with metadata filtering
+     */
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        // Getting the request
+        AnnQuery query = AnnQuery.builder()
+                .embeddings(request.queryEmbedding().vectorAsList())
+                .topK(ensureGreaterThanZero(request.maxResults(), "maxResults"))
+                .threshold(CosineSimilarity.fromRelevanceScore(ensureBetween(request.minScore(), 0, 1, "minScore")))
+                .metric(SimilarityMetric.COSINE)
+                .build();
+        // Adding the filter
+        if (request.filter() != null) {
+            mapFilter(request.filter(), query);
+        }
+        return new EmbeddingSearchResult<>(embeddingTable
+                .similaritySearch(query)
+                .stream()
+                .map(CassandraCassioEmbeddingStore::mapSearchResult)
+                .collect(toList()));
+    }
+
+    static void mapFilter(dev.langchain4j.store.embedding.filter.Filter filter, AnnQuery query) {
+        if (filter instanceof IsEqualTo) {
+            IsEqualTo f = (IsEqualTo) filter;
+             if (query.getMetaData() == null){
+                query.setMetaData(new HashMap<>());
+            }
+            query.getMetaData().put(f.key(), String.valueOf(f.comparisonValue()));
+        } else if (filter instanceof And) {
+            And and = (And) filter;
+            mapFilter(and.left(), query);
+            mapFilter(and.right(), query);
+        } else {
+            throw new UnsupportedOperationException("Unsupported filter type: " + filter.getClass().getName());
+        }
     }
 
     /**

@@ -16,6 +16,7 @@ import dev.langchain4j.model.openai.OpenAiModelName;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -49,15 +50,28 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
     static Database db;
 
     @BeforeAll
-    public static void initStoreForTests() {
+    static void initStoreForTests() {
+
+        /*
+         * Token Value is retrieved from environment Variable 'ASTRA_DB_APPLICATION_TOKEN', it should
+         * have Organization Administration permissions (to create db)
+         */
         client       = new DataAPIClient(getAstraToken());
         astraDBAdmin = client.getAdmin();
+
+        /*
+         * Will create a Database in Astra with the name 'test_langchain4j' if does not exist and work
+         * with its identifier. The call is blocking and will wait until the database is ready.
+         */
         AstraDBDatabaseAdmin databaseAdmin = (AstraDBDatabaseAdmin) astraDBAdmin.createDatabase(TEST_DB);
         dbId = UUID.fromString(databaseAdmin.getDatabaseInformations().getId());
         assertThat(dbId).isNotNull();
         log.info("[init] - Database exists id={}", dbId);
 
-        // Select proper Database
+        /*
+         * Initialize the client from the database identifier. A database will host multiple collections.
+         * A collection stands for an Embedding Store.
+         */
         db = databaseAdmin.getDatabase();
         Assertions.assertThat(db).isNotNull();
         db.registerListener("logger", new LoggingCommandObserver(AstraDbEmbeddingStoreIT.class));
