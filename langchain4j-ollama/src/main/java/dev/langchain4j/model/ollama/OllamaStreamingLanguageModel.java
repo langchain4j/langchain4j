@@ -39,7 +39,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                                         String format,
                                         Duration timeout,
                                         Boolean logRequests,
-                                        Boolean logStreamingResponses
+                                        Boolean logResponses
                                         ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
