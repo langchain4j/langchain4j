@@ -14,7 +14,7 @@ import dev.langchain4j.rag.query.Metadata;
  * @see DefaultRetrievalAugmentor
  */
 @Experimental
-public interface RetrievalAugmentor {
+public interface RetrievalAugmentor<T> {
 
     /**
      * Augments the provided {@link UserMessage} with retrieved content.
@@ -23,5 +23,5 @@ public interface RetrievalAugmentor {
      * @param metadata    The {@link Metadata} that may be useful or necessary for retrieval and augmentation.
      * @return The augmented {@link UserMessage}.
      */
-    UserMessage augment(UserMessage userMessage, Metadata metadata);
+    T augment(UserMessage userMessage, Metadata metadata);
 }

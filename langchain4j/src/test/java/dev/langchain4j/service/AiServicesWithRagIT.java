@@ -35,6 +35,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilterBuilder;
 import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -58,6 +59,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class AiServicesWithRagIT {
@@ -208,6 +210,77 @@ class AiServicesWithRagIT {
 
         // then
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
+    }
+
+    interface AssistantWithSources {
+        WithSources<String> answer(String query);
+        WithSources answerWithNoGenericType(String query);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_query_transformer_and_content_retriever_and_retrieve_sources(ChatLanguageModel model) {
+
+        // given
+        QueryTransformer queryTransformer = new ExpandingQueryTransformer(model);
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build();
+
+        AssistantWithSources assistant = AiServices.builder(AssistantWithSources.class)
+                .chatLanguageModel(model)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryTransformer(queryTransformer)
+                        .contentRetriever(contentRetriever)
+                        .build())
+                .build();
+
+        // when
+        WithSources<String> answer = assistant.answer("Can I cancel my booking?");
+
+        // then
+        assertThat(answer.getResponse()).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
+        Assertions.assertNotNull(answer.getAugmentedMessage());
+        assertThat(answer.getAugmentedMessage().getContents().size()).isEqualTo(1);
+        assertThat(answer.getAugmentedMessage().getContents().get(0).textSegment().text().replace(System.lineSeparator(), ""))
+                .isEqualTo(
+                "4. Cancellation Policy" +
+                        "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
+                        "4.2 If the booking period is less than 17 days, cancellations are not permitted."
+        );
+        assertThat(answer.getAugmentedMessage().getContents().get(0).textSegment().metadata("index")).isEqualTo("3");
+        assertThat(answer.getAugmentedMessage().getContents().get(0).textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
+
+
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_query_transformer_and_content_retriever_and_through_exception_when_generic_type_is_not_set(ChatLanguageModel model) {
+
+        // given
+        QueryTransformer queryTransformer = new ExpandingQueryTransformer(model);
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .maxResults(1)
+                .build();
+
+        AssistantWithSources assistant = AiServices.builder(AssistantWithSources.class)
+                .chatLanguageModel(model)
+                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
+                        .queryTransformer(queryTransformer)
+                        .contentRetriever(contentRetriever)
+                        .build())
+                .build();
+
+        // when
+        assertThrows(IllegalArgumentException.class, () -> assistant.answerWithNoGenericType("Can I cancel my booking?"));
+
     }
 
     @ParameterizedTest

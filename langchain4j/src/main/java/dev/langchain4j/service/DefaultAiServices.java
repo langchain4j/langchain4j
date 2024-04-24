@@ -88,17 +88,19 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
-
+                        AugmentedMessage augmentedMessage = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
                                     ? context.chatMemory(memoryId).messages()
                                     : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
-                            userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
+                            augmentedMessage = context.retrievalAugmentor.augment(userMessage, metadata);
+                            userMessage = augmentedMessage.getUserMessage();
                         }
 
                         // TODO give user ability to provide custom OutputParser
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
+                        Class<?> returnType = method.getReturnType();
+                        String outputFormatInstructions = outputFormatInstructions(returnType);
                         userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
@@ -118,7 +120,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (method.getReturnType() == TokenStream.class) {
+                        if (returnType == TokenStream.class) {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
@@ -173,7 +175,26 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        return parse(response, method.getReturnType());
+                        if (returnType != WithSources.class) {
+                            return parse(response, returnType);
+                        }
+                        AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
+
+                        Type withSourcesAnnotatedType = annotatedReturnType.getType();
+                        if (withSourcesAnnotatedType instanceof ParameterizedType) {
+                            ParameterizedType type = (ParameterizedType) withSourcesAnnotatedType;
+                            Type[] typeArguments = type.getActualTypeArguments();
+                            for (Type typeArg : typeArguments) {
+                                returnType = Class.forName(typeArg.getTypeName());
+                            }
+                        } else {
+                            throw illegalArgument("WithSources needs to have a generic class defined for the following method : %s", method.getName());
+                        }
+                        Object parsedResponse = parse(response, returnType);
+                        return WithSources.builder()
+                                .response(parsedResponse)
+                                .augmentedMessage(augmentedMessage)
+                                .build();
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

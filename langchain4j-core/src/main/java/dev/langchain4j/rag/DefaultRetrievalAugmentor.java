@@ -1,5 +1,6 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.data.message.AugmentedMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -95,8 +96,9 @@ import static java.util.stream.Collectors.*;
  * @see DefaultQueryRouter
  * @see DefaultContentAggregator
  * @see DefaultContentInjector
+ * @see AugmentedMessage
  */
-public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
+public class DefaultRetrievalAugmentor implements RetrievalAugmentor<AugmentedMessage> {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultRetrievalAugmentor.class);
 
@@ -120,7 +122,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     @Override
-    public UserMessage augment(UserMessage userMessage, Metadata metadata) {
+    public AugmentedMessage augment(UserMessage userMessage, Metadata metadata) {
 
         Query originalQuery = Query.from(userMessage.text(), metadata);
 
@@ -148,7 +150,10 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         UserMessage augmentedUserMessage = contentInjector.inject(contents, userMessage);
         log(augmentedUserMessage);
 
-        return augmentedUserMessage;
+        return AugmentedMessage.builder()
+                .userMessage(augmentedUserMessage)
+                .contents(contents)
+                .build();
     }
 
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,

@@ -1,6 +1,7 @@
 package dev.langchain4j.chain;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AugmentedMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
@@ -30,7 +31,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
     private final ChatLanguageModel chatLanguageModel;
     private final ChatMemory chatMemory;
-    private final RetrievalAugmentor retrievalAugmentor;
+    private final RetrievalAugmentor<AugmentedMessage> retrievalAugmentor;
 
     public ConversationalRetrievalChain(ChatLanguageModel chatLanguageModel,
                                         ChatMemory chatMemory,
@@ -77,7 +78,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
 
         UserMessage userMessage = UserMessage.from(query);
         Metadata metadata = Metadata.from(userMessage, chatMemory.id(), chatMemory.messages());
-        userMessage = retrievalAugmentor.augment(userMessage, metadata);
+        userMessage = retrievalAugmentor.augment(userMessage, metadata).getUserMessage();
         chatMemory.add(userMessage);
 
         AiMessage aiMessage = chatLanguageModel.generate(chatMemory.messages()).content();

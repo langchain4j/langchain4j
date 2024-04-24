@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AugmentedMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -31,7 +32,7 @@ public class AiServiceContext {
     public List<ToolSpecification> toolSpecifications;
     public Map<String, ToolExecutor> toolExecutors;
 
-    public RetrievalAugmentor retrievalAugmentor;
+    public RetrievalAugmentor<AugmentedMessage> retrievalAugmentor;
 
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
 
