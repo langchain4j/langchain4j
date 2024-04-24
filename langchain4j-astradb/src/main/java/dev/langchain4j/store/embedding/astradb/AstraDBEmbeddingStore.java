@@ -35,7 +35,7 @@ import static com.datastax.astra.client.model.FindOptions.Builder.sort;
 @Slf4j
 @Getter @Setter
 @Accessors(fluent = true)
-public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
 
    /**
     * Saving the text chunk as an attribute.
@@ -68,7 +68,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param client
      *      astra db collection client
      */
-    public AstraDbEmbeddingStore(@NonNull Collection<Document>  client) {
+    public AstraDBEmbeddingStore(@NonNull Collection<Document>  client) {
         this(client, 20, 8);
     }
 
@@ -82,7 +82,7 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param concurrentThreads
      *      concurrent threads
      */
-    public AstraDbEmbeddingStore(@NonNull Collection<Document>  client, int itemsPerChunk, int concurrentThreads) {
+    public AstraDBEmbeddingStore(@NonNull Collection<Document>  client, int itemsPerChunk, int concurrentThreads) {
         if (itemsPerChunk>20 || itemsPerChunk<1) {
             throw new IllegalArgumentException("'itemsPerChunk' should be in between 1 and 20");
         }

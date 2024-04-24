@@ -100,7 +100,7 @@ class AstraDbNaiveRagTestIT {
     }
 
     private EmbeddingStore<TextSegment> initEmbeddingStoreAstraDb() {
-        return new AstraDbEmbeddingStore(
+        return new AstraDBEmbeddingStore(
                 // Astra Db Client
                 new DataAPIClient(getAstraToken())
                     // Access the 'admin' part

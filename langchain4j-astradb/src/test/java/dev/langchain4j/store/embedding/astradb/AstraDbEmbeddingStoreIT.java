@@ -41,7 +41,7 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
     static final String TEST_DB = "test_langchain4j";
     static final String TEST_COLLECTION = "test_collection";
-    static AstraDbEmbeddingStore embeddingStore;
+    static AstraDBEmbeddingStore embeddingStore;
     static EmbeddingModel embeddingModel;
 
     static UUID dbId;
@@ -84,7 +84,7 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
         log.info("[init] - Collection create name={}", TEST_COLLECTION);
 
         // Creating the store (and collection) if not exists
-        embeddingStore = new AstraDbEmbeddingStore(collection);
+        embeddingStore = new AstraDBEmbeddingStore(collection);
         log.info("[init] - Embedding Store initialized");
     }
 
