@@ -13,36 +13,36 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @Testcontainers
 public class PgVectorEmbeddingIndexedStoreIT extends EmbeddingStoreIT {
 
-    @Container
-    static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
+  @Container
+  static PostgreSQLContainer<?> pgVector = new PostgreSQLContainer<>("pgvector/pgvector:pg15");
 
-    EmbeddingStore<TextSegment> embeddingStore;
+  EmbeddingStore<TextSegment> embeddingStore;
 
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+  EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
-    @BeforeEach
-    void beforeEach() {
-        embeddingStore = PgVectorEmbeddingStore.builder()
-                .host(pgVector.getHost())
-                .port(pgVector.getFirstMappedPort())
-                .user("test")
-                .password("test")
-                .database("test")
-                .table("test")
-                .dimension(384)
-                .useIndex(true)
-                .indexListSize(1)
-                .dropTableFirst(true)
-                .build();
-    }
+  @BeforeEach
+  void beforeEach() {
+    embeddingStore = PgVectorEmbeddingStore.builder()
+            .host(pgVector.getHost())
+            .port(pgVector.getFirstMappedPort())
+            .user("test")
+            .password("test")
+            .database("test")
+            .table("test")
+            .dimension(384)
+            .useIndex(true)
+            .indexListSize(1)
+            .dropTableFirst(true)
+            .build();
+  }
 
-    @Override
-    protected EmbeddingStore<TextSegment> embeddingStore() {
-        return embeddingStore;
-    }
+  @Override
+  protected EmbeddingStore<TextSegment> embeddingStore() {
+    return embeddingStore;
+  }
 
-    @Override
-    protected EmbeddingModel embeddingModel() {
-        return embeddingModel;
-    }
+  @Override
+  protected EmbeddingModel embeddingModel() {
+    return embeddingModel;
+  }
 }
