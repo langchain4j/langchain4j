@@ -12,6 +12,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -40,10 +41,23 @@ public class StreamingAiServicesIT {
                         .logResponses(true)
                         .isStreaming(true)
                         .build(),
-                AzureOpenAiStreamingChatModel.builder()
+                Azure
+          
+          
+          
+          
+          
+          
+          
+          .builder()
                         .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                         .logRequestsAndResponses(true)
+                        .build(),
+                MistralAiStreamingChatModel.builder()
+                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                        .logRequests(true)
+                        .logResponses(true)
                         .build()
                 // TODO add more models
         );
