@@ -1,7 +1,9 @@
 Thank you for investing your time and effort in contributing to our project, we appreciate it a lot! 🤗
 
-# General Guidelines
+# Current situation (25 April 2024)
+There are over 60 open PRs. Please help us by reviewing them first, before opening new ones. 🙏
 
+# General guidelines
 - If you want to contribute a bug fix or a new feature that isn't listed in the [issues](https://github.com/langchain4j/langchain4j/issues) yet, please open a new issue for it and link it to your PR.
 - Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/)
 - Keep the code compatible with Java 8. We plan to increase the baseline to Java 17 a bit later.
