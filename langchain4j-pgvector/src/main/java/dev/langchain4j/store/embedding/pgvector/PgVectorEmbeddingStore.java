@@ -188,6 +188,24 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     return ids;
   }
 
+  /**
+   * Removes an embedding from the store based on its unique identifier.
+   *
+   * @param id The unique identifier of the embedding to be removed.
+   * @return A boolean indicating whether the removal was successful or not.
+   */
+  @Override
+  public boolean remove(String id) {
+    try (Connection connection = setupConnection()) {
+      PreparedStatement statement = connection.prepareStatement(String.format(
+              "DELETE FROM %s WHERE embedding_id = ?", table));
+      statement.setObject(1, UUID.fromString(id));
+      return statement.executeUpdate() > 0;
+    } catch (SQLException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   @Override
   public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
     List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
