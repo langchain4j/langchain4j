@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
@@ -22,7 +23,7 @@ class AzureOpenAiStreamingLanguageModelIT {
 
     StreamingLanguageModel model = AzureOpenAiStreamingLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .tokenCredential(new DefaultAzureCredentialBuilder().build())
             .deploymentName("gpt-35-turbo-instruct")
             .tokenizer(new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)

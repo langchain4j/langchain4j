@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -46,7 +47,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -102,7 +103,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .responseFormat(new ChatCompletionsJsonResponseFormat())
@@ -164,7 +165,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)

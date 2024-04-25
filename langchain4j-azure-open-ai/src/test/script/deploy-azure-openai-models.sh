@@ -5,7 +5,7 @@
 
 echo "Setting up environment variables..."
 echo "----------------------------------"
-PROJECT="langchain4j"
+PROJECT="langchain4j-$RANDOM"
 RESOURCE_GROUP="rg-$PROJECT"
 LOCATION="swedencentral"
 TAG="$PROJECT"
@@ -20,15 +20,36 @@ az group create \
 
 echo "Creating the Cognitive Service..."
 echo "---------------------------------"
-az cognitiveservices account create \
+COGNITIVE_SERVICE_ID=$(az cognitiveservices account create \
   --name "$AI_SERVICE" \
   --resource-group "$RESOURCE_GROUP" \
   --location "$LOCATION" \
   --custom-domain "$AI_SERVICE" \
   --tags system="$TAG" \
   --kind "OpenAI" \
-  --sku "S0"
-  
+  --sku "S0" \
+   | jq -r ".id")
+
+
+# Security
+# - Disable API Key authentication
+# - Assign a system Managed Identity to the Cognitive Service -> this is for using from other Azure services, like Azure Container Apps
+# - Assign the Contributor role on this resource group to the current user, so he can use the models from the CLI (this is how tests would be normally executed)
+az resource update --ids $COGNITIVE_SERVICE_ID --set properties.disableLocalAuth=true --latest-include-preview
+
+az cognitiveservices account identity assign \
+  --name "$AI_SERVICE" \
+  --resource-group "$RESOURCE_GROUP"
+
+PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv)
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+az role assignment create \
+        --role "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd" \
+        --assignee-object-id "$PRINCIPAL_ID" \
+        --scope /subscriptions/"$SUBSCRIPTION_ID"/resourceGroups/"$RESOURCE_GROUP" \
+        --assignee-principal-type User
+
 # If you want to know the available models, run the following Azure CLI command:
 # az cognitiveservices account list-models --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE" -o table  
 
@@ -92,14 +113,8 @@ az cognitiveservices account deployment create \
   --sku-capacity 1 \
   --sku-name "Standard"
 
-echo "Storing the key and endpoint in environment variables..."
+echo "Storing endpoint in an environment variable..."
 echo "--------------------------------------------------------"
-AZURE_OPENAI_KEY=$(
-  az cognitiveservices account keys list \
-    --name "$AI_SERVICE" \
-    --resource-group "$RESOURCE_GROUP" \
-    | jq -r .key1
-  )
 AZURE_OPENAI_ENDPOINT=$(
   az cognitiveservices account show \
     --name "$AI_SERVICE" \
@@ -107,5 +122,4 @@ AZURE_OPENAI_ENDPOINT=$(
     | jq -r .properties.endpoint
   )
 
-echo "AZURE_OPENAI_KEY=$AZURE_OPENAI_KEY"
 echo "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT"

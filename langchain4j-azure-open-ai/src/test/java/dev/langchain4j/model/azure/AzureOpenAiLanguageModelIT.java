@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
@@ -19,7 +20,7 @@ class AzureOpenAiLanguageModelIT {
 
     LanguageModel model = AzureOpenAiLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .tokenCredential(new DefaultAzureCredentialBuilder().build())
             .deploymentName("gpt-35-turbo-instruct")
             .tokenizer(new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)

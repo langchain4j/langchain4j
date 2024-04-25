@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.util.BinaryData;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -39,7 +40,7 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -69,7 +70,7 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .maxTokens(3)
@@ -100,7 +101,7 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -166,7 +167,7 @@ public class AzureOpenAiChatModelIT {
     void should_call_function_with_no_argument(String deploymentName, String gptVersion) {
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -201,7 +202,7 @@ public class AzureOpenAiChatModelIT {
     void should_use_json_format(String deploymentName, String gptVersion) {
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .responseFormat(new ChatCompletionsJsonResponseFormat())
