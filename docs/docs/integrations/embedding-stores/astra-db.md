@@ -53,9 +53,9 @@ To get a token click the `[Generate Token]` button on the right. It will generat
 
 > The full documentation regarding AstraDB can be found [here](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/dataapiclient.html).
  
-### 2.1. Setup your Collections
+### 2.1. Connecting to Astra
 
-- Client initialization
+The following code show how to initialize the client and access the database.
 
 ```java
 String token = System.getenv("ASTRA_DB_APPLICATION_TOKEN");
@@ -69,9 +69,126 @@ DataAPIClient client = new DataAPIClient(token);
 Database db = client.getDatabase(astraApiEndpoint);
 ```
 
-### 2.2. Ingestion
+| Field                                                                                                                 | Description                                                                                                           |
+|-----------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| **[DataAPIClient](https://datastaxdevs.github.io/astra-db-java/latest/com/datastax/astra/client/DataAPIClient.html)** | This class is the main entry point for the Astra Client. It allows to create databases and different admin operations |
+| **[Database](https://datastaxdevs.github.io/astra-db-java/latest/com/datastax/astra/client/Database.html)**                                                                                                      | The API endpoint you copied in the previous step.                                                                     |
 
-### 2.3. Vector Search
+- From a Tenant (DataAPIClient) you can access one to many databases. The `Database` object is the entry point to interact with the database.
+- 
+- From a Database (Database) you can access one the many namespaces (logical). The default namespace is `default_keyspace.
 
-### 2.4. Meta-Data Filtering
+### 2.2. AstraDB Collection
+
+A Database can have one to multiple collections. A collection is a logical grouping of data. A collection can store different type of data abd can contains a `$vector` field. Those collections can be used to store any informations and not only vectors. It can then be used for ChatMemory or any cache needed.
+
+> AstraDB collections can use different types of identifiers for its documents. Default is the UUIDv4 (java UUID) but more can be
+> use like ObjectId (MongoDB) , UUIDv7 (Snowflake) or other type of identifier. To get the complete list consult the [documentation](https://docs.datastax.com/en/astra/astra-db-vector/api-reference/collections.html#the-defaultid-option)
+
+In Langchain4j, `AstraDBEmbeddingStore` is associated to one Collection with a `$vector` field. The `$vector` field is used to store the embeddings. The following code shows how to create a collection with a `$vector` field. By default there is no special field to store the text segment of the chunk. By CONVENTION, the store use field name `content`.
+```java
+// Create a vector collection
+Collection<Document> col = db.createCollection("langchain4j_embedding_store", 
+ CollectionOptions
+  .builder()
+  .vectorDimension(1536)   // related to your embedding mode
+  .vectorSimilarity(SimilarityMetric.COSINE) // 
+  .indexingDeny("content") // avoid to index text segment
+  .build());
+```
+
+If the collection exists (most of the time), you can access it with the following code:
+```java
+Collection<Document> col2 = db
+        .getCollection("langchain4j_embedding_store");
+```
+
+### 2.3. Init EmbeddingStore
+
+To initialize the `AstraDBEmbeddingStore` simply give the collection object as argument.
+
+```java
+EmbeddingStore<TextSegment> embeddingStore = new AstraDBEmbeddingStore(col);
+```
+
+We could provide this utility method to help with creation of the store:
+
+```java
+/**
+ * Create an AstraDB Embedding Store.
+ */
+EmbeddingStore<TextSegment> createEmbeddingStore(
+ String astraToken, String apiEndpoint, 
+ String collectionName, int dimension, 
+ SimilarityMetric metric) {
+
+ return new AstraDBEmbeddingStore(
+   // AstraDB Client
+   new DataAPIClient(astraToken)
+     .getDatabase(apiEndpoint)
+     .createCollection(collectionName, dimension, metric));
+}
+```
+
+### 2.4. Usage
+
+Please find enclosed a simple example of how to use the `AstraDBEmbeddingStore`:
+
+```java
+// Given a embedding model
+EmbeddingModel embeddingModel = ...;
+
+// Given a text file on disk
+Path textFile = ....;
+
+// Get AstraDBEmbeddingStore
+EmbeddingStore<TextSegment> embeddingStore = createEmbeddingStore(
+  System.getenv("ASTRA_DB_APPLICATION_TOKEN"),
+  System.getenv("ASTRA_DB_API_ENDPOINT"),
+  "langchain4j_embedding_store",
+  1536,
+  SimilarityMetric.COSINE);
+        
+// Ingestion
+EmbeddingStoreIngestor.builder()
+  .documentSplitter(recursive(100, 10, new OpenAiTokenizer(GPT_3_5_TURBO)))
+  .embeddingModel(embeddingModel)
+  .embeddingStore(embeddingStore)
+  .build()
+  .ingest(loadDocument(textFile, new TextDocumentParser()));
+
+// Sample Vector Search
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+ .embeddingModel(embeddingModel)
+ .embeddingStore(embeddingStore)
+ .maxResults(2)
+ .minScore(0.5)
+ .build();
+
+Assistant ai = AiServices.builder(Assistant.class)
+ .contentRetriever(contentRetriever)
+ .chatLanguageModel(initChatLanguageModelOpenAi())
+ .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+ .build();
+String response = ai.answer("What vegetable is Happy?");
+ 
+
+// Meta-Data Filtering
+RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor
+  .builder()
+  .contentRetriever(contentRetriever)
+  .contentInjector(DefaultContentInjector.builder()
+     .metadataKeysToInclude(asList("document_format",  "text"))
+     .build())
+  .build();
+
+// configuring it to use the components we've created above.
+Assistant aiWithMetaData = AiServices.builder(Assistant.class)
+   .retrievalAugmentor(retrievalAugmentor)
+   .chatLanguageModel(getChatLanguageModelChatBison())
+   .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+   .build();
+```
+
+
 
