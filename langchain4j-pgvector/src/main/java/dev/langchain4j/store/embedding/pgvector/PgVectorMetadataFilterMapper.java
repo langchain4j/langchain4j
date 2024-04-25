@@ -43,16 +43,20 @@ public class PgVectorMetadataFilterMapper {
     }
   }
 
+
   private static String isInMap(IsIn filter) {
-    return String.format("%s IN (%s)", formatKey(filter.key(), filter.comparisonValues()), formatValues(filter.comparisonValues()));
+    String fkey = formatKey(filter.key(), filter.comparisonValues());
+    return String.format("%s is not null and %s IN (%s)", fkey, fkey, formatValues(filter.comparisonValues()));
   }
 
   private static String isLessThanOrEqualToMap(IsLessThanOrEqualTo filter) {
-    return String.format("%s <= %s", formatKey(filter.key(), filter.comparisonValue()), formatValue(filter.comparisonValue()));
+    String fkey = formatKey(filter.key(), filter.comparisonValue());
+    return String.format("%s is not null and %s <= %s", fkey, fkey, formatValue(filter.comparisonValue()));
   }
 
   private static String isNotInMap(IsNotIn filter) {
-    return String.format("%s NOT IN (%s)", formatKey(filter.key(), filter.comparisonValues()), formatValues(filter.comparisonValues()));
+    String fkey = formatKey(filter.key(), filter.comparisonValues());
+    return String.format("( %s is null or %s NOT IN (%s) )", fkey, fkey, formatValues(filter.comparisonValues()));
   }
 
   private static String andMap(And filter) {
@@ -64,11 +68,13 @@ public class PgVectorMetadataFilterMapper {
   }
 
   private static String isLessThanMap(IsLessThan filter) {
-    return String.format("%s < %s", formatKey(filter.key(), filter.comparisonValue()), formatValue(filter.comparisonValue()));
+    String fkey = formatKey(filter.key(), filter.comparisonValue());
+    return String.format("%s is not null and %s < %s", fkey, fkey, formatValue(filter.comparisonValue()));
   }
 
   private static String isGreaterThanOrEqualToMap(IsGreaterThanOrEqualTo filter) {
-    return String.format("%s >= %s", formatKey(filter.key(), filter.comparisonValue()), formatValue(filter.comparisonValue()));
+    String fkey = formatKey(filter.key(), filter.comparisonValue());
+    return String.format("%s is not null and %s >= %s", fkey, fkey, formatValue(filter.comparisonValue()));
   }
 
   private static String notMap(Not filter) {
@@ -76,15 +82,18 @@ public class PgVectorMetadataFilterMapper {
   }
 
   private static String isGreaterThanMap(IsGreaterThan filter) {
-    return String.format("%s > %s", formatKey(filter.key(), filter.comparisonValue()), formatValue(filter.comparisonValue()));
+    String fkey = formatKey(filter.key(), filter.comparisonValue());
+    return String.format("%s is not null and %s > %s", fkey, fkey, formatValue(filter.comparisonValue()));
   }
 
   private static String isEqualToMap(IsEqualTo filter) {
-    return String.format("%s = %s", formatKey(filter.key(), filter.comparisonValue()), formatValue(filter.comparisonValue()));
+    String fkey = formatKey(filter.key(), filter.comparisonValue());
+    return String.format("%s is not null and %s = %s", fkey, fkey, formatValue(filter.comparisonValue()));
   }
 
   private static String isNotEqualToMap(IsNotEqualTo filter) {
-    return String.format("%s != %s", formatKey(filter.key(), filter.comparisonValue()), formatValue(filter.comparisonValue()));
+    String fkey = formatKey(filter.key(), filter.comparisonValue());
+    return String.format("(%s is null or %s != %s)", fkey, fkey, formatValue(filter.comparisonValue()));
   }
 
   private static String formatKey(String key, Object value) {
@@ -102,7 +111,9 @@ public class PgVectorMetadataFilterMapper {
 
   private static String formatValue(Object value) {
     if (value instanceof String) {
-      return "\"" + value + "\"";
+      return "'" + value + "'";
+    } else if (value == null) {
+      return "NULL";
     } else {
       return value.toString();
     }
@@ -111,7 +122,7 @@ public class PgVectorMetadataFilterMapper {
   private static String formatValues(Collection<?> values) {
     return values.stream().map(value -> {
       if (value instanceof String) {
-        return "\"" + value + "\"";
+        return "'" + value + "'";
       } else {
         return value.toString();
       }
