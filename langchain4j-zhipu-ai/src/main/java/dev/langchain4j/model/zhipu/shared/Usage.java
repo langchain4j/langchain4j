@@ -26,6 +26,12 @@ public final class Usage {
         return new Builder();
     }
 
+    public void add(Usage usage) {
+        this.promptTokens += usage.promptTokens;
+        this.completionTokens += usage.completionTokens;
+        this.totalTokens += usage.totalTokens;
+    }
+
     public static final class Builder {
 
         private Integer promptTokens;

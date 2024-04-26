@@ -121,29 +121,82 @@ Please note that tools/function calling is not the same as [JSON mode](/tutorial
 
 ## 2 levels of abstraction
 
-LangChain4j provides two levels of abstraction for working with tools.
+LangChain4j provides two levels of abstraction for using tools.
 
 ### Low level Tool API
-At the low level, you can use the `generate(List<ChatMessage>, List<ToolSpecification>)`
-and `generate(List<ChatMessage>, ToolSpecification)` methods
-of `ChatLanguageModel` (and similar methods of `StreamingChatLanguageModel`).
 
-You'll need to manually create `ToolSpecification` object(s) containing all information about the tool,
-or use the `ToolSpecifications.toolSpecificationFrom(Method)` helper method
-to convert any Java method into a `ToolSpecification`.
+At the low level, you can use the `generate(List<ChatMessage>, List<ToolSpecification>)` method
+of the `ChatLanguageModel`. A similar method is also present in the `StreamingChatLanguageModel`.
 
-When the LLM decides to call the tool, the returned `AiMessage` will have data
-in a `List<ToolExecutionRequest> toolExecutionRequests` field instead of a `String text` field.
-Depending on the LLM, it can contain one or multiple `ToolExecutionRequest`s
+`ToolSpecification` is an object that contains all the information about the tool:
+- The `name` of the tool
+- The `description` of the tool
+- The `parameters` (arguments) of the tool and their descriptions
+
+It is recommended to provide as much information about the tool as possible:
+a clear name, a comprehensive description, and a description for each parameter, etc.
+
+There are two ways to create a `ToolSpecification`:
+
+1. Manually
+```java
+ToolSpecification toolSpecification = ToolSpecification.builder()
+    .name("getWeather")
+    .description("Returns the weather forecast for a given city")
+    .addParameter("city", type("string"), description("The city for which the weather forecast should be returned"))
+    .addParameter("temperatureUnit", enums(TemperatureUnit.class)) // enum TemperatureUnit { CELSIUS, FAHRENHEIT }
+    .build();
+```
+
+2. Using helper methods:
+- `ToolSpecifications.toolSpecificationsFrom(Class)`
+- `ToolSpecifications.toolSpecificationsFrom(Object)`
+- `ToolSpecifications.toolSpecificationFrom(Method)`
+
+```java
+class WeatherTools { 
+  
+    @Tool("Returns the weather forecast for a given city")
+    String getWeather(
+            @P("The city for which the weather forecast should be returned") String city,
+            TemperatureUnit temperatureUnit
+    ) {
+        ...
+    }
+}
+
+List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificationsFrom(WeatherTools.class);
+```
+
+Once you have a `List<ToolSpecification>`, you can call the model:
+```java
+UserMessage userMessage = UserMessage.from("What will the weather be like in London tomorrow?");
+Response<AiMessage> response = model.generate(singletoneList(userMessage), toolSpecifications);
+AiMessage aiMessage = response.content();
+```
+
+If the LLM decides to call the tool, the returned `AiMessage` will contain data
+in the `toolExecutionRequests` field.
+In this case, `AiMessage.hasToolExecutionRequests()` will return `true`.
+Depending on the LLM, it can contain one or multiple `ToolExecutionRequest` objects
 (some LLMs support calling multiple tools in parallel).
 
-The `ToolExecutionRequest` will include the tool call's `id`, the `name` of the tool to be called,
-and `arguments` (a valid JSON containing a value for each tool parameter).
-You'll need to manually execute the tool(s) using information from the `ToolExecutionRequest`(s)
-and then create a `ToolExecutionResultMessage` containing each tool's execution result.
+Each `ToolExecutionRequest` should contain:
+- The `id` of the tool call (some LLMs do not provide it)
+- The `name` of the tool to be called, for example: `getWeather`
+- The `arguments`, for example: `{ "city": "London", "temperatureUnit": "CELSIUS" }`
 
-Then, call the LLM with all messages (`UserMessage`, `AiMessage` containing `ToolExecutionRequest`,
-`ToolExecutionResultMessage`) to get the final response from the LLM.
+You'll need to manually execute the tool(s) using information from the `ToolExecutionRequest`(s).
+
+If you want to send the result of the tool execution back to the LLM,
+you need to create a `ToolExecutionResultMessage` (one for each `ToolExecutionRequest`)
+and send it along with all previous messages:
+```java
+String result = "It is expected to rain in London tomorrow.";
+ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(toolExecutionRequest, result);
+List<ChatMessage> messages = List.of(userMessage, aiMessage, toolExecutionResultMessage);
+Response<AiMessage> response2 = model.generate(messages, toolSpecifications);
+```
 
 ### High Level Tool API
 At a high level, you can annotate any Java method with the `@Tool` annotation
