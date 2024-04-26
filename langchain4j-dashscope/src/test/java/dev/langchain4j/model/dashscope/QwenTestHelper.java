@@ -23,6 +23,12 @@ public class QwenTestHelper {
                 Arguments.of(QwenModelName.QWEN_PLUS),
                 Arguments.of(QwenModelName.QWEN_MAX),
                 Arguments.of(QwenModelName.QWEN_MAX_LONGCONTEXT),
+                Arguments.of(QwenModelName.QWEN_7B_CHAT),
+                Arguments.of(QwenModelName.QWEN_14B_CHAT),
+                Arguments.of(QwenModelName.QWEN_72B_CHAT),
+                Arguments.of(QwenModelName.QWEN1_5_7B_CHAT),
+                Arguments.of(QwenModelName.QWEN1_5_14B_CHAT),
+                Arguments.of(QwenModelName.QWEN1_5_32B_CHAT),
                 Arguments.of(QwenModelName.QWEN1_5_72B_CHAT)
         );
     }
