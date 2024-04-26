@@ -3,6 +3,8 @@ package dev.langchain4j.rag.retriever;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @Builder
 public class TavilySearchRequest {
@@ -14,7 +16,7 @@ public class TavilySearchRequest {
     private Boolean includeAnswer;
     private Boolean includeRawContent;
     private Integer maxResults;
-    private String[] includeDomains;
-    private String[] excludeDomains;
+    private List<String> includeDomains;
+    private List<String> excludeDomains;
 
 }

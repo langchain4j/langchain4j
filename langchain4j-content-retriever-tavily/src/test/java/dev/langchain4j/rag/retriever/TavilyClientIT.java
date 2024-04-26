@@ -2,6 +2,8 @@ package dev.langchain4j.rag.retriever;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+
 import static java.lang.System.getenv;
 import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,8 +30,8 @@ class TavilyClientIT {
                         .includeAnswer(false)
                         .includeImages(true)
                         .includeRawContent(true)
-                        .includeDomains(new String[]{})
-                        .excludeDomains(new String[]{}).build()
+                        .includeDomains(new ArrayList<>())
+                        .excludeDomains(new ArrayList<>()).build()
         );
 
         //then

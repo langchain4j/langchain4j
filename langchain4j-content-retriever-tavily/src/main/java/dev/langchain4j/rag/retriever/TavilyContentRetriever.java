@@ -16,6 +16,7 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -27,7 +28,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
- * An integration with Tavily Search API.
+ * A content retriever that retrieves relevant content from the web using Tavily Search API.
  * See more details <a href="https://docs.tavily.com/docs/tavily-api/rest_api">here</a>.
  */
 public class TavilyContentRetriever implements ContentRetriever {
@@ -48,8 +49,8 @@ public class TavilyContentRetriever implements ContentRetriever {
     private final Boolean includeImages;
     private final Boolean includeAnswer;
     private final Integer maxSearchResults;
-    private final String[] includeDomains;
-    private final String[] excludeDomains;
+    private final List<String> includeDomains;
+    private final List<String> excludeDomains;
 
     public TavilyContentRetriever(String baseUrl,
                                   String apiKey,
@@ -62,8 +63,8 @@ public class TavilyContentRetriever implements ContentRetriever {
                                   Boolean includeImages,
                                   Boolean includeAnswer,
                                   Integer maxSearchResults,
-                                  String[] includeDomains,
-                                  String[] excludeDomains) {
+                                  List<String> includeDomains,
+                                  List<String> excludeDomains) {
         this.tavilyClient = TavilyClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
@@ -147,8 +148,8 @@ public class TavilyContentRetriever implements ContentRetriever {
         private Boolean includeImages = false;
         private Boolean includeAnswer = false;
         private Integer maxSearchResults = 5;
-        private String[] includeDomains = new String[0];
-        private String[] excludeDomains = new String[0];
+        private List<String> includeDomains = new ArrayList<>();
+        private List<String> excludeDomains = new ArrayList<>();
 
         public Builder baseUrl(String baseUrl) {
             this.baseUrl = baseUrl;
@@ -207,12 +208,12 @@ public class TavilyContentRetriever implements ContentRetriever {
             return this;
         }
 
-        public Builder includeDomains(String[] includeDomains) {
+        public Builder includeDomains(List<String> includeDomains) {
             this.includeDomains = includeDomains;
             return this;
         }
 
-        public Builder excludeDomains(String[] excludeDomains) {
+        public Builder excludeDomains(List<String> excludeDomains) {
             this.excludeDomains = excludeDomains;
             return this;
         }
