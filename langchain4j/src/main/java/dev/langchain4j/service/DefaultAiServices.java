@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
@@ -21,6 +22,8 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -99,7 +102,15 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         // TODO give user ability to provide custom OutputParser
                         String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
+                        if(userMessage.contents().stream().filter(content -> content instanceof TextContent).count() > 1) {
+                            throw illegalConfiguration("Error: The method '%s' has multiple text contents. Please use only one.", method.getName());
+                        }
+                        if(userMessage.contents().size() > 1 && !(userMessage.contents().get(0) instanceof TextContent)) {
+                            throw illegalConfiguration("Error: The first content should be text content.", method.getName());
+                        }
+                        String text = ((TextContent) userMessage.contents().get(0)).text() + outputFormatInstructions;
+                        List<Content> images = userMessage.contents().subList(1, userMessage.contents().size());
+                        userMessage = UserMessage.from(Stream.concat(Stream.of(TextContent.from(text)), images.stream()).collect(Collectors.toList()));
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -253,15 +264,40 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static UserMessage prepareUserMessage(Method method, Object[] args) {
-
         String template = getUserMessageTemplate(method, args);
+        List<Content> imageContent = findImagesContentInParameters(method, args);
+        Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+
         Map<String, Object> variables = findTemplateVariables(template, method, args);
 
         Prompt prompt = PromptTemplate.from(template).apply(variables);
+        return maybeUserName.map(userName -> UserMessage.from(userName, promptAndImages(prompt, imageContent)))
+                .orElseGet(() -> UserMessage.from(promptAndImages(prompt, imageContent)));
+    }
 
-        Optional<String> maybeUserName = findUserName(method.getParameters(), args);
-        return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
-                .orElseGet(prompt::toUserMessage);
+    private static List<Content> promptAndImages(Prompt prompt, List<Content> imageContent) {
+        return Stream.concat(Stream.of(TextContent.from(prompt.text())), imageContent.stream())
+                .collect(Collectors.toList());
+    }
+
+    private static List<Content> findImagesContentInParameters(Method method, Object[] args) {
+        return Arrays.stream(method.getParameters())
+                .filter(DefaultAiServices::isImageParameter)
+                .map(parameter -> {
+                    Object arg = args[Arrays.asList(method.getParameters()).indexOf(parameter)];
+                    if (arg instanceof Image) {
+                        return ImageContent.from((Image) arg);
+                    } else {
+                        return (ImageContent) arg;
+                    }
+                })
+                .collect(Collectors.toList());
+    }
+
+    private static boolean isImageParameter(Parameter parameter) {
+        return parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class) &&
+                (parameter.getType().equals(Image.class)
+                        || parameter.getType().equals(ImageContent.class));
     }
 
     private static String getUserMessageTemplate(Method method, Object[] args) {
@@ -270,10 +306,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         Optional<String> templateFromParameterAnnotation = findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
 
         if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
-            throw illegalConfiguration(
-                    "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
-                    method.getName()
-            );
+            if(findImagesContentInParameters(method, args).isEmpty()) {
+                throw illegalConfiguration(
+                        "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
+                        method.getName()
+                );
+            }
         }
 
         if (templateFromMethodAnnotation.isPresent()) {

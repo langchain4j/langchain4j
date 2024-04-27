@@ -1,5 +1,8 @@
 package dev.langchain4j.service;
 
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
@@ -8,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Collections.singletonList;
@@ -46,6 +52,18 @@ class AiServicesUserMessageConfigTest {
 
         @UserMessage("What is the {{it}} of {{country}}?")
         String chat7(@V("it") String it, @V("country") String country);
+
+        @UserMessage("Count the number of cars in this image")
+        String chat8(@UserMessage ImageContent imageContent);
+
+        @UserMessage("Count the number of cars in this image")
+        String chat9(@UserMessage Image image);
+
+        @UserMessage("Count the number of cars in these two images")
+        String chat10(@UserMessage ImageContent imageContent, @UserMessage Image image);
+
+        @UserMessage("Count the number of {{color}} cars in this image")
+        String chat11(@UserMessage ImageContent imageContent, @V("color") String color);
 
         // illegal configuration
 
@@ -163,6 +181,94 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat7("capital", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+    }
+
+    private static final Image image = Image.builder().url("https://en.wikipedia.org/wiki/Llama#/media/File:Llamas,_Vernagt-Stausee,_Italy.jpg").build();
+    private static final ImageContent imageContent = ImageContent.from(image);
+
+    @Test
+    void test_user_message_configuration_8() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat8(imageContent))
+                .containsIgnoringCase("Berlin");
+        verify(chatLanguageModel).generate(
+                singletonList(userMessage(
+                        Stream.of(
+                                TextContent.from("Count the number of cars in this image"),
+                                imageContent
+                        ).collect(Collectors.toList())
+                ))
+        );
+    }
+
+    @Test
+    void test_user_message_configuration_9() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat9(image))
+                .containsIgnoringCase("Berlin");
+        verify(chatLanguageModel).generate(
+                singletonList(userMessage(
+                        Stream.of(
+                                TextContent.from("Count the number of cars in this image"),
+                                imageContent
+                        ).collect(Collectors.toList())
+                ))
+        );
+    }
+
+    @Test
+    void test_user_message_configuration_10() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat10(imageContent, image))
+                .containsIgnoringCase("Berlin");
+        verify(chatLanguageModel).generate(
+                singletonList(userMessage(
+                        Stream.of(
+                                TextContent.from("Count the number of cars in these two images"),
+                                imageContent,
+                                imageContent
+                        ).collect(Collectors.toList())
+                ))
+        );
+    }
+
+    @Test
+    void test_user_message_configuration_11() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat11(imageContent, "red"))
+                .containsIgnoringCase("Berlin");
+        verify(chatLanguageModel).generate(
+                singletonList(userMessage(
+                        Stream.of(
+                                TextContent.from("Count the number of red cars in this image"),
+                                imageContent
+                        ).collect(Collectors.toList())
+                ))
+        );
     }
 
     @Test
