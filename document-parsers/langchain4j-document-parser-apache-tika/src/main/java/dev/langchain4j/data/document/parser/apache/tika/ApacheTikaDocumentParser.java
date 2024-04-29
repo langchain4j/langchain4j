@@ -1,7 +1,7 @@
 package dev.langchain4j.data.document.parser.apache.tika;
 
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.BlankDocumentException;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import org.apache.tika.exception.ZeroByteFileException;
 import org.apache.tika.metadata.Metadata;
@@ -60,7 +60,12 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                                     ContentHandler contentHandler,
                                     Metadata metadata,
                                     ParseContext parseContext) {
-        this(() -> parser, () -> contentHandler, () -> metadata, () -> parseContext);
+        this(
+                () -> getOrDefault(parser, DEFAULT_PARSER_SUPPLIER),
+                () -> getOrDefault(contentHandler, DEFAULT_CONTENT_HANDLER_SUPPLIER),
+                () -> getOrDefault(metadata, DEFAULT_METADATA_SUPPLIER),
+                () -> getOrDefault(parseContext, DEFAULT_PARSE_CONTEXT_SUPPLIER)
+        );
     }
 
     /**
@@ -76,10 +81,10 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                                     Supplier<ContentHandler> contentHandlerSupplier,
                                     Supplier<Metadata> metadataSupplier,
                                     Supplier<ParseContext> parseContextSupplier) {
-        this.parserSupplier = parserSupplier;
-        this.contentHandlerSupplier = contentHandlerSupplier;
-        this.metadataSupplier = metadataSupplier;
-        this.parseContextSupplier = parseContextSupplier;
+        this.parserSupplier = getOrDefault(parserSupplier, () -> DEFAULT_PARSER_SUPPLIER);
+        this.contentHandlerSupplier = getOrDefault(contentHandlerSupplier, () -> DEFAULT_CONTENT_HANDLER_SUPPLIER);
+        this.metadataSupplier = getOrDefault(metadataSupplier, () -> DEFAULT_METADATA_SUPPLIER);
+        this.parseContextSupplier = getOrDefault(parseContextSupplier, () -> DEFAULT_PARSE_CONTEXT_SUPPLIER);
     }
 
     // TODO allow automatically extract metadata (e.g. creator, last-author, created/modified timestamp, etc)
@@ -87,10 +92,10 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream inputStream) {
         try {
-            Parser parser = getOrDefault(parserSupplier, () -> DEFAULT_PARSER_SUPPLIER).get();
-            ContentHandler contentHandler = getOrDefault(contentHandlerSupplier, () -> DEFAULT_CONTENT_HANDLER_SUPPLIER).get();
-            Metadata metadata = getOrDefault(metadataSupplier, () -> DEFAULT_METADATA_SUPPLIER).get();
-            ParseContext parseContext = getOrDefault(parseContextSupplier, () -> DEFAULT_PARSE_CONTEXT_SUPPLIER).get();
+            Parser parser = parserSupplier.get();
+            ContentHandler contentHandler = contentHandlerSupplier.get();
+            Metadata metadata = metadataSupplier.get();
+            ParseContext parseContext = parseContextSupplier.get();
 
             parser.parse(inputStream, contentHandler, metadata, parseContext);
             String text = contentHandler.toString();
