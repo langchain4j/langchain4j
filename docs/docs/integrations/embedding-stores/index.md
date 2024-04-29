@@ -1,5 +1,5 @@
 ---
-title: Comparison Table
+title: Comparison table of all supported Embedding Stores
 hide_title: false
 sidebar_position: 0
 ---
