@@ -14,7 +14,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * A {@link ContentRetriever} that retrieves relevant {@link Content} from the web using a {@link WebSearchEngine}.
  * <br>
- * By default, this retriever returns snippet of web pages: one {@link Content} for each web page that a {@link WebSearchEngine} has returned for a given {@link Query}.
+ * It returns one {@link Content} for each result that a {@link WebSearchEngine} has returned for a given {@link Query}. Depending on the {@link WebSearchEngine} implementation, the {@link Content#textSegment()} can contain either a snippet of a web page or a complete content of a web page.
  * <br>
  */
 public class WebSearchContentRetriever implements ContentRetriever{
