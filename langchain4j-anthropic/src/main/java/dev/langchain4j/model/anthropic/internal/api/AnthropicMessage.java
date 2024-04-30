@@ -1,4 +1,4 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.api;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,6 +15,6 @@ import java.util.List;
 @Getter
 public class AnthropicMessage {
 
-    AnthropicRole role;
-    List<AnthropicMessageContent> content;
+    public AnthropicRole role;
+    public List<AnthropicMessageContent> content;
 }

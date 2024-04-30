@@ -1,4 +1,4 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.api;
 
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
