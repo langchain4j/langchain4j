@@ -1,18 +1,14 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import lombok.*;
 
 import java.util.List;
 
 @Builder
 @ToString
 @EqualsAndHashCode
+@NoArgsConstructor
 @AllArgsConstructor
-@Getter
 public class AnthropicMessage {
 
     public AnthropicRole role;
