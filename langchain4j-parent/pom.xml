@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.30.0-SNAPSHOT</version>
+    <version>0.31.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -17,13 +17,13 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <openai4j.version>0.17.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.7</azure-ai-openai.version>
-        <azure-ai-search.version>11.6.3</azure-ai-search.version>
-        <azure.storage-blob.version>12.25.3</azure.storage-blob.version>
-        <azure.storage-common.version>12.24.3</azure.storage-common.version>
-        <azure.identity.version>1.11.4</azure.identity.version>
+        <azure-ai-openai.version>1.0.0-beta.8</azure-ai-openai.version>
+        <azure-ai-search.version>11.6.4</azure-ai-search.version>
+        <azure.storage-blob.version>12.25.4</azure.storage-blob.version>
+        <azure.storage-common.version>12.24.4</azure.storage-common.version>
+        <azure.identity.version>1.12.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>

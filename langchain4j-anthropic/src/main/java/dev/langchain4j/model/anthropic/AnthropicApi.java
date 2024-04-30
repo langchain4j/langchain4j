@@ -12,6 +12,7 @@ interface AnthropicApi {
     @Headers({"content-type: application/json"})
     Call<AnthropicCreateMessageResponse> createMessage(@Header(X_API_KEY) String apiKey,
                                                        @Header("anthropic-version") String version,
+                                                       @Header("anthropic-beta") String beta,
                                                        @Body AnthropicCreateMessageRequest request);
 
     @Streaming

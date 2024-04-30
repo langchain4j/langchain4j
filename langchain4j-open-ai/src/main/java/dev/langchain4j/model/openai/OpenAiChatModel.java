@@ -15,6 +15,7 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,7 +68,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Proxy proxy,
                            Boolean logRequests,
                            Boolean logResponses,
-                           Tokenizer tokenizer) {
+                           Tokenizer tokenizer,
+                           Map<String, String> customHeaders) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -88,6 +90,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);

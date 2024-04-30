@@ -18,7 +18,7 @@ class GsonContentAdapter implements JsonDeserializer<Content>, JsonSerializer<Co
     }
 
     @Override
-    public Content deserialize(JsonElement contentJsonElement, Type ignored, JsonDeserializationContext context) throws JsonParseException {
+    public Content deserialize(JsonElement contentJsonElement, Type ignored, JsonDeserializationContext context) {
         String contentTypeString = contentJsonElement.getAsJsonObject().get(CONTENT_TYPE).getAsString();
         ContentType contentType = ContentType.valueOf(contentTypeString);
         return GSON.fromJson(contentJsonElement, contentType.getContentClass());

@@ -7,7 +7,9 @@ import dev.langchain4j.spi.ServiceHelper;
 import java.time.Duration;
 
 public abstract class AnthropicClient {
+
     public abstract AnthropicCreateMessageResponse createMessage(AnthropicCreateMessageRequest request);
+
     public abstract void createMessage(AnthropicCreateMessageRequest request, StreamingResponseHandler<AiMessage> handler);
 
     @SuppressWarnings("rawtypes")
@@ -20,9 +22,11 @@ public abstract class AnthropicClient {
     }
 
     public abstract static class Builder<T extends AnthropicClient, B extends Builder<T, B>> {
+
         public String baseUrl;
         public String apiKey;
         public String version;
+        public String beta;
         public Duration timeout;
         public Boolean logRequests;
         public Boolean logResponses;
@@ -39,7 +43,8 @@ public abstract class AnthropicClient {
 
         public B apiKey(String apiKey) {
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("Anthropic API Key must be defined.");
+                throw new IllegalArgumentException("Anthropic API key must be defined. " +
+                        "It can be generated here: https://console.anthropic.com/settings/keys");
             }
             this.apiKey = apiKey;
             return (B) this;
@@ -50,6 +55,14 @@ public abstract class AnthropicClient {
                 throw new IllegalArgumentException("version cannot be null or empty");
             }
             this.version = version;
+            return (B) this;
+        }
+
+        public B beta(String beta) {
+            if (beta == null) {
+                throw new IllegalArgumentException("beta cannot be null or empty");
+            }
+            this.beta = beta;
             return (B) this;
         }
 
