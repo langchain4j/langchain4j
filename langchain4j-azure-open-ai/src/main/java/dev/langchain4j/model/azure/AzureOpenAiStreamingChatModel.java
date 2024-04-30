@@ -296,9 +296,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         }
     }
 
-    private void handleResponseException(Exception exception, StreamingResponseHandler<AiMessage> handler) {
-        if (exception instanceof HttpResponseException) {
-            HttpResponseException httpResponseException = (HttpResponseException) exception;
+    private void handleResponseException(Throwable throwable, StreamingResponseHandler<AiMessage> handler) {
+        if (throwable instanceof HttpResponseException) {
+            HttpResponseException httpResponseException = (HttpResponseException) throwable;
             logger.info("Error generating response, {}", httpResponseException.getValue());
             FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
             Response<AiMessage> response =  Response.from(
@@ -308,7 +308,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             );
             handler.onComplete(response);
         } else {
-            handler.onError(exception);
+            handler.onError(throwable);
         }
     }
 
@@ -319,7 +319,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     responseBuilder.append(chatCompletion);
                     handle(chatCompletion, handler);
                 },
-                throwable -> handleResponseException(new Exception(throwable), handler),
+                throwable -> handleResponseException(throwable, handler),
                 () -> {
                     Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
                     handler.onComplete(response);
@@ -556,7 +556,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         }
 
         /**
-         * @deprecated Use {@AzureOpenAiChatModel.Builder} instead, if you want to continue using sync client in the future.
+         * @deprecated If you want to continue using sync client, use {@link AzureOpenAiChatModel} instead.
          * @param useAsyncClient {@code true} if you want to use the async client, {@code false} if you want to use the sync client.
          * @return builder with the useAsyncClient parameter set
          */
