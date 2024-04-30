@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.data.embedding.Embedding.from;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupOpenAIClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -155,14 +156,6 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                 embeddings,
                 new TokenUsage(inputTokenCount)
         );
-    }
-
-    private static Embedding from(List<Double> vector) {
-        float[] langChainVector = new float[vector.size()];
-        for (int index = 0; index < vector.size(); index++) {
-            langChainVector[index] = vector.get(index).floatValue();
-        }
-        return Embedding.from(langChainVector);
     }
 
     @Override

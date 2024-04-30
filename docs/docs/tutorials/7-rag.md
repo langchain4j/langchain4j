@@ -4,9 +4,6 @@ sidebar_position: 8
 
 # RAG (Retrieval-Augmented Generation)
 
-[Great tutorial on RAG](https://www.sivalabs.in/langchain4j-retrieval-augmented-generation-tutorial/)
-by [Siva](https://www.sivalabs.in/).
-
 LLM's knowledge is limited to the data it has been trained on.
 If you want to make an LLM aware of domain-specific knowledge or proprietary data, you can:
 - Use RAG, which we will cover in this section
@@ -82,8 +79,8 @@ in glob: `glob:**.pdf`.
 </details>
 
 3. Now, we need to preprocess and store documents in a specialized embedding store, also known as vector database.
-This is necessary to quickly find relevant pieces of information on the fly when a user asks a question.
-We can use any of our 15+ [supported embedding stores](/category/embedding-stores),
+This is necessary to quickly find relevant pieces of information when a user asks a question.
+We can use any of our 15+ [supported embedding stores](/integrations/embedding-stores),
 but for simplicity, we will use an in-memory one:
 ```java
 InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
@@ -139,12 +136,33 @@ String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
-ranging from very simple ones to very advanced ones. In this section, we will cover the main domain classes and APIs.
+ranging from simple ones to advanced ones.
+In this section, we will cover the main domain classes and APIs.
 
 ### Document
 A `Document` class represents an entire document, such as a single PDF file or a web page.
 At the moment, the `Document` can only represent textual information,
 but future updates will enable it to support images and tables as well.
+
+### Metadata
+Each `Document` contains `Metadata`.
+It stores information about the `Document`, such as its name, source, creation date, owner,
+or any other relevant details.
+
+The `Metadata` is stored as a key-value map, where the key is of the `String` type,
+and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`.
+
+`Metadata` is useful for several reasons:
+- When including the content of the `Document` in a prompt to the LLM,
+metadata entries can also be included, providing the LLM with additional information to consider.
+For example, providing the `Document` name and source can help improve the LLM's understanding of the content.
+- When searching for relevant content to include in the prompt,
+one can filter by `Metadata` entries.
+For example, you can narrow down a semantic search to only `Document`s
+belonging to a specific owner.
+- When the source of the `Document` is updated (e.g., a particular page of documentation),
+one can easily locate the corresponding `Document` by its metadata entry "source"
+and update it in the `EmbeddingStore` as well.
 
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
@@ -282,6 +300,9 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 More details are coming soon.
 
 Currently supported embedding stores can be found [here](/category/embedding-stores).
+
+### Filter
+More details are coming soon.
 
 ### Embedding Store Ingestor
 More details are coming soon.

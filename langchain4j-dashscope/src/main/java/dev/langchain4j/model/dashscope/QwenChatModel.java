@@ -20,7 +20,7 @@ import lombok.Builder;
 
 import java.util.List;
 
-import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
+import static com.alibaba.dashscope.aigc.conversation.ConversationParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
