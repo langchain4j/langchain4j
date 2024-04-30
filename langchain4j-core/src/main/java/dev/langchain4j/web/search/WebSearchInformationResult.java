@@ -89,7 +89,7 @@ public class WebSearchInformationResult {
         return "WebSearchInformationResult{" +
                 "totalResults=" + totalResults +
                 ", pageNumber=" + pageNumber +
-                ", searchInformation=" + metadata +
+                ", metadata=" + metadata +
                 '}';
     }
 
