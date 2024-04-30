@@ -21,7 +21,7 @@ public class WebSearchTool {
      * @param searchTerm the search user query
      * @return           a pretty-string representation of the search results
      */
-    @Tool({"MUST be used to search the web using a web search engine for organic web results.",
+    @Tool("This tool can be used to perform web searches using search engines such as Google, particularly when seeking information about recent events.")
             "An organic web result is a title, a link, a snippet or content and metadata of a web page"})
     public String searchWeb(@P("Web search query") String searchTerm) {
         WebSearchResults results = searchEngine.search(searchTerm);
