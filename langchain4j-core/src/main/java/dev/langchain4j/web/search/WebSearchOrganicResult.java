@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -155,8 +156,7 @@ public class WebSearchOrganicResult {
      * @return The TextSegment representation of this WebSearchOrganicResult.
      */
     public TextSegment toTextSegment() {
-        return TextSegment.from(content != null ? content : snippet,
-                copyToMetadata());
+        return TextSegment.from(copyToText(), copyToMetadata());
     }
 
     /**
@@ -165,13 +165,23 @@ public class WebSearchOrganicResult {
      * @return The Document representation of this WebSearchOrganicResult.
      */
     public Document toDocument() {
-        return Document.from(content != null ? content : snippet,
-                copyToMetadata());
+        return Document.from(copyToText(), copyToMetadata());
+    }
+
+    private String copyToText() {
+        StringBuilder text = new StringBuilder();
+        text.append(title);
+        text.append("\n");
+        if (isNotNullOrBlank(content)) {
+            text.append(content);
+        } else if (isNotNullOrBlank(snippet)) {
+            text.append(snippet);
+        }
+        return text.toString();
     }
 
     private Metadata copyToMetadata() {
         Metadata docMetadata = new Metadata();
-        docMetadata.add("title", title);
         docMetadata.add("url", url);
         if (metadata != null) {
             for (Map.Entry<String, String> entry : metadata.entrySet()) {
