@@ -28,7 +28,7 @@ class WebSearchResultsTest {
         assertThat(webSearchResults.results().get(0).url().toString()).isEqualTo("https://google.com");
         assertThat(webSearchResults.searchInformation().totalResults()).isEqualTo(1L);
 
-        assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata=null}]}");
+        assertThat(webSearchResults).hasToString("WebSearchResults{searchMetadata=null, searchInformation=WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}, results=[WebSearchOrganicResult{title='title', url=https://google.com, snippet='null', content='null', metadata=null}]}");
     }
 
     @Test

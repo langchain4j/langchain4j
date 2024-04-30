@@ -15,7 +15,7 @@ class WebSearchInformationResultTest {
         assertThat(webSearchInformationResult.pageNumber()).isNull();
         assertThat(webSearchInformationResult.metadata()).isNull();
 
-        assertThat(webSearchInformationResult).hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}");
+        assertThat(webSearchInformationResult).hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}");
     }
 
     @Test
@@ -26,7 +26,7 @@ class WebSearchInformationResultTest {
         assertThat(webSearchInformationResult.pageNumber()).isNull();
         assertThat(webSearchInformationResult.metadata()).isNull();
 
-        assertThat(webSearchInformationResult).hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, searchInformation=null}");
+        assertThat(webSearchInformationResult).hasToString("WebSearchInformationResult{totalResults=1, pageNumber=null, metadata=null}");
     }
 
     @Test

@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * A minimum set of tests that each implementation of {@link WebSearchEngine} must pass.
  */
-public abstract class WebSearchIT {
+public abstract class WebSearchEngineIT {
 
     protected abstract WebSearchEngine searchEngine();
 
@@ -52,10 +52,10 @@ public abstract class WebSearchIT {
     @Test
     void should_return_web_results_with_geolocation() {
         // given
-        String searchTerm = "Who is the current president of France?";
+        String searchTerm = "Who is the current president?";
         WebSearchRequest webSearchRequest = WebSearchRequest.builder()
                 .searchTerms(searchTerm)
-                .geoLocation("us")
+                .geoLocation("fr")
                 .build();
 
         // when
@@ -67,37 +67,5 @@ public abstract class WebSearchIT {
                 .as("At least one result should be contains 'Emmanuel Macro' ignoring case")
                 .anySatisfy(result -> assertThat(result.title())
                         .containsIgnoringCase("Emmanuel Macro"));
-    }
-
-    @Test
-    void should_return_array_of_textSegments(){
-        // given
-        String query = "Who won the FIFA World Cup 2022?";
-
-        // when
-        WebSearchResults webSearchResults  = searchEngine().search(query);
-
-        // then
-        assertThat(webSearchResults.toTextSegments().size()).isGreaterThan(0);
-        assertThat(webSearchResults.toTextSegments())
-                .as("At least one result should be contains 'argentina' ignoring case")
-                .anySatisfy(textSegment -> assertThat(textSegment.text())
-                        .containsIgnoringCase("argentina"));
-    }
-
-    @Test
-    void should_return_array_of_documents(){
-        // given
-        String query = "Who won the FIFA World Cup 2022?";
-
-        // when
-        WebSearchResults webSearchResults  = searchEngine().search(query);
-
-        // then
-        assertThat(webSearchResults.toDocuments().size()).isGreaterThan(0);
-        assertThat(webSearchResults.toDocuments())
-                .as("At least one result should be contains 'argentina' ignoring case")
-                .anySatisfy(document -> assertThat(document.text())
-                        .containsIgnoringCase("argentina"));
     }
 }

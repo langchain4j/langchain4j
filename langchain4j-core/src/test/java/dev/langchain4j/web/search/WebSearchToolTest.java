@@ -44,13 +44,13 @@ class WebSearchToolTest {
         WebSearchTool webSearchTool = WebSearchTool.from(webSearchEngine);
 
         // when
-        String strResult = webSearchTool.runSearch(searchTerm);
+        String strResult = webSearchTool.searchWeb(searchTerm);
 
         // then
         assertThat(strResult).isNotBlank();
         assertThat(strResult)
                 .as("At least one result should be contains 'title 1' and 'https://google.com' and 'content 1'")
-                .contains("Title: title 1\nURL Source: https://google.com\nContent:\ncontent 1");
+                .contains("Title: title 1\nSource: https://google.com\nContent:\ncontent 1");
 
         verify(webSearchEngine).search(searchTerm);
         verifyNoMoreInteractions(webSearchEngine);
