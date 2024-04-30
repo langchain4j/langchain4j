@@ -23,7 +23,7 @@ public class WebSearchTool {
      */
     @Tool({"MUST be used to search the web using a web search engine for organic web results.",
             "An organic web result is a title, a link, a snippet or content and metadata of a web page"})
-    public String runSearch(@P("The search terms is equal to the user message content that looking for") String searchTerm) {
+    public String searchWeb(@P("Web search query") String searchTerm) {
         WebSearchResults results = searchEngine.search(searchTerm);
         return format(results);
     }
