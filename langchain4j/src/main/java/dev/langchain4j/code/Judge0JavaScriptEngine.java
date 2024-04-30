@@ -2,9 +2,11 @@ package dev.langchain4j.code;
 
 import dev.langchain4j.internal.Json;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
 
@@ -25,6 +27,13 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         this.apiKey = apiKey;
         this.languageId = languageId;
         this.client = new OkHttpClient.Builder()
+                .addInterceptor(new Interceptor() {
+                    @NotNull
+                    @Override
+                    public Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
+                       return chain.proceed(
+                               chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
+                    }})
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)

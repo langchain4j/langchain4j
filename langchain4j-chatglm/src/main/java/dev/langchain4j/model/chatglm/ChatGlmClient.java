@@ -3,7 +3,12 @@ package dev.langchain4j.model.chatglm;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Builder;
+
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+
+import org.jetbrains.annotations.NotNull;
+
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
@@ -32,6 +37,13 @@ class ChatGlmClient {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .addInterceptor(new Interceptor() {
+                    @NotNull
+                    @Override
+                    public okhttp3.Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
+                        return chain.proceed(
+                                chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
+                    }})
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()

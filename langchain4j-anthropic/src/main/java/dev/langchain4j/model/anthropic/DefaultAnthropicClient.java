@@ -6,11 +6,15 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
+
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Call;
@@ -73,7 +77,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .callTimeout(builder.timeout)
                 .connectTimeout(builder.timeout)
                 .readTimeout(builder.timeout)
-                .writeTimeout(builder.timeout);
+                .writeTimeout(builder.timeout)
+                .addInterceptor(new Interceptor() {
+                    @NotNull
+                    @Override
+                    public okhttp3.Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
+                        return chain.proceed(
+                                chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
+                    }
+                });
 
         if (builder.logRequests) {
             okHttpClientBuilder.addInterceptor(new AnthropicRequestLoggingInterceptor());
