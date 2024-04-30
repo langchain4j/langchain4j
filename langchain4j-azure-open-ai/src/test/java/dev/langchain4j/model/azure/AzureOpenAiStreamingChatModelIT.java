@@ -6,23 +6,19 @@ import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
@@ -162,58 +158,29 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
-    @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
-    })
-    void should_use_json_format(String deploymentName, String gptVersion) throws Exception {
-
-        CompletableFuture<String> futureAnswer = new CompletableFuture<>();
-        CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+    @ParameterizedTest(name = "Deployment name {0}")
+    @ValueSource(strings = {"gpt-35-turbo", "gpt-4"})
+    void should_use_json_format(String deploymentName) {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
-                .tokenizer(new OpenAiTokenizer(gptVersion))
                 .responseFormat(new ChatCompletionsJsonResponseFormat())
+                .temperature(0.0)
+                .maxTokens(50)
                 .logRequestsAndResponses(true)
                 .build();
 
-        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
 
-        List<ChatMessage> messages = Arrays.asList(systemMessage, userMessage);
-        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
-            private final StringBuilder answerBuilder = new StringBuilder();
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
 
-            @Override
-            public void onNext(String token) {
-                logger.info("onNext: '" + token + "'");
-                answerBuilder.append(token);
-            }
-
-            @Override
-            public void onComplete(Response<AiMessage> response) {
-                logger.info("onComplete: '" + response + "'");
-                futureAnswer.complete(answerBuilder.toString());
-                futureResponse.complete(response);
-            }
-
-            @Override
-            public void onError(Throwable error) {
-                futureAnswer.completeExceptionally(error);
-                futureResponse.completeExceptionally(error);
-            }
-        });
-
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
-
-        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.content().text()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
