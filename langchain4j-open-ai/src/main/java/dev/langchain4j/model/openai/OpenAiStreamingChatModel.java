@@ -10,10 +10,9 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
+import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -22,7 +21,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
@@ -33,9 +31,14 @@ import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
+ *
+ *
+ * @Deprecated use {@link OpenAiStreamingChatModel} instead.
  */
-public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguageModel, TokenCountEstimator {
+@Deprecated()
+public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -49,44 +52,36 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
     private final String responseFormat;
     private final Integer seed;
     private final String user;
-    private final Integer maxRetries;
     private final Tokenizer tokenizer;
     private final boolean isOpenAiModel;
 
     @Builder
-    public OpenAiChatModel(String baseUrl,
-                           String apiKey,
-                           String organizationId,
-                           String modelName,
-                           Double temperature,
-                           Double topP,
-                           List<String> stop,
-                           Integer maxTokens,
-                           Double presencePenalty,
-                           Double frequencyPenalty,
-                           Map<String, Integer> logitBias,
-                           String responseFormat,
-                           Integer seed,
-                           String user,
-                           Duration timeout,
-                           Integer maxRetries,
-                           Proxy proxy,
-                           Boolean logRequests,
-                           Boolean logResponses,
-                           Tokenizer tokenizer,
-                           Map<String, String> customHeaders,
-                           boolean isStreaming) {
-
-        baseUrl = getOrDefault(baseUrl, OPENAI_URL);
-        if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
-            baseUrl = OPENAI_DEMO_URL;
-        }
+    public OpenAiStreamingChatModel(String baseUrl,
+                                    String apiKey,
+                                    String organizationId,
+                                    String modelName,
+                                    Double temperature,
+                                    Double topP,
+                                    List<String> stop,
+                                    Integer maxTokens,
+                                    Double presencePenalty,
+                                    Double frequencyPenalty,
+                                    Map<String, Integer> logitBias,
+                                    String responseFormat,
+                                    Integer seed,
+                                    String user,
+                                    Duration timeout,
+                                    Proxy proxy,
+                                    Boolean logRequests,
+                                    Boolean logResponses,
+                                    Tokenizer tokenizer,
+                                    Map<String, String> customHeaders) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
         this.client = OpenAiClient.builder()
+                .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
-                .baseUrl(baseUrl)
                 .organizationId(organizationId)
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -94,15 +89,11 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
                 .writeTimeout(timeout)
                 .proxy(proxy)
                 .logRequests(logRequests)
-                .logResponses(logResponses)
                 .logStreamingResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
-
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
-        this.isOpenAiModel = isOpenAiModel(modelName);
-
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
         this.stop = stop;
@@ -113,101 +104,12 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
         this.responseFormat = responseFormat;
         this.seed = seed;
         this.user = user;
-        this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.isOpenAiModel = isOpenAiModel(this.modelName);
     }
 
     public String modelName() {
         return modelName;
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return generateMessage(messages, null, null);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generateMessage(messages, toolSpecifications, null);
-    }
-
-    @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generateMessage(messages, singletonList(toolSpecification), toolSpecification);
-    }
-
-    private Response<AiMessage> generateMessage(List<ChatMessage> messages,
-                                                List<ToolSpecification> toolSpecifications,
-                                                ToolSpecification toolThatMustBeExecuted
-    ) {
-        ChatCompletionRequest.Builder requestBuilder = ChatCompletionRequest.builder()
-                .model(modelName)
-                .messages(toOpenAiMessages(messages))
-                .temperature(temperature)
-                .topP(topP)
-                .stop(stop)
-                .maxTokens(maxTokens)
-                .presencePenalty(presencePenalty)
-                .frequencyPenalty(frequencyPenalty)
-                .logitBias(logitBias)
-                .responseFormat(responseFormat)
-                .seed(seed)
-                .user(user);
-
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            requestBuilder.tools(toTools(toolSpecifications));
-        }
-        if (toolThatMustBeExecuted != null) {
-            requestBuilder.toolChoice(toolThatMustBeExecuted.name());
-        }
-
-        ChatCompletionRequest request = requestBuilder.build();
-
-        ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
-
-        return Response.from(
-                aiMessageFrom(response),
-                tokenUsageFrom(response.usage()),
-                finishReasonFrom(response.choices().get(0).finishReason())
-        );
-    }
-
-    @Override
-    public int estimateTokenCount(List<ChatMessage> messages) {
-        return tokenizer.estimateTokenCountInMessages(messages);
-    }
-
-    public static OpenAiChatModel withApiKey(String apiKey) {
-        return withApiKey(apiKey, false);
-    }
-
-    public static OpenAiChatModel withApiKey(String apiKey, boolean isStreaming) {
-        return builder().apiKey(apiKey).isStreaming(isStreaming).build();
-    }
-
-    public static OpenAiChatModelBuilder builder() {
-        for (OpenAiChatModelBuilderFactory factory : loadFactories(OpenAiChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new OpenAiChatModelBuilder();
-    }
-
-    public static class OpenAiChatModelBuilder {
-
-        public OpenAiChatModelBuilder() {
-            // This is public so it can be extended
-            // By default with Lombok it becomes package private
-        }
-
-        public OpenAiChatModelBuilder modelName(String modelName) {
-            this.modelName = modelName;
-            return this;
-        }
-
-        public OpenAiChatModelBuilder modelName(OpenAiChatModelName modelName) {
-            this.modelName = modelName.toString();
-            return this;
-        }
     }
 
     @Override
@@ -295,6 +197,40 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
         String content = delta.content();
         if (content != null) {
             handler.onNext(content);
+        }
+    }
+
+    @Override
+    public int estimateTokenCount(List<ChatMessage> messages) {
+        return tokenizer.estimateTokenCountInMessages(messages);
+    }
+
+    public static OpenAiStreamingChatModel withApiKey(String apiKey) {
+        return builder().apiKey(apiKey).build();
+    }
+
+    public static OpenAiStreamingChatModelBuilder builder() {
+        for (OpenAiStreamingChatModelBuilderFactory factory : loadFactories(OpenAiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new OpenAiStreamingChatModelBuilder();
+    }
+
+    public static class OpenAiStreamingChatModelBuilder {
+
+        public OpenAiStreamingChatModelBuilder() {
+            // This is public so it can be extended
+            // By default with Lombok it becomes package private
+        }
+
+        public OpenAiStreamingChatModelBuilder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        public OpenAiStreamingChatModelBuilder modelName(OpenAiChatModelName modelName) {
+            this.modelName = modelName.toString();
+            return this;
         }
     }
 }
