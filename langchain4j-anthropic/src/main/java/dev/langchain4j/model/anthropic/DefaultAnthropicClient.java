@@ -2,7 +2,6 @@ package dev.langchain4j.model.anthropic;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -19,10 +18,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
@@ -41,9 +38,6 @@ public class DefaultAnthropicClient extends AnthropicClient {
             .setObjectToNumberStrategy(LONG_OR_DOUBLE)
             .setPrettyPrinting()
             .create();
-
-    static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
-    }.getType();
 
     private final AnthropicApi anthropicApi;
     private final OkHttpClient okHttpClient;

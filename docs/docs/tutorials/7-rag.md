@@ -4,9 +4,6 @@ sidebar_position: 8
 
 # RAG (Retrieval-Augmented Generation)
 
-[Great tutorial on RAG](https://www.sivalabs.in/langchain4j-retrieval-augmented-generation-tutorial/)
-by [Siva](https://www.sivalabs.in/).
-
 LLM's knowledge is limited to the data it has been trained on.
 If you want to make an LLM aware of domain-specific knowledge or proprietary data, you can:
 - Use RAG, which we will cover in this section
@@ -42,7 +39,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.29.1</version>
+    <version>0.30.0</version>
 </dependency>
 ```
 
@@ -82,8 +79,8 @@ in glob: `glob:**.pdf`.
 </details>
 
 3. Now, we need to preprocess and store documents in a specialized embedding store, also known as vector database.
-This is necessary to quickly find relevant pieces of information on the fly when a user asks a question.
-We can use any of our 15+ [supported embedding stores](/category/embedding-stores),
+This is necessary to quickly find relevant pieces of information when a user asks a question.
+We can use any of our 15+ [supported embedding stores](/integrations/embedding-stores),
 but for simplicity, we will use an in-memory one:
 ```java
 InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
@@ -139,12 +136,33 @@ String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
-ranging from very simple ones to very advanced ones. In this section, we will cover the main domain classes and APIs.
+ranging from simple ones to advanced ones.
+In this section, we will cover the main domain classes and APIs.
 
 ### Document
 A `Document` class represents an entire document, such as a single PDF file or a web page.
 At the moment, the `Document` can only represent textual information,
 but future updates will enable it to support images and tables as well.
+
+### Metadata
+Each `Document` contains `Metadata`.
+It stores information about the `Document`, such as its name, source, creation date, owner,
+or any other relevant details.
+
+The `Metadata` is stored as a key-value map, where the key is of the `String` type,
+and the value can be one of the following types: `String`, `Integer`, `Long`, `Float`, `Double`.
+
+`Metadata` is useful for several reasons:
+- When including the content of the `Document` in a prompt to the LLM,
+metadata entries can also be included, providing the LLM with additional information to consider.
+For example, providing the `Document` name and source can help improve the LLM's understanding of the content.
+- When searching for relevant content to include in the prompt,
+one can filter by `Metadata` entries.
+For example, you can narrow down a semantic search to only `Document`s
+belonging to a specific owner.
+- When the source of the `Document` is updated (e.g., a particular page of documentation),
+one can easily locate the corresponding `Document` by its metadata entry "source"
+and update it in the `EmbeddingStore` as well.
 
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
@@ -209,7 +227,8 @@ instead of the entire knowledge base in the prompt:
 - LLMs have a limited context window, so the entire knowledge base might not fit
 - The more information you provide in the prompt, the longer it takes for the LLM to process it and respond
 - The more information you provide in the prompt, the more you pay
-- Irrelevant information in the prompt might confuse or distract the LLM and increase the chance of hallucinations
+- Irrelevant information in the prompt might distract the LLM and increase the chance of hallucinations
+- The more information you provide in the prompt, the harder it is to explain based on which information the LLM responded
 
 We can address these concerns by splitting a knowledge base into smaller, more digestible segments.
 How big should those segments be? That is a good question. As always, it depends.
@@ -282,6 +301,9 @@ More details are coming soon.
 
 Currently supported embedding stores can be found [here](/category/embedding-stores).
 
+### Filter
+More details are coming soon.
+
 ### Embedding Store Ingestor
 More details are coming soon.
 
@@ -309,6 +331,7 @@ In the meantime, please read [this](https://github.com/langchain4j/langchain4j/p
 - [Advanced RAG with Query Routing](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_02_Advanced_RAG_with_Query_Routing_Example.java)
 - [Advanced RAG with Re-Ranking](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_03_Advanced_RAG_with_ReRanking_Example.java)
 - [Advanced RAG with Including Metadata](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_04_Advanced_RAG_with_Metadata_Example.java)
+- [Skipping Retrieval](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_06_Advanced_RAG_Skip_Retrieval_Example.java)
 - [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentApplicationTest.java)
 - [Loading Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)
 - [ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)

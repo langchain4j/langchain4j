@@ -232,6 +232,10 @@ class ServiceOutputParserTest {
         private PersonWithParentArray[] parents;
     }
 
+    static class ClassWithNoFields {
+
+    }
+
     @Test
     void outputFormatInstructions_PersonWithParentArray() {
         String formatInstructions = ServiceOutputParser.outputFormatInstructions(PersonWithParentArray.class);
@@ -246,6 +250,15 @@ class ServiceOutputParserTest {
                             "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray)\n" +
                             "})\n" +
                         "}");
+    }
+
+    @Test
+    void outputFormatInstructions_ClassWithNoFields() {
+        String formatInstructions = ServiceOutputParser.outputFormatInstructions(ClassWithNoFields.class);
+
+        assertThat(formatInstructions).isEqualTo("\n" +
+                "You must answer strictly in the following JSON format: {\n" +
+                "}");
     }
 
     static class PersonWithMotherAndFather {

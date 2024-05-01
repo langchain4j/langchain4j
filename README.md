@@ -49,7 +49,7 @@ Please see examples of how LangChain4j can be used in [langchain4j-examples](htt
 
 - [Examples in plain Java](https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java)
 - [Examples with Quarkus](https://github.com/quarkiverse/quarkus-langchain4j/tree/main/samples) (uses [quarkus-langchain4j](https://github.com/quarkiverse/quarkus-langchain4j) dependency)
-- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/test/java/dev/example/CustomerSupportApplicationTest.java)
+- [Example with Spring Boot](https://github.com/langchain4j/langchain4j-examples/tree/main/spring-boot-example/src/main/java/dev/langchain4j/example)
 
 ## Documentation
 Documentation can be found [here](https://docs.langchain4j.dev).
@@ -149,12 +149,12 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
       <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-open-ai</artifactId>
-          <version>0.29.1</version>
+          <version>0.30.0</version>
       </dependency>
       ```
     - Gradle:
       ```groovy
-      implementation 'dev.langchain4j:langchain4j-open-ai:0.29.1'
+      implementation 'dev.langchain4j:langchain4j-open-ai:0.30.0'
       ```
 
 2. Import your OpenAI API key:
@@ -174,24 +174,24 @@ See example [here](https://github.com/langchain4j/langchain4j-examples/blob/main
     System.out.println(answer); // Hello! How can I assist you today?
     ```
 ## Supported LLM Integrations ([Docs](https://docs.langchain4j.dev/category/integrations))
-| Provider                                                                                           | Native Image     | [Sync Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming Completion](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [Scoring](https://docs.langchain4j.dev/category/scoring-models) | [Function Calling](https://docs.langchain4j.dev/tutorials/tools)
-|----------------------------------------------------------------------------------------------------| ------------- |---------------------------------------------------------------------| ----------- | ------ |-------------------------------| ------ |--------------------------------------------------------------------------------------------|
-| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/openai)                         |  | ✅ | ✅ | ✅ | ✅ | | ✅ |                                                                                                
-| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-openai)             |  | ✅ | ✅ | ✅ | ✅ | | ✅ | 
-| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/huggingface)              |  | ✅ | | ✅ |  | | |  |
-| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |  | ✅  | |✅ | ✅ | | |
-| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |  | ✅ | ✅ | | ✅ | | ✅ |
-| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅ | ✅ | | ✅ | ✅ | | |
-| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistralai)                  |  | ✅ | ✅ | ✅ |  | |✅ |
-| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |  | ✅ | ✅ |✅ |  | | |
-| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/localai)                       |  | ✅ | ✅ | ✅ |  | | ✅ |
-| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |  | ✅ | ✅ | ✅ |  | | |
-| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |  | | | |  | ✅| |
-| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |  | ✅ | ✅ | ✅ |  | |✅ |
-| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |  | ✅ | | |  | |
-| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |  | | |✅ |  | | |
-| [Anthropic](https://docs.langchain4j.dev/integrations/language-models/anthropic)                   |  |✅ | | |  | | |
-| [Zhipu AI](https://docs.langchain4j.dev/integrations/language-models/zhipuai)                      |  |✅| ✅| ✅|  | |✅ |
+| Provider                                                                                           | Native Image | [Sync Completion](https://docs.langchain4j.dev/category/language-models) | [Streaming Completion](https://docs.langchain4j.dev/integrations/language-models/response-streaming) | [Embedding](https://docs.langchain4j.dev/category/embedding-models) | [Image Generation](https://docs.langchain4j.dev/category/image-models) | [Scoring](https://docs.langchain4j.dev/category/scoring-models) | [Function Calling](https://docs.langchain4j.dev/tutorials/tools) |
+|----------------------------------------------------------------------------------------------------|--------------|--------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------|-----------------------------------------------------------------|------------------------------------------------------------------|
+| [OpenAI](https://docs.langchain4j.dev/integrations/language-models/open-ai)                        | ✅            | ✅                                                                        | ✅                                                                                                    | ✅                                                                   | ✅                                                                      |                                                                 | ✅                                                                |                                                                                                
+| [Azure OpenAI](https://docs.langchain4j.dev/integrations/language-models/azure-open-ai)            |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   | ✅                                                                      |                                                                 | ✅                                                                | 
+| [Hugging Face](https://docs.langchain4j.dev/integrations/language-models/hugging-face)             |              | ✅                                                                        |                                                                                                      | ✅                                                                   |                                                                        |                                                                 |                                                                  |  |
+| [Amazon Bedrock](https://docs.langchain4j.dev/integrations/language-models/amazon-bedrock)         |              | ✅                                                                        |                                                                                                      | ✅                                                                   | ✅                                                                      |                                                                 |                                                                  |
+| [Google Vertex AI Gemini](https://docs.langchain4j.dev/integrations/language-models/google-gemini) |              | ✅                                                                        | ✅                                                                                                    |                                                                     | ✅                                                                      |                                                                 | ✅                                                                |
+| [Google Vertex AI](https://docs.langchain4j.dev/integrations/language-models/google-palm)          | ✅            | ✅                                                                        |                                                                                                      | ✅                                                                   | ✅                                                                      |                                                                 |                                                                  |
+| [Mistral AI](https://docs.langchain4j.dev/integrations/language-models/mistral-ai)                 |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   |                                                                        |                                                                 | ✅                                                                |
+| [DashScope](https://docs.langchain4j.dev/integrations/language-models/dashscope)                   |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   |                                                                        |                                                                 |                                                                  |
+| [LocalAI](https://docs.langchain4j.dev/integrations/language-models/local-ai)                      |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   |                                                                        |                                                                 | ✅                                                                |
+| [Ollama](https://docs.langchain4j.dev/integrations/language-models/ollama)                         |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   |                                                                        |                                                                 |                                                                  |
+| [Cohere](https://docs.langchain4j.dev/integrations/reranking-models/cohere)                        |              |                                                                          |                                                                                                      |                                                                     |                                                                        | ✅                                                               |                                                                  |
+| [Qianfan](https://docs.langchain4j.dev/integrations/language-models/qianfan)                       |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   |                                                                        |                                                                 | ✅                                                                |
+| [ChatGLM](https://docs.langchain4j.dev/integrations/language-models/chatglm)                       |              | ✅                                                                        |                                                                                                      |                                                                     |                                                                        |                                                                 |                                                                  |
+| [Nomic](https://docs.langchain4j.dev/integrations/language-models/nomic)                           |              |                                                                          |                                                                                                      | ✅                                                                   |                                                                        |                                                                 |                                                                  |
+| [Anthropic](https://docs.langchain4j.dev/integrations/language-models/anthropic)                   | ✅            | ✅                                                                        | ✅                                                                                                    |                                                                     |                                                                        |                                                                 | ✅                                                                |
+| [Zhipu AI](https://docs.langchain4j.dev/integrations/language-models/zhipu-ai)                     |              | ✅                                                                        | ✅                                                                                                    | ✅                                                                   |                                                                        |                                                                 | ✅                                                                |
 
 ## Disclaimer
 
@@ -268,18 +268,10 @@ Please note that the library is in active development and:
 
 Please [let us know](https://github.com/langchain4j/langchain4j/issues/new/choose) what features you need!
 
-## Contribute
+## Contribution Guidelines
 
-Please help us make this open-source library better by contributing.
+Contribution guidelines can be found [here](https://github.com/langchain4j/langchain4j/blob/main/CONTRIBUTING.md).
 
-Some guidelines:
-1. Follow [Google's Best Practices for Java Libraries](https://jlbp.dev/).
-2. Keep the code compatible with Java 8.
-3. Avoid adding new dependencies as much as possible. If absolutely necessary, try to (re)use the same libraries which are already present.
-4. Follow existing code styles present in the project.
-5. Ensure to add Javadoc where necessary.
-6. Provide unit and/or integration tests for your code.
-7. Large features should be discussed with maintainers before implementation.
 
 ## Use cases
 

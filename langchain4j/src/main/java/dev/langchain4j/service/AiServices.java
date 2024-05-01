@@ -213,7 +213,8 @@ public abstract class AiServices<T> {
      * @param systemMessageProvider A {@link Function} that accepts a chat memory ID
      *                              (a value of a method parameter annotated with @{@link MemoryId})
      *                              and returns a system message to be used.
-     *                              If there is no parameter annotated with @MemoryId, it accepts {@code null}.
+     *                              If there is no parameter annotated with {@code @MemoryId},
+     *                              the value of memory ID is "default".
      *                              The returned {@link String} can be either a complete system message
      *                              or a system message template containing unresolved template variables (e.g. "{{name}}"),
      *                              which will be resolved using the values of method parameters annotated with @{@link V}.
@@ -285,10 +286,6 @@ public abstract class AiServices<T> {
         return this;
     }
 
-    // TODO tools provider vs tools selector
-    // TODO tool (spec+tool exec?) to be able to load them dynamically (e.g. try different wordings, etc)
-    // TODO check spring AI
-
     /**
      * Configures the tools that the LLM can use.
      * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
@@ -313,7 +310,7 @@ public abstract class AiServices<T> {
      * @return builder
      * @see Tool
      */
-    public AiServices<T> tools(List<Object> objectsWithTools) { // TODO Collection
+    public AiServices<T> tools(List<Object> objectsWithTools) { // TODO Collection?
         // TODO validate uniqueness of tool names
         context.toolSpecifications = new ArrayList<>();
         context.toolExecutors = new HashMap<>();
@@ -330,8 +327,6 @@ public abstract class AiServices<T> {
 
         return this;
     }
-
-    // TODO Map<toolSpecification,ToolExecutor >
 
     /**
      * Deprecated. Use {@link #contentRetriever(ContentRetriever)}

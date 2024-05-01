@@ -14,7 +14,7 @@ To use one of the Spring Boot starters, first import the corresponding dependenc
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.29.1</version>
+    <version>0.30.0</version>
 </dependency>
 ```
 
@@ -27,9 +27,15 @@ langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
 The complete list of supported properties can be found
 [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-open-ai-spring-boot-starter/src/main/java/dev/langchain4j/openai/spring/AutoConfig.java).
 
-In this case, an instance of `OpenAiChatModel` will be automatically created,
+In this case, an instance of `OpenAiChatModel` (an implementation of a `ChatLanguageModel`) will be automatically created,
 and you can autowire it where needed.
 
+If you need an instance of a `StreamingChatLanguageModel`,
+use the `streaming-chat-model` instead of the `chat-model` properties:
+```
+langchain4j.open-ai.streaming-chat-model.api-key=${OPENAI_API_KEY}
+...
+```
 
 ## LangChain4j Spring Boot Starter
 
@@ -42,7 +48,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.29.1</version>
+    <version>0.30.0</version>
 </dependency>
 ```
 

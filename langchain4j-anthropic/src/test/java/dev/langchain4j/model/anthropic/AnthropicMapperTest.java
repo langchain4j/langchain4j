@@ -1,6 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -11,11 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicTool;
 import static dev.langchain4j.model.anthropic.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.AnthropicRole.USER;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -82,7 +85,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2L), entry("second", 2L)))
+                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -110,7 +113,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2L), entry("second", 2L)))
+                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -142,12 +145,12 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2L), entry("second", 2L)))
+                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
                                                 .build(),
                                         AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3L), entry("second", 3L)))
+                                                .input(mapOf(entry("first", 3.0), entry("second", 3.0)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, asList(
@@ -182,7 +185,7 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("12345")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 2L), entry("second", 2L)))
+                                                .input(mapOf(entry("first", 2.0), entry("second", 2.0)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
@@ -192,13 +195,56 @@ class AnthropicMapperTest {
                                         AnthropicToolUseContent.builder()
                                                 .id("67890")
                                                 .name("calculator")
-                                                .input(mapOf(entry("first", 3L), entry("second", 3L)))
+                                                .input(mapOf(entry("first", 3.0), entry("second", 3.0)))
                                                 .build()
                                 )),
                                 new AnthropicMessage(USER, singletonList(
                                         new AnthropicToolResultContent("67890", "6", null)
                                 ))
                         )
+                )
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void test_toAnthropicTool(ToolSpecification toolSpecification, AnthropicTool expectedAnthropicTool) {
+
+        // when
+        AnthropicTool anthropicTool = toAnthropicTool(toolSpecification);
+
+        // then
+        assertThat(anthropicTool).isEqualTo(expectedAnthropicTool);
+    }
+
+    static Stream<Arguments> test_toAnthropicTool() {
+        return Stream.of(
+                Arguments.of(
+                        ToolSpecification.builder()
+                                .name("name")
+                                .description("description")
+                                .addParameter("parameter", STRING)
+                                .build(),
+                        AnthropicTool.builder()
+                                .name("name")
+                                .description("description")
+                                .inputSchema(AnthropicToolSchema.builder()
+                                        .properties(singletonMap("parameter", singletonMap("type", "string")))
+                                        .required(singletonList("parameter"))
+                                        .build())
+                                .build()
+                ),
+                Arguments.of(
+                        ToolSpecification.builder()
+                                .name("tool")
+                                .build(),
+                        AnthropicTool.builder()
+                                .name("tool")
+                                .inputSchema(AnthropicToolSchema.builder()
+                                        .properties(emptyMap())
+                                        .required(emptyList())
+                                        .build())
+                                .build()
                 )
         );
     }
