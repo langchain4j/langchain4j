@@ -39,7 +39,6 @@ class StreamingAiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
-                        .isStreaming(true)
                         .build(),
                 MistralAiStreamingChatModel.builder()
                         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))

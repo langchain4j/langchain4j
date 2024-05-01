@@ -35,7 +35,7 @@ import static java.util.Collections.singletonList;
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  *
  *
- * @Deprecated use {@link OpenAiStreamingChatModel} instead.
+ * @Deprecated use {@link OpenAiChatModel} instead.
  */
 @Deprecated()
 public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, TokenCountEstimator {

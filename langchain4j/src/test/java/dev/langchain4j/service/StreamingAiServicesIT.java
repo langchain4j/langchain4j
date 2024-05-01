@@ -39,17 +39,8 @@ public class StreamingAiServicesIT {
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                         .logRequests(true)
                         .logResponses(true)
-                        .isStreaming(true)
                         .build(),
-                Azure
-          
-          
-          
-          
-          
-          
-          
-          .builder()
+                AzureOpenAiStreamingChatModel.builder()
                         .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                         .logRequestsAndResponses(true)
@@ -254,7 +245,6 @@ public class StreamingAiServicesIT {
                 .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
                 .temperature(0.0)
                 .logRequests(true)
-                .isStreaming(true)
                 .logResponses(true)
                 .build();
 
@@ -354,7 +344,6 @@ public class StreamingAiServicesIT {
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .isStreaming(true)
                 .build();
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);

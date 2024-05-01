@@ -74,8 +74,7 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
                            Boolean logRequests,
                            Boolean logResponses,
                            Tokenizer tokenizer,
-                           Map<String, String> customHeaders,
-                           boolean isStreaming) {
+                           Map<String, String> customHeaders) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -178,11 +177,7 @@ public class OpenAiChatModel implements ChatLanguageModel, StreamingChatLanguage
     }
 
     public static OpenAiChatModel withApiKey(String apiKey) {
-        return withApiKey(apiKey, false);
-    }
-
-    public static OpenAiChatModel withApiKey(String apiKey, boolean isStreaming) {
-        return builder().apiKey(apiKey).isStreaming(isStreaming).build();
+        return builder().apiKey(apiKey).build();
     }
 
     public static OpenAiChatModelBuilder builder() {

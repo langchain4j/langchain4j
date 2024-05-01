@@ -25,7 +25,6 @@ class OllamaOpenAiStreamingChatModelIT extends AbstractOllamaLanguageModelInfras
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)
-            .isStreaming(true)
             .build();
 
     @Test

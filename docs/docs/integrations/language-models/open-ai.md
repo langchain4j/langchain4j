@@ -71,9 +71,9 @@ OpenAiChatModel model = OpenAiChatModel.builder()
     .proxy(...)
     .logRequests(...)
     .logResponses(...)
+    .logStreamingResponses(...)
     .tokenizer(...)
     .customHeaders(...)
-    .isStreaming(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).
