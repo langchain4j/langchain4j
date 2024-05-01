@@ -15,7 +15,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +119,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -147,7 +146,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -174,7 +173,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiChatModel(String deploymentName,
