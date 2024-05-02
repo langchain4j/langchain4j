@@ -66,13 +66,8 @@ class WebSearchResultsTest {
                 singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),"snippet", null)));
 
         assertThat(webSearchResults.toTextSegments()).hasSize(1);
-        assertThat(webSearchResults.toTextSegments().get(0).text()).isEqualTo("snippet");
-        assertThat(webSearchResults.toTextSegments().get(0).metadata()).isEqualTo(
-                Metadata.from(Stream.of(
-                        new AbstractMap.SimpleEntry<>("title", "title"),
-                        new AbstractMap.SimpleEntry<>("url", "https://google.com")
-                ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)))
-        );
+        assertThat(webSearchResults.toTextSegments().get(0).text()).isEqualTo("title\nsnippet");
+        assertThat(webSearchResults.toTextSegments().get(0).metadata()).isEqualTo(Metadata.from("url", "https://google.com"));
     }
 
     @Test
@@ -82,13 +77,8 @@ class WebSearchResultsTest {
                 singletonList(WebSearchOrganicResult.from("title", URI.create("https://google.com"),null, "content")));
 
         assertThat(webSearchResults.toDocuments()).hasSize(1);
-        assertThat(webSearchResults.toDocuments().get(0).text()).isEqualTo("content");
-        assertThat(webSearchResults.toDocuments().get(0).metadata()).isEqualTo(
-                Metadata.from(Stream.of(
-                        new AbstractMap.SimpleEntry<>("title", "title"),
-                        new AbstractMap.SimpleEntry<>("url", "https://google.com")
-                ).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)))
-        );
+        assertThat(webSearchResults.toDocuments().get(0).text()).isEqualTo("title\ncontent");
+        assertThat(webSearchResults.toDocuments().get(0).metadata()).isEqualTo(Metadata.from("url", "https://google.com"));
     }
 
     @Test
