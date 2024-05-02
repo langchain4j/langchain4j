@@ -101,10 +101,9 @@ class WebSearchOrganicResultTest {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from("title", URI.create("https://google.com"), "snippet", null,
                 Stream.of(new AbstractMap.SimpleEntry<>("key", "value")).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)));
 
-        assertThat(webSearchOrganicResult.toTextSegment().text()).isEqualTo("snippet");
+        assertThat(webSearchOrganicResult.toTextSegment().text()).isEqualTo("title\nsnippet");
         assertThat(webSearchOrganicResult.toTextSegment().metadata()).isEqualTo(
                 Metadata.from(Stream.of(
-                                new AbstractMap.SimpleEntry<>("title", "title"),
                                 new AbstractMap.SimpleEntry<>("url", "https://google.com"),
                                 new AbstractMap.SimpleEntry<>("key", "value"))
                         .collect(toMap(Map.Entry::getKey, Map.Entry::getValue))
@@ -117,10 +116,9 @@ class WebSearchOrganicResultTest {
         WebSearchOrganicResult webSearchOrganicResult = WebSearchOrganicResult.from("title", URI.create("https://google.com"), "snippet", null,
                 Stream.of(new AbstractMap.SimpleEntry<>("key", "value")).collect(toMap(Map.Entry::getKey, Map.Entry::getValue)));
 
-        assertThat(webSearchOrganicResult.toDocument().text()).isEqualTo("snippet");
+        assertThat(webSearchOrganicResult.toDocument().text()).isEqualTo("title\nsnippet");
         assertThat(webSearchOrganicResult.toDocument().metadata()).isEqualTo(
                 Metadata.from(Stream.of(
-                                new AbstractMap.SimpleEntry<>("title", "title"),
                                 new AbstractMap.SimpleEntry<>("url", "https://google.com"),
                                 new AbstractMap.SimpleEntry<>("key", "value"))
                         .collect(toMap(Map.Entry::getKey, Map.Entry::getValue))
