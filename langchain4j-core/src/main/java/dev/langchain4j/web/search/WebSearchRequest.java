@@ -27,7 +27,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
  *    <li>{@link #startIndex} - The start index for search results is the index of the first search result desired by the search user. Each search engine may have a different set of supported start indexes in combination with the start page number.</li>
  *    <li>{@link #safeSearch} - The safe search flag is a boolean that indicates that the search client desires search results with safe search enabled or disabled.</li>
  *    <li>{@link #additionalParams} - The additional parameters for the search request are a map of key-value pairs that represent additional parameters for the search request. It's a way to be flex and add custom param for each search engine.</li>
-*/
+ * </ul>
+ */
 public class WebSearchRequest {
 
     private final String searchTerms;
