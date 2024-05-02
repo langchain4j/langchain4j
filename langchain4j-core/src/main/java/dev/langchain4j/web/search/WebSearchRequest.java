@@ -48,7 +48,6 @@ public class WebSearchRequest {
         this.startIndex = builder.startIndex;
         this.safeSearch = getOrDefault(builder.safeSearch,true);
         this.additionalParams = getOrDefault(builder.additionalParams, () -> new HashMap<>());
-
     }
 
     /**

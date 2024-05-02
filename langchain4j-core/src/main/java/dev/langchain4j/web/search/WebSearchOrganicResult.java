@@ -16,7 +16,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents an organic search results are the web pages that are returned by the search engine in response to a search query.
- * This includes the title, link, snippet, content, and metadata of the web page.
+ * This includes the title, URL, snippet and/or content, and metadata of the web page.
  * <p>
  * These results are typically ranked by relevance to the search query.
  * <p>
@@ -30,7 +30,7 @@ public class WebSearchOrganicResult {
 
 
     /**
-     * Constructs a WebSearchOrganicResult object with the given URL and content.
+     * Constructs a WebSearchOrganicResult object with the given title and URL.
      *
      * @param title The title of the search result.
      * @param url The URL associated with the search result.
@@ -44,7 +44,7 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Constructs a WebSearchOrganicResult object with the given URL, title, and content.
+     * Constructs a WebSearchOrganicResult object with the given title, URL, snippet and/or content.
      *
      * @param title   The title of the search result.
      * @param url    The URL associated with the search result.
@@ -60,8 +60,7 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Constructs a WebSearchOrganicResult object with the given URL, title, content, and metadata.
-     *
+     * Constructs a WebSearchOrganicResult object with the given title, URL, snippet and/or content, and metadata.
      *
      * @param title           The title of the search result.
      * @param url             The URL associated with the search result.
@@ -96,18 +95,18 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Returns the snippet associated of the web page.
+     * Returns the snippet associated with the web page.
      *
-     * @return The snippet associated of the web page.
+     * @return The snippet associated with the web page.
      */
     public String snippet() {
         return snippet;
     }
 
     /**
-     * Returns the content related from the scraped url.
+     * Returns the content scraped from the web page.
      *
-     * @return The content related from the scraped url.
+     * @return The content scraped from the web page.
      */
     public String content() {
         return content;
@@ -192,7 +191,7 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Creates a WebSearchOrganicResult object from the given content and link.
+     * Creates a WebSearchOrganicResult object from the given title and URL.
      *
      * @param title   The title of the search result.
      * @param url    The URL associated with the search result.
@@ -203,7 +202,7 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Creates a WebSearchOrganicResult object from the given title, link, and content.
+     * Creates a WebSearchOrganicResult object from the given title, URL, snippet and/or content.
      *
      * @param title   The title of the search result.
      * @param url    The URL associated with the search result.
@@ -216,7 +215,7 @@ public class WebSearchOrganicResult {
     }
 
     /**
-     * Creates a WebSearchOrganicResult object from the given title, link, content, and result metadata.
+     * Creates a WebSearchOrganicResult object from the given title, URL, snippet and/or content, and result metadata.
      *
      * @param title           The title of the search result.
      * @param url            The URL associated with the search result.

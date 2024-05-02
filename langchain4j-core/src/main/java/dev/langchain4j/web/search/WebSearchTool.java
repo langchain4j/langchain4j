@@ -18,16 +18,16 @@ public class WebSearchTool {
     /**
      * Runs a search query on the web search engine and returns a pretty-string representation of the search results.
      *
-     * @param searchTerm the search user query
-     * @return           a pretty-string representation of the search results
+     * @param query the search user query
+     * @return a pretty-string representation of the search results
      */
     @Tool("This tool can be used to perform web searches using search engines such as Google, particularly when seeking information about recent events.")
-    public String searchWeb(@P("Web search query") String searchTerm) {
-        WebSearchResults results = searchEngine.search(searchTerm);
+    public String searchWeb(@P("Web search query") String query) {
+        WebSearchResults results = searchEngine.search(query);
         return format(results);
     }
 
-    private String format(WebSearchResults results){
+    private String format(WebSearchResults results) {
         return results.results()
                 .stream()
                 .map(organicResult -> "Title: " + organicResult.title() + "\n"
