@@ -9,6 +9,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
+import dev.langchain4j.memory.chat.EmptyChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.memory.chat.TokenWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -241,7 +244,7 @@ public abstract class AiServices<T> {
      * @return builder
      */
     public AiServices<T> chatMemory(ChatMemory chatMemory) {
-        context.chatMemories = new ConcurrentHashMap<>();
+        context.chatMemories = context.chatMemories == null ? new ConcurrentHashMap<>() : context.chatMemories;
         context.chatMemories.put(DEFAULT, chatMemory);
         return this;
     }
@@ -401,6 +404,12 @@ public abstract class AiServices<T> {
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
+        }
+    }
+
+    protected void populateDefaults() {
+        if (context.chatMemories == null || context.chatMemories.isEmpty()) {
+            chatMemory(EmptyChatMemory.build());
         }
     }
 
