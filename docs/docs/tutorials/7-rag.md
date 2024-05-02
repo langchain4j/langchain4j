@@ -16,6 +16,25 @@ into the prompt before sending it to the LLM.
 This way LLM will get (hopefully) relevant information and will be able to reply using this information,
 which should reduce the probability of hallucinations.
 
+Relevant pieces of information can be found using various
+[information retrieval](https://en.wikipedia.org/wiki/Information_retrieval) methods.
+The most popular are:
+- Full-text (keyword) search. This method uses techniques like TF-IDF and BM25
+to search documents by matching the keywords in a query (e.g., what the user is asking)
+against a database of documents.
+It ranks results based on the frequency and relevance of these keywords in each document.
+- Vector search, also known as "semantic search".
+Text documents are converted into vectors of numbers using embedding models.
+It then finds and ranks documents based on the cosine similarity
+or other similarity/distance measures between the query vector and document vectors,
+thus capturing deeper semantic meanings.
+- Hybrid. Combining multiple methods usually improves the effectiveness of the search.
+
+This page will focus solely on vector search.
+Full-text and hybrid search are currently supported only by Azure AI Search integration,
+see `AzureAiSearchContentRetriever` for more details.
+We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
+
 ## Easy RAG
 LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get started with RAG.
 You don't have to learn about embeddings, choose a vector store, find the right embedding model,
@@ -146,7 +165,7 @@ but future updates will enable it to support images and tables as well.
 
 ### Metadata
 Each `Document` contains `Metadata`.
-It stores information about the `Document`, such as its name, source, creation date, owner,
+It stores meta information about the `Document`, such as its name, source, last update date, owner,
 or any other relevant details.
 
 The `Metadata` is stored as a key-value map, where the key is of the `String` type,
@@ -160,9 +179,9 @@ For example, providing the `Document` name and source can help improve the LLM's
 one can filter by `Metadata` entries.
 For example, you can narrow down a semantic search to only `Document`s
 belonging to a specific owner.
-- When the source of the `Document` is updated (e.g., a particular page of documentation),
-one can easily locate the corresponding `Document` by its metadata entry "source"
-and update it in the `EmbeddingStore` as well.
+- When the source of the `Document` is updated (for example, a specific page of documentation),
+one can easily locate the corresponding `Document` by its metadata entry (for example, "id", "source", etc.)
+and update it in the `EmbeddingStore` as well to keep it in sync.
 
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
@@ -206,13 +225,21 @@ If no `DocumentParser`s are found through SPI, a `TextDocumentParser` is used as
 
 
 ### Document Transformer
-`DocumentTransformer` implementations can perform a variety of tasks such as transforming documents,
-cleaning them, filtering, enriching, etc.
+`DocumentTransformer` implementations can perform a variety of document transformations such as:
+- Cleaning: This involves removing unnecessary noise from the `Document`'s text, which can save tokens and reduce distractions.
+- Filtering: to completely exclude particular `Document`s from the search.
+- Enriching: Additional information can be added to `Document`s to potentially enhance search results.
+- Summarizing: The `Document` can be summarized, and its short summary can be stored in the `Metadata`
+to be later included in each `TextSegment` (which we will cover below) to potentially improve the search.
+- Etc.
+
+`Metadata` entries can also be added, modified, or removed at this stage.
 
 Currently, the only implementation provided out-of-the-box is `HtmlTextExtractor` in the `langchain4j` module,
-which can extract desired text content and metadata from an HTML document.
+which can extract desired text content and metadata entries from the raw HTML.
 
-You can implement your own `DocumentTransformer` and plug it into the LangChain4j RAG pipeline.
+Since there is no one-size-fits-all solution, we recommend implementing your own `DocumentTransformer`,
+tailored to your unique data.
 
 ### Text Segment
 Once your `Document`s are loaded, it is time to split (chunk) them into smaller segments (pieces).
@@ -284,6 +311,9 @@ a document into sentences, and so on.
 attempting to include as many units as possible in a single `TextSegment` without exceeding the limit set in step 1.
 If some of the units are still too large to fit into a `TextSegment`, it calls a sub-splitter.
 This is another `DocumentSplitter` capable of splitting units that do not fit into more granular units.
+All `Metadata` entries are copied from the `Document` to each `TextSegment`.
+A unique metadata entry "index" is added to each text segment.
+The first `TextSegment` will contain index=0, the second index=1, and so on.
 
 ### Text Segment Transformer
 More details are coming soon.
