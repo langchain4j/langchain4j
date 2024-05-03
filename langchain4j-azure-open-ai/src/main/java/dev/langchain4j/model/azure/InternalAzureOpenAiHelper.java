@@ -45,7 +45,7 @@ class InternalAzureOpenAiHelper {
 
     private static final Logger logger = LoggerFactory.getLogger(InternalAzureOpenAiHelper.class);
 
-    public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
+    public static final String DEFAULT_USER_AGENT = "LangChain4j";
 
     public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
         OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);

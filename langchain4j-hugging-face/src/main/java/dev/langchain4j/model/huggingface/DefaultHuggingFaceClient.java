@@ -33,7 +33,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                     @NotNull
                     @Override
                     public okhttp3.Response intercept(@NotNull Chain chain) throws IOException {
-                        return chain.proceed( chain.request().newBuilder().addHeader("User-Agent", "langchain4j").build());
+                        return chain.proceed( chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
                     }
                 })
                 .callTimeout(timeout)

@@ -58,7 +58,6 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     public T build() {
 
-        populateDefaults();
         performBasicValidation();
 
         for (Method method : context.aiServiceClass.getMethods()) {

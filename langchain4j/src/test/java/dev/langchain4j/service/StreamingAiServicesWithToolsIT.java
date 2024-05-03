@@ -6,7 +6,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
-import dev.langchain4j.memory.chat.EmptyChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
@@ -40,13 +39,13 @@ class StreamingAiServicesWithToolsIT {
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
+                        .build(),
+                MistralAiStreamingChatModel.builder()
+                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                        .modelName("mistral-large-latest")
+                        .logRequests(true)
+                        .logResponses(true)
                         .build()
-//                MistralAiStreamingChatModel.builder()
-//                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-//                        .modelName("mistral-large-latest")
-//                        .logRequests(true)
-//                        .logResponses(true)
-//                        .build()
                 // Add your AzureOpenAiChatModel instance here...
                 // Add your GeminiChatModel instance here...
         );
@@ -89,7 +88,6 @@ class StreamingAiServicesWithToolsIT {
         TransactionService transactionService = spy(new TransactionService());
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
-        ChatMemory chatMemory = EmptyChatMemory.build();
 
         StreamingChatLanguageModel spyModel = spy(model);
 
