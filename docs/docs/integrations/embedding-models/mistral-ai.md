@@ -1,8 +1,8 @@
 ---
-sidebar_position: 10
+sidebar_position: 8
 ---
 
-# MistralAI
+# Mistral AI
 [MistralAI Documentation](https://docs.mistral.ai/)
 
 ### Project setup
