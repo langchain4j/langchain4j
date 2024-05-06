@@ -1,27 +1,32 @@
 package dev.langchain4j.store.embedding.weaviate;
 
 import dev.langchain4j.data.segment.TextSegment;
+import static dev.langchain4j.internal.Utils.randomUUID;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import io.weaviate.client.Config;
-import io.weaviate.client.WeaviateAuthClient;
-import io.weaviate.client.WeaviateClient;
-import io.weaviate.client.v1.auth.exception.AuthException;
 import java.util.Arrays;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.weaviate.WeaviateContainer;
 
-@EnabledIfEnvironmentVariable(named = "WEAVIATE_API_KEY", matches = ".+")
-class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
-    private final String objectClass = "Test" + randomUUID().replace("-", "");
-    EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
-            .apiKey(System.getenv("WEAVIATE_API_KEY"))
-            .scheme("https")
-            .host(System.getenv("WEAVIATE_HOST"))
-            .objectClass(objectClass)
+@Testcontainers
+class LocalGRPCWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
+
+    @Container
+    static WeaviateContainer weaviate = new WeaviateContainer("semitechnologies/weaviate:latest")
+            .withEnv("QUERY_DEFAULTS_LIMIT", "25")
+            .withEnv("DEFAULT_VECTORIZER_MODULE", "none")
+            .withEnv("CLUSTER_HOSTNAME", "node1");
+
+    private final EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
+            .scheme("http")
+            .host(weaviate.getHost())
+            .port(weaviate.getMappedPort(8080))
+            .useGrpcForInserts(true)
+            .grpcPort(weaviate.getMappedPort(50051))
+            .objectClass("Test" + randomUUID().replace("-", ""))
             .metadataKeys(Arrays.asList(new String[]{
                 "string_empty",
                 "string_space",
@@ -62,19 +67,7 @@ class CloudWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
     }
 
     @Override
-    protected void clearStore() {
-        try {
-            WeaviateClient client = WeaviateAuthClient.apiKey(new Config("https", System.getenv("WEAVIATE_HOST")), System.getenv("WEAVIATE_API_KEY"));
-            client.batch().objectsBatchDeleter()
-                    .withClassName(objectClass)
-                    .run();
-        } catch (AuthException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    @Override
     protected void ensureStoreIsEmpty() {
-        
+        // TODO fix
     }
 }
