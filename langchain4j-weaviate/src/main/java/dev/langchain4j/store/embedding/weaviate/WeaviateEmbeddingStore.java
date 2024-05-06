@@ -17,6 +17,7 @@ import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearVectorArgument;
 import io.weaviate.client.v1.graphql.query.fields.Field;
 import lombok.Builder;
+import org.apache.commons.lang3.ArrayUtils;
 
 import java.util.*;
 
@@ -28,8 +29,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 /**
  * Represents the <a href="https://weaviate.io/">Weaviate</a> vector database.
@@ -90,7 +89,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 config.setGRPCSecured(getOrDefault(securedGrpc, Boolean.FALSE));
                 config.setGRPCHost(host + ":" + getOrDefault(grpcPort, 50051));
             }
-            if(isNullOrBlank(apiKey)) {
+            if (isNullOrBlank(apiKey)) {
                 this.client = new WeaviateClient(config);
             } else {
                 this.client = WeaviateAuthClient.apiKey(config, apiKey);
@@ -229,7 +228,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                     ? ids.get(i)
                     : avoidDups && embedded != null ? generateUUIDFrom(embedded.get(i).text()) : randomUUID();
             resIds.add(id);
-            objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i) : null));     
+            objects.add(buildObject(id, embeddings.get(i), embedded != null ? embedded.get(i) : null));
         }
         client.batch().objectsBatcher()
                 .withObjects(objects.toArray(new WeaviateObject[0]))
@@ -279,8 +278,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         final Metadata metadata = new Metadata();
         if (item.get(METADATA) != null && item.get(METADATA) instanceof Map) {
             Map<String, ?> resultingMetadata = (Map<String, ?>) item.get(METADATA);
-            for(Map.Entry<String, ?> entry : resultingMetadata.entrySet()) {
-                if(entry.getValue() != null && ! NULL_VALUE.equals(entry.getValue())) {
+            for (Map.Entry<String, ?> entry : resultingMetadata.entrySet()) {
+                if (entry.getValue() != null && !NULL_VALUE.equals(entry.getValue())) {
                     metadata.add(entry.getKey(), entry.getValue());
                 }
             }
