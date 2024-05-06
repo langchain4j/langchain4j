@@ -281,6 +281,8 @@ class SqlDatabaseContentRetrieverIT {
 
     static Stream<Function<DataSource, ContentRetriever>> contentRetrieverProviders() {
         return Stream.of(
+
+                // OpenAI
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
@@ -292,6 +294,7 @@ class SqlDatabaseContentRetrieverIT {
                         .chatLanguageModel(openAiChatModel)
                         .build(),
 
+                // Mistral
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
