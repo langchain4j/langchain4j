@@ -255,7 +255,7 @@ class SqlDatabaseContentRetrieverIT {
         }
     }
 
-    public static long getTableHash(DataSource dataSource, String tableName) {
+    private static long getTableHash(DataSource dataSource, String tableName) {
         String query = "SELECT * FROM " + tableName;
         try (Connection conn = dataSource.getConnection();
              Statement stmt = conn.createStatement();
