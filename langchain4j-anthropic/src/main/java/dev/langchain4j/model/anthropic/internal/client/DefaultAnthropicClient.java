@@ -1,6 +1,5 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -23,9 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
-import static com.fasterxml.jackson.databind.cfg.EnumFeature.WRITE_ENUMS_TO_LOWERCASE;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
@@ -35,16 +32,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAnthropicClient.class);
 
-    private static final ObjectMapper OBJECT_MAPPER = createObjectMapper();
-
-    private static ObjectMapper createObjectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setPropertyNamingStrategy(SNAKE_CASE);
-        objectMapper.configure(WRITE_ENUMS_TO_LOWERCASE, true);
-        objectMapper.setSerializationInclusion(Include.NON_NULL);
-        objectMapper.enable(INDENT_OUTPUT);
-        return objectMapper;
-    }
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
     private final AnthropicApi anthropicApi;
     private final OkHttpClient okHttpClient;
