@@ -40,7 +40,7 @@ import static java.util.Collections.singletonList;
  * Using the {@link DataSource} and the {@link ChatLanguageModel}, this {@link ContentRetriever}
  * attempts to generate and execute SQL queries for given natural language queries.
  * <br>
- * Optionally, {@link #sqlDialect}, {@link #ddl}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
+ * Optionally, {@link #sqlDialect}, {@link #schema}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
  * to customize the behavior. See the javadoc of the constructor for more details.
  * Most methods can be overridden to customize the behavior further.
  * <br>
@@ -51,15 +51,15 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             "You are an expert in writing SQL queries.\n" +
-                    "You have access to a {{sqlDialect}} database with the following structure:\n" +
-                    "{{ddl}}\n" +
+                    "You have access to a {{sqlDialect}} database with the following schema:\n" +
+                    "{{schema}}\n" +
                     "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n" +
                     "Do not output anything else aside from a valid SQL statement!"
     );
 
     private final DataSource dataSource;
     private final String sqlDialect;
-    private final String ddl;
+    private final String schema;
 
     private final PromptTemplate promptTemplate;
     private final ChatLanguageModel chatLanguageModel;
@@ -69,31 +69,39 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     /**
      * Creates an instance of a {@code SqlDatabaseContentRetriever}.
      *
-     * @param dataSource        The {@link DataSource} to be used for executing SQL queries. Mandatory parameter.
+     * @param dataSource        The {@link DataSource} to be used for executing SQL queries.
+     *                          This is a mandatory parameter.
      *                          <b>WARNING! The database user must have very limited READ-ONLY permissions!</b>
      * @param sqlDialect        The SQL dialect, which will be provided to the LLM in the {@link SystemMessage}.
-     *                          Optional parameter. If not specified, it will be determined from the {@code DataSource}.
-     * @param ddl               The DDL of the tables, which will be provided to the LLM in the {@code SystemMessage}.
-     *                          Optional parameter. If not specified, it will be generated from the {@code DataSource}.
+     *                          The LLM should know the specific SQL dialect in order to generate valid SQL queries.
+     *                          Example: "MySQL", "PostgreSQL", etc.
+     *                          This is an optional parameter. If not specified, it will be determined from the {@code DataSource}.
+     * @param schema            The schema of the database, which will be provided to the LLM in the {@code SystemMessage}.
+     *                          The LLM should be familiar with the structure of the database
+     *                          (e.g., tables, columns, relationships, etc.) in order to generate valid SQL queries.
+     *                          It is best to use complete "CREATE TABLE ..." DDL statements.
+     *                          Example (shortened): "CREATE TABLE customers(\n  id INT PRIMARY KEY,\n  name VARCHAR(50), ...)\n CREATE TABLE products(...)"
+     *                          This is an optional parameter. If not specified, it will be generated from the {@code DataSource}.
      *                          <b>WARNING! In this case, all tables will be visible to the LLM!</b>
      * @param promptTemplate    The {@link PromptTemplate} to be used for creating a {@code SystemMessage}.
-     *                          Optional parameter. Default: {@link #DEFAULT_PROMPT_TEMPLATE}.
-     * @param chatLanguageModel The {@link ChatLanguageModel} to be used for generating SQL queries. Mandatory parameter.
+     *                          This is an optional parameter. Default: {@link #DEFAULT_PROMPT_TEMPLATE}.
+     * @param chatLanguageModel The {@link ChatLanguageModel} to be used for generating SQL queries.
+     *                          This is a mandatory parameter.
      * @param maxRetries        The maximum number of retries to perform if the database cannot execute the generated SQL query.
      *                          An error message will be sent back to the LLM to try correcting the query.
-     *                          Optional parameter. Default: 1.
+     *                          This is an optional parameter. Default: 1.
      */
     @Builder
     @Experimental
     public SqlDatabaseContentRetriever(DataSource dataSource,
                                        String sqlDialect,
-                                       String ddl,
+                                       String schema,
                                        PromptTemplate promptTemplate,
                                        ChatLanguageModel chatLanguageModel,
                                        Integer maxRetries) {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
         this.sqlDialect = getOrDefault(sqlDialect, () -> getSqlDialect(dataSource));
-        this.ddl = getOrDefault(ddl, () -> getDDL(dataSource));
+        this.schema = getOrDefault(schema, () -> generateSchema(dataSource));
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.maxRetries = getOrDefault(maxRetries, 1);
@@ -110,8 +118,8 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    private static String getDDL(DataSource dataSource) {
-        StringBuilder ddl = new StringBuilder();
+    private static String generateSchema(DataSource dataSource) {
+        StringBuilder schema = new StringBuilder();
 
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
@@ -121,13 +129,13 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
                 String tableDDL = getTableDDL(metaData, tableName);
-                ddl.append(tableDDL).append("\n");
+                schema.append(tableDDL).append("\n");
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
-        return ddl.toString();
+        return schema.toString();
     }
 
     private static String getTableDDL(DatabaseMetaData metaData, String tableName) {
@@ -246,7 +254,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     protected Prompt createSystemPrompt() {
         Map<String, Object> variables = new HashMap<>();
         variables.put("sqlDialect", sqlDialect);
-        variables.put("ddl", ddl);
+        variables.put("schema", schema);
         return promptTemplate.apply(variables);
     }
 

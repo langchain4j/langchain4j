@@ -52,13 +52,14 @@ class SqlDatabaseContentRetrieverIT {
     DataSource dataSource;
 
     @BeforeEach
-    void beforeEach() throws IOException {
+    void beforeEach() {
         dataSource = createDataSource();
 
-        execute(getDDL(), dataSource);
+        String createTablesScript = read("sql/create_tables.sql");
+        execute(createTablesScript, dataSource);
 
-        String prefillTablesSql = new String(Files.readAllBytes(toPath("sql/prefill_tables.sql")));
-        execute(prefillTablesSql, dataSource);
+        String prefillTablesScript = read("sql/prefill_tables.sql");
+        execute(prefillTablesScript, dataSource);
     }
 
     private PGSimpleDataSource createDataSource() {
@@ -278,7 +279,7 @@ class SqlDatabaseContentRetrieverIT {
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
-                        .ddl(getDDL())
+                        .schema(read("sql/create_tables.sql"))
                         .chatLanguageModel(openAiChatModel)
                         .build(),
                 dataSource -> SqlDatabaseContentRetriever.builder()
@@ -289,7 +290,7 @@ class SqlDatabaseContentRetrieverIT {
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
-                        .ddl(getDDL())
+                        .schema(read("sql/create_tables.sql"))
                         .chatLanguageModel(mistralAiChatModel)
                         .build(),
                 dataSource -> SqlDatabaseContentRetriever.builder()
@@ -299,9 +300,9 @@ class SqlDatabaseContentRetrieverIT {
         );
     }
 
-    private static String getDDL() {
+    private static String read(String path) {
         try {
-            return new String(Files.readAllBytes(toPath("sql/create_tables.sql")));
+            return new String(Files.readAllBytes(toPath(path)));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
