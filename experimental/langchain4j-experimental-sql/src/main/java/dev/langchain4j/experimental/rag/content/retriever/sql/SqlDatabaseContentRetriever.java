@@ -44,7 +44,8 @@ import static java.util.Collections.singletonList;
  * to customize the behavior. See the javadoc of the constructor for more details.
  * Most methods can be overridden to customize the behavior further.
  * <br>
- * The default prompt template is not optimized, so it is advised to experiment and see what works best for your use case.
+ * The default prompt template is not highly optimized,
+ * so it is advised to experiment with it and see what works best for your use case.
  */
 @Experimental
 public class SqlDatabaseContentRetriever implements ContentRetriever {
