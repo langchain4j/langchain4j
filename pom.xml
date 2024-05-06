@@ -74,6 +74,9 @@
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
+        <!-- experimental -->
+        <module>experimental/langchain4j-experimental-sql</module>
+
     </modules>
 
     <build>
