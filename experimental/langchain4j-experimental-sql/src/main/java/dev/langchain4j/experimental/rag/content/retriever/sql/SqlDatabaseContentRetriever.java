@@ -40,7 +40,7 @@ import static java.util.Collections.singletonList;
  * Using the {@link DataSource} and the {@link ChatLanguageModel}, this {@link ContentRetriever}
  * attempts to generate and execute SQL queries for given natural language queries.
  * <br>
- * Optionally, {@link #sqlDialect}, {@link #schema}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
+ * Optionally, {@link #sqlDialect}, {@link #databaseStructure}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
  * to customize the behavior. See the javadoc of the constructor for more details.
  * Most methods can be overridden to customize the behavior further.
  * <br>
@@ -52,15 +52,15 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
     private static final PromptTemplate DEFAULT_PROMPT_TEMPLATE = PromptTemplate.from(
             "You are an expert in writing SQL queries.\n" +
-                    "You have access to a {{sqlDialect}} database with the following schema:\n" +
-                    "{{schema}}\n" +
+                    "You have access to a {{sqlDialect}} database with the following structure:\n" +
+                    "{{databaseStructure}}\n" +
                     "If a user asks a question that can be answered by querying this database, generate an SQL SELECT query.\n" +
                     "Do not output anything else aside from a valid SQL statement!"
     );
 
     private final DataSource dataSource;
     private final String sqlDialect;
-    private final String schema;
+    private final String databaseStructure;
 
     private final PromptTemplate promptTemplate;
     private final ChatLanguageModel chatLanguageModel;
@@ -77,10 +77,10 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      *                          The LLM should know the specific SQL dialect in order to generate valid SQL queries.
      *                          Example: "MySQL", "PostgreSQL", etc.
      *                          This is an optional parameter. If not specified, it will be determined from the {@code DataSource}.
-     * @param schema            The schema of the database, which will be provided to the LLM in the {@code SystemMessage}.
-     *                          The LLM should be familiar with the structure of the database
-     *                          (e.g., tables, columns, relationships, etc.) in order to generate valid SQL queries.
-     *                          It is best to use complete "CREATE TABLE ..." DDL statements.
+     * @param databaseStructure The structure of the database, which will be provided to the LLM in the {@code SystemMessage}.
+     *                          The LLM should be familiar with available tables, columns, relationships, etc.
+     *                          in order to generate valid SQL queries.
+     *                          It is best to specify the complete "CREATE TABLE ..." DDL statements.
      *                          Example (shortened): "CREATE TABLE customers(\n  id INT PRIMARY KEY,\n  name VARCHAR(50), ...)\n CREATE TABLE products(...)"
      *                          This is an optional parameter. If not specified, it will be generated from the {@code DataSource}.
      *                          <b>WARNING! In this case, all tables will be visible to the LLM!</b>
@@ -96,19 +96,21 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     @Experimental
     public SqlDatabaseContentRetriever(DataSource dataSource,
                                        String sqlDialect,
-                                       String schema,
+                                       String databaseStructure,
                                        PromptTemplate promptTemplate,
                                        ChatLanguageModel chatLanguageModel,
                                        Integer maxRetries) {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
         this.sqlDialect = getOrDefault(sqlDialect, () -> getSqlDialect(dataSource));
-        this.schema = getOrDefault(schema, () -> generateSchema(dataSource));
+        this.databaseStructure = getOrDefault(databaseStructure, () -> generateDDL(dataSource));
         this.promptTemplate = getOrDefault(promptTemplate, DEFAULT_PROMPT_TEMPLATE);
         this.chatLanguageModel = ensureNotNull(chatLanguageModel, "chatLanguageModel");
         this.maxRetries = getOrDefault(maxRetries, 1);
     }
 
-    // TODO provide a few rows of data for each table
+    // TODO (for v2)
+    // - provide a few rows of data for each table in the prompt
+    // - option to select a list of tables to use/ignore
 
     public static String getSqlDialect(DataSource dataSource) {
         try (Connection connection = dataSource.getConnection()) {
@@ -119,8 +121,8 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    private static String generateSchema(DataSource dataSource) {
-        StringBuilder schema = new StringBuilder();
+    private static String generateDDL(DataSource dataSource) {
+        StringBuilder ddl = new StringBuilder();
 
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
@@ -129,18 +131,18 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
 
             while (tables.next()) {
                 String tableName = tables.getString("TABLE_NAME");
-                String tableDDL = getTableDDL(metaData, tableName);
-                schema.append(tableDDL).append("\n");
+                String createTableStatement = generateCreateTableStatement(tableName, metaData);
+                ddl.append(createTableStatement).append("\n");
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
-        return schema.toString();
+        return ddl.toString();
     }
 
-    private static String getTableDDL(DatabaseMetaData metaData, String tableName) {
-        StringBuilder ddl = new StringBuilder();
+    private static String generateCreateTableStatement(String tableName, DatabaseMetaData metaData) {
+        StringBuilder createTableStatement = new StringBuilder();
 
         try {
             ResultSet columns = metaData.getColumns(null, null, tableName, null);
@@ -152,7 +154,11 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 primaryKeyColumn = pk.getString("COLUMN_NAME");
             }
 
-            ddl.append("CREATE TABLE ").append(tableName).append(" (\n");
+            createTableStatement
+                    .append("CREATE TABLE ")
+                    .append(tableName)
+                    .append(" (\n");
+
             while (columns.next()) {
                 String columnName = columns.getString("COLUMN_NAME");
                 String columnType = columns.getString("TYPE_NAME");
@@ -161,14 +167,32 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 String columnDef = columns.getString("COLUMN_DEF") != null ? " DEFAULT " + columns.getString("COLUMN_DEF") : "";
                 String comment = columns.getString("REMARKS");
 
-                ddl.append("  ").append(columnName).append(" ").append(columnType).append("(").append(size).append(")").append(nullable).append(columnDef);
+                createTableStatement
+                        .append("  ")
+                        .append(columnName)
+                        .append(" ")
+                        .append(columnType)
+                        .append("(")
+                        .append(size)
+                        .append(")")
+                        .append(nullable)
+                        .append(columnDef);
+
                 if (columnName.equals(primaryKeyColumn)) {
-                    ddl.append(" PRIMARY KEY");
+                    createTableStatement.append(" PRIMARY KEY");
                 }
-                ddl.append(",\n");
+
+                createTableStatement.append(",\n");
 
                 if (comment != null && !comment.isEmpty()) {
-                    ddl.append("  COMMENT ON COLUMN ").append(tableName).append(".").append(columnName).append(" IS '").append(comment).append("',\n");
+                    createTableStatement
+                            .append("  COMMENT ON COLUMN ")
+                            .append(tableName)
+                            .append(".")
+                            .append(columnName)
+                            .append(" IS '")
+                            .append(comment)
+                            .append("',\n");
                 }
             }
 
@@ -176,27 +200,39 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 String fkColumnName = fks.getString("FKCOLUMN_NAME");
                 String pkTableName = fks.getString("PKTABLE_NAME");
                 String pkColumnName = fks.getString("PKCOLUMN_NAME");
-                ddl.append("  FOREIGN KEY (").append(fkColumnName).append(") REFERENCES ").append(pkTableName).append("(").append(pkColumnName).append("),\n");
+                createTableStatement
+                        .append("  FOREIGN KEY (")
+                        .append(fkColumnName)
+                        .append(") REFERENCES ")
+                        .append(pkTableName)
+                        .append("(")
+                        .append(pkColumnName)
+                        .append("),\n");
             }
 
-            if (ddl.charAt(ddl.length() - 2) == ',') {
-                ddl.delete(ddl.length() - 2, ddl.length());
+            if (createTableStatement.charAt(createTableStatement.length() - 2) == ',') {
+                createTableStatement.delete(createTableStatement.length() - 2, createTableStatement.length());
             }
 
-            ddl.append(");\n");
+            createTableStatement.append(");\n");
 
             ResultSet tableRemarks = metaData.getTables(null, null, tableName, null);
             if (tableRemarks.next()) {
                 String tableComment = tableRemarks.getString("REMARKS");
                 if (tableComment != null && !tableComment.isEmpty()) {
-                    ddl.append("COMMENT ON TABLE ").append(tableName).append(" IS '").append(tableComment).append("';\n");
+                    createTableStatement
+                            .append("COMMENT ON TABLE ")
+                            .append(tableName)
+                            .append(" IS '")
+                            .append(tableComment)
+                            .append("';\n");
                 }
             }
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
 
-        return ddl.toString();
+        return createTableStatement.toString();
     }
 
     @Override
@@ -223,7 +259,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
                 try (Connection connection = dataSource.getConnection();
                      Statement statement = connection.createStatement()) {
 
-                    String result = getResult(sqlQuery, statement);
+                    String result = execute(sqlQuery, statement);
                     Content content = format(result, sqlQuery);
                     return singletonList(content);
                 }
@@ -255,7 +291,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
     protected Prompt createSystemPrompt() {
         Map<String, Object> variables = new HashMap<>();
         variables.put("sqlDialect", sqlDialect);
-        variables.put("schema", schema);
+        variables.put("databaseStructure", databaseStructure);
         return promptTemplate.apply(variables);
     }
 
@@ -281,7 +317,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
         }
     }
 
-    protected String getResult(String sqlQuery, Statement statement) throws SQLException {
+    protected String execute(String sqlQuery, Statement statement) throws SQLException {
         List<String> resultRows = new ArrayList<>();
 
         try (ResultSet resultSet = statement.executeQuery(sqlQuery)) {

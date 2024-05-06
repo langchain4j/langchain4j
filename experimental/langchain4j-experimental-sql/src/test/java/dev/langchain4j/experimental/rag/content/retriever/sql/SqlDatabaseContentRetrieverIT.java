@@ -279,7 +279,7 @@ class SqlDatabaseContentRetrieverIT {
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
-                        .schema(read("sql/create_tables.sql"))
+                        .databaseStructure(read("sql/create_tables.sql"))
                         .chatLanguageModel(openAiChatModel)
                         .build(),
                 dataSource -> SqlDatabaseContentRetriever.builder()
@@ -290,7 +290,7 @@ class SqlDatabaseContentRetrieverIT {
                 dataSource -> SqlDatabaseContentRetriever.builder()
                         .dataSource(dataSource)
                         .sqlDialect("PostgreSQL")
-                        .schema(read("sql/create_tables.sql"))
+                        .databaseStructure(read("sql/create_tables.sql"))
                         .chatLanguageModel(mistralAiChatModel)
                         .build(),
                 dataSource -> SqlDatabaseContentRetriever.builder()
