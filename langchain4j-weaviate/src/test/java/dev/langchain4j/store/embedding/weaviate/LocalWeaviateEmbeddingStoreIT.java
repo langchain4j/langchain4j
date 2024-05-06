@@ -23,7 +23,7 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
     private final EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
             .scheme("http")
             .host(weaviate.getHost())
-            .port(weaviate.getMappedPort(8080))
+            .port(weaviate.getFirstMappedPort())
             .objectClass("Test" + randomUUID().replace("-", ""))
             .metadataKeys(Arrays.asList(new String[]{
                 "string_empty",
