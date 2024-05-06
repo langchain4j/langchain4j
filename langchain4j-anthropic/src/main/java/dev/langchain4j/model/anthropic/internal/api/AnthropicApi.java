@@ -1,10 +1,10 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.api;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.*;
 
-interface AnthropicApi {
+public interface AnthropicApi {
 
     String X_API_KEY = "x-api-key";
 

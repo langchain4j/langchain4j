@@ -1,13 +1,20 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.api;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 import java.util.Map;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
 @ToString
 @EqualsAndHashCode(callSuper = true)
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicToolUseContent extends AnthropicMessageContent {
 
     public String id;
