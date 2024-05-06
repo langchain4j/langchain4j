@@ -3,9 +3,7 @@ package dev.langchain4j.model.chatglm;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Builder;
-
 import okhttp3.OkHttpClient;
-
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
