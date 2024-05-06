@@ -75,7 +75,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
@@ -86,7 +86,6 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);

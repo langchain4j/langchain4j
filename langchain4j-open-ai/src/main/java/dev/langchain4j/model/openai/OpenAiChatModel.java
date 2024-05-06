@@ -15,7 +15,6 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -78,7 +77,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
                 .organizationId(organizationId)
@@ -89,7 +88,6 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);

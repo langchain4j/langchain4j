@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiStreamingLanguageModelBuilderFactory;
+import dev.langchain4j.model.openai.InternalOpenAiHelper;
 import dev.langchain4j.model.openai.OpenAiStreamingResponseBuilder;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -40,7 +41,7 @@ public class LocalAiStreamingLanguageModel implements StreamingLanguageModel {
         temperature = temperature == null ? 0.7 : temperature;
         timeout = timeout == null ? ofSeconds(60) : timeout;
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
                 .callTimeout(timeout)

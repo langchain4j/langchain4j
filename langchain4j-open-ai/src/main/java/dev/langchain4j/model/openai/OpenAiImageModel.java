@@ -8,7 +8,6 @@ import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.openai.spi.OpenAiImageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
-import lombok.NonNull;
 
 import java.net.Proxy;
 import java.nio.file.Path;
@@ -76,8 +75,7 @@ public class OpenAiImageModel implements ImageModel {
     ) {
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        OpenAiClient.Builder cBuilder = OpenAiClient
-                .builder()
+        OpenAiClient.Builder cBuilder = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)

@@ -53,7 +53,7 @@ public class OpenAiModerationModel implements ModerationModel {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .openAiApiKey(apiKey)
                 .baseUrl(baseUrl)
                 .organizationId(organizationId)
@@ -64,7 +64,6 @@ public class OpenAiModerationModel implements ModerationModel {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);

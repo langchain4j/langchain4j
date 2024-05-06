@@ -53,6 +53,8 @@ class DefaultMistralAiClient extends MistralAiClient {
                 .callTimeout(builder.timeout)
                 .connectTimeout(builder.timeout)
                 .readTimeout(builder.timeout)
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()))
                 .writeTimeout(builder.timeout);
 
         okHttpClientBuilder.addInterceptor(new MistralAiApiKeyInterceptor(builder.apiKey));

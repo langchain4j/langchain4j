@@ -37,13 +37,8 @@ class ChatGlmClient {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
-                .addInterceptor(new Interceptor() {
-                    @NotNull
-                    @Override
-                    public okhttp3.Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
-                        return chain.proceed(
-                                chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
-                    }})
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()))
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()

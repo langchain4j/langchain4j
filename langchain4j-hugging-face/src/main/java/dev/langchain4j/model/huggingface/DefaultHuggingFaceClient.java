@@ -29,13 +29,8 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
-                .addInterceptor(new Interceptor() {
-                    @NotNull
-                    @Override
-                    public okhttp3.Response intercept(@NotNull Chain chain) throws IOException {
-                        return chain.proceed( chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
-                    }
-                })
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()))
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)

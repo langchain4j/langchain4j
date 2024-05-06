@@ -20,6 +20,7 @@ import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
@@ -95,8 +96,11 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
         );
 
         try {
+            // TODO switch to use InternalVertexAiHelper.defaultPredictionServiceSettingsBuilder() once the library
+            // is out of beta
             this.settings = PredictionServiceSettings.newBuilder()
                     .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
+                    .setHeaderProvider(() -> Collections.singletonMap("User-Agent", "LangChain4j"))
                     .build();
 
             this.llmUtilitySettings = LlmUtilityServiceSettings.newBuilder()

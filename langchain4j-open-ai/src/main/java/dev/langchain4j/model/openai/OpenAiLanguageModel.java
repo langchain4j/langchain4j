@@ -51,7 +51,7 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .baseUrl(getOrDefault(baseUrl, OPENAI_URL))
                 .openAiApiKey(apiKey)
                 .organizationId(organizationId)
@@ -62,7 +62,6 @@ public class OpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
                 .proxy(proxy)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
-                .userAgent(DEFAULT_USER_AGENT)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO_INSTRUCT);

@@ -50,6 +50,8 @@ public class ZhipuAiClient {
                 .connectTimeout(builder.connectTimeout)
                 .readTimeout(builder.readTimeout)
                 .writeTimeout(builder.writeTimeout)
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()))
                 .addInterceptor(new AuthorizationInterceptor(builder.apiKey));
 
         if (builder.logRequests) {

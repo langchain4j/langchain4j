@@ -42,7 +42,9 @@ public class QianfanClient {
         this.baseUrl = serviceBuilder.baseUrl;
         OkHttpClient.Builder okHttpClientBuilder = (new OkHttpClient.Builder()).callTimeout(serviceBuilder.callTimeout)
                 .connectTimeout(serviceBuilder.connectTimeout).readTimeout(serviceBuilder.readTimeout)
-                .writeTimeout(serviceBuilder.writeTimeout);
+                .writeTimeout(serviceBuilder.writeTimeout)
+                .addInterceptor(chain -> chain.proceed(
+                    chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()));
         if (serviceBuilder.apiKey == null) {
             throw new IllegalArgumentException("apiKey must be defined");
         } else if (serviceBuilder.secretKey == null) {

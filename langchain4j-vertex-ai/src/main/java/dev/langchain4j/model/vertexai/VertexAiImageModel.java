@@ -1,5 +1,6 @@
 package dev.langchain4j.model.vertexai;
 
+import com.google.api.gax.rpc.HeaderProvider;
 import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
@@ -152,7 +153,7 @@ public class VertexAiImageModel implements ImageModel {
 
     private Response<List<Image>> generate(String prompt, Image image, Image mask, int n) {
         try {
-            PredictionServiceSettings serviceSettings = PredictionServiceSettings.newBuilder()
+            PredictionServiceSettings serviceSettings = InternalVertexAiHelper.defaultPredictionServiceSettingsBuilder()
                 .setEndpoint(this.endpoint)
                 .build();
 
