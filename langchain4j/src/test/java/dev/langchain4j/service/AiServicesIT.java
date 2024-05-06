@@ -355,30 +355,41 @@ public class AiServicesIT {
     }
 
     interface BadChef {
-        public static final String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
-        public static final String CHEFS_PROMPT_IS_EMPTY_TXT = "chefs-prompt-is-empty.txt";
+        String CHEFS_PROMPT_DOES_NOT_EXIST_TXT = "chefs-prompt-does-not-exist.txt";
 
-        @UserMessage(fromResource = CHEFS_PROMPT_DOES_NOT_EXIST_TXT)
-        Recipe createRecipeFromNonExistingResource(String... ingredients);
+        @UserMessage(fromResource = "chefs-prompt-does-not-exist.txt")
+        Recipe createRecipeWithNonExistingResource(String... ingredients);
 
-        @UserMessage(fromResource = CHEFS_PROMPT_IS_EMPTY_TXT)
-        Recipe createRecipeFromEmptyResource(String... ingredients);
+        @UserMessage(fromResource = "chefs-prompt-is-empty.txt")
+        Recipe createRecipeWithEmptyResource(String... ingredients);
+
+        @UserMessage(fromResource = "chefs-prompt-is-blank.txt")
+        Recipe createRecipeWithBlankResource(String... ingredients);
     }
 
     @Test
-    void test_call_model_with_missing_resource() {
+    void should_fail_when_user_message_resource_is_not_found() {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
-        assertThatThrownBy(() -> badChef.createRecipeFromNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
+        assertThatThrownBy(() -> badChef.createRecipeWithNonExistingResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's resource '" + BadChef.CHEFS_PROMPT_DOES_NOT_EXIST_TXT + "' not found");
     }
 
     @Test
-    void test_call_model_with_empty_resource() {
+    void should_fail_when_user_message_resource_is_empty() {
         BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
 
-        assertThatThrownBy(() -> badChef.createRecipeFromEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+        assertThatThrownBy(() -> badChef.createRecipeWithEmptyResource("cucumber", "tomato", "feta", "onion", "olives"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessage("@UserMessage's template cannot be empty");
+    }
+
+    @Test
+    void should_fail_when_user_message_resource_is_blank() {
+        BadChef badChef = AiServices.create(BadChef.class, chatLanguageModel);
+
+        assertThatThrownBy(() -> badChef.createRecipeWithBlankResource("cucumber", "tomato", "feta", "onion", "olives"))
                 .isInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("@UserMessage's template cannot be empty");
     }
