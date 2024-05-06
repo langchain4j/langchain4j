@@ -27,13 +27,6 @@ class Judge0JavaScriptEngine implements CodeExecutionEngine {
         this.apiKey = apiKey;
         this.languageId = languageId;
         this.client = new OkHttpClient.Builder()
-                .addInterceptor(new Interceptor() {
-                    @NotNull
-                    @Override
-                    public Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
-                       return chain.proceed(
-                               chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
-                    }})
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
