@@ -40,7 +40,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final String METADATA_TEXT_SEGMENT = "text";
     private static final String ADDITIONALS = "_additional";
     private static final String METADATA = "_metadata";
-    private static final String NULL_VALUE = "null";
+    private static final String NULL_VALUE = "<null>";
 
     private final WeaviateClient client;
     private final String objectClass;
