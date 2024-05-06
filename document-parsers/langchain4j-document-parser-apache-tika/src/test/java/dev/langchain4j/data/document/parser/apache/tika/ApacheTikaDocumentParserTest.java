@@ -1,9 +1,10 @@
 package dev.langchain4j.data.document.parser.apache.tika;
 
-import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.BlankDocumentException;
+import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import org.apache.tika.parser.AutoDetectParser;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -40,7 +41,7 @@ class ApacheTikaDocumentParserTest {
     })
     void should_parse_xls_files(String fileName) {
 
-        DocumentParser parser = new ApacheTikaDocumentParser(new AutoDetectParser(), null, null, null);
+        DocumentParser parser = new ApacheTikaDocumentParser(AutoDetectParser::new, null, null, null);
         InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName);
 
         Document document = parser.parse(inputStream);
@@ -48,6 +49,24 @@ class ApacheTikaDocumentParserTest {
         assertThat(document.text())
                 .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
         assertThat(document.metadata().asMap()).isEmpty();
+    }
+
+    @Test
+    void should_parse_files_stateless() {
+
+        DocumentParser parser = new ApacheTikaDocumentParser();
+        InputStream inputStream1 = getClass().getClassLoader().getResourceAsStream("test-file.xls");
+        InputStream inputStream2 = getClass().getClassLoader().getResourceAsStream("test-file.xls");
+
+        Document document1 = parser.parse(inputStream1);
+        Document document2 = parser.parse(inputStream2);
+
+        assertThat(document1.text())
+                .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
+        assertThat(document2.text())
+                .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
+        assertThat(document1.metadata().asMap()).isEmpty();
+        assertThat(document2.metadata().asMap()).isEmpty();
     }
 
     @ParameterizedTest
