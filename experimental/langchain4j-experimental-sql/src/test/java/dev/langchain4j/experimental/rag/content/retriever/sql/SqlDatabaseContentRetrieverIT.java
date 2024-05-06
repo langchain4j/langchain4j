@@ -102,7 +102,7 @@ class SqlDatabaseContentRetrieverIT {
         ContentRetriever contentRetriever = contentRetrieverProvider.apply(dataSource);
 
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Give me total sales (in $) for each product"));
+        List<Content> retrieved = contentRetriever.retrieve(Query.from("What is the total sales in dollars for each product?"));
 
         // then
         assertThat(retrieved).hasSize(1);

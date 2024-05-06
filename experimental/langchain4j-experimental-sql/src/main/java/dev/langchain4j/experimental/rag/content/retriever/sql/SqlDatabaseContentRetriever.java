@@ -80,7 +80,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
      * @param databaseStructure The structure of the database, which will be provided to the LLM in the {@code SystemMessage}.
      *                          The LLM should be familiar with available tables, columns, relationships, etc. in order to generate valid SQL queries.
      *                          It is best to specify the complete "CREATE TABLE ..." DDL statement for each table.
-     *                          Example (shortened): "CREATE TABLE customers(\n  id INT PRIMARY KEY,\n  name VARCHAR(50), ...)\n CREATE TABLE products(...)"
+     *                          Example (shortened): "CREATE TABLE customers(\n  id INT PRIMARY KEY,\n  name VARCHAR(50), ...);\n CREATE TABLE products(...);\n ..."
      *                          This is an optional parameter. If not specified, it will be generated from the {@code DataSource}.
      *                          <b>WARNING! In this case, all tables will be visible to the LLM!</b>
      * @param promptTemplate    The {@link PromptTemplate} to be used for creating a {@code SystemMessage}.
