@@ -16,4 +16,5 @@ class RerankRequest {
     private String model;
     private String query;
     private List<String> documents;
+    private Boolean returnDocuments;
 }

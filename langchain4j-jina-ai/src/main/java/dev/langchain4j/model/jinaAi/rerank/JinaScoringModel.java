@@ -68,6 +68,7 @@ public class JinaScoringModel implements ScoringModel {
                 .documents(segments.stream()
                         .map(TextSegment::text)
                         .collect(toList()))
+                .returnDocuments(false)  //decreasing response size, do not include text in response
                 .build();
 
         RerankResponse response = withRetry(() -> client.rerank(request), maxRetries);
