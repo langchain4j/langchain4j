@@ -281,10 +281,7 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             messages.add(UserMessage.from(previousErrorMessage));
         }
 
-        String sqlQuery = chatLanguageModel.generate(messages).content().text();
-
-
-        return sqlQuery;
+        return chatLanguageModel.generate(messages).content().text();
     }
 
     protected Prompt createSystemPrompt() {

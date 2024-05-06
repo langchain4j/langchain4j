@@ -49,6 +49,7 @@ class SqlDatabaseContentRetrieverIT {
 
     @Container
     PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName.parse("postgres:12.18"));
+
     DataSource dataSource;
 
     @BeforeEach
@@ -89,6 +90,7 @@ class SqlDatabaseContentRetrieverIT {
 
         // then
         assertThat(retrieved).hasSize(1);
+
         assertThat(retrieved.get(0).textSegment().text())
                 .contains("SELECT")
                 .contains("5");
@@ -106,6 +108,7 @@ class SqlDatabaseContentRetrieverIT {
 
         // then
         assertThat(retrieved).hasSize(1);
+
         assertThat(retrieved.get(0).textSegment().text())
                 .contains("SELECT")
                 .contains("99.98", "71.97", "64.95", "22.50", "23.97");
@@ -123,6 +126,7 @@ class SqlDatabaseContentRetrieverIT {
 
         // then
         assertThat(retrieved).hasSize(1);
+
         assertThat(retrieved.get(0).textSegment().text())
                 .contains("SELECT")
                 .containsAnyOf("2,283.37", "2.0,283.37");
@@ -140,6 +144,7 @@ class SqlDatabaseContentRetrieverIT {
 
         // then
         assertThat(retrieved).hasSize(1);
+
         assertThat(retrieved.get(0).textSegment().text())
                 .contains("SELECT")
                 .contains("Carol")
