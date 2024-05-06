@@ -73,15 +73,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .connectTimeout(builder.timeout)
                 .readTimeout(builder.timeout)
                 .writeTimeout(builder.timeout)
-                .addInterceptor(new Interceptor() {
-                    @NotNull
-                    @Override
-                    public okhttp3.Response intercept(@NotNull Interceptor.Chain chain) throws IOException {
-                        return chain.proceed(
-                                chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build());
-                    }
-                });
-
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()));
         if (builder.logRequests) {
             okHttpClientBuilder.addInterceptor(new AnthropicRequestLoggingInterceptor());
         }

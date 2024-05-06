@@ -4,10 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.Builder;
 
-import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
-
-import org.jetbrains.annotations.NotNull;
 
 import retrofit2.Response;
 import retrofit2.Retrofit;

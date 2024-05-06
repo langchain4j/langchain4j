@@ -2,11 +2,9 @@ package dev.langchain4j.code;
 
 import dev.langchain4j.internal.Json;
 import okhttp3.*;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Base64;
 

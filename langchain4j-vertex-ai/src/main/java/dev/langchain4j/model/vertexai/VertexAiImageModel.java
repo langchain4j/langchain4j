@@ -1,6 +1,5 @@
 package dev.langchain4j.model.vertexai;
 
-import com.google.api.gax.rpc.HeaderProvider;
 import com.google.cloud.aiplatform.v1.EndpointName;
 import com.google.cloud.aiplatform.v1.PredictResponse;
 import com.google.cloud.aiplatform.v1.PredictionServiceClient;
