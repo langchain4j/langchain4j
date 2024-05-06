@@ -165,15 +165,15 @@ interface Assistant {
 ```
 `WithSources` class contains the information used to augment the user message :
 * `response` : The response to the user's input.
-* `augmentedMessage`: A wrapper for augmentation details.
-  * `usermessage`: The augmented user message that was sent to the LLM.
-  * `contents`: The list of documents used to enrich the user message including the `metadata` of each document.
+* `retrievedContents`: The list of documents used to enrich the user message including the `metadata` of each document.
 
-Attempting to use the `WithSources` class without specifying a generic type will result in an `IllegalArgumentException`. For instance:
+Using the `WithSources` class without specifying a generic type will lead to an `IllegalArgumentException`. For example:
+
 ```java
-
-    WithSources chat(String userMessage); // Throw an IllegalArgumentException 
+WithSources chat(String userMessage); // Throw an IllegalArgumentException 
 ```
+
+Additionally, attempting to create an `AiService` without a `contentRetriever` while utilizing `WithSources` will also result in an `IllegalArgumentException`.
 
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,

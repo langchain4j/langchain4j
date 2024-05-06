@@ -1,6 +1,7 @@
 package dev.langchain4j.rag;
 
-import dev.langchain4j.data.message.AugmentedMessage;
+import dev.langchain4j.data.message.AugmentationRequest;
+import dev.langchain4j.data.message.AugmentationResult;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -96,9 +97,8 @@ import static java.util.stream.Collectors.*;
  * @see DefaultQueryRouter
  * @see DefaultContentAggregator
  * @see DefaultContentInjector
- * @see AugmentedMessage
  */
-public class DefaultRetrievalAugmentor implements RetrievalAugmentor<AugmentedMessage> {
+public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultRetrievalAugmentor.class);
 
@@ -122,7 +122,18 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor<AugmentedMe
     }
 
     @Override
-    public AugmentedMessage augment(UserMessage userMessage, Metadata metadata) {
+    public UserMessage augment(UserMessage userMessage, Metadata metadata) {
+        AugmentationRequest augmentationRequest = AugmentationRequest.builder()
+                .userMessage(userMessage)
+                .metadata(metadata)
+                .build();
+        return augment(augmentationRequest).getAugmentedUserMessage();
+    }
+
+    @Override
+    public AugmentationResult augment(AugmentationRequest augmentationRequest) {
+        UserMessage userMessage = augmentationRequest.getUserMessage();
+        Metadata metadata = augmentationRequest.getMetadata();
 
         Query originalQuery = Query.from(userMessage.text(), metadata);
 
@@ -150,9 +161,9 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor<AugmentedMe
         UserMessage augmentedUserMessage = contentInjector.inject(contents, userMessage);
         log(augmentedUserMessage);
 
-        return AugmentedMessage.builder()
-                .userMessage(augmentedUserMessage)
-                .contents(contents)
+        return AugmentationResult.builder()
+                .augmentedUserMessage(augmentedUserMessage)
+                .retrievedContents(contents)
                 .build();
     }
 

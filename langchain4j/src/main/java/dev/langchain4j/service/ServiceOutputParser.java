@@ -92,8 +92,7 @@ public class ServiceOutputParser {
         if (returnType == String.class
                 || returnType == AiMessage.class
                 || returnType == TokenStream.class
-                || returnType == Response.class
-                || returnType == WithSources.class) {
+                || returnType == Response.class) {
             return "";
         }
 

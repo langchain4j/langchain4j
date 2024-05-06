@@ -21,7 +21,10 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -30,6 +33,7 @@ import java.util.function.Function;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
@@ -401,6 +405,27 @@ public abstract class AiServices<T> {
     protected void performBasicValidation() {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
+        }
+    }
+
+    /**
+     * Validates the return type of the method to ensure it adheres to the requirements for WithSources<T>.
+     *
+     * @param method The method to be validated.
+     * @throws IllegalArgumentException if WithSources does not have a generic class defined, or if a retrieval augmentor is not provided.
+     */
+    protected void withSourcesValidation(Method method) {
+        Class<?> returnType = method.getReturnType();
+        if (returnType != WithSources.class) {
+            return;
+        }
+        AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
+        Type withSourcesAnnotatedType = annotatedReturnType.getType();
+        if (!(withSourcesAnnotatedType instanceof ParameterizedType)) {
+            throw illegalArgument("Method '%s' must return WithSources with a defined generic class.", method.getName());
+        }
+        if (context.retrievalAugmentor == null) {
+            throw illegalArgument("Method '%s' requires a retrieval augmentor to use WithSources.", method.getName());
         }
     }
 

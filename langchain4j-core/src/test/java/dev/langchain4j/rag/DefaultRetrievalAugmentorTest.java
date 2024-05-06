@@ -54,7 +54,7 @@ class DefaultRetrievalAugmentorTest {
 
         ContentInjector contentInjector = spy(new TestContentInjector());
 
-        DefaultRetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .queryTransformer(queryTransformer)
                 .queryRouter(queryRouter)
                 .contentAggregator(contentAggregator)
@@ -67,7 +67,7 @@ class DefaultRetrievalAugmentorTest {
         Metadata metadata = Metadata.from(userMessage, null, null);
 
         // when
-        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata).getUserMessage();
+        UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
 
         // then
         assertThat(augmented.singleText()).isEqualTo(
@@ -126,7 +126,7 @@ class DefaultRetrievalAugmentorTest {
         List<ContentRetriever> retrievers = emptyList();
         QueryRouter queryRouter = spy(new TestQueryRouter(retrievers));
 
-        DefaultRetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+        RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
                 .queryRouter(queryRouter)
                 .executor(executor)
                 .build();
@@ -136,7 +136,7 @@ class DefaultRetrievalAugmentorTest {
         Metadata metadata = Metadata.from(userMessage, null, null);
 
         // when
-        UserMessage augmentedUserMessage = retrievalAugmentor.augment(userMessage, metadata).getUserMessage();
+        UserMessage augmentedUserMessage = retrievalAugmentor.augment(userMessage, metadata);
 
         // then
         assertThat(augmentedUserMessage).isEqualTo(userMessage);
