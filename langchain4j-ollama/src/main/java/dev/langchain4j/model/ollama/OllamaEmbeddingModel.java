@@ -10,6 +10,7 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -30,10 +31,12 @@ public class OllamaEmbeddingModel implements EmbeddingModel {
     public OllamaEmbeddingModel(String baseUrl,
                                 String modelName,
                                 Duration timeout,
-                                Integer maxRetries) {
+                                Integer maxRetries,
+                                Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);

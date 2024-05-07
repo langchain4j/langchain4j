@@ -1,4 +1,4 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.client;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Headers;
