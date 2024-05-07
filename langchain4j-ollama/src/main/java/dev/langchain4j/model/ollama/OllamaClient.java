@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
@@ -46,7 +48,7 @@ class OllamaClient {
                 .writeTimeout(timeout);
         // add custom header interceptor
         if (customHeaders != null && !customHeaders.isEmpty()) {
-            okHttpClientBuilder.addInterceptor(headerInterceptor(customHeaders));
+            okHttpClientBuilder.addInterceptor(new GenericHeadersInterceptor(customHeaders));
         }
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
@@ -209,28 +211,32 @@ class OllamaClient {
         }
     }
 
-    private Interceptor headerInterceptor(Map<String, String> customHeaders) {
-        return new Interceptor() {
-            @NotNull
-            @Override
-            public okhttp3.Response intercept(@NotNull Chain chain) throws IOException {
-                Request original = chain.request();
-                Request.Builder requestBuilder = original.newBuilder()
-                        .method(original.method(), original.body());
-                for (Map.Entry<String, String> header : customHeaders.entrySet()) {
-                    requestBuilder.addHeader(header.getKey(), header.getValue());
-                }
-
-                return chain.proceed(requestBuilder.build());
-            }
-        };
-    }
-
     private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
 
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    static class GenericHeadersInterceptor implements Interceptor {
+
+        private final Map<String, String> headers = new HashMap<>();
+
+        GenericHeadersInterceptor(Map<String, String> headers) {
+            Optional.ofNullable(headers)
+                    .ifPresent(this.headers::putAll);
+        }
+
+        @NotNull
+        @Override
+        public okhttp3.Response intercept(Chain chain) throws IOException {
+            Request.Builder builder = chain.request().newBuilder();
+
+            // Add headers
+            this.headers.forEach(builder::addHeader);
+
+            return chain.proceed(builder.build());
+        }
     }
 }
