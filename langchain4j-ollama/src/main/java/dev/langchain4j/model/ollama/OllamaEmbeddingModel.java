@@ -6,11 +6,11 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
-import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -28,15 +28,15 @@ public class OllamaEmbeddingModel implements EmbeddingModel {
     private final Integer maxRetries;
 
     @Builder
-    public OllamaEmbeddingModel(OkHttpClient client,
-                                String baseUrl,
+    public OllamaEmbeddingModel(String baseUrl,
                                 String modelName,
                                 Duration timeout,
-                                Integer maxRetries) {
+                                Integer maxRetries,
+                                Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
-                .client(client)
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.maxRetries = getOrDefault(maxRetries, 3);

@@ -6,10 +6,10 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
 import lombok.Builder;
-import okhttp3.OkHttpClient;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -31,8 +31,7 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
     private final String format;
 
     @Builder
-    public OllamaStreamingChatModel(OkHttpClient client,
-                                    String baseUrl,
+    public OllamaStreamingChatModel(String baseUrl,
                                     String modelName,
                                     Double temperature,
                                     Integer topK,
@@ -43,11 +42,12 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     Integer numCtx,
                                     List<String> stop,
                                     String format,
-                                    Duration timeout) {
+                                    Duration timeout,
+                                    Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
-                .client(client)
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()

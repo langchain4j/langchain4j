@@ -7,8 +7,11 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.ResponseBody;
+import org.jetbrains.annotations.NotNull;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
@@ -19,7 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
-import java.util.Optional;
+import java.util.Map;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
@@ -33,14 +36,19 @@ class OllamaClient {
     private final OllamaApi ollamaApi;
 
     @Builder
-    public OllamaClient(OkHttpClient client, String baseUrl, Duration timeout) {
-        OkHttpClient okHttpClient = Optional.ofNullable(client)
-                .orElse(new OkHttpClient.Builder()
-                        .callTimeout(timeout)
-                        .connectTimeout(timeout)
-                        .readTimeout(timeout)
-                        .writeTimeout(timeout)
-                        .build());
+    public OllamaClient(String baseUrl,
+                        Duration timeout,
+                        Map<String, String> customHeaders) {
+        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
+                .callTimeout(timeout)
+                .connectTimeout(timeout)
+                .readTimeout(timeout)
+                .writeTimeout(timeout);
+        // add custom header interceptor
+        if (customHeaders != null && !customHeaders.isEmpty()) {
+            okHttpClientBuilder.addInterceptor(headerInterceptor(customHeaders));
+        }
+        OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
@@ -199,6 +207,23 @@ class OllamaClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private Interceptor headerInterceptor(Map<String, String> customHeaders) {
+        return new Interceptor() {
+            @NotNull
+            @Override
+            public okhttp3.Response intercept(@NotNull Chain chain) throws IOException {
+                Request original = chain.request();
+                Request.Builder requestBuilder = original.newBuilder()
+                        .method(original.method(), original.body());
+                for (Map.Entry<String, String> header : customHeaders.entrySet()) {
+                    requestBuilder.addHeader(header.getKey(), header.getValue());
+                }
+
+                return chain.proceed(requestBuilder.build());
+            }
+        };
     }
 
     private RuntimeException toException(retrofit2.Response<?> response) throws IOException {
