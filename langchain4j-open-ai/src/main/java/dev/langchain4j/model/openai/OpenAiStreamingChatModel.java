@@ -8,21 +8,25 @@ import dev.ai4j.openai4j.chat.Delta;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -50,6 +54,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final String user;
     private final Tokenizer tokenizer;
     private final boolean isOpenAiModel;
+    private final ChatLanguageModelListener listener;
 
     @Builder
     public OpenAiStreamingChatModel(String baseUrl,
@@ -71,7 +76,8 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Boolean logRequests,
                                     Boolean logResponses,
                                     Tokenizer tokenizer,
-                                    Map<String, String> customHeaders) {
+                                    Map<String, String> customHeaders,
+                                    ChatLanguageModelListener listener) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -102,6 +108,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.user = user;
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.isOpenAiModel = isOpenAiModel(this.modelName);
+        this.listener = listener;
     }
 
     public String modelName() {
@@ -152,6 +159,19 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
+        String id = Utils.randomUUID();
+        if (listener != null) {
+            listener.onRequest(id, ChatLanguageModelRequest.builder()
+                    .system(null) // TODO
+                    .modelName(request.model())
+                    .temperature(request.temperature())
+                    .topP(request.topP())
+                    .maxTokens(request.maxTokens())
+                    .messages(new ArrayList<>(messages))
+                    .toolSpecifications(copyIfNotNull(toolSpecifications))
+                    .build());
+        }
+
         int inputTokenCount = countInputTokens(messages, toolSpecifications, toolThatMustBeExecuted);
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
@@ -165,6 +185,17 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     if (!isOpenAiModel) {
                         response = removeTokenUsage(response);
                     }
+
+                    if (listener != null) {
+                        listener.onResponse(id, ChatLanguageModelResponse.builder()
+                                .id(null) // TODO
+                                .modelName(null) // TODO
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .aiMessage(response.content())
+                                .build());
+                    }
+
                     handler.onComplete(response);
                 })
                 .onError(handler::onError)

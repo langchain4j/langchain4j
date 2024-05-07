@@ -5,12 +5,16 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
@@ -216,6 +220,8 @@ class OpenAiChatModelIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName(GPT_3_5_TURBO_1106) // supports parallel function calling
                 .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         UserMessage userMessage = userMessage("2+2=? 3+3=?");
@@ -462,5 +468,59 @@ class OpenAiChatModelIT {
 
         // then
         assertThat(tokenCount).isEqualTo(42);
+    }
+
+    @Test
+    void should_listen_request_and_response() {
+
+        // given
+        AtomicReference<String> requestIdReference = new AtomicReference<>();
+        AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
+
+        AtomicReference<String> responseIdReference = new AtomicReference<>();
+        AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
+
+        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+
+            @Override
+            public void onRequest(String id, ChatLanguageModelRequest request) {
+                requestIdReference.set(id);
+                requestReference.set(request);
+            }
+
+            @Override
+            public void onResponse(String id, ChatLanguageModelResponse response) {
+                responseIdReference.set(id);
+                responseReference.set(response);
+            }
+        };
+
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .logRequests(true)
+                .logResponses(true)
+                .listener(listener)
+                // TODO add other params
+                .build();
+
+        String userMessage = "hello";
+
+        // when
+        String answer = model.generate(userMessage);
+
+        // then
+        ChatLanguageModelRequest request = requestReference.get();
+        assertThat(request.messages()).containsExactly(UserMessage.from(userMessage));
+        // TODO assert all params
+
+        ChatLanguageModelResponse response = responseReference.get();
+        assertThat(response.aiMessage().text()).isEqualTo(answer);
+        // TODO assert all params
+
+        assertThat(requestIdReference.get())
+                .isNotBlank()
+                .isEqualTo(responseIdReference.get());
     }
 }
