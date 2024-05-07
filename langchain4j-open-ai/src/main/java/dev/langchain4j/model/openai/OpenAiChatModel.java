@@ -14,9 +14,7 @@ import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
 import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
 import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.net.Proxy;
@@ -176,27 +174,25 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     .build());
         }
 
-        ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
+        ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        AiMessage aiMessage = aiMessageFrom(response);
-        TokenUsage tokenUsage = tokenUsageFrom(response.usage());
-        FinishReason finishReason = finishReasonFrom(response.choices().get(0).finishReason());
+        Response<AiMessage> response = Response.from(
+                aiMessageFrom(chatCompletionResponse),
+                tokenUsageFrom(chatCompletionResponse.usage()),
+                finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
+        );
 
         if (listener != null) {
             listener.onResponse(id, ChatLanguageModelResponse.builder()
-                    .id(response.id())
-                    .modelName(response.model())
-                    .tokenUsage(tokenUsage)
-                    .finishReason(finishReason)
-                    .aiMessage(aiMessage)
+                    .id(chatCompletionResponse.id())
+                    .modelName(chatCompletionResponse.model())
+                    .tokenUsage(response.tokenUsage())
+                    .finishReason(response.finishReason())
+                    .aiMessage(response.content())
                     .build());
         }
 
-        return Response.from(
-                aiMessage,
-                tokenUsage,
-                finishReason
-        );
+        return response;
     }
 
     @Override

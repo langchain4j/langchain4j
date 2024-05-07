@@ -23,8 +23,8 @@ public class ChatLanguageModelRequest {
     private final Integer maxTokens; // gen_ai.request.max_tokens
 
     // event
-    private final List<ChatMessage> messages; // gen_ai.prompt // TODO copy
-    private final List<ToolSpecification> toolSpecifications; // TODO copy
+    private final List<ChatMessage> messages; // gen_ai.prompt
+    private final List<ToolSpecification> toolSpecifications;
 
     public List<ChatMessage> messages() {
         return messages;

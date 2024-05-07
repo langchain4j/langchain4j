@@ -14,6 +14,7 @@ public interface ChatLanguageModelListener {
     /**
      * TODO
      *
+     * @param id
      * @param request
      */
     // TODO names
@@ -25,6 +26,7 @@ public interface ChatLanguageModelListener {
     /**
      * TODO
      *
+     * @param id
      * @param response
      */
     // TODO names
