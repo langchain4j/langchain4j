@@ -1,10 +1,10 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.client;
 
 import org.junit.jupiter.api.Test;
 
-import static dev.langchain4j.model.anthropic.AnthropicApi.X_API_KEY;
-import static dev.langchain4j.model.anthropic.AnthropicRequestLoggingInterceptor.format;
-import static dev.langchain4j.model.anthropic.AnthropicRequestLoggingInterceptor.maskSecretKey;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicApi.X_API_KEY;
+import static dev.langchain4j.model.anthropic.internal.client.AnthropicRequestLoggingInterceptor.format;
+import static dev.langchain4j.model.anthropic.internal.client.AnthropicRequestLoggingInterceptor.maskSecretKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AnthropicRequestLoggingInterceptorTest {

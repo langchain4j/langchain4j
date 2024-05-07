@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;

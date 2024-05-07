@@ -1,4 +1,4 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.mapper;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.anthropic.internal.api.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -16,8 +17,8 @@ import java.util.Map;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.anthropic.AnthropicRole.ASSISTANT;
-import static dev.langchain4j.model.anthropic.AnthropicRole.USER;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
+import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -26,7 +27,7 @@ import static java.util.stream.Collectors.toList;
 
 public class AnthropicMapper {
 
-    static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
+    public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -104,7 +105,7 @@ public class AnthropicMapper {
         return contents;
     }
 
-    static String toAnthropicSystemPrompt(List<ChatMessage> messages) {
+    public static String toAnthropicSystemPrompt(List<ChatMessage> messages) {
         String systemPrompt = messages.stream()
                 .filter(message -> message instanceof SystemMessage)
                 .map(message -> ((SystemMessage) message).text())
@@ -167,7 +168,7 @@ public class AnthropicMapper {
         }
     }
 
-    static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications) {
+    public static List<AnthropicTool> toAnthropicTools(List<ToolSpecification> toolSpecifications) {
         if (toolSpecifications == null) {
             return null;
         }
@@ -176,7 +177,7 @@ public class AnthropicMapper {
                 .collect(toList());
     }
 
-    static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
+    public static AnthropicTool toAnthropicTool(ToolSpecification toolSpecification) {
         ToolParameters parameters = toolSpecification.parameters();
         return AnthropicTool.builder()
                 .name(toolSpecification.name())
