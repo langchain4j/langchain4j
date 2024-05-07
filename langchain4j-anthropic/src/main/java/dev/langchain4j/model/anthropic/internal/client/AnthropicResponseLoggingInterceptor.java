@@ -1,4 +1,4 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.client;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
@@ -7,7 +7,7 @@ import okhttp3.Response;
 
 import java.io.IOException;
 
-import static dev.langchain4j.model.anthropic.AnthropicRequestLoggingInterceptor.getHeaders;
+import static dev.langchain4j.model.anthropic.internal.client.AnthropicRequestLoggingInterceptor.getHeaders;
 
 @Slf4j
 class AnthropicResponseLoggingInterceptor implements Interceptor {
