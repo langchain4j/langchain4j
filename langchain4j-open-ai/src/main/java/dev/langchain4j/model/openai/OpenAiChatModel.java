@@ -6,20 +6,27 @@ import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
@@ -47,6 +54,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
+    private final ChatLanguageModelListener listener;
 
     @Builder
     public OpenAiChatModel(String baseUrl,
@@ -69,7 +77,8 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Boolean logRequests,
                            Boolean logResponses,
                            Tokenizer tokenizer,
-                           Map<String, String> customHeaders) {
+                           Map<String, String> customHeaders,
+                           ChatLanguageModelListener listener) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -105,6 +114,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.listener = listener;
     }
 
     public String modelName() {
@@ -153,12 +163,39 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest request = requestBuilder.build();
 
+        String id = Utils.randomUUID();
+        if (listener != null) {
+            listener.onRequest(id, ChatLanguageModelRequest.builder()
+                    .system(null) // TODO
+                    .modelName(request.model())
+                    .temperature(request.temperature())
+                    .topP(request.topP())
+                    .maxTokens(request.maxTokens())
+                    .messages(new ArrayList<>(messages))
+                    .toolSpecifications(copyIfNotNull(toolSpecifications))
+                    .build());
+        }
+
         ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
+        AiMessage aiMessage = aiMessageFrom(response);
+        TokenUsage tokenUsage = tokenUsageFrom(response.usage());
+        FinishReason finishReason = finishReasonFrom(response.choices().get(0).finishReason());
+
+        if (listener != null) {
+            listener.onResponse(id, ChatLanguageModelResponse.builder()
+                    .id(response.id())
+                    .modelName(response.model())
+                    .tokenUsage(tokenUsage)
+                    .finishReason(finishReason)
+                    .aiMessage(aiMessage)
+                    .build());
+        }
+
         return Response.from(
-                aiMessageFrom(response),
-                tokenUsageFrom(response.usage()),
-                finishReasonFrom(response.choices().get(0).finishReason())
+                aiMessage,
+                tokenUsage,
+                finishReason
         );
     }
 
