@@ -1,6 +1,10 @@
 package dev.langchain4j.model.cohere;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.cohere.internal.api.RerankRequest;
+import dev.langchain4j.model.cohere.internal.api.RerankResponse;
+import dev.langchain4j.model.cohere.internal.api.Result;
+import dev.langchain4j.model.cohere.internal.client.CohereClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;

@@ -1,7 +1,14 @@
-package dev.langchain4j.model.cohere;
+package dev.langchain4j.model.cohere.internal.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.model.cohere.internal.api.RerankRequest;
+import dev.langchain4j.model.cohere.internal.api.RerankResponse;
+import dev.langchain4j.model.cohere.internal.api.CohereApi;
+import dev.langchain4j.model.cohere.internal.api.CohereChatRequest;
+import dev.langchain4j.model.cohere.internal.api.CohereChatResponse;
+import dev.langchain4j.model.cohere.internal.client.RequestLoggingInterceptor;
+import dev.langchain4j.model.cohere.internal.client.ResponseLoggingInterceptor;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Call;
@@ -14,7 +21,7 @@ import java.time.Duration;
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-class CohereClient {
+public class CohereClient {
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)

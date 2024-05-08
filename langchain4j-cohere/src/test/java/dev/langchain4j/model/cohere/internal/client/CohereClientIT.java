@@ -1,5 +1,6 @@
-package dev.langchain4j.model.cohere;
+package dev.langchain4j.model.cohere.internal.client;
 
+import dev.langchain4j.model.cohere.internal.api.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -66,8 +67,8 @@ public class CohereClientIT {
         CohereChatResponse response = client.chat(request);
 
         // THEN
-        assertThat(response.text).contains("Antarctica");
-        assertFalse(response.citations.isEmpty());
+        assertThat(response.getText()).contains("Antarctica");
+        assertFalse(response.getCitations().isEmpty());
 
     }
 
@@ -92,9 +93,9 @@ public class CohereClientIT {
         CohereChatResponse response = client.chat(request);
 
         // THEN
-        assertThat(response.text).contains("Antarctica");
-        assertFalse(response.documents.isEmpty());
-        assertTrue(response.documents.stream().anyMatch(map -> map.get("url").contains("http")));
+        assertThat(response.getText()).contains("Antarctica");
+        assertFalse(response.getDocuments().isEmpty());
+        assertTrue(response.getDocuments().stream().anyMatch(map -> map.get("url").contains("http")));
     }
 
     @Test
@@ -115,7 +116,7 @@ public class CohereClientIT {
         CohereChatResponse response = client.chat(request);
 
         // THEN
-        assertFalse(response.searchQueries.isEmpty());
+        assertFalse(response.getSearchQueries().isEmpty());
     }
 
     @Test
@@ -123,7 +124,7 @@ public class CohereClientIT {
         List<Tool> tools = new ArrayList<>();
         Map<String, ParameterDefinition> param1 = new HashMap<>();
         param1.put("day", ParameterDefinition.builder()
-                .type("str")
+                .type("string")
                 .description("Retrieves sales data for this day, formatted as YYYY-MM-DD.")
                 .required(true)
                 .build());
@@ -136,13 +137,13 @@ public class CohereClientIT {
 
         Map<String, ParameterDefinition> param2 = new HashMap<>();
         param2.put("category", ParameterDefinition.builder()
-                .type("str")
+                .type("string")
                 .description("Retrieves product information data for all products in this category.")
                 .required(true)
                 .build());
         Tool tool2 = Tool.builder()
                 .name("query_product_catalog")
-                .description("Connects to a a product catalog with information about all the products being sold," +
+                .description("Connects to a product catalog with information about all the products being sold," +
                         " including categories, prices, and stock levels.")
                 .parameterDefinitions(param2)
                 .build();
@@ -177,10 +178,10 @@ public class CohereClientIT {
         CohereChatResponse response = client.chat(request);
 
         // THEN
-        assertTrue(response.toolCalls.stream().anyMatch(toolCall ->
-                toolCall.parameters.containsKey("day") && toolCall.parameters.get("day").equals("2023-09-29")));
-        assertTrue(response.toolCalls.stream().anyMatch(toolCall -> toolCall.parameters.containsKey("category")
-                && toolCall.parameters.get("category").equalsIgnoreCase("Electronics")));
+        assertTrue(response.getToolCalls().stream().anyMatch(toolCall ->
+                toolCall.getParameters().containsKey("day") && toolCall.getParameters().get("day").equals("2023-09-29")));
+        assertTrue(response.getToolCalls().stream().anyMatch(toolCall -> toolCall.getParameters().containsKey("category")
+                && toolCall.getParameters().get("category").equalsIgnoreCase("Electronics")));
 
     }
 }

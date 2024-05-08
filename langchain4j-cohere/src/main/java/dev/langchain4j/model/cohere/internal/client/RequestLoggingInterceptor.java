@@ -1,4 +1,4 @@
-package dev.langchain4j.model.cohere;
+package dev.langchain4j.model.cohere.internal.client;
 
 import okhttp3.Headers;
 import okhttp3.Interceptor;
