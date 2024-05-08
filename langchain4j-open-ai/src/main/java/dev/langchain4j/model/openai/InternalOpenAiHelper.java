@@ -15,6 +15,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import static dev.ai4j.openai4j.chat.ContentType.IMAGE_URL;
@@ -25,6 +26,7 @@ import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.lang.String.format;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
 public class InternalOpenAiHelper {
@@ -204,6 +206,7 @@ public class InternalOpenAiHelper {
 
     public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         AssistantMessage assistantMessage = response.choices().get(0).message();
+        String text = assistantMessage.content();
 
         List<ToolCall> toolCalls = assistantMessage.toolCalls();
         if (!isNullOrEmpty(toolCalls)) {
@@ -211,7 +214,9 @@ public class InternalOpenAiHelper {
                     .filter(toolCall -> toolCall.type() == FUNCTION)
                     .map(InternalOpenAiHelper::toToolExecutionRequest)
                     .collect(toList());
-            return aiMessage(toolExecutionRequests);
+            return isNullOrEmpty(text) ?
+                    aiMessage(toolExecutionRequests) :
+                    new AiMessage(text, toolExecutionRequests);
         }
 
         FunctionCall functionCall = assistantMessage.functionCall();
@@ -220,10 +225,12 @@ public class InternalOpenAiHelper {
                     .name(functionCall.name())
                     .arguments(functionCall.arguments())
                     .build();
-            return aiMessage(toolExecutionRequest);
+            return isNullOrEmpty(text) ?
+                    aiMessage(toolExecutionRequest) :
+                    new AiMessage(text, singletonList(toolExecutionRequest));
         }
 
-        return aiMessage(assistantMessage.content());
+        return aiMessage(text);
     }
 
     private static ToolExecutionRequest toToolExecutionRequest(ToolCall toolCall) {
