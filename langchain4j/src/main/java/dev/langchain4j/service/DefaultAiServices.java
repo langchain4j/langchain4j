@@ -97,10 +97,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
                         }
 
-                        // TODO give user ability to provide custom OutputParser
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
-
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
                             systemMessage.ifPresent(chatMemory::add);
@@ -253,15 +249,15 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private static UserMessage prepareUserMessage(Method method, Object[] args) {
+        // TODO give user ability to provide custom OutputParser
+        String template = getUserMessageTemplate(method, args) + outputFormatInstructions(method.getReturnType());
 
-        String template = getUserMessageTemplate(method, args);
         Map<String, Object> variables = findTemplateVariables(template, method, args);
-
         Prompt prompt = PromptTemplate.from(template).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
-                .orElseGet(prompt::toUserMessage);
+                .orElseGet(prompt::toUserMessage).fromTemplate(template).withVariables(variables);
     }
 
     private static String getUserMessageTemplate(Method method, Object[] args) {

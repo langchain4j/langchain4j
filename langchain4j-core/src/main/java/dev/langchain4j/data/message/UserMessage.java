@@ -1,6 +1,7 @@
 package dev.langchain4j.data.message;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import static dev.langchain4j.data.message.ChatMessageType.USER;
@@ -26,6 +27,9 @@ public class UserMessage implements ChatMessage {
 
     private final String name;
     private final List<Content> contents;
+
+    private String template;
+    private Map<String, Object> variables;
 
     /**
      * Creates a {@link UserMessage} from a text.
@@ -136,6 +140,24 @@ public class UserMessage implements ChatMessage {
      */
     public boolean hasSingleText() {
         return contents.size() == 1 && contents.get(0) instanceof TextContent;
+    }
+
+    public UserMessage fromTemplate(String template) {
+        this.template = template;
+        return this;
+    }
+
+    public String template() {
+        return template;
+    }
+
+    public UserMessage withVariables(Map<String, Object> variables) {
+        this.variables = variables;
+        return this;
+    }
+
+    public Map<String, Object> variables() {
+        return variables;
     }
 
     /**
