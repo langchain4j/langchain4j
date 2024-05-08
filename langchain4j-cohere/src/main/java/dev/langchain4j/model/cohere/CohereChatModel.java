@@ -39,7 +39,7 @@ public class CohereChatModel implements ChatLanguageModel {
      *
      * @param baseUrl       The base URL of the Cohere API. Default: "https://api.cohere.ai/v1/"
      * @param apiKey        The API key for authentication with the Cohere API.
-     * @param modelName     The name of the Cohere model to use. Default: "claude-3-haiku-20240307"
+     * @param modelName     The name of the Cohere model to use. Default: command-r
      * @param temperature   The temperature. Default: 0.3
      * @param topP          The top-P. Defaults to 0.75. min value of 0.01, max value of 0.99.
      * @param topK          The top-K. Defaults to 0, min value of 0, max value of 500.
