@@ -1,7 +1,5 @@
 package dev.langchain4j.model.cohere.internal.api;
 
-import dev.langchain4j.model.cohere.internal.api.RerankRequest;
-import dev.langchain4j.model.cohere.internal.api.RerankResponse;
 import retrofit2.Call;
 import retrofit2.http.Body;
 import retrofit2.http.Header;

@@ -30,11 +30,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>converter-jackson</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
         </dependency>
