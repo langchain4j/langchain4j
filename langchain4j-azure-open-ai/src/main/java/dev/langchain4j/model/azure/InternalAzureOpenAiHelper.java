@@ -128,11 +128,11 @@ class InternalAzureOpenAiHelper {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
-            chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
+            chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
+            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
@@ -179,16 +179,16 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    private static FunctionCall functionCallFrom(ChatMessage message) {
+    private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             if (aiMessage.hasToolExecutionRequests()) {
-                // TODO switch to tools once supported
-                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-                return new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments());
+                return aiMessage.toolExecutionRequests().stream()
+                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(toolExecutionRequest.id(), new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
+                        .collect(toList());
+
             }
         }
-
         return null;
     }
 
@@ -270,11 +270,12 @@ class InternalAzureOpenAiHelper {
                     .stream()
                     .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
                     .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
-                    .map(ChatCompletionsFunctionToolCall::getFunction)
-                    .map(functionCall -> ToolExecutionRequest.builder()
-                            .name(functionCall.getName())
-                            .arguments(functionCall.getArguments())
-                            .build())
+                    .map(chatCompletionsFunctionToolCall ->
+                            ToolExecutionRequest.builder()
+                                    .id(chatCompletionsFunctionToolCall.getId())
+                                    .name(chatCompletionsFunctionToolCall.getFunction().getName())
+                                    .arguments(chatCompletionsFunctionToolCall.getFunction().getArguments())
+                                    .build())
                     .collect(toList());
 
             return aiMessage(toolExecutionRequests);
