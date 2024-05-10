@@ -6,4 +6,4 @@ sidebar_position: 2
 
 `Cohere`
 
-Tutorial coming soon
+Information coming soon
