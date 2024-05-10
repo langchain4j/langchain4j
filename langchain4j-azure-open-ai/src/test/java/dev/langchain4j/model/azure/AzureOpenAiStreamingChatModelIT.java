@@ -1,23 +1,29 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.OpenAIAsyncClient;
+import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
@@ -36,12 +42,14 @@ class AzureOpenAiStreamingChatModelIT {
 
     Percentage tokenizerPrecision = withPercentage(5);
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-35-turbo, gpt-3.5-turbo, true",
+            "gpt-35-turbo, gpt-3.5-turbo, false",
+            "gpt-4,        gpt-4, true",
+            "gpt-4,        gpt-4, false"
     })
-    void should_stream_answer(String deploymentName, String gptVersion) throws Exception {
+    void should_stream_answer(String deploymentName, String gptVersion, boolean useAsyncClient) throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
@@ -50,6 +58,7 @@ class AzureOpenAiStreamingChatModelIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
+                .useAsyncClient(useAsyncClient)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
@@ -92,30 +101,35 @@ class AzureOpenAiStreamingChatModelIT {
         assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0} using {1} with custom async client set to {2} ")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-35-turbo, gpt-3.5-turbo, true",
+            "gpt-35-turbo, gpt-3.5-turbo, false",
+            "gpt-4,        gpt-4, true",
+            "gpt-4,        gpt-4, false"
     })
-    void should_use_json_format(String deploymentName, String gptVersion) throws Exception {
+    void should_custom_models_work(String deploymentName, String gptVersion, boolean useCustomAsyncClient) throws Exception {
 
         CompletableFuture<String> futureAnswer = new CompletableFuture<>();
         CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+        OpenAIAsyncClient asyncClient = null;
+        OpenAIClient client = null;
+        if(useCustomAsyncClient) {
+            asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true);
+        } else {
+            client = InternalAzureOpenAiHelper.setupSyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true);
+        }
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+                .openAIAsyncClient(asyncClient)
+                .openAIClient(client)
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new OpenAiTokenizer(gptVersion))
-                .responseFormat(new ChatCompletionsJsonResponseFormat())
                 .logRequestsAndResponses(true)
                 .build();
-
-        SystemMessage systemMessage = SystemMessage.systemMessage("You are a helpful assistant designed to output JSON.");
-        UserMessage userMessage = userMessage("List teams in the past French presidents, with their first name, last name, dates of service.");
-
-        List<ChatMessage> messages = Arrays.asList(systemMessage, userMessage);
-        model.generate(messages, new StreamingResponseHandler<AiMessage>() {
+        model.generate("What is the capital of France?", new StreamingResponseHandler<AiMessage>() {
 
             private final StringBuilder answerBuilder = new StringBuilder();
 
@@ -142,8 +156,40 @@ class AzureOpenAiStreamingChatModelIT {
         String answer = futureAnswer.get(30, SECONDS);
         Response<AiMessage> response = futureResponse.get(30, SECONDS);
 
-        assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
+        assertThat(answer).contains("Paris");
+        assertThat(response.content().text()).isEqualTo(answer);
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(14);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount())
+                .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
+
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest(name = "Deployment name {0}")
+    @ValueSource(strings = {"gpt-35-turbo", "gpt-4"})
+    void should_use_json_format(String deploymentName) {
+
+        StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .responseFormat(new ChatCompletionsJsonResponseFormat())
+                .temperature(0.0)
+                .maxTokens(50)
+                .logRequestsAndResponses(true)
+                .build();
+
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler.";
+
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
+
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
