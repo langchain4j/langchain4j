@@ -1,4 +1,4 @@
-package dev.langchain4j.model.jinaAi;
+package dev.langchain4j.model.jina;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.Getter;

@@ -1,10 +1,8 @@
-package dev.langchain4j.model.jinaAi;
+package dev.langchain4j.model.jina;
 
 import dev.langchain4j.data.embedding.Embedding;
 
-import java.util.List;
-
-public class JinaAiEmbedding {
+public class JinaEmbedding {
     long index;
     float[] embedding;
     String object;

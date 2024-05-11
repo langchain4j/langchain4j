@@ -1,4 +1,4 @@
-package dev.langchain4j.model.jinaAi;
+package dev.langchain4j.model.jina;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -15,12 +15,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 
 
-public class JinaAiEmbeddingModelIT {
+public class JinaEmbeddingModelIT {
     @Test
     public void should_embed_single_text() {
 
         // given
-        EmbeddingModel model = JinaAiEmbeddingModel.withApiKey(System.getenv("JINA_AI_API_KEY"));
+        EmbeddingModel model = JinaEmbeddingModel.withApiKey(System.getenv("JINA_AI_API_KEY"));
 
         String text = "hello";
 
@@ -39,7 +39,7 @@ public class JinaAiEmbeddingModelIT {
     public void should_embed_multiple_segments() {
 
         // given
-        EmbeddingModel model = JinaAiEmbeddingModel.builder()
+        EmbeddingModel model = JinaEmbeddingModel.builder()
                 .baseUrl("https://api.jina.ai/")
                 .apiKey(System.getenv("JINA_AI_API_KEY"))
                 .modelName("jina-embeddings-v2-base-en")
