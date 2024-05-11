@@ -1,9 +1,9 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.model.anthropic.internal.client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.internal.api.*;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import okhttp3.OkHttpClient;
@@ -15,29 +15,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import retrofit2.Call;
 import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
-import static com.google.gson.ToNumberPolicy.LONG_OR_DOUBLE;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.toFinishReason;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toFinishReason;
 import static java.util.Collections.synchronizedList;
 
 public class DefaultAnthropicClient extends AnthropicClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultAnthropicClient.class);
 
-    static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .setObjectToNumberStrategy(LONG_OR_DOUBLE)
-            .setPrettyPrinting()
-            .create();
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().enable(INDENT_OUTPUT);
 
     private final AnthropicApi anthropicApi;
     private final OkHttpClient okHttpClient;
@@ -84,10 +79,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         this.okHttpClient = okHttpClientBuilder.build();
 
+
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(ensureNotBlank(builder.baseUrl, "baseUrl"))
                 .client(okHttpClient)
-                .addConverterFactory(GsonConverterFactory.create(GSON))
+                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
                 .build();
 
         this.anthropicApi = retrofit.create(AnthropicApi.class);
@@ -159,7 +155,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
 
                 try {
-                    AnthropicStreamingData data = GSON.fromJson(dataString, AnthropicStreamingData.class);
+                    AnthropicStreamingData data = OBJECT_MAPPER.readValue(dataString, AnthropicStreamingData.class);
 
                     if ("message_start".equals(type)) {
                         handleMessageStart(data);

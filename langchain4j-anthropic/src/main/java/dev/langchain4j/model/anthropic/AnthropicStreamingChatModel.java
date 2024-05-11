@@ -3,6 +3,8 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import lombok.Builder;
 
@@ -13,8 +15,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
