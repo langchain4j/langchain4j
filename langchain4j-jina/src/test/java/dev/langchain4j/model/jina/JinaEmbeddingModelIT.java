@@ -5,7 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.store.embedding.CosineSimilarity;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
