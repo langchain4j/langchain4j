@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
-import static java.util.Collections.unmodifiableList;
 
 @Data
 @NoArgsConstructor

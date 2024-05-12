@@ -12,6 +12,9 @@ import lombok.NoArgsConstructor;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @JsonInclude(NON_NULL)
 @JsonNaming(SnakeCaseStrategy.class)
 @JsonIgnoreProperties(ignoreUnknown = true)

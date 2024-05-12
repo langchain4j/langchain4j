@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.zhipu.ZhipuAiClient.OBJECT_MAPPER;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -78,7 +77,7 @@ class AuthorizationInterceptor implements Interceptor {
                 .add("alg", id)
                 .add("sign_type", "SIGN")
                 .and()
-                .content(OBJECT_MAPPER.writeValueAsString(payload))
+                .content(Json.toJson(payload))
                 .signWith(new SecretKeySpec(secret.getBytes(UTF_8), jcaName), macAlgorithm)
                 .compact();
         cache.put(this.apiKey, token);

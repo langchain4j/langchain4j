@@ -1,6 +1,5 @@
 package dev.langchain4j.model.zhipu;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -21,24 +20,20 @@ import okhttp3.sse.EventSource;
 import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
 
-import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
+import static dev.langchain4j.model.zhipu.Json.OBJECT_MAPPER;
+import static retrofit2.converter.jackson.JacksonConverterFactory.create;
 
 @Slf4j
 public class ZhipuAiClient {
 
-    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .enable(INDENT_OUTPUT);
 
     private final String baseUrl;
     private final ZhipuAiApi zhipuAiApi;
@@ -68,7 +63,7 @@ public class ZhipuAiClient {
         Retrofit retrofit = (new Retrofit.Builder())
                 .baseUrl(formattedUrlForRetrofit(this.baseUrl))
                 .client(this.okHttpClient)
-                .addConverterFactory(JacksonConverterFactory.create(OBJECT_MAPPER))
+                .addConverterFactory(create(OBJECT_MAPPER))
                 .build();
         this.zhipuAiApi = retrofit.create(ZhipuAiApi.class);
     }
@@ -88,9 +83,8 @@ public class ZhipuAiClient {
                     = zhipuAiApi.chatCompletion(request).execute();
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
-            } else {
-                throw toException(retrofitResponse);
             }
+            return toChatErrorResponse(retrofitResponse);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -194,18 +188,6 @@ public class ZhipuAiClient {
                         zhipuAiApi.streamingChatCompletion(request).request(),
                         eventSourceListener
                 );
-
-//        zhipuApi.streamingChatCompletion(request).enqueue(new Callback<ResponseBody>() {
-//            @Override
-//            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-//
-//            }
-//
-//            @Override
-//            public void onFailure(Call<ResponseBody> call, Throwable t) {
-//
-//            }
-//        });
     }
 
     private RuntimeException toException(retrofit2.Response<?> retrofitResponse) throws IOException {
