@@ -1,5 +1,6 @@
 package dev.langchain4j.model.zhipu;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import io.jsonwebtoken.Jwts;
@@ -17,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.zhipu.ZhipuAiClient.OBJECT_MAPPER;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -62,7 +64,7 @@ class AuthorizationInterceptor implements Interceptor {
         return chain.proceed(request);
     }
 
-    private String generateToken() {
+    private String generateToken() throws JsonProcessingException {
         String[] apiKeyParts = this.apiKey.split("\\.");
         String keyId = apiKeyParts[0];
         String secret = apiKeyParts[1];
@@ -76,7 +78,7 @@ class AuthorizationInterceptor implements Interceptor {
                 .add("alg", id)
                 .add("sign_type", "SIGN")
                 .and()
-                .content(Json.toJson(payload))
+                .content(OBJECT_MAPPER.writeValueAsString(payload))
                 .signWith(new SecretKeySpec(secret.getBytes(UTF_8), jcaName), macAlgorithm)
                 .compact();
         cache.put(this.apiKey, token);
