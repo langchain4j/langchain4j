@@ -7,9 +7,12 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import okhttp3.Interceptor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.ResponseBody;
+import org.jetbrains.annotations.NotNull;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
@@ -20,6 +23,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
@@ -35,22 +41,28 @@ class OllamaClient {
     private final boolean logStreamingResponses;
 
     @Builder
-    public OllamaClient(String baseUrl, Duration timeout, Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses) {
-        OkHttpClient.Builder builder = new OkHttpClient.Builder()
+    public OllamaClient(String baseUrl,
+                        Duration timeout,
+                        Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses,
+                        Map<String, String> customHeaders) {
+        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
-
         if (logRequests != null && logRequests) {
-            builder.addInterceptor(new OllamaRequestLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new OllamaRequestLoggingInterceptor());
         }
         if (logResponses != null && logResponses) {
-            builder.addInterceptor(new OllamaResponseLoggingInterceptor());
+            okHttpClientBuilder.addInterceptor(new OllamaResponseLoggingInterceptor());
         }
         this.logStreamingResponses = logStreamingResponses != null && logStreamingResponses;
 
-        OkHttpClient okHttpClient = builder.build();
+        // add custom header interceptor
+        if (customHeaders != null && !customHeaders.isEmpty()) {
+            okHttpClientBuilder.addInterceptor(new GenericHeadersInterceptor(customHeaders));
+        }
+        OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
@@ -222,5 +234,26 @@ class OllamaClient {
 
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    static class GenericHeadersInterceptor implements Interceptor {
+
+        private final Map<String, String> headers = new HashMap<>();
+
+        GenericHeadersInterceptor(Map<String, String> headers) {
+            Optional.ofNullable(headers)
+                    .ifPresent(this.headers::putAll);
+        }
+
+        @NotNull
+        @Override
+        public okhttp3.Response intercept(Chain chain) throws IOException {
+            Request.Builder builder = chain.request().newBuilder();
+
+            // Add headers
+            this.headers.forEach(builder::addHeader);
+
+            return chain.proceed(builder.build());
+        }
     }
 }

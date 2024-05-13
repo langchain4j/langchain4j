@@ -1,5 +1,5 @@
 ---
-title: Comparison Table
+title: Comparison table of all supported Embedding Stores
 hide_title: false
 sidebar_position: 0
 ---
@@ -18,10 +18,10 @@ sidebar_position: 0
 | [MongoDB Atlas](/integrations/embedding-stores/mongodb-atlas)                         | ✅                |                       |       |       |
 | [Neo4j](/integrations/embedding-stores/neo4j)                                         |                  |                       |       |       |
 | [OpenSearch](/integrations/embedding-stores/opensearch)                               | ✅                |                       |       |       |
-| [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                |                       |       |       |
+| [PGVector](/integrations/embedding-stores/pgvector)                                   | ✅                | ✅                     |       |       |
 | [Pinecone](/integrations/embedding-stores/pinecone)                                   |                  |                       |       |       |
 | [Qdrant](/integrations/embedding-stores/qdrant)                                       | ✅                |                       |       |       |
 | [Redis](/integrations/embedding-stores/redis)                                         | ✅                |                       |       |       |
 | [Vearch](/integrations/embedding-stores/vearch)                                       | ✅                |                       |       |       |
 | [Vespa](/integrations/embedding-stores/vespa)                                         |                  |                       |       |       |
-| [Weaviate](/integrations/embedding-stores/weaviate)                                   |                  |                       |       |       |
+| [Weaviate](/integrations/embedding-stores/weaviate)                                   | ✅                |                       |       |       |

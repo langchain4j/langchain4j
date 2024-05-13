@@ -10,6 +10,7 @@ import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -46,11 +47,13 @@ public class OllamaChatModel implements ChatLanguageModel {
                            String format,
                            Duration timeout,
                            Integer maxRetries,
+                           Map<String, String> customHeaders,
                            Boolean logRequests,
                            Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .customHeaders(customHeaders)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(logResponses)
                 .build();
