@@ -86,7 +86,7 @@ public class TokenUsage {
      *
      * @param that The token usage to add to this one.
      * @return a new {@link TokenUsage} instance with the token usage of both responses added together,
-     * or null if origin token usage is null (such as LocalAiChatModule).
+     * or a new instance of the original fields if that token usage is null.
      */
     public TokenUsage add(TokenUsage that) {
         if (that == null) {
