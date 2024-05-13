@@ -6,7 +6,6 @@ import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
@@ -19,12 +18,10 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
@@ -161,38 +158,36 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        String id = Utils.randomUUID();
+        ChatLanguageModelRequest observabilityRequest = createObservabilityRequest(request, messages, toolSpecifications);
         if (listener != null) {
-            listener.onRequest(id, ChatLanguageModelRequest.builder()
-                    .system(null) // TODO
-                    .modelName(request.model())
-                    .temperature(request.temperature())
-                    .topP(request.topP())
-                    .maxTokens(request.maxTokens())
-                    .messages(new ArrayList<>(messages))
-                    .toolSpecifications(copyIfNotNull(toolSpecifications))
-                    .build());
+            listener.onRequest(observabilityRequest);
         }
 
-        ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
+        try {
+            ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
 
-        Response<AiMessage> response = Response.from(
-                aiMessageFrom(chatCompletionResponse),
-                tokenUsageFrom(chatCompletionResponse.usage()),
-                finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
-        );
+            Response<AiMessage> response = Response.from(
+                    aiMessageFrom(chatCompletionResponse),
+                    tokenUsageFrom(chatCompletionResponse.usage()),
+                    finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
+            );
 
-        if (listener != null) {
-            listener.onResponse(id, ChatLanguageModelResponse.builder()
-                    .id(chatCompletionResponse.id())
-                    .modelName(chatCompletionResponse.model())
-                    .tokenUsage(response.tokenUsage())
-                    .finishReason(response.finishReason())
-                    .aiMessage(response.content())
-                    .build());
+            if (listener != null) {
+                ChatLanguageModelResponse observabilityResponse = createObservabilityResponse(
+                        chatCompletionResponse.id(),
+                        chatCompletionResponse.model(),
+                        response
+                );
+                listener.onResponse(observabilityRequest, observabilityResponse);
+            }
+
+            return response;
+        } catch (RuntimeException e) {
+            if (listener != null) {
+                listener.onError(observabilityRequest, e);
+            }
+            throw e;
         }
-
-        return response;
     }
 
     @Override

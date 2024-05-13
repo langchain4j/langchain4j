@@ -10,10 +10,13 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,6 +25,7 @@ import static dev.ai4j.openai4j.chat.ContentType.TEXT;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.lang.String.format;
@@ -279,5 +283,31 @@ public class InternalOpenAiHelper {
 
     static Response<AiMessage> removeTokenUsage(Response<AiMessage> response) {
         return Response.from(response.content(), null, response.finishReason());
+    }
+
+    static ChatLanguageModelRequest createObservabilityRequest(ChatCompletionRequest request,
+                                                               List<ChatMessage> messages,
+                                                               List<ToolSpecification> toolSpecifications) {
+        return ChatLanguageModelRequest.builder()
+                .system(null) // TODO
+                .modelName(request.model())
+                .temperature(request.temperature())
+                .topP(request.topP())
+                .maxTokens(request.maxTokens())
+                .messages(new ArrayList<>(messages))
+                .toolSpecifications(copyIfNotNull(toolSpecifications))
+                .build();
+    }
+
+    static ChatLanguageModelResponse createObservabilityResponse(String responseId,
+                                                                 String responseModel,
+                                                                 Response<AiMessage> response) {
+        return ChatLanguageModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
     }
 }

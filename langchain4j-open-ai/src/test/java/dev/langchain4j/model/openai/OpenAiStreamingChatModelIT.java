@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
@@ -35,6 +36,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 import static org.assertj.core.data.Percentage.withPercentage;
 
 class OpenAiStreamingChatModelIT {
@@ -645,27 +647,28 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_listen_request_and_response() {
+    void should_listen_request_and_response() { // TODO name
 
         // given
-        AtomicReference<String> requestIdReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
-
-        AtomicReference<String> responseIdReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
 
         ChatLanguageModelListener listener = new ChatLanguageModelListener() {
 
             @Override
-            public void onRequest(String id, ChatLanguageModelRequest request) {
-                requestIdReference.set(id);
+            public void onRequest(ChatLanguageModelRequest request) {
                 requestReference.set(request);
             }
 
             @Override
-            public void onResponse(String id, ChatLanguageModelResponse response) {
-                responseIdReference.set(id);
+            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                assertThat(request).isSameAs(requestReference.get());
                 responseReference.set(response);
+            }
+
+            @Override
+            public void onError(ChatLanguageModelRequest request, Throwable error) {
+                fail("onError() must not be called");
             }
         };
 
@@ -693,11 +696,76 @@ class OpenAiStreamingChatModelIT {
         // TODO assert all params
 
         ChatLanguageModelResponse response = responseReference.get();
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.model()).isNotBlank();
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
         // TODO assert all params
+    }
 
-        assertThat(requestIdReference.get())
-                .isNotBlank()
-                .isEqualTo(responseIdReference.get());
+    @Test
+    void should_listen_error() throws Exception { // TODO name
+
+        // given
+        String wrongApiKey = "banana";
+
+        AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<Throwable> errorReference = new AtomicReference<>();
+
+        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+
+            @Override
+            public void onRequest(ChatLanguageModelRequest request) {
+                requestReference.set(request);
+            }
+
+            @Override
+            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                fail("onResponse() must not be called");
+            }
+
+            @Override
+            public void onError(ChatLanguageModelRequest request, Throwable error) {
+                assertThat(request).isSameAs(requestReference.get());
+                errorReference.set(error);
+            }
+        };
+
+        StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
+                .apiKey(wrongApiKey)
+                .logRequests(true)
+                .logResponses(true)
+                .listener(listener)
+                .build();
+
+        String userMessage = "this message will fail";
+
+        CompletableFuture<Throwable> future = new CompletableFuture<>();
+        StreamingResponseHandler<AiMessage> handler = new StreamingResponseHandler<AiMessage>() {
+
+            @Override
+            public void onNext(String token) {
+                fail("onNext() must not be called");
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                future.complete(error);
+            }
+
+            @Override
+            public void onComplete(Response<AiMessage> response) {
+                fail("onComplete() must not be called");
+            }
+        };
+
+        // when
+        model.generate(userMessage, handler);
+        Throwable throwable = future.get(5, SECONDS);
+
+        // then
+        assertThat(throwable).isExactlyInstanceOf(OpenAiHttpException.class);
+        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
+
+        assertThat(errorReference.get()).isSameAs(throwable);
     }
 }

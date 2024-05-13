@@ -27,6 +27,8 @@ import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class OpenAiChatModelIT {
 
@@ -471,26 +473,22 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_listen_request_and_response() {
+    void should_listen_request_and_response() { // TODO name
 
         // given
-        AtomicReference<String> requestIdReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
-
-        AtomicReference<String> responseIdReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
 
         ChatLanguageModelListener listener = new ChatLanguageModelListener() {
 
             @Override
-            public void onRequest(String id, ChatLanguageModelRequest request) {
-                requestIdReference.set(id);
+            public void onRequest(ChatLanguageModelRequest request) {
                 requestReference.set(request);
             }
 
             @Override
-            public void onResponse(String id, ChatLanguageModelResponse response) {
-                responseIdReference.set(id);
+            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                assertThat(request).isSameAs(requestReference.get());
                 responseReference.set(response);
             }
         };
@@ -516,11 +514,55 @@ class OpenAiChatModelIT {
         // TODO assert all params
 
         ChatLanguageModelResponse response = responseReference.get();
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.model()).isNotBlank();
         assertThat(response.aiMessage().text()).isEqualTo(answer);
         // TODO assert all params
+    }
 
-        assertThat(requestIdReference.get())
-                .isNotBlank()
-                .isEqualTo(responseIdReference.get());
+    @Test
+    void should_listen_error() { // TODO name
+
+        // given
+        String wrongApiKey = "banana";
+
+        AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<Throwable> errorReference = new AtomicReference<>();
+
+        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+
+            @Override
+            public void onRequest(ChatLanguageModelRequest request) {
+                requestReference.set(request);
+            }
+
+            @Override
+            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                fail("onResponse() must not be called");
+            }
+
+            @Override
+            public void onError(ChatLanguageModelRequest request, Throwable error) {
+                assertThat(request).isSameAs(requestReference.get());
+                errorReference.set(error);
+            }
+        };
+
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .apiKey(wrongApiKey)
+                .maxRetries(0)
+                .logRequests(true)
+                .logResponses(true)
+                .listener(listener)
+                .build();
+
+        String userMessage = "this message will fail";
+
+        // when
+        Throwable throwable = assertThrows(Throwable.class, () -> model.generate(userMessage));
+        assertThat(throwable).isExactlyInstanceOf(RuntimeException.class);
+        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
+
+        assertThat(errorReference.get()).isSameAs(throwable);
     }
 }

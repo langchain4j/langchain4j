@@ -8,7 +8,6 @@ import dev.ai4j.openai4j.chat.Delta;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -22,9 +21,9 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
@@ -159,26 +158,28 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        String id = Utils.randomUUID();
+        ChatLanguageModelRequest observabilityRequest = createObservabilityRequest(request, messages, toolSpecifications);
         if (listener != null) {
-            listener.onRequest(id, ChatLanguageModelRequest.builder()
-                    .system(null) // TODO
-                    .modelName(request.model())
-                    .temperature(request.temperature())
-                    .topP(request.topP())
-                    .maxTokens(request.maxTokens())
-                    .messages(new ArrayList<>(messages))
-                    .toolSpecifications(copyIfNotNull(toolSpecifications))
-                    .build());
+            listener.onRequest(observabilityRequest);
         }
 
         int inputTokenCount = countInputTokens(messages, toolSpecifications, toolThatMustBeExecuted);
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
+        AtomicReference<String> responseId = new AtomicReference<>();
+        AtomicReference<String> responseModel = new AtomicReference<>();
+
         client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
                     responseBuilder.append(partialResponse);
                     handle(partialResponse, handler);
+
+                    if (!isNullOrBlank(partialResponse.id())) {
+                        responseId.set(partialResponse.id());
+                    }
+                    if (!isNullOrBlank(partialResponse.model())) {
+                        responseModel.set(partialResponse.model());
+                    }
                 })
                 .onComplete(() -> {
                     Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
@@ -187,18 +188,22 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     }
 
                     if (listener != null) {
-                        listener.onResponse(id, ChatLanguageModelResponse.builder()
-                                .id(null) // TODO
-                                .modelName(null) // TODO
-                                .tokenUsage(response.tokenUsage())
-                                .finishReason(response.finishReason())
-                                .aiMessage(response.content())
-                                .build());
+                        ChatLanguageModelResponse observabilityResponse = createObservabilityResponse(
+                                responseId.get(),
+                                responseModel.get(),
+                                response
+                        );
+                        listener.onResponse(observabilityRequest, observabilityResponse);
                     }
 
                     handler.onComplete(response);
                 })
-                .onError(handler::onError)
+                .onError(error -> {
+                    if (listener != null) {
+                        listener.onError(observabilityRequest, error);
+                    }
+                    handler.onError(error);
+                })
                 .execute();
     }
 

@@ -5,7 +5,7 @@ import dev.langchain4j.Experimental;
 /**
  * TODO
  */
-// TODO name
+// TODO name: ChatLanguageModelObserver?
 // TODO package
 @Experimental
 public interface ChatLanguageModelListener {
@@ -14,27 +14,35 @@ public interface ChatLanguageModelListener {
     /**
      * TODO
      *
-     * @param id
      * @param request
      */
     // TODO names
     @Experimental
-    default void onRequest(String id, ChatLanguageModelRequest request) {
+    default void onRequest(ChatLanguageModelRequest request) {
 
     }
 
     /**
      * TODO
      *
-     * @param id
+     * @param request
      * @param response
      */
     // TODO names
-    // TODO accept Response<AiMessage> ?
     @Experimental
-    default void onResponse(String id, ChatLanguageModelResponse response) {
+    default void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
 
     }
 
-    // TODO onError?
+    /**
+     * TODO
+     *
+     * @param request
+     * @param error
+     */
+    // TODO names
+    @Experimental
+    default void onError(ChatLanguageModelRequest request, Throwable error) {
+
+    }
 }
