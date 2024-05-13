@@ -24,6 +24,7 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -61,6 +62,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     private String indexName;
 
     protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName) {
+        ensureNotNull(endpoint, "endpoint");
+        if (index != null && isNotNullOrBlank(indexName)) {
+            // if an index is provided, it has its own name already configured
+            // if the indexName is provided, it will be used when creating the default index
+            throw new IllegalArgumentException("index and indexName cannot be both defined");
+        }
         this.createOrUpdateIndex = createOrUpdateIndex;
         this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
         if (keyCredential != null) {
