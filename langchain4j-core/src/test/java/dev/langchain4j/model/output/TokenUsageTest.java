@@ -69,7 +69,7 @@ class TokenUsageTest implements WithAssertions {
     }
 
     @Test
-    public void test_sum() {
+    public void test_add() {
         assertThat(
                 new TokenUsage(1, 2, 3)
                         .add(new TokenUsage(4, 5, 6)))
@@ -93,8 +93,7 @@ class TokenUsageTest implements WithAssertions {
 
     @Test
     public void test_add_null() {
-        assertThat(new TokenUsage(1, 2, 3)
-                .add(null))
-                .isNull();
+        assertThat(new TokenUsage(1, 2, 3).add(null))
+                .isEqualTo(new TokenUsage(1, 2, 3));
     }
 }

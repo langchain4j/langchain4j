@@ -24,20 +24,31 @@ public class ToolSpecifications {
     }
 
     /**
-     * Get the {@link ToolSpecification}s for each {@link Tool} method of the given object.
+     * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool} within the specified class.
      *
-     * @param objectWithTools the object.
+     * @param classWithTools the class.
      * @return the {@link ToolSpecification}s.
      */
-    public static List<ToolSpecification> toolSpecificationsFrom(Object objectWithTools) {
-        return stream(objectWithTools.getClass().getDeclaredMethods())
+    public static List<ToolSpecification> toolSpecificationsFrom(Class<?> classWithTools) {
+        return stream(classWithTools.getDeclaredMethods())
                 .filter(method -> method.isAnnotationPresent(Tool.class))
                 .map(ToolSpecifications::toolSpecificationFrom)
                 .collect(toList());
     }
 
     /**
-     * Get the {@link ToolSpecification} for the given {@link Tool} method.
+     * Returns {@link ToolSpecification}s for all methods annotated with @{@link Tool}
+     * within the class of the specified object.
+     *
+     * @param objectWithTools the object.
+     * @return the {@link ToolSpecification}s.
+     */
+    public static List<ToolSpecification> toolSpecificationsFrom(Object objectWithTools) {
+        return toolSpecificationsFrom(objectWithTools.getClass());
+    }
+
+    /**
+     * Returns the {@link ToolSpecification} for the given method annotated with @{@link Tool}.
      *
      * @param method the method.
      * @return the {@link ToolSpecification}.

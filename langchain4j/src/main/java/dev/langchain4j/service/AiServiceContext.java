@@ -33,9 +33,7 @@ public class AiServiceContext {
 
     public RetrievalAugmentor retrievalAugmentor;
 
-    public Function<Object, Optional<String>> userMessagesProvider = DEFAULT_MESSAGE_PROVIDER;
-
-    public Function<Object, Optional<String>> systemMessagesProvider = DEFAULT_MESSAGE_PROVIDER;
+    public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
@@ -47,13 +45,5 @@ public class AiServiceContext {
 
     public ChatMemory chatMemory(Object memoryId) {
         return chatMemories.computeIfAbsent(memoryId, ignored -> chatMemoryProvider.get(memoryId));
-    }
-
-    public boolean hasUserMessagesProvider() {
-        return userMessagesProvider != DEFAULT_MESSAGE_PROVIDER;
-    }
-
-    public boolean hasSystemMessagesProvider() {
-        return systemMessagesProvider != DEFAULT_MESSAGE_PROVIDER;
     }
 }

@@ -6,16 +6,17 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
+import dev.langchain4j.model.zhipu.shared.Usage;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiEmbeddingModelBuilderFactory;
 import lombok.Builder;
 
+import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toEmbed;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toEmbedTexts;
-import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.tokenUsageFrom;
+import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
@@ -58,16 +59,20 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
-        EmbeddingRequest request = EmbeddingRequest.builder()
-                .model(this.model)
-                .input(toEmbedTexts(textSegments))
-                .build();
+        List<EmbeddingResponse> embeddingRequests = textSegments.stream()
+                .map(item -> EmbeddingRequest.builder()
+                        .input(item.text())
+                        .model(this.model)
+                        .build()
+                )
+                .map(request -> withRetry(() -> client.embedAll(request), maxRetries))
+                .collect(Collectors.toList());
 
-        EmbeddingResponse response = withRetry(() -> client.embedAll(request), maxRetries);
+        Usage usage = getEmbeddingUsage(embeddingRequests);
 
         return Response.from(
-                toEmbed(response),
-                tokenUsageFrom(response.getUsage())
+                toEmbed(embeddingRequests),
+                tokenUsageFrom(usage)
         );
     }
 
