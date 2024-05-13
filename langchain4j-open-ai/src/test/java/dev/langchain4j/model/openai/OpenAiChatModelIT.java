@@ -560,7 +560,7 @@ class OpenAiChatModelIT {
 
         // when
         Throwable throwable = assertThrows(Throwable.class, () -> model.generate(userMessage));
-        assertThat(throwable).isExactlyInstanceOf(RuntimeException.class);
+        assertThat(throwable).isExactlyInstanceOf(RuntimeException.class); // TODO should be OpenAiHttpException? unpack?
         assertThat(throwable).hasMessageContaining("Incorrect API key provided");
 
         assertThat(errorReference.get()).isSameAs(throwable);
