@@ -44,4 +44,11 @@ public interface EmbeddingModel {
      * @return the embeddings.
      */
     Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
+
+    /**
+     * Get embedding model's dimension
+     *
+     * @return dimension of the embedding model
+     */
+    int dimension();
 }

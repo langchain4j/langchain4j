@@ -16,14 +16,14 @@ import java.util.List;
 import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class AzureOpenAiEmbeddingModelIT {
+class AzureOpenAiEmbeddingModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiEmbeddingModelIT.class);
 
     EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("text-embedding-ada-002")
+            .deploymentName(TEXT_EMBEDDING_ADA_002)
             .tokenizer(new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
             .logRequestsAndResponses(true)
             .build();
@@ -67,5 +67,10 @@ public class AzureOpenAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(numberOfSegments * 3);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void should_return_correct_dimension() {
+        assertThat(model.dimension()).isEqualTo(1536);
     }
 }

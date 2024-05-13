@@ -1,5 +1,8 @@
 package dev.langchain4j.model.azure;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class AzureOpenAiModelName {
 
     // Use with AzureOpenAiChatModel and AzureOpenAiStreamingChatModel
@@ -32,5 +35,13 @@ public class AzureOpenAiModelName {
 
     // Use with AzureOpenAiImageModel
     public static final String DALL_E_3 = "DALL_E_3";
+
+    public static Map<String, Integer> embeddingModelDimensionMap() {
+        return new HashMap<String, Integer>() {{
+            put(TEXT_DAVINCI_002, 1536);
+            put(TEXT_EMBEDDING_3_SMALL, 1536);
+            put(TEXT_EMBEDDING_3_LARGE, 3072);
+        }};
+    }
 
 }
