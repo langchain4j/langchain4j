@@ -238,6 +238,7 @@ class InternalAzureOpenAiHelper {
         private final String type = "object";
 
         private Map<String, Map<String, Object>> properties = new HashMap<>();
+
         private List<String> required = new ArrayList<>();
 
         public String getType() {
