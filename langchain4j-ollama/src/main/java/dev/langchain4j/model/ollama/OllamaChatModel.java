@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -9,8 +10,13 @@ import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -27,11 +33,15 @@ import static java.time.Duration.ofSeconds;
  */
 public class OllamaChatModel implements ChatLanguageModel {
 
+    private final Logger logger = LoggerFactory.getLogger(OllamaChatModel.class);
+
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
     private final String format;
     private final Integer maxRetries;
+    private final String keepAlive;
+    Boolean modelLoadedInMemory = false;
 
     @Builder
     public OllamaChatModel(String baseUrl,
@@ -47,6 +57,8 @@ public class OllamaChatModel implements ChatLanguageModel {
                            String format,
                            Duration timeout,
                            Integer maxRetries,
+                           String keepAlive,
+                           Boolean preload,
                            Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
@@ -66,21 +78,45 @@ public class OllamaChatModel implements ChatLanguageModel {
                 .build();
         this.format = format;
         this.maxRetries = getOrDefault(maxRetries, 3);
+        this.keepAlive = keepAlive;
+
+        /**
+         * Preload the model before the first request is made by sending an empty request.
+         * 
+         * Extracted from Ollama FAQ documentation:
+         * https://github.com/ollama/ollama/blob/main/docs/faq.md#how-can-i-pre-load-a-model-to-get-faster-response-times
+         */
+        if (preload != null && preload) {
+            this.preload();
+        }
+    }
+
+    public void preload() {
+        long startTime = System.currentTimeMillis();
+        // Empty prompt is enough to preload the model but langchain4j rejects null or blank prompts
+        generate(Arrays.asList(UserMessage.from("Say 'Model loaded'")));
+        this.modelLoadedInMemory = true;
+        long endTime = System.currentTimeMillis();
+        logger.info("Model '{}' preloaded in {} ms", modelName, (endTime - startTime));
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");
 
-        ChatRequest request = ChatRequest.builder()
+        ChatRequest.ChatRequestBuilder requestBuilder = ChatRequest.builder()
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
                 .options(options)
                 .format(format)
-                .stream(false)
-                .build();
+                .stream(false);
+
+        Optional.ofNullable(keepAlive).ifPresent(requestBuilder::keepAlive);
+
+        ChatRequest request = requestBuilder.build();
 
         ChatResponse response = withRetry(() -> client.chat(request), maxRetries);
+        this.modelLoadedInMemory = true;
 
         return Response.from(
                 AiMessage.from(response.getMessage().getContent()),

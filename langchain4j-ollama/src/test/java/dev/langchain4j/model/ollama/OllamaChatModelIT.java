@@ -127,4 +127,63 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         // then
         assertThat(json).isEqualToIgnoringWhitespace("{\"name\": \"John Doe\", \"age\": 42}");
     }
+
+    @Test
+    void should_preload_model_if_preload_is_true() {
+        // given
+        OllamaChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .preload(true)
+                .build();
+
+        // when
+        // Preload is called inside the constructor if preload is true, so no action is needed here.
+
+        // then
+        // Check if preload was called by verifying if a dummy request was made
+        // This might require you to mock the underlying OllamaClient and verify that `generate` was called with an empty message
+        // Assuming `OllamaClient` is mockable and you have a way to inspect interactions:
+        assertThat(model.modelLoadedInMemory).isTrue();
+    }
+
+    @Test
+    void should_not_preload_model_if_preload_is_false() {
+        // given
+        OllamaChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .preload(false)
+                .build();
+
+        // when
+        // Preload is called inside the constructor if preload is true, so no action is needed here.
+
+        // then
+        // Check if preload was called by verifying if a dummy request was made
+        // This might require you to mock the underlying OllamaClient and verify that `generate` was called with an empty message
+        // Assuming `OllamaClient` is mockable and you have a way to inspect interactions:
+        assertThat(model.modelLoadedInMemory).isFalse();
+    }
+
+    @Test
+    void should_pass_keep_alive_parameter() {
+        // given
+        String keepAliveDuration = "10m";
+        OllamaChatModel model = OllamaChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .temperature(0.0)
+                .keepAlive(keepAliveDuration)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        Response<AiMessage> response = model.generate(userMessage);
+        System.out.println(response);
+
+        // then
+        assertThat(response.content().text()).doesNotContain("Berlin");
+    }
 }

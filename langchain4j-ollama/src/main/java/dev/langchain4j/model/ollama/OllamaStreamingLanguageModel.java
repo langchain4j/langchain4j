@@ -8,6 +8,10 @@ import lombok.Builder;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -21,10 +25,14 @@ import static java.time.Duration.ofSeconds;
  */
 public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
+    private final Logger logger = LoggerFactory.getLogger(OllamaStreamingLanguageModel.class);
+
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
     private final String format;
+    private final String keepAlive;
+    Boolean modelLoadedInMemory = false;
 
     @Builder
     public OllamaStreamingLanguageModel(String baseUrl,
@@ -39,6 +47,8 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                                         List<String> stop,
                                         String format,
                                         Duration timeout,
+                                        String keepAlive,
+                                        Boolean preload,
                                         Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
@@ -57,19 +67,43 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
+        this.keepAlive = keepAlive;
+
+        /**
+         * Preload the model before the first request is made by sending an empty request.
+         * 
+         * Extracted from Ollama FAQ documentation:
+         * https://github.com/ollama/ollama/blob/main/docs/faq.md#how-can-i-pre-load-a-model-to-get-faster-response-times
+         */
+        if (preload != null && preload) {
+            this.preload();
+        }
+    }
+
+    public void preload() {
+        long startTime = System.currentTimeMillis();
+        // Empty prompt is enough to preload the model but langchain4j rejects null or blank prompts
+        generate("Say 'Model loaded'", new NoOpStreamingResponseHandler<String>());
+        this.modelLoadedInMemory = true;
+        long endTime = System.currentTimeMillis();
+        logger.info("Model '{}' preloaded in {} ms", modelName, (endTime - startTime));
     }
 
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
-        CompletionRequest request = CompletionRequest.builder()
+        CompletionRequest.CompletionRequestBuilder requestBuilder = CompletionRequest.builder()
                 .model(modelName)
                 .prompt(prompt)
                 .options(options)
                 .format(format)
-                .stream(true)
-                .build();
+                .stream(true);
 
+        Optional.ofNullable(keepAlive).ifPresent(requestBuilder::keepAlive);
+
+        CompletionRequest request = requestBuilder.build();
+        
         client.streamingCompletion(request, handler);
+        this.modelLoadedInMemory = true;
     }
 
     public static OllamaStreamingLanguageModelBuilder builder() {
