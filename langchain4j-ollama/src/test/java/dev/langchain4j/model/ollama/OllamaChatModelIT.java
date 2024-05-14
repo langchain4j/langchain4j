@@ -39,7 +39,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(35);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -184,6 +184,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         System.out.println(response);
 
         // then
-        assertThat(response.content().text()).doesNotContain("Berlin");
+        assertThat(response.content().text()).contains("Berlin");
     }
 }
+

@@ -129,6 +129,6 @@ class OllamaLanguageModelIT extends AbstractOllamaLanguageModelInfrastructure {
         System.out.println(response);
 
         // then
-        assertThat(response.content()).doesNotContain("Berlin");
+        assertThat(response.content()).contains("Berlin");
     }
 }

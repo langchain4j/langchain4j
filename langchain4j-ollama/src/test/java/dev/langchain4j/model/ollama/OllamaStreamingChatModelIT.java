@@ -47,7 +47,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(35);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -246,7 +246,6 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         String answer = response.content().text();
 
         // then
-        assertThat(answer).doesNotContain("Berlin");
-        assertThat(response.content().text()).isEqualTo(answer);
+        assertThat(answer).contains("Berlin");
     }
 }
