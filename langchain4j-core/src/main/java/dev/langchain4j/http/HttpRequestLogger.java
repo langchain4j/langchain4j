@@ -1,5 +1,6 @@
 package dev.langchain4j.http;
 
+import dev.langchain4j.Experimental;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
@@ -11,6 +12,7 @@ import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.joining;
 
 @Slf4j
+@Experimental
 class HttpRequestLogger {
 
     private static final Set<String> COMMON_SECRET_HEADERS =

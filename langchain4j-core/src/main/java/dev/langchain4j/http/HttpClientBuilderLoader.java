@@ -1,7 +1,6 @@
-package dev.langchain4j.model.anthropic;
+package dev.langchain4j.http;
 
-import dev.langchain4j.http.HttpClientBuilder;
-import dev.langchain4j.http.HttpClientBuilderFactory;
+import dev.langchain4j.Experimental;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Collection;
@@ -9,9 +8,10 @@ import java.util.Collection;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 @Slf4j
-class AnthropicHttpClientLoader {
+@Experimental
+public class HttpClientBuilderLoader {
 
-    static HttpClientBuilder loadHttpClientBuilder() {
+    public static HttpClientBuilder loadHttpClientBuilder() {
         Collection<HttpClientBuilderFactory> factories = loadFactories(HttpClientBuilderFactory.class);
         if (factories.size() > 1) {
             // TODO log names of factories

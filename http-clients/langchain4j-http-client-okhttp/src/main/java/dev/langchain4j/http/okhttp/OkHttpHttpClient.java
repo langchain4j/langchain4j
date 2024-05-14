@@ -33,7 +33,6 @@ public class OkHttpHttpClient extends AbstractHttpClient {
         this.logRequests = builder.logRequests();
         this.logResponses = builder.logResponses();
     }
-    // TODO customize: baseUrl, etc
 
     public static OkHttpHttpClientBuilder builder() { // TODO
         return new OkHttpHttpClientBuilder();
@@ -48,10 +47,10 @@ public class OkHttpHttpClient extends AbstractHttpClient {
             if (okHttpResponse.isSuccessful()) {
                 return fromOkHttpResponse(okHttpResponse);
             } else {
-                throw new HttpException(okHttpResponse.code(), getBody(okHttpResponse));
+                throw new HttpException(okHttpResponse.code(), getBody(okHttpResponse)); // TODO
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException(e); // TODO
         }
     }
 
@@ -81,7 +80,7 @@ public class OkHttpHttpClient extends AbstractHttpClient {
 
             @Override
             public void onFailure(EventSource eventSource, Throwable t, okhttp3.Response response) {
-                listener.onError(t); // TODO propagate response message/code?
+                listener.onError(t); // TODO propagate response message/code
             }
 
             @Override
@@ -100,7 +99,7 @@ public class OkHttpHttpClient extends AbstractHttpClient {
 
         switch (httpRequest.method()) {
             case GET:
-                requestBuilder.get(); // TODO
+                requestBuilder.get();
                 break;
             case POST:
                 requestBuilder.post(RequestBody.create(httpRequest.body(), JSON));

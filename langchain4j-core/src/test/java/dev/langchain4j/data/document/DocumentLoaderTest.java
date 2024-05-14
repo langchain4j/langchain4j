@@ -92,12 +92,12 @@ class DocumentLoaderTest implements WithAssertions {
             .withMessageContaining("Failed to load document");
 
         assertThatExceptionOfType(RuntimeException.class)
-            .isThrownBy(() -> DocumentLoader.load(
-                source,
-                inputStream -> {
-                    throw new RuntimeException("Failed to parse document");
-                }
-            ))
-            .withMessageContaining("Failed to load document");
+                .isThrownBy(() -> DocumentLoader.load(
+                        source,
+                        inputStream -> {
+                            throw new RuntimeException("Failed to parse document");
+                        }
+                ))
+                .withMessageContaining("Failed to load document");
     }
 }
