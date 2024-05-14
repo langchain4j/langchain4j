@@ -162,10 +162,10 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatLanguageModelRequest tracingRequest = createTracingRequest(request, messages, toolSpecifications);
+        ChatLanguageModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         listeners.forEach(listener -> {
             try {
-                listener.onRequest(tracingRequest);
+                listener.onRequest(modelListenerRequest);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener", e);
             }
@@ -180,14 +180,14 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
             );
 
-            ChatLanguageModelResponse tracingResponse = createTracingResponse(
+            ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
                     chatCompletionResponse.id(),
                     chatCompletionResponse.model(),
                     response
             );
             listeners.forEach(listener -> {
                 try {
-                    listener.onResponse(tracingRequest, tracingResponse);
+                    listener.onResponse(modelListenerRequest, modelListenerResponse);
                 } catch (Exception e) {
                     log.warn("Exception while calling model listener", e);
                 }
@@ -197,7 +197,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         } catch (RuntimeException e) {
             listeners.forEach(listener -> {
                 try {
-                    listener.onError(tracingRequest, null, e);
+                    listener.onError(modelListenerRequest, null, e);
                 } catch (Exception e2) {
                     log.warn("Exception while calling model listener", e2);
                 }

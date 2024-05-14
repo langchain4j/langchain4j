@@ -162,10 +162,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatLanguageModelRequest tracingRequest = createTracingRequest(request, messages, toolSpecifications);
+        ChatLanguageModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         listeners.forEach(listener -> {
             try {
-                listener.onRequest(tracingRequest);
+                listener.onRequest(modelListenerRequest);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener", e);
             }
@@ -192,14 +192,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .onComplete(() -> {
                     Response<AiMessage> response = createResponse(responseBuilder, toolThatMustBeExecuted);
 
-                    ChatLanguageModelResponse tracingResponse = createTracingResponse(
+                    ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
                             responseId.get(),
                             responseModel.get(),
                             response
                     );
                     listeners.forEach(listener -> {
                         try {
-                            listener.onResponse(tracingRequest, tracingResponse);
+                            listener.onResponse(modelListenerRequest, modelListenerResponse);
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }
@@ -210,14 +210,14 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .onError(error -> {
                     Response<AiMessage> response = createResponse(responseBuilder, toolThatMustBeExecuted);
 
-                    ChatLanguageModelResponse tracingResponse = createTracingResponse(
+                    ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
                             responseId.get(),
                             responseModel.get(),
                             response
                     );
                     listeners.forEach(listener -> {
                         try {
-                            listener.onError(tracingRequest, tracingResponse, error);
+                            listener.onError(modelListenerRequest, modelListenerResponse, error);
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }

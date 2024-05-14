@@ -285,9 +285,9 @@ public class InternalOpenAiHelper {
         return Response.from(response.content(), null, response.finishReason());
     }
 
-    static ChatLanguageModelRequest createTracingRequest(ChatCompletionRequest request,
-                                                         List<ChatMessage> messages,
-                                                         List<ToolSpecification> toolSpecifications) {
+    static ChatLanguageModelRequest createModelListenerRequest(ChatCompletionRequest request,
+                                                               List<ChatMessage> messages,
+                                                               List<ToolSpecification> toolSpecifications) {
         return ChatLanguageModelRequest.builder()
                 .system(null) // TODO
                 .modelName(request.model())
@@ -299,9 +299,9 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    static ChatLanguageModelResponse createTracingResponse(String responseId,
-                                                           String responseModel,
-                                                           Response<AiMessage> response) {
+    static ChatLanguageModelResponse createModelListenerResponse(String responseId,
+                                                                 String responseModel,
+                                                                 Response<AiMessage> response) {
         if (response == null) {
             return null;
         }

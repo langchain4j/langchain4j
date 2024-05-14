@@ -647,7 +647,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_listen_request_and_response() { // TODO name
+    void should_listen_request_and_response() {
 
         // given
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
@@ -706,7 +706,7 @@ class OpenAiStreamingChatModelIT {
     }
 
     @Test
-    void should_listen_error() throws Exception { // TODO name
+    void should_listen_error() throws Exception {
 
         // given
         String wrongApiKey = "banana";
@@ -732,7 +732,7 @@ class OpenAiStreamingChatModelIT {
                                         ChatLanguageModelResponse response,
                                         Throwable error) {
                         assertThat(request).isSameAs(requestReference.get());
-                        assertThat(response).isNull(); // can be not null if it will fail in the middle of streaming
+                        assertThat(response).isNull(); // can be non-null if it fails in the middle of streaming
                         errorReference.set(error);
                     }
                 };

@@ -31,10 +31,10 @@ public interface ModelListener<Request, Response> {
 
     /**
      * TODO
-     * TODO can be error and sometimes response (streaming?)
+     * TODO when streaming, response can contain what was received BEFORE the error occurred
      *
      * @param request
-     * @param response TODO what was received BEFORE the error occurred (if any)
+     * @param response TODO what was received BEFORE the error occurred
      * @param error
      */
     @Experimental

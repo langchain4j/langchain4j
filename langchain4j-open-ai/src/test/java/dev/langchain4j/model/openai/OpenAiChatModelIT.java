@@ -473,7 +473,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_listen_request_and_response() { // TODO name
+    void should_listen_request_and_response() {
 
         // given
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
@@ -529,7 +529,7 @@ class OpenAiChatModelIT {
     }
 
     @Test
-    void should_listen_error() { // TODO name
+    void should_listen_error() {
 
         // given
         String wrongApiKey = "banana";
