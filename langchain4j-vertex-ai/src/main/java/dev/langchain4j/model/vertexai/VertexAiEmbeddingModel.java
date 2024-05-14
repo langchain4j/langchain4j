@@ -13,14 +13,14 @@ import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
@@ -58,7 +58,7 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
  */
-public class VertexAiEmbeddingModel implements EmbeddingModel {
+public class VertexAiEmbeddingModel extends AbstractEmbeddingModel {
 
     private static final int COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST = 2048;
     private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 250;
@@ -71,6 +71,16 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     private final Integer maxTokensPerBatch;
     private final TaskType taskType;
     private final String titleMetadataKey;
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return endpointName.getModel();
+    }
 
     public enum TaskType {
         RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION, CLUSTERING

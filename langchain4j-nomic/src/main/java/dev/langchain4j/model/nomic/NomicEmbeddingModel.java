@@ -2,13 +2,17 @@ package dev.langchain4j.model.nomic;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,7 +24,7 @@ import static java.util.stream.Collectors.toList;
  * An integration with Nomic Atlas's Text Embeddings API.
  * See more details <a href="https://docs.nomic.ai/reference/endpoints/nomic-embed-text">here</a>.
  */
-public class NomicEmbeddingModel implements EmbeddingModel {
+public class NomicEmbeddingModel extends AbstractEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api-atlas.nomic.ai/v1/";
 
@@ -73,5 +77,15 @@ public class NomicEmbeddingModel implements EmbeddingModel {
         TokenUsage tokenUsage = new TokenUsage(response.getUsage().getTotalTokens(), 0);
 
         return Response.from(embeddings, tokenUsage);
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return modelName;
     }
 }

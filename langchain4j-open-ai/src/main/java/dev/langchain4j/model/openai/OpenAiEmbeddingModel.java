@@ -6,7 +6,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -14,6 +14,8 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,7 +30,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
-public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator {
+public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -80,8 +82,19 @@ public class OpenAiEmbeddingModel implements EmbeddingModel, TokenCountEstimator
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
     }
 
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
     public String modelName() {
         return modelName;
+    }
+
+    @Override
+    public int dimension() {
+        return dimensions;
     }
 
     @Override

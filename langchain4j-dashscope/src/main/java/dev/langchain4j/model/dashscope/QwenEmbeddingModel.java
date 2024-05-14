@@ -6,7 +6,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.dashscope.spi.QwenEmbeddingModelBuilderFactory;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -19,7 +19,7 @@ import static com.alibaba.dashscope.embeddings.TextEmbeddingParam.TextType.QUERY
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
-public class QwenEmbeddingModel implements EmbeddingModel {
+public class QwenEmbeddingModel extends AbstractEmbeddingModel {
 
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
@@ -124,6 +124,16 @@ public class QwenEmbeddingModel implements EmbeddingModel {
             return factory.get();
         }
         return new QwenEmbeddingModelBuilder();
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return modelName;
     }
 
     public static class QwenEmbeddingModelBuilder {

@@ -2,7 +2,7 @@ package dev.langchain4j.model.huggingface;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.huggingface.client.EmbeddingRequest;
 import dev.langchain4j.model.huggingface.client.HuggingFaceClient;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
@@ -11,18 +11,22 @@ import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.model.huggingface.HuggingFaceModelName.SENTENCE_TRANSFORMERS_ALL_MINI_LM_L6_V2;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
-public class HuggingFaceEmbeddingModel implements EmbeddingModel {
+public class HuggingFaceEmbeddingModel extends AbstractEmbeddingModel {
 
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(15);
 
     private final HuggingFaceClient client;
     private final boolean waitForModel;
+    private final String modelId;
 
     @Builder
     public HuggingFaceEmbeddingModel(String accessToken, String modelId, Boolean waitForModel, Duration timeout) {
@@ -46,6 +50,7 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
             }
         });
         this.waitForModel = waitForModel == null || waitForModel;
+        this.modelId = modelId;
     }
 
     @Override
@@ -80,6 +85,16 @@ public class HuggingFaceEmbeddingModel implements EmbeddingModel {
             return factory.get();
         }
         return new HuggingFaceEmbeddingModelBuilder();
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return modelId;
     }
 
     public static class HuggingFaceEmbeddingModelBuilder {

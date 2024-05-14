@@ -2,13 +2,17 @@ package dev.langchain4j.model.mistralai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,7 +24,7 @@ import static java.util.stream.Collectors.toList;
  * Represents a Mistral AI embedding model, such as mistral-embed.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createEmbedding">here</a>.
  */
-public class MistralAiEmbeddingModel implements EmbeddingModel {
+public class MistralAiEmbeddingModel extends AbstractEmbeddingModel {
 
     private final MistralAiClient client;
     private final String modelName;
@@ -100,6 +104,16 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
             return factory.get();
         }
         return new MistralAiEmbeddingModelBuilder();
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return modelName;
     }
 
     public static class MistralAiEmbeddingModelBuilder {

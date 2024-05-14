@@ -3,6 +3,7 @@ package dev.langchain4j.model.bedrock.internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -31,7 +32,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
  */
 @SuperBuilder
 @Getter
-public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
+public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> extends AbstractEmbeddingModel {
 
     @Builder.Default
     private final Region region = Region.US_EAST_1;

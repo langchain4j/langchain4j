@@ -2,7 +2,7 @@ package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
@@ -10,8 +10,10 @@ import dev.langchain4j.model.zhipu.shared.Usage;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiEmbeddingModelBuilderFactory;
 import lombok.Builder;
 
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -22,7 +24,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 /**
  * Represents an ZhipuAI embedding model, such as embedding-2.
  */
-public class ZhipuAiEmbeddingModel implements EmbeddingModel {
+public class ZhipuAiEmbeddingModel extends AbstractEmbeddingModel {
 
     private final String baseUrl;
     private final Integer maxRetries;
@@ -74,6 +76,16 @@ public class ZhipuAiEmbeddingModel implements EmbeddingModel {
                 toEmbed(embeddingRequests),
                 tokenUsageFrom(usage)
         );
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return model;
     }
 
     public static class ZhipuAiEmbeddingModelBuilder {

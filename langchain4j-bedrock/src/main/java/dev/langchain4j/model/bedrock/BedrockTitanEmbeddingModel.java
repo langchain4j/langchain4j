@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -16,7 +18,7 @@ import java.util.stream.Collectors;
 @SuperBuilder
 @Getter
 public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
-    private final static String MODEL_ID = "amazon.titan-embed-text-v1";
+    private static final String MODEL_ID = "amazon.titan-embed-text-v1";
 
     @Builder.Default
     private final String model = Types.TitanEmbedTextV1.getValue();
@@ -37,6 +39,16 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     @Override
     protected Class<BedrockTitanEmbeddingResponse> getResponseClassType() {
         return BedrockTitanEmbeddingResponse.class;
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return model;
     }
 
     @Getter
