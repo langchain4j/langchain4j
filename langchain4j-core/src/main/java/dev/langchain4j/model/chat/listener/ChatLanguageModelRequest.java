@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat.observability;
+package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -14,7 +14,7 @@ import java.util.List;
 @Experimental
 public class ChatLanguageModelRequest {
 
-    private final String system; // gen_ai.system
+    private final String system; // gen_ai.system TODO provider?
     private final String modelName; // gen_ai.request.model
 
     // TODO group into "Parameters" POJO and re-use in ChatLanguageModel.generate()?

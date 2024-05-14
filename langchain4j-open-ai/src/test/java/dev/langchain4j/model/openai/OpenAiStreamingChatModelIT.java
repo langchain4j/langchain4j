@@ -8,9 +8,9 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
+import dev.langchain4j.model.listener.ModelListener;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.data.Percentage;
@@ -653,24 +653,27 @@ class OpenAiStreamingChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
 
-        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
-            @Override
-            public void onRequest(ChatLanguageModelRequest request) {
-                requestReference.set(request);
-            }
+                    @Override
+                    public void onRequest(ChatLanguageModelRequest request) {
+                        requestReference.set(request);
+                    }
 
-            @Override
-            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
-                assertThat(request).isSameAs(requestReference.get());
-                responseReference.set(response);
-            }
+                    @Override
+                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                        assertThat(request).isSameAs(requestReference.get());
+                        responseReference.set(response);
+                    }
 
-            @Override
-            public void onError(ChatLanguageModelRequest request, Throwable error) {
-                fail("onError() must not be called");
-            }
-        };
+                    @Override
+                    public void onError(ChatLanguageModelRequest request,
+                                        ChatLanguageModelResponse response,
+                                        Throwable error) {
+                        fail("onError() must not be called");
+                    }
+                };
 
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -679,7 +682,7 @@ class OpenAiStreamingChatModelIT {
                 .temperature(0.0)
                 .logRequests(true)
                 .logResponses(true)
-                .listener(listener)
+                .listeners(singletonList(modelListener))
                 // TODO other params
                 .build();
 
@@ -711,30 +714,34 @@ class OpenAiStreamingChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
-        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
-            @Override
-            public void onRequest(ChatLanguageModelRequest request) {
-                requestReference.set(request);
-            }
+                    @Override
+                    public void onRequest(ChatLanguageModelRequest request) {
+                        requestReference.set(request);
+                    }
 
-            @Override
-            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
-                fail("onResponse() must not be called");
-            }
+                    @Override
+                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                        fail("onResponse() must not be called");
+                    }
 
-            @Override
-            public void onError(ChatLanguageModelRequest request, Throwable error) {
-                assertThat(request).isSameAs(requestReference.get());
-                errorReference.set(error);
-            }
-        };
+                    @Override
+                    public void onError(ChatLanguageModelRequest request,
+                                        ChatLanguageModelResponse response,
+                                        Throwable error) {
+                        assertThat(request).isSameAs(requestReference.get());
+                        assertThat(response).isNull(); // can be not null if it will fail in the middle of streaming
+                        errorReference.set(error);
+                    }
+                };
 
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .apiKey(wrongApiKey)
                 .logRequests(true)
                 .logResponses(true)
-                .listener(listener)
+                .listeners(singletonList(modelListener))
                 .build();
 
         String userMessage = "this message will fail";

@@ -10,8 +10,8 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -285,9 +285,9 @@ public class InternalOpenAiHelper {
         return Response.from(response.content(), null, response.finishReason());
     }
 
-    static ChatLanguageModelRequest createObservabilityRequest(ChatCompletionRequest request,
-                                                               List<ChatMessage> messages,
-                                                               List<ToolSpecification> toolSpecifications) {
+    static ChatLanguageModelRequest createTracingRequest(ChatCompletionRequest request,
+                                                         List<ChatMessage> messages,
+                                                         List<ToolSpecification> toolSpecifications) {
         return ChatLanguageModelRequest.builder()
                 .system(null) // TODO
                 .modelName(request.model())
@@ -299,9 +299,13 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    static ChatLanguageModelResponse createObservabilityResponse(String responseId,
-                                                                 String responseModel,
-                                                                 Response<AiMessage> response) {
+    static ChatLanguageModelResponse createTracingResponse(String responseId,
+                                                           String responseModel,
+                                                           Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
         return ChatLanguageModelResponse.builder()
                 .id(responseId)
                 .model(responseModel)

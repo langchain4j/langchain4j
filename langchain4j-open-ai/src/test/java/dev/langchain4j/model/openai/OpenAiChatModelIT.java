@@ -5,9 +5,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
+import dev.langchain4j.model.listener.ModelListener;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -479,19 +479,27 @@ class OpenAiChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
 
-        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
-            @Override
-            public void onRequest(ChatLanguageModelRequest request) {
-                requestReference.set(request);
-            }
+                    @Override
+                    public void onRequest(ChatLanguageModelRequest request) {
+                        requestReference.set(request);
+                    }
 
-            @Override
-            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
-                assertThat(request).isSameAs(requestReference.get());
-                responseReference.set(response);
-            }
-        };
+                    @Override
+                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                        assertThat(request).isSameAs(requestReference.get());
+                        responseReference.set(response);
+                    }
+
+                    @Override
+                    public void onError(ChatLanguageModelRequest request,
+                                        ChatLanguageModelResponse response,
+                                        Throwable error) {
+                        fail("onError() must not be called");
+                    }
+                };
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -499,7 +507,7 @@ class OpenAiChatModelIT {
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .logRequests(true)
                 .logResponses(true)
-                .listener(listener)
+                .listeners(singletonList(modelListener))
                 // TODO add other params
                 .build();
 
@@ -529,31 +537,35 @@ class OpenAiChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
-        ChatLanguageModelListener listener = new ChatLanguageModelListener() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
-            @Override
-            public void onRequest(ChatLanguageModelRequest request) {
-                requestReference.set(request);
-            }
+                    @Override
+                    public void onRequest(ChatLanguageModelRequest request) {
+                        requestReference.set(request);
+                    }
 
-            @Override
-            public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
-                fail("onResponse() must not be called");
-            }
+                    @Override
+                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                        fail("onResponse() must not be called");
+                    }
 
-            @Override
-            public void onError(ChatLanguageModelRequest request, Throwable error) {
-                assertThat(request).isSameAs(requestReference.get());
-                errorReference.set(error);
-            }
-        };
+                    @Override
+                    public void onError(ChatLanguageModelRequest request,
+                                        ChatLanguageModelResponse response,
+                                        Throwable error) {
+                        assertThat(request).isSameAs(requestReference.get());
+                        assertThat(response).isNull();
+                        errorReference.set(error);
+                    }
+                };
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .apiKey(wrongApiKey)
                 .maxRetries(0)
                 .logRequests(true)
                 .logResponses(true)
-                .listener(listener)
+                .listeners(singletonList(modelListener))
                 .build();
 
         String userMessage = "this message will fail";

@@ -9,15 +9,17 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelListener;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.observability.ChatLanguageModelResponse;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
+import dev.langchain4j.model.listener.ModelListener;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,12 +29,14 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
+@Slf4j
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
@@ -49,7 +53,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
-    private final ChatLanguageModelListener listener;
+    private final List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners;
 
     @Builder
     public OpenAiChatModel(String baseUrl,
@@ -73,7 +77,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Boolean logResponses,
                            Tokenizer tokenizer,
                            Map<String, String> customHeaders,
-                           ChatLanguageModelListener listener) {
+                           List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -109,7 +113,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
-        this.listener = listener;
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public String modelName() {
@@ -158,10 +162,14 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatLanguageModelRequest observabilityRequest = createObservabilityRequest(request, messages, toolSpecifications);
-        if (listener != null) {
-            listener.onRequest(observabilityRequest);
-        }
+        ChatLanguageModelRequest tracingRequest = createTracingRequest(request, messages, toolSpecifications);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(tracingRequest);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
         try {
             ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
@@ -172,20 +180,28 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
             );
 
-            if (listener != null) {
-                ChatLanguageModelResponse observabilityResponse = createObservabilityResponse(
-                        chatCompletionResponse.id(),
-                        chatCompletionResponse.model(),
-                        response
-                );
-                listener.onResponse(observabilityRequest, observabilityResponse);
-            }
+            ChatLanguageModelResponse tracingResponse = createTracingResponse(
+                    chatCompletionResponse.id(),
+                    chatCompletionResponse.model(),
+                    response
+            );
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(tracingRequest, tracingResponse);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
 
             return response;
         } catch (RuntimeException e) {
-            if (listener != null) {
-                listener.onError(observabilityRequest, e);
-            }
+            listeners.forEach(listener -> {
+                try {
+                    listener.onError(tracingRequest, null, e);
+                } catch (Exception e2) {
+                    log.warn("Exception while calling model listener", e2);
+                }
+            });
             throw e;
         }
     }

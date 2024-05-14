@@ -1,4 +1,4 @@
-package dev.langchain4j.model.chat.observability;
+package dev.langchain4j.model.chat.listener;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
