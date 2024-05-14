@@ -1,10 +1,12 @@
 package dev.langchain4j.http;
 
+import dev.langchain4j.Experimental;
 import lombok.extern.slf4j.Slf4j;
 
 import static dev.langchain4j.http.HttpRequestLogger.format;
 
 @Slf4j
+@Experimental
 class HttpResponseLogger {
 
     static void log(HttpResponse httpResponse) {

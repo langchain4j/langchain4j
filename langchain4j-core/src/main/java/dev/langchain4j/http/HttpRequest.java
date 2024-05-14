@@ -23,7 +23,7 @@ public class HttpRequest {
         this.method = ensureNotNull(method, "method");
         this.url = ensureNotBlank(url, "url");
         this.headers = headers == null ? emptyMap() : new HashMap<>(headers);
-        this.body = ensureNotNull(body, "body"); // TODO only for post
+        this.body = ensureNotNull(body, "body"); // TODO mandatory only for POST?
     }
 
     public HttpMethod method() {

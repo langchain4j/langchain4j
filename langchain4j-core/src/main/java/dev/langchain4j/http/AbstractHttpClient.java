@@ -1,6 +1,9 @@
 package dev.langchain4j.http;
 
-public abstract class AbstractHttpClient implements HttpClient {
+import dev.langchain4j.Experimental;
+
+@Experimental
+public abstract class AbstractHttpClient implements HttpClient { // TODO name. LoggingHttpClient?
 
     public HttpResponse execute(HttpRequest httpRequest) {
 

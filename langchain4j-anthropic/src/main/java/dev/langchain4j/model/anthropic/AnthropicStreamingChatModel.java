@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.http.HttpClientBuilder;
+import dev.langchain4j.http.HttpClientBuilderLoader;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
@@ -79,7 +80,7 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
                                         Boolean logRequests,
                                         Boolean logResponses) {
         this.client = AnthropicClient.builder()
-                .httpClientBuilder(getOrDefault(httpClientBuilder, AnthropicHttpClientLoader::loadHttpClientBuilder))
+                .httpClientBuilder(getOrDefault(httpClientBuilder, HttpClientBuilderLoader::loadHttpClientBuilder))
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))

@@ -12,6 +12,7 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     private Duration timeout;
     private boolean logRequests;
     private boolean logResponses;
+    // TODO baseUrl?
 
     public OkHttpClient.Builder okHttpClientBuilder() {
         return okHttpClientBuilder;

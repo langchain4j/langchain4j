@@ -96,6 +96,6 @@ class DocumentLoaderTest implements WithAssertions {
                         }
 
                 ))
-                .withMessageContaining("Failed to load documenat");
+                .withMessageContaining("Failed to load document");
     }
 }
