@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.http.HttpClientBuilder;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
 import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
@@ -49,23 +50,25 @@ public class AnthropicChatModel implements ChatLanguageModel {
     /**
      * Constructs an instance of an {@code AnthropicChatModel} with the specified parameters.
      *
-     * @param baseUrl       The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
-     * @param apiKey        The API key for authentication with the Anthropic API.
-     * @param version       The version of the Anthropic API. Default: "2023-06-01"
-     * @param beta          The value of the "anthropic-beta" HTTP header. It is used when tools are present in the request. Default: "tools-2024-04-04"
-     * @param modelName     The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
-     * @param temperature   The temperature
-     * @param topP          The top-P
-     * @param topK          The top-K
-     * @param maxTokens     The maximum number of tokens to generate. Default: 1024
-     * @param stopSequences The custom text sequences that will cause the model to stop generating
-     * @param timeout       The timeout for API requests. Default: 60 seconds
-     * @param maxRetries    The maximum number of retries for API requests. Default: 3
-     * @param logRequests   Whether to log the content of API requests using SLF4J. Default: false
-     * @param logResponses  Whether to log the content of API responses using SLF4J. Default: false
+     * @param httpClientBuilder TODO
+     * @param baseUrl           The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
+     * @param apiKey            The API key for authentication with the Anthropic API.
+     * @param version           The version of the Anthropic API. Default: "2023-06-01"
+     * @param beta              The value of the "anthropic-beta" HTTP header. It is used when tools are present in the request. Default: "tools-2024-04-04"
+     * @param modelName         The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
+     * @param temperature       The temperature
+     * @param topP              The top-P
+     * @param topK              The top-K
+     * @param maxTokens         The maximum number of tokens to generate. Default: 1024
+     * @param stopSequences     The custom text sequences that will cause the model to stop generating
+     * @param timeout           The timeout for API requests. Default: 60 seconds
+     * @param maxRetries        The maximum number of retries for API requests. Default: 3
+     * @param logRequests       Whether to log the content of API requests using SLF4J. Default: false
+     * @param logResponses      Whether to log the content of API responses using SLF4J. Default: false
      */
     @Builder
-    private AnthropicChatModel(String baseUrl,
+    private AnthropicChatModel(HttpClientBuilder httpClientBuilder,
+                               String baseUrl,
                                String apiKey,
                                String version,
                                String beta,
@@ -80,6 +83,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                                Boolean logRequests,
                                Boolean logResponses) {
         this.client = AnthropicClient.builder()
+                .httpClientBuilder(getOrDefault(httpClientBuilder, AnthropicHttpClientLoader::loadHttpClientBuilder))
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))
