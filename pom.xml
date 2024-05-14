@@ -103,6 +103,12 @@
         <module>experimental/langchain4j-experimental-sql</module>
         <module>langchain4j-onnx-scoring</module>
 
+        <!-- http clients -->
+        <module>http-clients/langchain4j-http-client-okhttp</module>
+        <!-- TODO move to langchain4j-spring repo-->
+        <module>http-clients/langchain4j-http-client-spring-restclient</module>
+
+
     </modules>
 
     <build>

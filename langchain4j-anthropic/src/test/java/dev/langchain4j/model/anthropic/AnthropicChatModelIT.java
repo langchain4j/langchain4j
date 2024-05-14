@@ -2,6 +2,7 @@ package dev.langchain4j.model.anthropic;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -12,6 +13,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+//import okhttp3.Interceptor;
+//import okhttp3.OkHttpClient;
+//import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -473,4 +477,38 @@ class AnthropicChatModelIT {
                 .filter(modelName -> modelName.toString().startsWith("claude-3"))
                 .map(Arguments::of);
     }
+
+//    @Test
+//    void should_use_custom_OkHttpClient() {
+//
+//        // given
+//        AtomicBoolean called = new AtomicBoolean(false);
+//
+//        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
+//                .addInterceptor(chain -> {
+//                    called.set(true);
+//                    return chain.proceed(chain.request());
+//                });
+//
+//        HttpClientBuilder httpClientBuilder = OkHttpHttpClient.builder()
+//                .okHttpClientBuilder(okHttpClientBuilder)
+//                .logRequests(false)
+//                .logResponses(false);
+//
+//        ChatLanguageModel model = AnthropicChatModel.builder()
+//                .httpClientBuilder(httpClientBuilder)
+//                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+//                .maxTokens(1)
+//                .logRequests(true) // TODO overrides
+//                .logResponses(true) // TODO overrides
+//                .build();
+//
+//        // when
+//        model.generate("Hi");
+//
+//        // then
+//        assertThat(called).isTrue();
+//    }
+
+    // TODO another test with custom OkHttpHttpClient
 }

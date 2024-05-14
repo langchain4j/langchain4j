@@ -97,7 +97,6 @@ class DocumentLoaderTest implements WithAssertions {
                 inputStream -> {
                     throw new RuntimeException("Failed to parse document");
                 }
-
             ))
             .withMessageContaining("Failed to load document");
     }
