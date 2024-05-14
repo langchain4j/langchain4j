@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -44,7 +45,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final ChatMemoryStore store;
 
     private MessageWindowChatMemory(Builder builder) {
-        this.id = ensureNotNull(builder.id, "id");
+        this.id = builder.id == null ? UUID.randomUUID() : builder.id;
         this.maxMessages = ensureGreaterThanZero(builder.maxMessages, "maxMessages");
         this.store = ensureNotNull(builder.store, "store");
     }
@@ -120,13 +121,13 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     public static class Builder {
 
-        private Object id = "default";
+        private Object id = null;
         private Integer maxMessages;
         private ChatMemoryStore store = new InMemoryChatMemoryStore();
 
         /**
          * @param id The ID of the {@link ChatMemory}.
-         *           If not provided, a "default" will be used.
+         *           If not provided, a random UUID will be used.
          * @return builder
          */
         public Builder id(Object id) {
