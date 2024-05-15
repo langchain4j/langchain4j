@@ -16,6 +16,17 @@ or as a part of a high-level component like [AI Services](/tutorials/ai-services
 - Special treatment of `SystemMessage`
 - Special treatment of [tool](/tutorials/tools) messages
 
+## Memory vs History
+
+Please note that "memory" and "history" are similar, yet distinct concepts.
+- History keeps **all** messages between the user and AI **intact**. History is what the user sees in the UI. It represents what was actually said.
+- Memory keeps **some information**, which is presented to the LLM to make it behave as if it "remembers" the conversation.
+Memory is quite different from history. Depending on the memory algorithm used, it can modify history in various ways:
+evict some messages, summarize multiple messages, summarize separate messages, remove unimportant details from messages,
+inject extra information (e.g., for RAG) or instructions (e.g., for structured outputs) into messages, and so on.
+
+LangChain4j currently offers only "memory", not "history". If you need to keep an entire history, please do so manually.
+
 ## Eviction policy
 
 An eviction policy is necessary for several reasons:
@@ -81,6 +92,12 @@ once when a new `UserMessage` is added and again when a new `AiMessage` is added
 The `updateMessages()` method is expected to update all messages associated with the given memory ID.
 `ChatMessage`s can be stored either separately (e.g., one record/row/object per message) 
 or together (e.g., one record/row/object for the entire `ChatMemory`).
+
+:::note
+Please note that messages evicted from `ChatMemory` will also be evicted from `ChatMemoryStore`.
+When a message is evicted, the `updateMessages()` method is called
+with a list of messages that does not include the evicted message.
+:::
 
 The `getMessages()` method is called whenever the user of the `ChatMemory` requests all messages.
 This typically happens once during each interaction with the LLM.
