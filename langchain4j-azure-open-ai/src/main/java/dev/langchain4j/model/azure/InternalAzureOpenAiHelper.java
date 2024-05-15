@@ -205,19 +205,13 @@ class InternalAzureOpenAiHelper {
     }
 
     public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
-        FunctionCall functionCall;
-        if (ChatCompletionsToolSelectionPreset.values().stream()
-                .anyMatch(preset -> preset.toString().equals(toolThatMustBeExecuted.name()))) {
-
-            functionCall = new FunctionCall(ChatCompletionsToolSelectionPreset.fromString(toolThatMustBeExecuted.name()).toString(), "");
-        } else {
-            functionCall = new FunctionCall(toolThatMustBeExecuted.name(), "");
-        }
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
         ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
         return BinaryData.fromObject(toolToCall);
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
+
     static {
         NO_PARAMETER_DATA.put("type", "object");
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
