@@ -445,9 +445,9 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
-More details about RAG can be found [here](/tutorials/rag)
+More details about RAG can be found [here](/tutorials/rag).
 
-[RAG examples](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java)
+More RAG examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
 
 
 ## Auto-Moderation
