@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
 import com.azure.ai.openai.models.ChatRequestMessage;
@@ -32,10 +33,25 @@ class InternalAzureOpenAiHelperTest {
         Integer maxRetries = 5;
         boolean logRequestsAndResponses = true;
 
-        OpenAIClient client = InternalAzureOpenAiHelper.setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses);
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses);
 
         assertThat(client).isNotNull();
     }
+
+    @Test
+    void setupOpenAIAsyncClientShouldReturnClientWithCorrectConfiguration() {
+        String endpoint = "test-endpoint";
+        String serviceVersion = "test-service-version";
+        String apiKey = "test-api-key";
+        Duration timeout = Duration.ofSeconds(30);
+        Integer maxRetries = 5;
+        boolean logRequestsAndResponses = true;
+
+        OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses);
+
+        assertThat(client).isNotNull();
+    }
+
 
     @Test
     void getOpenAIServiceVersionShouldReturnCorrectVersion() {
