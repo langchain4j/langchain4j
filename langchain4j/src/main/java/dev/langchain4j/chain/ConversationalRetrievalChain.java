@@ -91,10 +91,7 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
     private UserMessage augment(UserMessage userMessage) {
         Metadata metadata = Metadata.from(userMessage, chatMemory.id(), chatMemory.messages());
 
-        AugmentationRequest augmentationRequest = AugmentationRequest.builder()
-                .chatMessage(userMessage)
-                .metadata(metadata)
-                .build();
+        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
 
         AugmentationResult augmentationResult = retrievalAugmentor.augment(augmentationRequest);
 

@@ -163,13 +163,13 @@ you can change the return type of your AI Service method from `String` to someth
 Currently, AI Services support the following return types:
 - `String`
 - `AiMessage`
-- `boolean`/`Boolean` (if you need to get "yes" or "no" answer)
+- `boolean`/`Boolean`, if you need to get "yes" or "no" answer
 - `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
-- `List<String>`/`Set<String>` (if you want to get the answer in the form of a list of bullet points)
-- Any `Enum` (if you want to classify text, e.g. sentiment, user intent, etc)
+- `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
+- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
 - Any custom POJO
-- `Result<T>` (if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
+- `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
 Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
 the AI Service will automatically append instructions to the end of `UserMessage` indicating the format

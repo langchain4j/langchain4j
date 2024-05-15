@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.query.Metadata;
-import lombok.Builder;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -25,7 +24,6 @@ public class AugmentationRequest {
      */
     private final Metadata metadata;
 
-    @Builder
     public AugmentationRequest(ChatMessage chatMessage, Metadata metadata) {
         this.chatMessage = ensureNotNull(chatMessage, "chatMessage");
         this.metadata = ensureNotNull(metadata, "metadata");

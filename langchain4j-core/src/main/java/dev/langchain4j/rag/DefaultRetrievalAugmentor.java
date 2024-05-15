@@ -126,10 +126,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     @Override
     @Deprecated
     public UserMessage augment(UserMessage userMessage, Metadata metadata) {
-        AugmentationRequest augmentationRequest = AugmentationRequest.builder()
-                .chatMessage(userMessage)
-                .metadata(metadata)
-                .build();
+        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
         return (UserMessage) augment(augmentationRequest).chatMessage();
     }
 

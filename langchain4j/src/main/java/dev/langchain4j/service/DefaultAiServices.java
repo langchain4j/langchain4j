@@ -99,10 +99,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     ? context.chatMemory(memoryId).messages()
                                     : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
-                            AugmentationRequest augmentationRequest = AugmentationRequest.builder()
-                                    .chatMessage(userMessage)
-                                    .metadata(metadata)
-                                    .build();
+                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }

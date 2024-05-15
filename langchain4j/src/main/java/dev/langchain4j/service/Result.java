@@ -14,7 +14,8 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * It contains actual content (LLM response) and additional information associated with it,
  * such as {@link TokenUsage} and sources ({@link Content}s retrieved during RAG).
  *
- * @param <T> The type of the content.
+ * @param <T> The type of the content. Can be of any return type supported by AI Services,
+ *           such as String, Enum, MyCustomPojo, etc.
  */
 public class Result<T> {
 

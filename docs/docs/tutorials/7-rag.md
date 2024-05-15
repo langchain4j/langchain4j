@@ -155,7 +155,7 @@ String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 
 ## Accessing Sources
 If you wish to access the sources (retrieved `Content`s used to augment the message),
-you can easily do so by wrapping the response in the `Result<T>` class:
+you can easily do so by wrapping the return type in the `Result` class:
 ```java
 interface Assistant {
 
