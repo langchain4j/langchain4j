@@ -16,6 +16,7 @@ import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
@@ -35,9 +36,6 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.builder.sql.LanguageModelSqlFilterBuilder;
 import dev.langchain4j.store.embedding.filter.builder.sql.TableDefinition;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -61,7 +59,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 class AiServicesWithRagIT {
@@ -566,30 +563,15 @@ class AiServicesWithRagIT {
         assertThat(answer).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
     }
 
-    interface AssistantWithSources {
-        WithSources<String> answer(String query);
-        WithSources<Booking> answerForBooking(String query);
-    }
 
-    @Getter
-    @NoArgsConstructor
-    @AllArgsConstructor
-    static class Booking {
-        private String userId;
-        private String bookingId;
-        private String bookingType;
-        private String bookingDate;
-        private Boolean accurateInfoProvided;
-        private Boolean vehicleAvailability;
-    }
+    interface AssistantReturningResult {
 
-    interface InvalidAssistantWithSources {
-        WithSources answerWithNoGenericType(String query);
+        Result<String> answer(String query);
     }
 
     @ParameterizedTest
     @MethodSource("models")
-    void should_use_content_retriever_and_retrieve_sources(ChatLanguageModel model) {
+    void should_use_content_retriever_and_return_sources_inside_result(ChatLanguageModel model) {
 
         // given
         ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
@@ -598,105 +580,29 @@ class AiServicesWithRagIT {
                 .maxResults(1)
                 .build();
 
-        AssistantWithSources assistant = AiServices.builder(AssistantWithSources.class)
+        AssistantReturningResult assistant = AiServices.builder(AssistantReturningResult.class)
                 .chatLanguageModel(model)
-                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                        .contentRetriever(contentRetriever)
-                        .build())
+                .contentRetriever(contentRetriever)
                 .build();
 
         // when
-        WithSources<String> answer = assistant.answer("Can I cancel my booking?");
+        Result<String> result = assistant.answer("Can I cancel my booking?");
 
         // then
-        assertThat(answer.getResponse()).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
-        assertThat(answer.getRetrievedContents().size()).isEqualTo(1);
-        assertThat(answer.getRetrievedContents().get(0).textSegment().text().replace(System.lineSeparator(), ""))
-                .isEqualTo(
-                        "4. Cancellation Policy" +
-                                "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
-                                "4.2 If the booking period is less than 17 days, cancellations are not permitted."
-                );
-        assertThat(answer.getRetrievedContents().get(0).textSegment().metadata("index")).isEqualTo("3");
-        assertThat(answer.getRetrievedContents().get(0).textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
+        assertThat(result.content()).containsAnyOf(ALLOWED_CANCELLATION_PERIOD_DAYS, MIN_BOOKING_PERIOD_DAYS);
 
+        assertThat(result.tokenUsage()).isNotNull();
 
+        assertThat(result.sources()).hasSize(1);
+        Content content = result.sources().get(0);
+        assertThat(content.textSegment().text()).isEqualToIgnoringWhitespace(
+                "4. Cancellation Policy" +
+                        "4.1 Reservations can be cancelled up to 61 days prior to the start of the booking period." +
+                        "4.2 If the booking period is less than 17 days, cancellations are not permitted."
+        );
+        assertThat(content.textSegment().metadata("index")).isEqualTo("3");
+        assertThat(content.textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
     }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_use_content_retriever_and_retrieve_sources_for_simple_pojo(ChatLanguageModel model) {
-
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .maxResults(1)
-                .build();
-
-        AssistantWithSources assistant = AiServices.builder(AssistantWithSources.class)
-                .chatLanguageModel(model)
-                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                        .contentRetriever(contentRetriever)
-                        .build())
-                .build();
-
-        // when
-        WithSources<Booking> answer = assistant.answerForBooking("Give an example of booking !");
-        Booking booking = answer.getResponse();
-        assertThat(booking.getUserId()).isNotNull();
-        assertThat(booking.getBookingId()).isNotNull();
-        assertThat(booking.getBookingType()).isNotNull();
-        assertThat(booking.getBookingDate()).isNotNull();
-        assertThat(booking.getAccurateInfoProvided()).isNotNull();
-        assertThat(booking.getVehicleAvailability()).isNotNull();
-
-        assertThat(answer.getRetrievedContents().size()).isEqualTo(1);
-        assertThat(answer.getRetrievedContents().get(0).textSegment().text().replace(System.lineSeparator(), ""))
-                .isEqualTo(
-                        "3. Bookings" +
-                                "3.1 Users may make a booking through our website or mobile application." +
-                                "3.2 You must provide accurate, current and complete information during the reservation process. You are responsible for all charges incurred under your account." +
-                                "3.3 All bookings are subject to vehicle availability."
-                );
-        assertThat(answer.getRetrievedContents().get(0).textSegment().metadata("index")).isEqualTo("2");
-        assertThat(answer.getRetrievedContents().get(0).textSegment().metadata("file_name")).isEqualTo("miles-of-smiles-terms-of-use.txt");
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_through_exception_when_retrieve_sources_and_generic_type_is_not_set(ChatLanguageModel model) {
-
-        // given
-        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
-                .embeddingStore(embeddingStore)
-                .embeddingModel(embeddingModel)
-                .maxResults(1)
-                .build();;
-
-        // when
-        assertThrows(IllegalArgumentException.class, () -> AiServices.builder(InvalidAssistantWithSources.class)
-                .chatLanguageModel(model)
-                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                        .contentRetriever(contentRetriever)
-                        .build())
-                .build());
-
-    }
-
-    @ParameterizedTest
-    @MethodSource("models")
-    void should_through_exception_when_retrieve_sources_and_content_retriever_is_not_set(ChatLanguageModel model) {
-
-        // when
-        assertThrows(IllegalArgumentException.class, () -> AiServices.builder(AssistantWithSources.class)
-                .chatLanguageModel(model)
-                .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                        .build())
-                .build());
-
-    }
-
 
     private void ingest(String documentPath, EmbeddingStore<TextSegment> embeddingStore, EmbeddingModel embeddingModel) {
         OpenAiTokenizer tokenizer = new OpenAiTokenizer(GPT_3_5_TURBO);

@@ -1,14 +1,14 @@
 package dev.langchain4j.chain;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.AugmentationRequest;
-import dev.langchain4j.data.message.AugmentationResult;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.injector.DefaultContentInjector;
@@ -79,18 +79,26 @@ public class ConversationalRetrievalChain implements Chain<String, String> {
     public String execute(String query) {
 
         UserMessage userMessage = UserMessage.from(query);
-        Metadata metadata = Metadata.from(userMessage, chatMemory.id(), chatMemory.messages());
-        AugmentationRequest augmentationRequest = AugmentationRequest.builder()
-                .userMessage(userMessage)
-                .metadata(metadata)
-                .build();
-        AugmentationResult augmentationResult = retrievalAugmentor.augment(augmentationRequest);
-        userMessage = augmentationResult.getAugmentedUserMessage();
+        userMessage = augment(userMessage);
         chatMemory.add(userMessage);
 
         AiMessage aiMessage = chatLanguageModel.generate(chatMemory.messages()).content();
+
         chatMemory.add(aiMessage);
         return aiMessage.text();
+    }
+
+    private UserMessage augment(UserMessage userMessage) {
+        Metadata metadata = Metadata.from(userMessage, chatMemory.id(), chatMemory.messages());
+
+        AugmentationRequest augmentationRequest = AugmentationRequest.builder()
+                .chatMessage(userMessage)
+                .metadata(metadata)
+                .build();
+
+        AugmentationResult augmentationResult = retrievalAugmentor.augment(augmentationRequest);
+
+        return (UserMessage) augmentationResult.chatMessage();
     }
 
     public static Builder builder() {

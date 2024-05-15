@@ -13,6 +13,8 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 
 import java.io.InputStream;
@@ -65,7 +67,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
-            withSourcesValidation(method);
+            if (method.getReturnType() == Result.class) {
+                validateResultReturnType(method);
+            }
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
@@ -96,24 +100,24 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
                             AugmentationRequest augmentationRequest = AugmentationRequest.builder()
-                                    .userMessage(userMessage)
+                                    .chatMessage(userMessage)
                                     .metadata(metadata)
                                     .build();
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
-                            userMessage = augmentationResult.getAugmentedUserMessage();
+                            userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         // TODO give user ability to provide custom OutputParser
                         Class<?> returnType = method.getReturnType();
-                        boolean isWithSources = false;
-                        if (returnType == WithSources.class) {
+                        boolean isReturnTypeResult = false;
+                        if (returnType == Result.class) {
+                            isReturnTypeResult = true;
                             AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
                             ParameterizedType type = (ParameterizedType) annotatedReturnType.getType();
                             Type[] typeArguments = type.getActualTypeArguments();
                             for (Type typeArg : typeArguments) {
                                 returnType = Class.forName(typeArg.getTypeName());
                             }
-                            isWithSources = true;
                         }
                         String outputFormatInstructions = outputFormatInstructions(returnType);
                         userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
@@ -191,12 +195,16 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
                         Object parsedResponse = parse(response, returnType);
-                        return isWithSources ? WithSources.builder()
-                                .response(parsedResponse)
-                                .retrievedContents(Optional.ofNullable(augmentationResult)
-                                        .map(AugmentationResult::getRetrievedContents)
-                                        .orElse(Collections.emptyList()))
-                                .build() : parsedResponse;
+
+                        if (isReturnTypeResult) {
+                            return Result.builder()
+                                    .content(parsedResponse)
+                                    .tokenUsage(tokenUsageAccumulator)
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .build();
+                        } else {
+                            return parsedResponse;
+                        }
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

@@ -152,28 +152,21 @@ and retrieve relevant content from an `EmbeddingStore` that contains our documen
 ```java
 String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 ```
-### Augmented User Message
-If you need to access the data used for augmenting the user message, you can easily do so by wrapping the response in the `WithSources` class.
 
-Here's an illustration:
+## Accessing Sources
+If you wish to access the sources (retrieved `Content`s used to augment the message),
+you can easily do so by wrapping the response in the `Result<T>` class:
 ```java
 interface Assistant {
 
-    WithSources<String> chat(String userMessage);
+    Result<String> chat(String userMessage);
 }
-... The remaining code is the same :)
+
+Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
+
+String answer = result.content();
+List<Content> sources = result.sources();
 ```
-`WithSources` class contains the information used to augment the user message :
-* `response` : The response to the user's input.
-* `retrievedContents`: The list of documents used to enrich the user message including the `metadata` of each document.
-
-Using the `WithSources` class without specifying a generic type will lead to an `IllegalArgumentException`. For example:
-
-```java
-WithSources chat(String userMessage); // Throw an IllegalArgumentException 
-```
-
-Additionally, attempting to create an `AiService` without a `contentRetriever` while utilizing `WithSources` will also result in an `IllegalArgumentException`.
 
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
