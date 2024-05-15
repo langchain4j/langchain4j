@@ -93,6 +93,12 @@ The `updateMessages()` method is expected to update all messages associated with
 `ChatMessage`s can be stored either separately (e.g., one record/row/object per message) 
 or together (e.g., one record/row/object for the entire `ChatMemory`).
 
+:::note
+Please note that messages evicted from `ChatMemory` will also be evicted from `ChatMemoryStore`.
+When a message is evicted, the `updateMessages()` method is called
+with a list of messages that does not include the evicted message.
+:::
+
 The `getMessages()` method is called whenever the user of the `ChatMemory` requests all messages.
 This typically happens once during each interaction with the LLM.
 The value of the `Object memoryId` argument corresponds to the `id` specified
