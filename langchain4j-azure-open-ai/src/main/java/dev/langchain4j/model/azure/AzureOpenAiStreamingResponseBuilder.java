@@ -95,7 +95,6 @@ class AzureOpenAiStreamingResponseBuilder {
                 }
             }
         }
-        logger.debug("toolExecutionRequestBuilderHashMap: " + toolExecutionRequestBuilderHashMap);
     }
 
     public void append(Completions completions) {
