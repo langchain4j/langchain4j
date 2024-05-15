@@ -56,6 +56,26 @@ public interface EmbeddingStore<Embedded> {
     List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
 
     /**
+     * Removes an embedding from the store.
+     *
+     * @param id The unique identifier of the embedding to be removed.
+     * @return True if the embedding was successfully removed, false otherwise.
+     */
+    default boolean remove(String id) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes multiple embeddings from the store.
+     *
+     * @param ids A list of unique identifiers of the embeddings to be removed.
+     * @return A list of unique identifiers of the embeddings that were successfully removed.
+     */
+    default List<String> removeAll(List<String> ids) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
      * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
      * <br>
      * All search criteria are defined inside the {@link EmbeddingSearchRequest}.

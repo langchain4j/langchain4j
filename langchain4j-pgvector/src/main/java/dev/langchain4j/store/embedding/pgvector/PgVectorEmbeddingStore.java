@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.*;
@@ -236,6 +237,35 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
         List<String> ids = embeddings.stream().map(ignored -> randomUUID()).collect(toList());
         addAllInternal(ids, embeddings, embedded);
         return ids;
+    }
+
+    /**
+     * Removes an embedding from the store based on its unique identifier.
+     *
+     * @param id The unique identifier of the embedding to be removed.
+     * @return A boolean indicating whether the removal was successful or not.
+     */
+    @Override
+    public boolean remove(String id) {
+        try (Connection connection = getConnection()) {
+            PreparedStatement statement = connection.prepareStatement(String.format(
+                    "DELETE FROM %s WHERE embedding_id = ?", table));
+            statement.setObject(1, UUID.fromString(id));
+            return statement.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Removes multiple embeddings from the store.
+     *
+     * @param ids A list of unique identifiers of the embeddings to be removed.
+     * @return A list of unique identifiers of the embeddings that were successfully removed.
+     */
+    @Override
+    public List<String> removeAll(List<String> ids) {
+        return ids.stream().filter(this::remove).collect(Collectors.toList());
     }
 
     /**
