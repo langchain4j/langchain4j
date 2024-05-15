@@ -3,13 +3,11 @@ package dev.langchain4j.model.mistralai;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -100,7 +98,7 @@ public class MistralAiEmbeddingModel extends AbstractEmbeddingModel {
     }
 
     public static MistralAiEmbeddingModelBuilder builder() {
-        for (MistralAiEmbeddingModelBuilderFactory factory : loadFactories(MistralAiEmbeddingModelBuilderFactory.class)){
+        for (MistralAiEmbeddingModelBuilderFactory factory : loadFactories(MistralAiEmbeddingModelBuilderFactory.class)) {
             return factory.get();
         }
         return new MistralAiEmbeddingModelBuilder();

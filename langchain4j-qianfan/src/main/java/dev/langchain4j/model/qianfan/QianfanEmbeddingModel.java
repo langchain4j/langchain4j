@@ -11,7 +11,6 @@ import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanEmbeddingModelBuilderFactory;
 import lombok.Builder;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

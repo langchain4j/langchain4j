@@ -10,7 +10,6 @@ import dev.langchain4j.model.zhipu.shared.Usage;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiEmbeddingModelBuilderFactory;
 import lombok.Builder;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

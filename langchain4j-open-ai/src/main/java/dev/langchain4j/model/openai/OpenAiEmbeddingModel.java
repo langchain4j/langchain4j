@@ -14,8 +14,6 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -84,7 +82,7 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
 
     @Override
     protected Map<String, Integer> dimensionMap() {
-        return new HashMap<>();
+        return OpenAiEmbeddingModelName.embeddingModelDimensionMap();
     }
 
     @Override

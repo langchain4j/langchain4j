@@ -4,7 +4,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
-import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -59,7 +58,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
             embeddings.add(response.toEmbedding());
             totalInputToken += response.getInputTextTokenCount();
         }
-        
+
         return Response.from(
                 embeddings,
                 new TokenUsage(totalInputToken));

@@ -38,7 +38,7 @@ public class AzureOpenAiModelName {
 
     public static Map<String, Integer> embeddingModelDimensionMap() {
         return new HashMap<String, Integer>() {{
-            put(TEXT_DAVINCI_002, 1536);
+            put(TEXT_EMBEDDING_ADA_002, 1536);
             put(TEXT_EMBEDDING_3_SMALL, 1536);
             put(TEXT_EMBEDDING_3_LARGE, 3072);
         }};

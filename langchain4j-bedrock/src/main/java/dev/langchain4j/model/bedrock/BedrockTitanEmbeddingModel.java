@@ -6,7 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,9 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
 
     @Override
     protected Map<String, Integer> dimensionMap() {
-        return new HashMap<>();
+        return new HashMap<String, Integer>() {{
+            put(model, 1536);
+        }};
     }
 
     @Override
