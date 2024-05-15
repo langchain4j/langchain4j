@@ -16,6 +16,17 @@ or as a part of a high-level component like [AI Services](/tutorials/ai-services
 - Special treatment of `SystemMessage`
 - Special treatment of [tool](/tutorials/tools) messages
 
+## Memory vs History
+
+Please note that "memory" and "history" are similar, yet distinct concepts.
+- History keeps **all** messages between the user and AI **intact**. History is what the user sees in the UI. It represents what was actually said.
+- Memory keeps **some information**, which is presented to the LLM to make it behave as if it "remembers" the conversation.
+Memory is quite different from history. Depending on the memory algorithm used, it can modify history in various ways:
+evict some messages, summarize multiple messages, summarize separate messages, remove unimportant details from messages,
+inject extra information (e.g., for RAG) or instructions (e.g., for structured outputs) into messages, and so on.
+
+LangChain4j currently offers only "memory", not "history". If you need to keep an entire history, please do so manually.
+
 ## Eviction policy
 
 An eviction policy is necessary for several reasons:
