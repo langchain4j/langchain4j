@@ -69,7 +69,7 @@ public class PgVectorEmbeddingStoreRemoveIT {
 
         List<String> removedIds = embeddingStore.removeAll(Arrays.asList(id2,id3));
         assertThat(removedIds).hasSize(2);
-        assertThat(relevantIds).containsExactly(id2, id3);
+        assertThat(removedIds).containsExactly(id2, id3);
         relevant = embeddingStore.findRelevant(embedding, 10);
         assertThat(relevant).hasSize(0);
     }
