@@ -1,6 +1,15 @@
 package dev.langchain4j.model.output;
 
-public class ShortOutputParser implements OutputParser<Short> {
+import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.setOf;
+
+public class ShortOutputParser implements TextOutputParser<Short> {
+
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Short.class, short.class);
+    }
 
     @Override
     public Short parse(String string) {

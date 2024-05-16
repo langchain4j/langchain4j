@@ -1,6 +1,15 @@
 package dev.langchain4j.model.output;
 
-public class ByteOutputParser implements OutputParser<Byte> {
+import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.setOf;
+
+public class ByteOutputParser implements TextOutputParser<Byte> {
+
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Byte.class, byte.class);
+    }
 
     @Override
     public Byte parse(String string) {

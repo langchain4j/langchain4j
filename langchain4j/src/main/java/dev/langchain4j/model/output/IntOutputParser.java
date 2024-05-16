@@ -1,6 +1,15 @@
 package dev.langchain4j.model.output;
 
-public class IntOutputParser implements OutputParser<Integer> {
+import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.setOf;
+
+public class IntOutputParser implements TextOutputParser<Integer> {
+
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Integer.class, int.class);
+    }
 
     @Override
     public Integer parse(String string) {

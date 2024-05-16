@@ -3,11 +3,18 @@ package dev.langchain4j.model.output;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Set;
 
-public class DateOutputParser implements OutputParser<Date> {
+import static dev.langchain4j.internal.Utils.setOf;
 
+public class DateOutputParser implements TextOutputParser<Date> {
     private static final String DATE_PATTERN = "yyyy-MM-dd";
     private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat(DATE_PATTERN);
+
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Date.class);
+    }
 
     @Override
     public Date parse(String string) {
