@@ -6,13 +6,13 @@ import static java.util.Collections.unmodifiableList;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collection;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Supplier;
 
 /**
@@ -242,5 +242,17 @@ public class Utils {
     }
 
     return unmodifiableList(list);
+  }
+
+  /**
+   * Returns a set of the given elements.
+   * @param elements The elements to put in the set.
+   * @return A set of the given elements.
+   * @param <T> The type of the elements.
+   */
+  public static <T> Set<T> setOf(final T... elements) {
+    final Set<T> set = new HashSet<>();
+    Collections.addAll(set, elements);
+    return set;
   }
 }
