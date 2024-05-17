@@ -1,7 +1,8 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
 [![](https://img.shields.io/twitter/follow/langchain4j)](https://twitter.com/intent/follow?screen_name=langchain4j)
-[![](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?compact=true&style=flat)](https://discord.gg/JzTFvyjG6R)
+
+[Discord](https://discord.gg/JzTFvyjG6R)
 
 ## Introduction
 
