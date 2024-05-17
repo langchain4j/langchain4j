@@ -191,6 +191,21 @@ and retrieve relevant content from an `EmbeddingStore` that contains our documen
 String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 ```
 
+## Accessing Sources
+If you wish to access the sources (retrieved `Content`s used to augment the message),
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
+
+String answer = result.content();
+List<Content> sources = result.sources();
+```
+
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
 ranging from simple ones to advanced ones.
