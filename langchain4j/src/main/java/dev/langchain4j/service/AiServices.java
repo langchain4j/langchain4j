@@ -322,6 +322,10 @@ public abstract class AiServices<T> {
         context.toolExecutors = new HashMap<>();
 
         for (Object objectWithTool : objectsWithTools) {
+            if (objectWithTool instanceof Class) {
+                throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
+            }
+
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
                 if (method.isAnnotationPresent(Tool.class)) {
                     ToolSpecification toolSpecification = toolSpecificationFrom(method);
