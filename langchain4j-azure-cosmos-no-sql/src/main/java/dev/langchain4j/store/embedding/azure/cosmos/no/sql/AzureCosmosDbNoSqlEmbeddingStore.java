@@ -1,4 +1,5 @@
 package dev.langchain4j.store.embedding.azure.cosmos.no.sql;
+
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
@@ -15,11 +16,11 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import lombok.Builder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,24 +28,27 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.azure.cosmos.no.sql.MappingUtils.toEmbeddingMatch;
 import static dev.langchain4j.store.embedding.azure.cosmos.no.sql.MappingUtils.toNoSqlDbDocument;
 import static java.util.Collections.singletonList;
 
-public class AzureCosmosDBNoSqlEmbeddingStore  implements EmbeddingStore<TextSegment> {
+public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    private static final Logger log = LoggerFactory.getLogger(AzureCosmosDBNoSqlEmbeddingStore.class);
+    private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbNoSqlEmbeddingStore.class);
 
     private final CosmosClient cosmosClient;
-    private final CosmosDatabase database ;
-    private final CosmosContainer container;
     private final String databaseName;
     private final String containerName;
     private final CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy;
     private final List<CosmosVectorIndexSpec> cosmosVectorIndexes;
     private final CosmosContainerProperties containerProperties;
+    private final String embeddingKey;
+    private final CosmosDatabase database;
+    private final CosmosContainer container;
 
-    public AzureCosmosDBNoSqlEmbeddingStore(CosmosClient cosmosClient,
+    // You can read more about vector search using AzureCosmosDBNoSQL here
+    // https://aka.ms/CosmosVectorSearch
+    @Builder
+    public AzureCosmosDbNoSqlEmbeddingStore(CosmosClient cosmosClient,
                                             String databaseName,
                                             String containerName,
                                             CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy,
@@ -74,8 +78,7 @@ public class AzureCosmosDBNoSqlEmbeddingStore  implements EmbeddingStore<TextSeg
             throw new IllegalArgumentException("cosmosVectorIndexes cannot be null or empty for Azure CosmosDB NoSql Embedding Store.");
         }
 
-
-        cosmosClient.createDatabaseIfNotExists(this.databaseName);
+        this.cosmosClient.createDatabaseIfNotExists(this.databaseName);
         this.database = this.cosmosClient.getDatabase(this.databaseName);
 
         containerProperties.setVectorEmbeddingPolicy(this.cosmosVectorEmbeddingPolicy);
@@ -83,10 +86,8 @@ public class AzureCosmosDBNoSqlEmbeddingStore  implements EmbeddingStore<TextSeg
 
         this.database.createContainerIfNotExists(this.containerProperties);
         this.container = this.database.getContainer(this.containerName);
-    }
 
-    public static Builder builder() {
-        return new Builder();
+        this.embeddingKey = this.cosmosVectorEmbeddingPolicy.getVectorEmbeddings().get(0).getPath().substring(1);
     }
 
     @Override
@@ -128,20 +129,21 @@ public class AzureCosmosDBNoSqlEmbeddingStore  implements EmbeddingStore<TextSeg
 
     @Override
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-
-        String embeddingKey = this.cosmosVectorEmbeddingPolicy.getVectorEmbeddings().get(0).getPath().substring(1);
-        String referenceEmbeddingString = Arrays.stream(referenceEmbedding.vectorAsList().toArray())
+        String referenceEmbeddingString = referenceEmbedding.vectorAsList().stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(","));
 
-        String query = String.format("SELECT TOP %d *, VectorDistance(c.%s,[%s]) AS SimilarityScore FROM c ORDER By " +
-                "VectorDistance(c.%s,[%s])", maxResults, embeddingKey, referenceEmbeddingString, embeddingKey, referenceEmbeddingString);
+        String query = String.format("SELECT TOP %d c.id, c.%s, c.text, c.metadata, VectorDistance(c.%s,[%s]) AS score FROM c ORDER By " +
+                "VectorDistance(c.%s,[%s])", maxResults, embeddingKey, embeddingKey, referenceEmbeddingString, embeddingKey, referenceEmbeddingString);
 
-        CosmosPagedIterable<AzureCosmosDBNoSqlMatchedDocument> results = this.container.queryItems(query,
-                new CosmosQueryRequestOptions(), AzureCosmosDBNoSqlMatchedDocument.class);
+        CosmosPagedIterable<AzureCosmosDbNoSqlMatchedDocument> results = this.container.queryItems(query,
+                new CosmosQueryRequestOptions(), AzureCosmosDbNoSqlMatchedDocument.class);
 
+        if (!results.stream().findAny().isPresent()) {
+            return new ArrayList<>();
+        }
         return results.stream()
-                .map( item -> toEmbeddingMatch(null))
+                .map(MappingUtils::toEmbeddingMatch)
                 .collect(Collectors.toList());
     }
 
@@ -151,7 +153,7 @@ public class AzureCosmosDBNoSqlEmbeddingStore  implements EmbeddingStore<TextSeg
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
         if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("do not add empty embeddings to Azure CosmosDB  Mongo vCore");
+            log.info("do not add empty embeddings to Azure CosmosDB NoSQL");
             return;
         }
 
@@ -160,56 +162,12 @@ public class AzureCosmosDBNoSqlEmbeddingStore  implements EmbeddingStore<TextSeg
 
         PartitionKeyDefinition partitionKey = this.containerProperties.getPartitionKeyDefinition();
         List<CosmosItemOperation> operations = new ArrayList<>(ids.size());
-        for (int i=0;i<ids.size();i++) {
+        for (int i = 0; i < ids.size(); i++) {
             operations.add(CosmosBulkOperations.getCreateItemOperation(
                     toNoSqlDbDocument(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i)),
-                            new PartitionKey(ids.get(i))));
+                    new PartitionKey(ids.get(i))));
         }
 
         this.container.executeBulkOperations(operations);
-    }
-
-    public static class Builder {
-        private  CosmosClient cosmosClient;
-        private  String databaseName;
-        private  String containerName;
-        private  CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy;
-        private  List<CosmosVectorIndexSpec> cosmosVectorIndexes;
-        private  CosmosContainerProperties containerProperties;
-
-        public Builder cosmosClient(CosmosClient cosmosClient) {
-            this.cosmosClient = cosmosClient;
-            return this;
-        }
-
-        public Builder databaseName(String  databaseName) {
-            this.databaseName = databaseName;
-            return this;
-        }
-
-        public Builder containerName(String containerName) {
-            this.containerName = containerName;
-            return this;
-        }
-
-        public Builder cosmosVectorEmbeddingPolicy(CosmosVectorEmbeddingPolicy cosmosVectorEmbeddingPolicy) {
-            this.cosmosVectorEmbeddingPolicy = cosmosVectorEmbeddingPolicy;
-            return this;
-        }
-
-        public Builder cosmosVectorIndexes(List<CosmosVectorIndexSpec> cosmosVectorIndexes) {
-            this.cosmosVectorIndexes = cosmosVectorIndexes;
-            return this;
-        }
-
-        public Builder containerProperties(CosmosContainerProperties containerProperties) {
-            this.containerProperties = containerProperties;
-            return this;
-        }
-
-        public AzureCosmosDBNoSqlEmbeddingStore build() {
-            return new AzureCosmosDBNoSqlEmbeddingStore(cosmosClient, databaseName, containerName,
-                    cosmosVectorEmbeddingPolicy, cosmosVectorIndexes, containerProperties);
-        }
     }
 }

@@ -11,14 +11,14 @@ class MappingUtils {
         throw new InstantiationException("can't instantiate this class");
     }
 
-    static AzureCosmosDBNoSqlDocument toNoSqlDbDocument(String id, Embedding embedding, TextSegment textSegment) {
+    static AzureCosmosDbNoSqlDocument toNoSqlDbDocument(String id, Embedding embedding, TextSegment textSegment) {
         if (textSegment == null) {
-            return new AzureCosmosDBNoSqlDocument(id, embedding.vectorAsList(), null, null);
+            return new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), null, null);
         }
-        return new AzureCosmosDBNoSqlDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
+        return new AzureCosmosDbNoSqlDocument(id, embedding.vectorAsList(), textSegment.text(), textSegment.metadata().asMap());
     }
 
-    static EmbeddingMatch<TextSegment> toEmbeddingMatch(AzureCosmosDBNoSqlMatchedDocument matchedDocument) {
+    static EmbeddingMatch<TextSegment> toEmbeddingMatch(AzureCosmosDbNoSqlMatchedDocument matchedDocument) {
         TextSegment textSegment = null;
         if (matchedDocument.getText() != null) {
             textSegment = TextSegment.from(matchedDocument.getText(), Metadata.from(matchedDocument.getMetadata()));
