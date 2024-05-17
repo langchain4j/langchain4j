@@ -317,7 +317,7 @@ public abstract class AiServices<T> {
 
         for (Object objectWithTool : objectsWithTools) {
             if (objectWithTool instanceof Class) {
-                throw illegalConfiguration("Tools list must be an object instance, not a Class.");
+                throw illegalConfiguration("Tool '%s' must be an object, not a class", objectWithTool);
             }
 
             for (Method method : objectWithTool.getClass().getDeclaredMethods()) {
