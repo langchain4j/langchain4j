@@ -80,22 +80,29 @@ public class TokenUsage {
     }
 
     /**
-     * Adds the token usage of two responses together.
+     * Adds two token usages.
+     * <br>
+     * If one of the token usages is null, the other is returned without changes.
+     * <br>
+     * Fields which are null in both responses will be null in the result.
      *
-     * <p>Fields which are null in both responses will be null in the result.
-     *
-     * @param that The token usage to add to this one.
-     * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
+     * @param first The first token usage to add.
+     * @param second The second token usage to add.
+     * @return a new {@link TokenUsage} instance with the sum of token usages.
      */
-    public TokenUsage add(TokenUsage that) {
-        if (that == null) {
-            return new TokenUsage(inputTokenCount, outputTokenCount, totalTokenCount);
+    public static TokenUsage sum(TokenUsage first, TokenUsage second) {
+        if (first == null) {
+            return second;
+        }
+
+        if (second == null) {
+            return first;
         }
 
         return new TokenUsage(
-                sum(this.inputTokenCount, that.inputTokenCount),
-                sum(this.outputTokenCount, that.outputTokenCount),
-                sum(this.totalTokenCount, that.totalTokenCount)
+                sum(first.inputTokenCount, second.inputTokenCount),
+                sum(first.outputTokenCount, second.outputTokenCount),
+                sum(first.totalTokenCount, second.totalTokenCount)
         );
     }
 
