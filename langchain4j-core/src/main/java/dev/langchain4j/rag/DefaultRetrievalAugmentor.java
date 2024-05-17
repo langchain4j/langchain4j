@@ -265,7 +265,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
     }
 
     private static void log(ChatMessage augmentedChatMessage) {
-        log.trace("Augmented chat message: " + escapeNewlines(augmentedChatMessage.text()));
+        log.trace("Augmented chat message: {}", escapeNewlines(augmentedChatMessage.text()));
     }
 
     private static String escapeNewlines(String text) {
