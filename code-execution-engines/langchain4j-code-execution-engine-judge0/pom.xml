@@ -16,7 +16,6 @@
     <description>Implementation of JavaScript and Python code execution engines and tools using Judge0</description>
 
     <properties>
-        <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
