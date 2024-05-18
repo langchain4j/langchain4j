@@ -27,19 +27,20 @@
         <module>langchain4j-chatglm</module>
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
-        <module>langchain4j-qianfan</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
         <module>langchain4j-open-ai</module>
+        <module>langchain4j-qianfan</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-zhipu-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
+        <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
@@ -55,7 +56,6 @@
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
-        <module>langchain4j-azure-cosmos-mongo-vcore</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
