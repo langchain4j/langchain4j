@@ -11,6 +11,9 @@ import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.output.Output;
+import dev.langchain4j.model.output.Output;
+import dev.langchain4j.model.output.OutputParser;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.query.Metadata;
@@ -97,9 +100,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
                         }
 
-                        // TODO give user ability to provide custom OutputParser
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
+                        OutputParser<?> customOutputParser = null;
+                        if (method.isAnnotationPresent(Output.class)) {
+                            customOutputParser = method.getAnnotation(Output.class).value().newInstance();
+                        }
+
+                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType(), customOutputParser);
+                        userMessage = UserMessage.from(userMessage.singleText() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -173,7 +180,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        return parse(response, method.getReturnType());
+
+                        return parse(response, method.getReturnType(), customOutputParser);
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

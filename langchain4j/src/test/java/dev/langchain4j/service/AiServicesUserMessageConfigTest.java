@@ -3,6 +3,10 @@ package dev.langchain4j.service;
 import dev.langchain4j.exception.IllegalConfigurationException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.output.Output;
+import dev.langchain4j.model.output.OutputParser;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +51,12 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("What is the {{it}} of {{country}}?")
         String chat7(@V("it") String it, @V("country") String country);
 
+        // custom output parser
+
+        @Output(CityOutputParser.class)
+        @UserMessage("What is the {{it}} of {{country}}?")
+        City chat8(@V("it") String it, @V("country") String country);
+
         // illegal configuration
 
         String illegalChat1();
@@ -65,6 +75,25 @@ class AiServicesUserMessageConfigTest {
 
 
         // TODO more tests with @UserName, @V, @MemoryId
+    }
+
+    @Data
+    @AllArgsConstructor
+    static class City {
+        private String name;
+    }
+
+    static class CityOutputParser implements OutputParser<City> {
+
+        @Override
+        public City parse(String string) {
+            return new City(string);
+        }
+
+        @Override
+        public String formatInstructions() {
+            return "A name of a city";
+        }
     }
 
     @Test
@@ -163,6 +192,20 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat7("capital", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+    }
+
+    @Test
+    void test_user_message_custom_output_parser_configuration_1() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat8("capital", "Germany"))
+                .isEqualTo(new City("Berlin"));
+        verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?A name of a city")));
     }
 
     @Test

@@ -56,6 +56,10 @@ public class ServiceOutputParser {
     }
 
     public static Object parse(Response<AiMessage> response, Class<?> returnType) {
+        return parse(response, returnType, null);
+    }
+
+    public static Object parse(Response<AiMessage> response, Class<?> returnType, OutputParser<?> customOutputParser) {
 
         if (returnType == Response.class) {
             return response;
@@ -69,6 +73,10 @@ public class ServiceOutputParser {
         String text = aiMessage.text();
         if (returnType == String.class) {
             return text;
+        }
+
+        if (customOutputParser != null) {
+            return customOutputParser.parse(text);
         }
 
         OutputParser<?> outputParser = OUTPUT_PARSERS.get(returnType);
@@ -103,6 +111,41 @@ public class ServiceOutputParser {
         if (returnType.isEnum()) {
             String formatInstructions = new EnumOutputParser(returnType.asSubclass(Enum.class)).formatInstructions();
             return "\nYou must answer strictly in the following format: " + formatInstructions;
+        }
+
+        OutputParser<?> outputParser = OUTPUT_PARSERS.get(returnType);
+        if (outputParser != null) {
+            String formatInstructions = outputParser.formatInstructions();
+            return "\nYou must answer strictly in the following format: " + formatInstructions;
+        }
+
+        if (returnType == List.class || returnType == Set.class) {
+            return "\nYou must put every item on a separate line.";
+        }
+
+        return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
+    }
+
+    public static String outputFormatInstructions(Class<?> returnType, OutputParser<?> customOutputParser) {
+
+        if (returnType == String.class
+                || returnType == AiMessage.class
+                || returnType == TokenStream.class
+                || returnType == Response.class) {
+            return "";
+        }
+
+        if (returnType == void.class) {
+            throw illegalConfiguration("Return type of method '%s' cannot be void");
+        }
+
+        if (returnType.isEnum()) {
+            String formatInstructions = new EnumOutputParser(returnType.asSubclass(Enum.class)).formatInstructions();
+            return "\nYou must answer strictly in the following format: " + formatInstructions;
+        }
+
+        if (customOutputParser != null) {
+            return customOutputParser.formatInstructions();
         }
 
         OutputParser<?> outputParser = OUTPUT_PARSERS.get(returnType);
