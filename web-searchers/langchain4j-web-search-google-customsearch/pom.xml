@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.30.0-SNAPSHOT</version>
+        <version>0.31.0-SNAPSHOT</version>
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -24,10 +24,11 @@
             <artifactId>langchain4j-core</artifactId>
         </dependency>
 
+        <!-- Custom Search API Client Library for Java -->
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-customsearch</artifactId>
-            <version>v1-rev20240103-2.0.0</version>
+            <version>v1-rev20240417-2.0.0</version>
         </dependency>
 
         <dependency>
@@ -72,7 +73,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- Visibility for WebSearchIT -->
+        <!-- Visibility for WebSearchEngineIT -->
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>

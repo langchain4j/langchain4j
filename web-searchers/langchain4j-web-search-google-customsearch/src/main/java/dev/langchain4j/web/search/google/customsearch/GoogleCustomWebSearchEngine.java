@@ -12,14 +12,15 @@ import lombok.Builder;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 import static com.google.api.services.customsearch.v1.model.Search.*;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 /**
  * An implementation of a {@link WebSearchEngine} that uses
@@ -28,6 +29,7 @@ import static java.util.stream.Collectors.toMap;
 public class GoogleCustomWebSearchEngine implements WebSearchEngine {
 
     private final GoogleCustomSearchApiClient googleCustomSearchApiClient;
+    private final Boolean includeImages;
 
     /**
      * Constructs a new GoogleCustomWebSearchEngine with the specified parameters.
@@ -41,6 +43,9 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
      * @param siteRestrict        if your Search Engine is restricted to only searching specific sites, you can set this parameter to true.
      *                            <p>
      *                            Default value is false. View the documentation for more information <a href="https://developers.google.com/custom-search/v1/site_restricted_api">here</a>
+     * @param includeImages       If it is true then include public images relevant to the query. This can add more latency to the search.
+     *                            <p>
+     *                            Default value is false.
      * @param timeout             the timeout duration for API requests
      *                            <p>
      *                            Default value is 60 seconds.
@@ -55,6 +60,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     public GoogleCustomWebSearchEngine(String apiKey,
                                        String csi,
                                        Boolean siteRestrict,
+                                       Boolean includeImages,
                                        Duration timeout,
                                        Boolean logRequestResponse,
                                        Integer maxRetries) {
@@ -67,6 +73,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                 .logRequestResponse(getOrDefault(logRequestResponse,false))
                 .maxRetries(getOrDefault(maxRetries,10))
                 .build();
+        this.includeImages = getOrDefault(includeImages,false);
     }
 
     /**
@@ -86,52 +93,99 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
 
         Queries.Request requestQuery = new Queries.Request();
         requestQuery.setSearchTerms(webSearchRequest.searchTerms());
-        requestQuery.setCount(getOrDefault(webSearchRequest.maxResults(),10));
+        requestQuery.setCount(getOrDefault(webSearchRequest.maxResults(),5));
         requestQuery.setGl(webSearchRequest.geoLocation());
         requestQuery.setLanguage(webSearchRequest.language());
         requestQuery.setStartPage(webSearchRequest.startPage());
         requestQuery.setStartIndex(webSearchRequest.startIndex());
         requestQuery.setSafe(webSearchRequest.safeSearch()?"active":"off");
+        requestQuery.setFilter("1"); // By default, applies filtering to remove duplicate content
+        requestQuery.setCr(setCountryRestrict(webSearchRequest));
         webSearchRequest.additionalParams().forEach(requestQuery::set);
 
+        boolean searchTypeImage = isNotNullOrBlank(requestQuery.getSearchType()) && requestQuery.getSearchType().equals("image");
+
+        // Web search
         Search search = googleCustomSearchApiClient.searchResults(requestQuery);
+        Map<String, Object> searchMetadata = toSearchMetadata(search, searchTypeImage);
+        Map<String, Object> searchInformationMetadata = new HashMap<>();
+
+        // Images search
+        if (includeImages && !searchTypeImage) {
+            requestQuery.setSearchType("image");
+            Search imagesSearch = googleCustomSearchApiClient.searchResults(requestQuery);
+            List<ImageSearchResult> images = imagesSearch.getItems().stream()
+                    .map(result -> ImageSearchResult.from(
+                        result.getTitle(),
+                        URI.create(result.getLink()),
+                        URI.create(result.getImage().getContextLink()),
+                        URI.create(result.getImage().getThumbnailLink())))
+                    .collect(toList());
+            addImagesToSearchInformation(searchInformationMetadata, images);
+        }
+
+
         return WebSearchResults.from(
-                search.getContext()
+                searchMetadata
                 , WebSearchInformationResult.from(
                         Long.valueOf(getOrDefault(search.getSearchInformation().getTotalResults(),"0")),
                         !isNullOrEmpty(search.getQueries().getRequest())
                                 ?calculatePageNumberFromQueries(search.getQueries().getRequest().get(0)):1,
-                        toSearchInforationMap(search.getSearchInformation()))
+                        searchInformationMetadata.isEmpty()?null:searchInformationMetadata)
                 , search.getItems().stream()
                         .map(result -> WebSearchOrganicResult.from(
                                     result.getTitle(),
                                     URI.create(result.getLink()),
                                     result.getSnippet(),
                                     null, // by default google custom search api does not return content
-                                    toResultMetadataMap(result)
+                                    toResultMetadataMap(result, searchTypeImage)
                         )).collect(toList()));
     }
 
-    private static Map<String, Object> toSearchInforationMap(SearchInformation searchInfo) {
-        return Stream.of(new Object[][] {
-                {"searchTime", searchInfo.getSearchTime()},
-                {"formattedSearchTime", searchInfo.getFormattedSearchTime()},
-                {"formattedTotalResults", searchInfo.getFormattedTotalResults()}
-        }).collect(toMap(data -> (String) data[0], data -> data[1]));
+    private static void addImagesToSearchInformation(Map<String, Object> searchInformationMetadata, List<ImageSearchResult> images) {
+        if (!isNullOrEmpty(images)) {
+            searchInformationMetadata.put("images", images);
+        }
     }
 
-    private static Map<String, String> toResultMetadataMap(Result result) {
-        return Stream.of(new Object[][] {
-                {"cacheId", getOrDefault(result.getCacheId(),"")},
-                {"displayLink", getOrDefault(result.getDisplayLink(),"")},
-                {"fileFormat", getOrDefault(result.getFileFormat(),"")},
-                {"htmlTitle", getOrDefault(result.getHtmlTitle(),"")},
-                {"htmlSnippet", getOrDefault(result.getHtmlSnippet(),"")},
-                {"kind", getOrDefault(result.getKind(),"")},
-                {"formattedUrl", getOrDefault(result.getFormattedUrl(),"")},
-                {"htmlFormattedUrl", getOrDefault(result.getHtmlFormattedUrl(),"")},
-                {"pagemap", getOrDefault(result.getPagemap(),"")!=""?result.getPagemap().toString():""}
-        }).collect(toMap(data -> (String) data[0], data -> (String) data[1]));
+    private static Map<String, Object> toSearchMetadata(Search search, Boolean searchTypeImage) {
+        if (search == null) {
+            return null;
+        }
+        Map<String, Object> searchMetadata = new HashMap<>();
+        searchMetadata.put("status", "Success");
+        searchMetadata.put("searchTime", search.getSearchInformation().getSearchTime());
+        searchMetadata.put("processedAt", LocalDateTime.now().toString());
+        searchMetadata.put("searchType", searchTypeImage ? "images" : "web");
+        searchMetadata.putAll(search.getContext());
+        return searchMetadata;
+    }
+
+    private static Map<String, String> toResultMetadataMap(Result result, boolean searchTypeImage) {
+        Map<String, String> metadata = new HashMap<>();
+        // Image search type
+        if (searchTypeImage) {
+            metadata.put("imageLink", result.getLink());
+            metadata.put("contextLink", result.getImage().getContextLink());
+            metadata.put("thumbnailLink", result.getImage().getThumbnailLink());
+            metadata.put("mimeType", result.getMime());
+            return metadata;
+        }
+        // Web search type
+        if (!result.getPagemap().isEmpty()) {
+            result.getPagemap().forEach((key, value) -> {
+                if (key.equals("metatags")) {
+                    if (value instanceof List) {
+                        metadata.put(key, ((List<?>) value).stream().map(Object::toString).reduce((a, b) -> a + ", " + b).orElse(""));
+                    } else {
+                        metadata.put(key, value.toString());
+                    }
+                }
+                metadata.put("mimeType", isNotNullOrBlank(result.getMime()) ? result.getMime() : "text/html");
+            });
+            return metadata;
+        }
+        return null;
     }
 
     private static Integer calculatePageNumberFromQueries(GenericJson query) {
@@ -154,5 +208,66 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         if (startIndex == null)
             return null;
         return ((startIndex -1) / 10) + 1;
+    }
+
+    private static String setCountryRestrict(WebSearchRequest webSearchRequest){
+        return webSearchRequest.additionalParams().get("cr") != null ? webSearchRequest.additionalParams().get("cr").toString()
+               : isNotNullOrBlank(webSearchRequest.geoLocation()) ? "country" + webSearchRequest.geoLocation().toUpperCase()
+               : ""; // default value
+    }
+
+    public static final class ImageSearchResult {
+        private final String title;
+        private final URI imageLink;
+        private final URI contextLink;
+        private final URI thumbnailLink;
+
+        private ImageSearchResult(String title, URI imageLink) {
+            this.title = ensureNotNull(title,"title");
+            this.imageLink = ensureNotNull(imageLink,"imageLink");
+            this.contextLink = null;
+            this.thumbnailLink = null;
+        }
+
+        private ImageSearchResult(String title, URI imageLink, URI contextLink, URI thumbnailLink) {
+            this.title = ensureNotNull(title,"title");
+            this.imageLink = ensureNotNull(imageLink,"imageLink");
+            this.contextLink = contextLink;
+            this.thumbnailLink = thumbnailLink;
+        }
+
+        public String title() {
+            return title;
+        }
+
+        public URI imageLink() {
+            return imageLink;
+        }
+
+        public URI contextLink() {
+            return contextLink;
+        }
+
+        public URI thumbnailLink() {
+            return thumbnailLink;
+        }
+
+        @Override
+        public String toString() {
+            return "ImageSearchResult{" +
+                    "title='" + title + '\'' +
+                    ", imageLink=" + imageLink +
+                    ", contextLink=" + contextLink +
+                    ", thumbnailLink=" + thumbnailLink +
+                    '}';
+        }
+
+        public static ImageSearchResult from(String title, URI imageLink) {
+            return new ImageSearchResult(title, imageLink);
+        }
+
+        public static ImageSearchResult from(String title, URI imageLink, URI contextLink, URI thumbnailLink) {
+            return new ImageSearchResult(title, imageLink, contextLink, thumbnailLink);
+        }
     }
 }

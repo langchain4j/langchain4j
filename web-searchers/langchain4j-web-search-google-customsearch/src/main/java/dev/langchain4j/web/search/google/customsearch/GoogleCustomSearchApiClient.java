@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search.google.customsearch;
 
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -12,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -42,7 +44,7 @@ class GoogleCustomSearchApiClient {
                         "It can be created here: https://cse.google.com/cse/create/new");
             }
 
-            CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(new NetHttpTransport(), new GsonFactory(), new HttpRequestInitializer() {
+            CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(GoogleNetHttpTransport.newTrustedTransport(), new GsonFactory(), new HttpRequestInitializer() {
                 @Override
                 public void initialize(HttpRequest httpRequest) throws IOException {
                     httpRequest.setConnectTimeout(Math.toIntExact(timeout.toMillis()));
@@ -67,6 +69,9 @@ class GoogleCustomSearchApiClient {
             this.logRequestResponse = logRequestResponse;
         } catch (IOException e) {
             LOGGER.error("Error occurred while creating Google Custom Search API client", e);
+            throw new RuntimeException(e);
+        } catch (GeneralSecurityException e) {
+            LOGGER.error("Error occurred while creating Google Custom Search API client using GoogleNetHttpTransport.newTrustedTransport()", e);
             throw new RuntimeException(e);
         }
     }
