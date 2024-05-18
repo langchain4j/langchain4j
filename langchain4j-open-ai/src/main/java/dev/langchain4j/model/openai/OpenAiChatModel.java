@@ -15,7 +15,6 @@ import lombok.Builder;
 
 import java.net.Proxy;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 

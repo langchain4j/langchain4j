@@ -16,6 +16,8 @@ import dev.langchain4j.model.output.Output;
 import dev.langchain4j.model.output.OutputParser;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 
 import java.io.InputStream;
@@ -68,6 +70,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
+            if (method.getReturnType() == Result.class) {
+                validateResultReturnType(method);
+            }
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
@@ -91,22 +96,36 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
-
+                        AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
                                     ? context.chatMemory(memoryId).messages()
                                     : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
-                            userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
+                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
+                        Class<?> returnType = method.getReturnType();
+                        boolean isReturnTypeResult = false;
+                        if (returnType == Result.class) {
+                            isReturnTypeResult = true;
+                            AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
+                            ParameterizedType type = (ParameterizedType) annotatedReturnType.getType();
+                            Type[] typeArguments = type.getActualTypeArguments();
+                            for (Type typeArg : typeArguments) {
+                                returnType = Class.forName(typeArg.getTypeName());
+                            }
+                        }
+                      
                         OutputParser<?> customOutputParser = null;
                         if (method.isAnnotationPresent(Output.class)) {
                             customOutputParser = method.getAnnotation(Output.class).value().newInstance();
                         }
-
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType(), customOutputParser);
-                        userMessage = UserMessage.from(userMessage.singleText() + outputFormatInstructions);
+                      
+                        String outputFormatInstructions = outputFormatInstructions(returnType, customOutputParser);
+                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -125,7 +144,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (method.getReturnType() == TokenStream.class) {
+                        if (returnType == TokenStream.class) {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
@@ -181,7 +200,17 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
 
-                        return parse(response, method.getReturnType(), customOutputParser);
+                        Object parsedResponse = parse(response, returnType, customOutputParser);
+
+                        if (isReturnTypeResult) {
+                            return Result.builder()
+                                    .content(parsedResponse)
+                                    .tokenUsage(tokenUsageAccumulator)
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .build();
+                        } else {
+                            return parsedResponse;
+                        }
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
