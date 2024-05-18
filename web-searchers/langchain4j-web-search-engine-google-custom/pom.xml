@@ -11,10 +11,10 @@
         <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-web-search-google-customsearch</artifactId>
+    <artifactId>langchain4j-web-search-engine-google-custom</artifactId>
     <packaging>jar</packaging>
 
-    <name>LangChain4j :: Web Search :: Google Custom Search</name>
+    <name>LangChain4j :: Web Search Engine :: Google Custom Search</name>
     <description>Implementation of Google Custom Search API for LangChain4j</description>
 
     <dependencies>
