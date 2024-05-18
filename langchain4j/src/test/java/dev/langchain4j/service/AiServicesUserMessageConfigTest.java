@@ -54,8 +54,8 @@ class AiServicesUserMessageConfigTest {
         // custom output parser
 
         @Output(CityOutputParser.class)
-        @UserMessage("What is the {{it}} of {{country}}?")
-        City chat8(@V("it") String it, @V("country") String country);
+        @UserMessage("What is the capital of Germany?")
+        City chat8();
 
         // illegal configuration
 
@@ -203,8 +203,7 @@ class AiServicesUserMessageConfigTest {
                 .build();
 
         // when-then
-        assertThat(aiService.chat8("capital", "Germany"))
-                .isEqualTo(new City("Berlin"));
+        assertThat(aiService.chat8()).isEqualTo(new City("Berlin"));
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?A name of a city")));
     }
 
