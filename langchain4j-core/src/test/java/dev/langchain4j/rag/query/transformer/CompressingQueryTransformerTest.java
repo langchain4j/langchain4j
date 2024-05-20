@@ -52,7 +52,7 @@ class CompressingQueryTransformerTest {
         Collection<Query> queries = transformer.transform(query);
 
         // then
-        assertThat(queries).containsExactly(Query.from(expectedResultingQuery));
+        assertThat(queries).containsExactly(Query.from(expectedResultingQuery, metadata));
 
         assertThat(model.userMessageText()).isEqualTo(
                 "Read and understand the conversation between the User and the AI. " +
@@ -119,7 +119,7 @@ class CompressingQueryTransformerTest {
         Collection<Query> queries = transformer.transform(query);
 
         // then
-        assertThat(queries).containsExactly(Query.from(expectedResultingQuery));
+        assertThat(queries).containsExactly(Query.from(expectedResultingQuery, metadata));
 
         assertThat(model.userMessageText()).isEqualTo(
                 "Given the following conversation: " +
@@ -156,7 +156,7 @@ class CompressingQueryTransformerTest {
         Collection<Query> queries = transformer.transform(query);
 
         // then
-        assertThat(queries).containsExactly(Query.from(expectedResultingQuery));
+        assertThat(queries).containsExactly(Query.from(expectedResultingQuery, metadata));
 
         assertThat(model.userMessageText()).isEqualTo(
                 "Given the following conversation: " +
