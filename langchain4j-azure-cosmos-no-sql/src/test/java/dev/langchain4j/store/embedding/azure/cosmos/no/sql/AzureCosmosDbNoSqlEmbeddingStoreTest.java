@@ -10,6 +10,7 @@ import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
 import com.azure.cosmos.models.CosmosVectorIndexSpec;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +21,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
+@EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
 public class AzureCosmosDbNoSqlEmbeddingStoreTest {
 
     private static final String DATABASE_NAME = "test_db";

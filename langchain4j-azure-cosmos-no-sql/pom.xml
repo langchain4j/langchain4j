@@ -20,11 +20,10 @@
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
         </dependency>
-        <!-- TODO: Update dependency version as soon as the Azure CosmosDB Java SDK is released. -->
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-cosmos</artifactId>
-            <version>4.60.0-beta.1</version>
+            <version>4.60.0</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
