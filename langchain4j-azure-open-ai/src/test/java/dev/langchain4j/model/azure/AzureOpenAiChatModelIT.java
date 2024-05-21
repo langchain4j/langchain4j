@@ -1,7 +1,6 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
-import com.azure.ai.openai.models.ChatCompletionsResponseFormat;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,26 +8,37 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.assertj.core.data.Percentage;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 
 public class AzureOpenAiChatModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiChatModelIT.class);
+
+    Percentage tokenizerPrecision = withPercentage(5);
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
@@ -121,6 +131,7 @@ public class AzureOpenAiChatModelIT {
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
+        assertThat(response.finishReason()).isEqualTo(STOP);
 
         assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
@@ -131,8 +142,7 @@ public class AzureOpenAiChatModelIT {
 
         // We can now call the function with the correct parameters.
         WeatherLocation weatherLocation = BinaryData.fromString(toolExecutionRequest.arguments()).toObject(WeatherLocation.class);
-        int currentWeather = 0;
-        currentWeather = getCurrentWeather(weatherLocation);
+        int currentWeather = getCurrentWeather(weatherLocation);
 
         String weather = String.format("The weather in %s is %d degrees %s.",
                 weatherLocation.getLocation(), currentWeather, weatherLocation.getUnit());
@@ -191,6 +201,85 @@ public class AzureOpenAiChatModelIT {
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
+    }
+
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-35-turbo, gpt-3.5-turbo",
+            "gpt-4,        gpt-4"
+    })
+    void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) throws Exception {
+
+        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .logRequestsAndResponses(true)
+                .build();
+
+        UserMessage userMessage = userMessage("Give three numbers, ordered by size: the sum of two plus two, the square of four, and finally the cube of eight.");
+
+        List<ToolSpecification> toolSpecifications = asList(
+                ToolSpecification.builder()
+                        .name("sum")
+                        .description("returns a sum of two numbers")
+                        .addParameter("first", INTEGER)
+                        .addParameter("second", INTEGER)
+                        .build(),
+                ToolSpecification.builder()
+                        .name("square")
+                        .description("returns the square of one number")
+                        .addParameter("number", INTEGER)
+                        .build(),
+                ToolSpecification.builder()
+                        .name("cube")
+                        .description("returns the cube of one number")
+                        .addParameter("number", INTEGER)
+                        .build()
+        );
+
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), toolSpecifications);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(userMessage);
+        messages.add(aiMessage);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(3);
+        for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
+            assertThat(toolExecutionRequest.name()).isNotEmpty();
+            ToolExecutionResultMessage toolExecutionResultMessage;
+            if (toolExecutionRequest.name().equals("sum")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "4");
+            } else if (toolExecutionRequest.name().equals("square")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 4}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "16");
+            } else if (toolExecutionRequest.name().equals("cube")) {
+                assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"number\": 8}");
+                toolExecutionResultMessage = toolExecutionResultMessage(toolExecutionRequest, "512");
+            } else {
+                throw new AssertionError("Unexpected tool name: " + toolExecutionRequest.name());
+            }
+            messages.add(toolExecutionResultMessage);
+        }
+
+        Response<AiMessage> response2 = model.generate(messages);
+        AiMessage aiMessage2 = response2.content();
+
+        // then
+        logger.debug("Final answer is: " + aiMessage2);
+        assertThat(aiMessage2.text()).contains("4", "16", "512");
+        assertThat(aiMessage2.toolExecutionRequests()).isNull();
+
+        TokenUsage tokenUsage2 = response2.tokenUsage();
+        assertThat(tokenUsage2.inputTokenCount()).isCloseTo(112, tokenizerPrecision);
+        assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage2.totalTokenCount())
+                .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
+
+        assertThat(response2.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
