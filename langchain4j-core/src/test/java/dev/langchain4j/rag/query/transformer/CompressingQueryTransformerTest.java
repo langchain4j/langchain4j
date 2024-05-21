@@ -43,16 +43,16 @@ class CompressingQueryTransformerTest {
 
         Query query = Query.from(userMessage.text(), metadata);
 
-        String expectedResultingQuery = "How old is Klaus Heisler?";
+        String expectedCompressedQuery = "How old is Klaus Heisler?";
 
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedResultingQuery);
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
 
         // when
         Collection<Query> queries = transformer.transform(query);
 
         // then
-        assertThat(queries).containsExactly(Query.from(expectedResultingQuery, metadata));
+        assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
         assertThat(model.userMessageText()).isEqualTo(
                 "Read and understand the conversation between the User and the AI. " +
@@ -110,8 +110,8 @@ class CompressingQueryTransformerTest {
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
         Query query = Query.from(userMessage.text(), metadata);
 
-        String expectedResultingQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedResultingQuery);
+        String expectedCompressedQuery = "How old is Klaus Heisler?";
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = new CompressingQueryTransformer(model, promptTemplate);
 
@@ -119,7 +119,7 @@ class CompressingQueryTransformerTest {
         Collection<Query> queries = transformer.transform(query);
 
         // then
-        assertThat(queries).containsExactly(Query.from(expectedResultingQuery, metadata));
+        assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
         assertThat(model.userMessageText()).isEqualTo(
                 "Given the following conversation: " +
@@ -144,8 +144,8 @@ class CompressingQueryTransformerTest {
         Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
         Query query = Query.from(userMessage.text(), metadata);
 
-        String expectedResultingQuery = "How old is Klaus Heisler?";
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedResultingQuery);
+        String expectedCompressedQuery = "How old is Klaus Heisler?";
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(expectedCompressedQuery);
 
         CompressingQueryTransformer transformer = CompressingQueryTransformer.builder()
                 .chatLanguageModel(model)
@@ -156,7 +156,7 @@ class CompressingQueryTransformerTest {
         Collection<Query> queries = transformer.transform(query);
 
         // then
-        assertThat(queries).containsExactly(Query.from(expectedResultingQuery, metadata));
+        assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
         assertThat(model.userMessageText()).isEqualTo(
                 "Given the following conversation: " +
