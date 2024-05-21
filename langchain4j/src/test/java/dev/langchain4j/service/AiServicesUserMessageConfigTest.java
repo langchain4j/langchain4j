@@ -47,6 +47,9 @@ class AiServicesUserMessageConfigTest {
         @UserMessage("What is the {{it}} of {{country}}?")
         String chat7(@V("it") String it, @V("country") String country);
 
+        @UserMessage("What is the capital of {{it}}?")
+        String chat8();
+
         // illegal configuration
 
         String illegalChat1();
@@ -163,6 +166,19 @@ class AiServicesUserMessageConfigTest {
         assertThat(aiService.chat7("capital", "Germany"))
                 .containsIgnoringCase("Berlin");
         verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?")));
+    }
+
+    @Test
+    void test_user_message_configuration_8() {
+
+        // given
+        AiService aiService = AiServices.builder(AiService.class)
+                .chatLanguageModel(chatLanguageModel)
+                .build();
+
+        // when-then
+        assertThat(aiService.chat8()).containsIgnoringCase("");
+        verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of {{it}}?")));
     }
 
     @Test

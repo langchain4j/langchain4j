@@ -237,6 +237,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
 
+        if (parameters.length == 0) {
+            return new HashMap<>();
+        }
+
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < parameters.length; i++) {
             V annotation = parameters[i].getAnnotation(V.class);
@@ -285,7 +289,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         String template = getUserMessageTemplate(method, args);
         Map<String, Object> variables = findTemplateVariables(template, method, args);
 
-        Prompt prompt = PromptTemplate.from(template).apply(variables);
+        Prompt prompt;
+        if (variables.isEmpty()) {
+            prompt = new Prompt(template);
+        } else {
+            prompt = PromptTemplate.from(template).apply(variables);
+        }
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
