@@ -187,7 +187,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             response = context.chatModel.generate(messages, context.toolSpecifications);
-                            tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
+                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());

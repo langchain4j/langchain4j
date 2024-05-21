@@ -27,19 +27,20 @@
         <module>langchain4j-chatglm</module>
         <module>langchain4j-cohere</module>
         <module>langchain4j-dashscope</module>
-        <module>langchain4j-qianfan</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-local-ai</module>
         <module>langchain4j-mistral-ai</module>
         <module>langchain4j-nomic</module>
         <module>langchain4j-ollama</module>
         <module>langchain4j-open-ai</module>
+        <module>langchain4j-qianfan</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-zhipu-ai</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
+        <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
@@ -71,9 +72,17 @@
 
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
+        <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
+
+        <!-- web search engines -->
+        <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
+        <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
+
+        <!-- experimental -->
+        <module>experimental/langchain4j-experimental-sql</module>
 
     </modules>
 
