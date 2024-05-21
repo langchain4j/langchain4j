@@ -125,7 +125,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
                       
                         String outputFormatInstructions = outputFormatInstructions(returnType, customOutputParser);
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
+                        userMessage = UserMessage.from(userMessage.singleText() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);

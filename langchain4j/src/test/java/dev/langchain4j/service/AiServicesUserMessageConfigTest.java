@@ -92,7 +92,7 @@ class AiServicesUserMessageConfigTest {
 
         @Override
         public String formatInstructions() {
-            return "A name of a city";
+            return " A name of a city";
         }
     }
 
@@ -204,7 +204,7 @@ class AiServicesUserMessageConfigTest {
 
         // when-then
         assertThat(aiService.chat8()).isEqualTo(new City("Berlin"));
-        verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany?A name of a city")));
+        verify(chatLanguageModel).generate(singletonList(userMessage("What is the capital of Germany? A name of a city")));
     }
 
     @Test
