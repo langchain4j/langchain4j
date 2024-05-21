@@ -199,7 +199,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     );
                     listeners.forEach(listener -> {
                         try {
-                            listener.onResponse(modelListenerRequest, modelListenerResponse);
+                            listener.onResponse(modelListenerResponse, modelListenerRequest);
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }
@@ -217,7 +217,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                     );
                     listeners.forEach(listener -> {
                         try {
-                            listener.onError(modelListenerRequest, modelListenerResponse, error);
+                            listener.onError(error, modelListenerResponse, modelListenerRequest);
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }

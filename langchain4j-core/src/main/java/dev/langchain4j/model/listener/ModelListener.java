@@ -1,17 +1,22 @@
 package dev.langchain4j.model.listener;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 
 /**
- * TODO
+ * A generic model listener.
+ * It can listen for requests to and responses from various model types,
+ * such as {@link ChatLanguageModel}, {@link StreamingChatLanguageModel}, {@link EmbeddingModel}, etc.
  */
 @Experimental
 public interface ModelListener<Request, Response> {
 
     /**
-     * TODO
+     * This method is called before the request is sent to the model.
      *
-     * @param request
+     * @param request The request to the model.
      */
     @Experimental
     default void onRequest(Request request) {
@@ -19,26 +24,28 @@ public interface ModelListener<Request, Response> {
     }
 
     /**
-     * TODO
+     * This method is called after the response is received from the model.
      *
-     * @param request
-     * @param response
+     * @param response The response from the model.
+     * @param request  The request this response corresponds to.
      */
     @Experimental
-    default void onResponse(Request request, Response response) {
+    default void onResponse(Response response, Request request) {
 
     }
 
     /**
-     * TODO
-     * TODO when streaming, response can contain what was received BEFORE the error occurred
+     * This method is called when an error occurs.
+     * <br>
+     * When streaming (e.g., using {@link StreamingChatLanguageModel}),
+     * the {@code response} can contain a partial response that was received before the error occurred.
      *
-     * @param request
-     * @param response TODO what was received BEFORE the error occurred
-     * @param error
+     * @param error    The error that occurred.
+     * @param response The partial response, if available.
+     * @param request  The request this error corresponds to.
      */
     @Experimental
-    default void onError(Request request, Response response, Throwable error) {
+    default void onError(Throwable error, Response response, Request request) {
 
     }
 }

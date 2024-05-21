@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
@@ -488,44 +489,65 @@ class OpenAiChatModelIT {
                     }
 
                     @Override
-                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
-                        assertThat(request).isSameAs(requestReference.get());
+                    public void onResponse(ChatLanguageModelResponse response, ChatLanguageModelRequest request) {
                         responseReference.set(response);
+                        assertThat(request).isSameAs(requestReference.get());
                     }
 
                     @Override
-                    public void onError(ChatLanguageModelRequest request,
+                    public void onError(Throwable error,
                                         ChatLanguageModelResponse response,
-                                        Throwable error) {
+                                        ChatLanguageModelRequest request) {
                         fail("onError() must not be called");
                     }
                 };
+
+        OpenAiChatModelName modelName = GPT_3_5_TURBO;
+        double temperature = 0.7;
+        double topP = 1.0;
+        int maxTokens = 7;
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxTokens(maxTokens)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(modelListener))
-                // TODO add other params
                 .build();
 
-        String userMessage = "hello";
+        UserMessage userMessage = UserMessage.from("hello");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("add")
+                .addParameter("a", INTEGER)
+                .addParameter("b", INTEGER)
+                .build();
 
         // when
-        String answer = model.generate(userMessage);
+        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
 
         // then
         ChatLanguageModelRequest request = requestReference.get();
-        assertThat(request.messages()).containsExactly(UserMessage.from(userMessage));
-        // TODO assert all params
+        assertThat(request.model()).isEqualTo(modelName.toString());
+        assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.topP()).isEqualTo(topP);
+        assertThat(request.maxTokens()).isEqualTo(maxTokens);
+        assertThat(request.messages()).containsExactly(userMessage);
+        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
 
         ChatLanguageModelResponse response = responseReference.get();
         assertThat(response.id()).isNotBlank();
         assertThat(response.model()).isNotBlank();
-        assertThat(response.aiMessage().text()).isEqualTo(answer);
-        // TODO assert all params
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        assertThat(response.finishReason()).isNotNull();
+        assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
     @Test
@@ -546,17 +568,17 @@ class OpenAiChatModelIT {
                     }
 
                     @Override
-                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                    public void onResponse(ChatLanguageModelResponse response, ChatLanguageModelRequest request) {
                         fail("onResponse() must not be called");
                     }
 
                     @Override
-                    public void onError(ChatLanguageModelRequest request,
+                    public void onError(Throwable error,
                                         ChatLanguageModelResponse response,
-                                        Throwable error) {
-                        assertThat(request).isSameAs(requestReference.get());
-                        assertThat(response).isNull();
+                                        ChatLanguageModelRequest request) {
                         errorReference.set(error);
+                        assertThat(response).isNull();
+                        assertThat(request).isSameAs(requestReference.get());
                     }
                 };
 
@@ -571,10 +593,11 @@ class OpenAiChatModelIT {
         String userMessage = "this message will fail";
 
         // when
-        Throwable throwable = assertThrows(Throwable.class, () -> model.generate(userMessage));
-        assertThat(throwable).isExactlyInstanceOf(RuntimeException.class); // TODO should be OpenAiHttpException? unpack?
-        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
+        assertThrows(RuntimeException.class, () -> model.generate(userMessage));
 
-        assertThat(errorReference.get()).isSameAs(throwable);
+        // then
+        Throwable throwable = errorReference.get();
+        assertThat(throwable).isExactlyInstanceOf(OpenAiHttpException.class);
+        assertThat(throwable).hasMessageContaining("Incorrect API key provided");
     }
 }

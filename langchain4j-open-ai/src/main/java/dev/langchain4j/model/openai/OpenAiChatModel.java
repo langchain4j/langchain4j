@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -19,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -186,7 +188,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
             );
             listeners.forEach(listener -> {
                 try {
-                    listener.onResponse(modelListenerRequest, modelListenerResponse);
+                    listener.onResponse(modelListenerResponse, modelListenerRequest);
                 } catch (Exception e) {
                     log.warn("Exception while calling model listener", e);
                 }
@@ -194,9 +196,17 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
             return response;
         } catch (RuntimeException e) {
+
+            Throwable error;
+            if (e.getCause() instanceof OpenAiHttpException) {
+                error = e.getCause();
+            } else {
+                error = e;
+            }
+
             listeners.forEach(listener -> {
                 try {
-                    listener.onError(modelListenerRequest, null, e);
+                    listener.onError(error, null, modelListenerRequest);
                 } catch (Exception e2) {
                     log.warn("Exception while calling model listener", e2);
                 }

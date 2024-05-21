@@ -662,47 +662,67 @@ class OpenAiStreamingChatModelIT {
                     }
 
                     @Override
-                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
-                        assertThat(request).isSameAs(requestReference.get());
+                    public void onResponse(ChatLanguageModelResponse response, ChatLanguageModelRequest request) {
                         responseReference.set(response);
+                        assertThat(request).isSameAs(requestReference.get());
                     }
 
                     @Override
-                    public void onError(ChatLanguageModelRequest request,
+                    public void onError(Throwable error,
                                         ChatLanguageModelResponse response,
-                                        Throwable error) {
+                                        ChatLanguageModelRequest request) {
                         fail("onError() must not be called");
                     }
                 };
+
+        OpenAiChatModelName modelName = GPT_3_5_TURBO;
+        double temperature = 0.7;
+        double topP = 1.0;
+        int maxTokens = 7;
 
         StreamingChatLanguageModel model = OpenAiStreamingChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .temperature(0.0)
+                .modelName(modelName)
+                .temperature(temperature)
+                .topP(topP)
+                .maxTokens(maxTokens)
                 .logRequests(true)
                 .logResponses(true)
                 .listeners(singletonList(modelListener))
-                // TODO other params
                 .build();
 
-        String userMessage = "hello";
+        UserMessage userMessage = UserMessage.from("hello");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("add")
+                .addParameter("a", INTEGER)
+                .addParameter("b", INTEGER)
+                .build();
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        model.generate(userMessage, handler);
+        model.generate(singletonList(userMessage), singletonList(toolSpecification), handler);
         AiMessage aiMessage = handler.get().content();
 
         // then
         ChatLanguageModelRequest request = requestReference.get();
-        assertThat(request.messages()).containsExactly(UserMessage.from(userMessage));
-        // TODO assert all params
+        assertThat(request.model()).isEqualTo(modelName.toString());
+        assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.topP()).isEqualTo(topP);
+        assertThat(request.maxTokens()).isEqualTo(maxTokens);
+        assertThat(request.messages()).containsExactly(userMessage);
+        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
 
         ChatLanguageModelResponse response = responseReference.get();
         assertThat(response.id()).isNotBlank();
         assertThat(response.model()).isNotBlank();
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        assertThat(response.finishReason()).isNotNull();
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
-        // TODO assert all params
     }
 
     @Test
@@ -723,17 +743,17 @@ class OpenAiStreamingChatModelIT {
                     }
 
                     @Override
-                    public void onResponse(ChatLanguageModelRequest request, ChatLanguageModelResponse response) {
+                    public void onResponse(ChatLanguageModelResponse response, ChatLanguageModelRequest request) {
                         fail("onResponse() must not be called");
                     }
 
                     @Override
-                    public void onError(ChatLanguageModelRequest request,
+                    public void onError(Throwable error,
                                         ChatLanguageModelResponse response,
-                                        Throwable error) {
-                        assertThat(request).isSameAs(requestReference.get());
-                        assertThat(response).isNull(); // can be non-null if it fails in the middle of streaming
+                                        ChatLanguageModelRequest request) {
                         errorReference.set(error);
+                        assertThat(response).isNull(); // can be non-null if it fails in the middle of streaming
+                        assertThat(request).isSameAs(requestReference.get());
                     }
                 };
 

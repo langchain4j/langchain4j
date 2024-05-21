@@ -16,7 +16,6 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -25,7 +24,6 @@ import static dev.ai4j.openai4j.chat.ContentType.TEXT;
 import static dev.ai4j.openai4j.chat.ToolType.FUNCTION;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.lang.String.format;
@@ -289,13 +287,12 @@ public class InternalOpenAiHelper {
                                                                List<ChatMessage> messages,
                                                                List<ToolSpecification> toolSpecifications) {
         return ChatLanguageModelRequest.builder()
-                .system(null) // TODO
-                .modelName(request.model())
+                .model(request.model())
                 .temperature(request.temperature())
                 .topP(request.topP())
                 .maxTokens(request.maxTokens())
-                .messages(new ArrayList<>(messages))
-                .toolSpecifications(copyIfNotNull(toolSpecifications))
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
                 .build();
     }
 
