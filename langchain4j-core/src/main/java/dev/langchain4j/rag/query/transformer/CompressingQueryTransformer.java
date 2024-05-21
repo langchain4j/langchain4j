@@ -71,8 +71,11 @@ public class CompressingQueryTransformer implements QueryTransformer {
         }
 
         Prompt prompt = createPrompt(query, format(chatMemory));
-        String compressedQuery = chatLanguageModel.generate(prompt.text());
-        return singletonList(Query.from(compressedQuery, query.metadata()));
+        String compressedQueryText = chatLanguageModel.generate(prompt.text());
+        Query compressedQuery = query.metadata() == null
+                ? Query.from(compressedQueryText)
+                : Query.from(compressedQueryText, query.metadata());
+        return singletonList(compressedQuery);
     }
 
     protected String format(List<ChatMessage> chatMemory) {
