@@ -1,14 +1,20 @@
 package dev.langchain4j.rag.query.transformer;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Collection;
+import java.util.List;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ExpandingQueryTransformerTest {
@@ -21,7 +27,14 @@ class ExpandingQueryTransformerTest {
     void should_expand_query(String queriesString) {
 
         // given
-        Query query = Query.from("query");
+        List<ChatMessage> chatMemory = asList(
+                UserMessage.from("Hi"),
+                AiMessage.from("Hello")
+        );
+        UserMessage userMessage = UserMessage.from("query");
+        Metadata metadata = Metadata.from(userMessage, "default", chatMemory);
+
+        Query query = Query.from(userMessage.singleText(), metadata);
 
         ChatModelMock model = ChatModelMock.thatAlwaysResponds(queriesString);
 
@@ -32,9 +45,9 @@ class ExpandingQueryTransformerTest {
 
         // then
         assertThat(queries).containsExactly(
-                Query.from("query 1"),
-                Query.from("query 2"),
-                Query.from("query 3")
+                Query.from("query 1", metadata),
+                Query.from("query 2", metadata),
+                Query.from("query 3", metadata)
         );
         assertThat(model.userMessageText()).isEqualTo(
                 "Generate 3 different versions of a provided user query. " +

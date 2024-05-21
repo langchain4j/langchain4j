@@ -33,8 +33,6 @@ public abstract class WebSearchContentRetrieverIT extends WebSearchEngineIT {
                                     .containsIgnoringCase("New York");
                             assertThat(content.textSegment().metadata().get("url"))
                                     .startsWith("https://");
-                            assertThat(content.textSegment().metadata().get("title"))
-                                    .isNotBlank();
                         }
                 );
     }

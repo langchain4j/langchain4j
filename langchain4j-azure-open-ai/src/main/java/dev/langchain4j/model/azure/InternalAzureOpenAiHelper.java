@@ -127,11 +127,11 @@ class InternalAzureOpenAiHelper {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
-            chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
+            chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
+            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
@@ -178,37 +178,45 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    private static FunctionCall functionCallFrom(ChatMessage message) {
+    private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             if (aiMessage.hasToolExecutionRequests()) {
-                // TODO switch to tools once supported
-                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-                return new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments());
+                return aiMessage.toolExecutionRequests().stream()
+                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(toolExecutionRequest.id(), new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
+                        .collect(toList());
+
             }
         }
-
         return null;
     }
 
-    public static List<FunctionDefinition> toFunctions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
-                .map(InternalAzureOpenAiHelper::toFunction)
+                .map(InternalAzureOpenAiHelper::toToolDefinition)
                 .collect(toList());
     }
 
-    private static FunctionDefinition toFunction(ToolSpecification toolSpecification) {
+    private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
         functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
-        return functionDefinition;
+        return new ChatCompletionsFunctionToolDefinition(functionDefinition);
+    }
+
+    public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        return BinaryData.fromObject(toolToCall);
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
+
     static {
         NO_PARAMETER_DATA.put("type", "object");
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
+
     private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
@@ -224,6 +232,7 @@ class InternalAzureOpenAiHelper {
         private final String type = "object";
 
         private Map<String, Map<String, Object>> properties = new HashMap<>();
+
         private List<String> required = new ArrayList<>();
 
         public String getType() {
@@ -251,14 +260,19 @@ class InternalAzureOpenAiHelper {
         if (chatResponseMessage.getContent() != null) {
             return aiMessage(chatResponseMessage.getContent());
         } else {
-            FunctionCall functionCall = chatResponseMessage.getFunctionCall();
+            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
+                    .stream()
+                    .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
+                    .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
+                    .map(chatCompletionsFunctionToolCall ->
+                            ToolExecutionRequest.builder()
+                                    .id(chatCompletionsFunctionToolCall.getId())
+                                    .name(chatCompletionsFunctionToolCall.getFunction().getName())
+                                    .arguments(chatCompletionsFunctionToolCall.getFunction().getArguments())
+                                    .build())
+                    .collect(toList());
 
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(functionCall.getName())
-                    .arguments(functionCall.getArguments())
-                    .build();
-
-            return aiMessage(toolExecutionRequest);
+            return aiMessage(toolExecutionRequests);
         }
     }
 

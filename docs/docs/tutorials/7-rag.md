@@ -29,12 +29,48 @@ Text documents are converted into vectors of numbers using embedding models.
 It then finds and ranks documents based on the cosine similarity
 or other similarity/distance measures between the query vector and document vectors,
 thus capturing deeper semantic meanings.
-- Hybrid. Combining multiple methods usually improves the effectiveness of the search.
+- Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
-This page will focus solely on vector search.
+Currently, this page focuses mostly on vector search.
 Full-text and hybrid search are currently supported only by Azure AI Search integration,
 see `AzureAiSearchContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
+
+
+## RAG Stages
+THe RAG process is divided into 2 distinct stages: indexing and retrieval.
+LangChain4j provides tools for both stages.
+
+### Indexing
+
+During the indexing stage, documents are pre-processed in a way that enables efficient search during the retrieval stage.
+
+This process can vary depending on the information retrieval method used.
+For vector search, this typically involves cleaning the documents, enriching them with additional data and metadata,
+splitting them into smaller segments (aka chunking), embedding these segments, and finally storing them in an embedding store (aka vector database).
+
+The indexing stage usually occurs offline, meaning it does not require end users to wait for its completion.
+This can be achieved through, for example, a cron job that re-indexes internal company documentation once a week during the weekend.
+The code responsible for indexing can also be a separate application that only handles indexing tasks.
+
+However, in some scenarios, end users may want to upload their custom documents to make them accessible to the LLM.
+In this case, indexing should be performed online and be a part of the main application.
+
+Here is a simplified diagram of the indexing stage:
+[![](/img/rag-ingestion.png)](/tutorials/rag)
+
+
+### Retrieval
+
+The retrieval stage usually occurs online, when a user submits a question that should be answered using the indexed documents.
+
+This process can vary depending on the information retrieval method used.
+For vector search, this typically involves embedding the user's query (question)
+and performing a similarity search in the embedding store.
+Relevant segments (pieces of the original documents) are then injected into the prompt and sent to the LLM.
+
+Here is a simplified diagram of the retrieval stage:
+[![](/img/rag-retrieval.png)](/tutorials/rag)
 
 
 ## Easy RAG
@@ -153,6 +189,21 @@ and retrieve relevant content from an `EmbeddingStore` that contains our documen
 5. And now we are ready to chat with it!
 ```java
 String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
+```
+
+## Accessing Sources
+If you wish to access the sources (retrieved `Content`s used to augment the message),
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
+
+String answer = result.content();
+List<Content> sources = result.sources();
 ```
 
 ## RAG APIs
@@ -396,11 +447,13 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 
 ### Embedding Store
 The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.
-It allows for the storage and efficient search of similar `Embedding`s.
-
-`EmbeddingStore` can store `Embedding`s alone or together with the corresponding `TextSegment`.
+It allows for the storage and efficient search of similar (close in the embedding space) `Embedding`s.
 
 Currently supported embedding stores can be found [here](/category/embedding-stores).
+
+`EmbeddingStore` can store `Embedding`s alone or together with the corresponding `TextSegment`:
+- It can store only `Embedding`, by ID. Original embedded data can be stored elsewhere and correlated using the ID.
+- It can store both `Embedding` and the original data that has been embedded (usually `TextSegment`).
 
 <details>
 <summary>Useful methods</summary>
@@ -414,37 +467,78 @@ Currently supported embedding stores can be found [here](/category/embedding-sto
 </details>
 
 
-###  EmbeddingSearchRequest
-More details are coming soon.
+####  EmbeddingSearchRequest
+The `EmbeddingSearchRequest` represents a request to search in an `EmbeddingStore`.
+It has the following attributes:
+- `Embedding queryEmbedding`: The embedding used as a reference.
+- `int maxResults`: The maximum number of results to return. This is an optional parameter. Default: 3.
+- `double minScore`: The minimum score, ranging from 0 to 1 (inclusive). Only embeddings with a score >= `minScore` will be returned. This is an optional parameter. Default: 0.
+- `Filter filter`: The filter to be applied to the `Metadata` during search. Only `TextSegment`s whose `Metadata` matches the `Filter` will be returned.
+
+#### Filter
+More details about `Filter` can be found [here](https://github.com/langchain4j/langchain4j/pull/610).
 
 
-### Filter
-More details are coming soon.
+#### EmbeddingSearchResult
+The EmbeddingSearchResult represents a result of a search in an `EmbeddingStore`.
+It contains the list of `EmbeddingMatch`es.
 
 
-### EmbeddingSearchResponse
-More details are coming soon.
-
-
-### Embedding Match
-More details are coming soon.
+#### Embedding Match
+The `EmbeddingMatch` represents a matched `Embedding` along with its relevance score, ID, and original embedded data (usually `TextSegment`).
 
 
 ### Embedding Store Ingestor
-More details are coming soon.
+The `EmbeddingStoreIngestor` represents an ingestion pipeline and is responsible for 
+ingesting `Document`s into an `EmbeddingStore`.
 
+In the simplest configuration, `EmbeddingStoreIngestor` embeds provided `Document`s
+using a specified `EmbeddingModel` and stores them, along with their `Embedding`s in a specified `EmbeddingStore`:
 
-## RAG Stages
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+        .embeddingModel(embeddingModel)
+        .embeddingStore(embeddingStore)
+        .build();
 
+ingestor.ingest(document1);
+ingestor.ingest(document2, document3);
+ingestor.ingest(List.of(document4, document5, document6));
+```
 
-### Ingestion 
+Optionally, the `EmbeddingStoreIngestor` can transform `Document`s using a specified `DocumentTransformer`.
+This can be useful if you want to clean, enrich, or format `Document`s before embedding them.
 
-[![](/img/rag-ingestion.png)](/tutorials/rag)
+Optionally, the `EmbeddingStoreIngestor` can split `Document`s into `TextSegment`s using a specified `DocumentSplitter`.
+This can be useful if `Document`s are big, and you want to split them into smaller `TextSegment`s to improve the quality
+of similarity searches and reduce the size and cost of a prompt sent to the LLM.
 
+Optionally, the `EmbeddingStoreIngestor` can transform `TextSegment`s using a specified `TextSegmentTransformer`.
+This can be useful if you want to clean, enrich, or format `TextSegment`s before embedding them.
 
-### Retrieval
+An example:
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
 
-[![](/img/rag-retrieval.png)](/tutorials/rag)
+    // adding userId metadata entry to each Document to be able to filter by it later
+    .documentTransformer(document -> {
+        document.metadata().put("userId", "12345");
+        return document;
+    })
+
+    // splitting each Document into TextSegments of 1000 tokens each, with a 200-token overlap
+    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenizer()))
+
+    // adding a name of the Document to each TextSegment to improve the quality of search
+    .textSegmentTransformer(textSegment -> TextSegment.from(
+            textSegment.metadata("file_name") + "\n" + textSegment.text(),
+            textSegment.metadata()
+    ))
+
+    .embeddingModel(embeddingModel)
+    .embeddingStore(embeddingStore)
+    .build();
+```
 
 
 ## Advanced RAG
