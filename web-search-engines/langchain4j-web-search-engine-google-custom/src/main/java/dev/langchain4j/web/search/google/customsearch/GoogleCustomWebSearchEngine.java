@@ -3,11 +3,7 @@ package dev.langchain4j.web.search.google.customsearch;
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.customsearch.v1.model.Result;
 import com.google.api.services.customsearch.v1.model.Search;
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.WebSearchInformationResult;
-import dev.langchain4j.web.search.WebSearchOrganicResult;
-import dev.langchain4j.web.search.WebSearchRequest;
-import dev.langchain4j.web.search.WebSearchResults;
+import dev.langchain4j.web.search.*;
 import lombok.Builder;
 
 import java.net.URI;
@@ -17,9 +13,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.api.services.customsearch.v1.model.Search.*;
+import static com.google.api.services.customsearch.v1.model.Search.Queries;
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -34,27 +30,30 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     /**
      * Constructs a new GoogleCustomWebSearchEngine with the specified parameters.
      *
-     * @param apiKey              the Google Search API key for accessing the Google Custom Search API
-     *                            <p>
-     *                            You can just generate an API key <a href="https://developers.google.com/custom-search/docs/paid_element#api_key">here</a>
-     * @param csi                 the Custom Search ID parameter for search the entire web
-     *                            <p>
-     *                            You can create a Custom Search Engine <a href="https://cse.google.com/cse/create/new">here</a>
-     * @param siteRestrict        if your Search Engine is restricted to only searching specific sites, you can set this parameter to true.
-     *                            <p>
-     *                            Default value is false. View the documentation for more information <a href="https://developers.google.com/custom-search/v1/site_restricted_api">here</a>
-     * @param includeImages       If it is true then include public images relevant to the query. This can add more latency to the search.
-     *                            <p>
-     *                            Default value is false.
-     * @param timeout             the timeout duration for API requests
-     *                            <p>
-     *                            Default value is 60 seconds.
-     * @param logRequestResponse  whether to log API request and response
-     *                            <p>
-     *                            Default value is false.
-     * @param maxRetries          the maximum number of retries for API requests
-     *                            <p>
-     *                            Default value is 10.
+     * @param apiKey        the Google Search API key for accessing the Google Custom Search API
+     *                      <p>
+     *                      You can just generate an API key <a href="https://developers.google.com/custom-search/docs/paid_element#api_key">here</a>
+     * @param csi           the Custom Search ID parameter for search the entire web
+     *                      <p>
+     *                      You can create a Custom Search Engine <a href="https://cse.google.com/cse/create/new">here</a>
+     * @param siteRestrict  if your Search Engine is restricted to only searching specific sites, you can set this parameter to true.
+     *                      <p>
+     *                      Default value is false. View the documentation for more information <a href="https://developers.google.com/custom-search/v1/site_restricted_api">here</a>
+     * @param includeImages If it is true then include public images relevant to the query. This can add more latency to the search.
+     *                      <p>
+     *                      Default value is false.
+     * @param timeout       the timeout duration for API requests
+     *                      <p>
+     *                      Default value is 60 seconds.
+     * @param maxRetries    the maximum number of retries for API requests
+     *                      <p>
+     *                      Default value is 10.
+     * @param logRequests   whether to log API requests
+     *                      <p>
+     *                      Default value is false.
+     * @param logResponses  whether to log API responses
+     *                      <p>
+     *                      Default value is false.
      */
     @Builder
     public GoogleCustomWebSearchEngine(String apiKey,
@@ -62,28 +61,30 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
                                        Boolean siteRestrict,
                                        Boolean includeImages,
                                        Duration timeout,
-                                       Boolean logRequestResponse,
-                                       Integer maxRetries) {
+                                       Integer maxRetries,
+                                       Boolean logRequests,
+                                       Boolean logResponses) {
 
         this.googleCustomSearchApiClient = GoogleCustomSearchApiClient.builder()
                 .apiKey(apiKey)
                 .csi(csi)
-                .siteRestrict(getOrDefault(siteRestrict,false))
-                .timeout(getOrDefault(timeout,Duration.ofSeconds(60)))
-                .logRequestResponse(getOrDefault(logRequestResponse,false))
-                .maxRetries(getOrDefault(maxRetries,10))
+                .siteRestrict(getOrDefault(siteRestrict, false))
+                .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
+                .maxRetries(getOrDefault(maxRetries, 3))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.includeImages = getOrDefault(includeImages,false);
+        this.includeImages = getOrDefault(includeImages, false);
     }
 
     /**
      * Creates a new builder for constructing a GoogleCustomWebSearchEngine with the specified API key and Custom Search ID.
      *
-     * @param apiKey  the API key for accessing the Google Custom Search API
-     * @param csi     the Custom Search ID parameter for search the entire web
+     * @param apiKey the API key for accessing the Google Custom Search API
+     * @param csi    the Custom Search ID parameter for search the entire web
      * @return a new builder instance
      */
-    public static GoogleCustomWebSearchEngine withApiKeyAndCsi(String apiKey, String csi){
+    public static GoogleCustomWebSearchEngine withApiKeyAndCsi(String apiKey, String csi) {
         return GoogleCustomWebSearchEngine.builder().apiKey(apiKey).csi(csi).build();
     }
 
@@ -93,17 +94,17 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
 
         Queries.Request requestQuery = new Queries.Request();
         requestQuery.setSearchTerms(webSearchRequest.searchTerms());
-        requestQuery.setCount(getOrDefault(webSearchRequest.maxResults(),5));
+        requestQuery.setCount(getOrDefault(webSearchRequest.maxResults(), 5));
         requestQuery.setGl(webSearchRequest.geoLocation());
         requestQuery.setLanguage(webSearchRequest.language());
         requestQuery.setStartPage(webSearchRequest.startPage());
         requestQuery.setStartIndex(webSearchRequest.startIndex());
-        requestQuery.setSafe(webSearchRequest.safeSearch()?"active":"off");
+        requestQuery.setSafe(webSearchRequest.safeSearch() ? "active" : "off");
         requestQuery.setFilter("1"); // By default, applies filtering to remove duplicate content
         requestQuery.setCr(setCountryRestrict(webSearchRequest));
         webSearchRequest.additionalParams().forEach(requestQuery::set);
 
-        boolean searchTypeImage = isNotNullOrBlank(requestQuery.getSearchType()) && requestQuery.getSearchType().equals("image");
+        boolean searchTypeImage = "image".equals(requestQuery.getSearchType());
 
         // Web search
         Search search = googleCustomSearchApiClient.searchResults(requestQuery);
@@ -116,29 +117,28 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
             Search imagesSearch = googleCustomSearchApiClient.searchResults(requestQuery);
             List<ImageSearchResult> images = imagesSearch.getItems().stream()
                     .map(result -> ImageSearchResult.from(
-                        result.getTitle(),
-                        URI.create(result.getLink()),
-                        URI.create(result.getImage().getContextLink()),
-                        URI.create(result.getImage().getThumbnailLink())))
+                            result.getTitle(),
+                            URI.create(result.getLink()),
+                            URI.create(result.getImage().getContextLink()),
+                            URI.create(result.getImage().getThumbnailLink())))
                     .collect(toList());
             addImagesToSearchInformation(searchInformationMetadata, images);
         }
 
-
         return WebSearchResults.from(
-                searchMetadata
-                , WebSearchInformationResult.from(
-                        Long.valueOf(getOrDefault(search.getSearchInformation().getTotalResults(),"0")),
+                searchMetadata,
+                WebSearchInformationResult.from(
+                        Long.valueOf(getOrDefault(search.getSearchInformation().getTotalResults(), "0")),
                         !isNullOrEmpty(search.getQueries().getRequest())
-                                ?calculatePageNumberFromQueries(search.getQueries().getRequest().get(0)):1,
-                        searchInformationMetadata.isEmpty()?null:searchInformationMetadata)
-                , search.getItems().stream()
+                                ? calculatePageNumberFromQueries(search.getQueries().getRequest().get(0)) : 1,
+                        searchInformationMetadata.isEmpty() ? null : searchInformationMetadata),
+                search.getItems().stream()
                         .map(result -> WebSearchOrganicResult.from(
-                                    result.getTitle(),
-                                    URI.create(result.getLink()),
-                                    result.getSnippet(),
-                                    null, // by default google custom search api does not return content
-                                    toResultMetadataMap(result, searchTypeImage)
+                                result.getTitle(),
+                                URI.create(result.getLink()),
+                                result.getSnippet(),
+                                null, // by default google custom search api does not return content
+                                toResultMetadataMap(result, searchTypeImage)
                         )).collect(toList()));
     }
 
@@ -195,7 +195,7 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         }
         if (query instanceof Queries.Request) {
             Queries.Request currentPage = (Queries.Request) query;
-            return calculatePageNumber(getOrDefault(currentPage.getStartIndex(),1));
+            return calculatePageNumber(getOrDefault(currentPage.getStartIndex(), 1));
         }
         if (query instanceof Queries.NextPage) {
             Queries.NextPage nextPage = (Queries.NextPage) query;
@@ -207,13 +207,13 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
     private static Integer calculatePageNumber(Integer startIndex) {
         if (startIndex == null)
             return null;
-        return ((startIndex -1) / 10) + 1;
+        return ((startIndex - 1) / 10) + 1;
     }
 
-    private static String setCountryRestrict(WebSearchRequest webSearchRequest){
+    private static String setCountryRestrict(WebSearchRequest webSearchRequest) {
         return webSearchRequest.additionalParams().get("cr") != null ? webSearchRequest.additionalParams().get("cr").toString()
-               : isNotNullOrBlank(webSearchRequest.geoLocation()) ? "country" + webSearchRequest.geoLocation().toUpperCase()
-               : ""; // default value
+                : isNotNullOrBlank(webSearchRequest.geoLocation()) ? "country" + webSearchRequest.geoLocation().toUpperCase()
+                : ""; // default value
     }
 
     public static final class ImageSearchResult {
@@ -223,15 +223,15 @@ public class GoogleCustomWebSearchEngine implements WebSearchEngine {
         private final URI thumbnailLink;
 
         private ImageSearchResult(String title, URI imageLink) {
-            this.title = ensureNotNull(title,"title");
-            this.imageLink = ensureNotNull(imageLink,"imageLink");
+            this.title = ensureNotNull(title, "title");
+            this.imageLink = ensureNotNull(imageLink, "imageLink");
             this.contextLink = null;
             this.thumbnailLink = null;
         }
 
         private ImageSearchResult(String title, URI imageLink, URI contextLink, URI thumbnailLink) {
-            this.title = ensureNotNull(title,"title");
-            this.imageLink = ensureNotNull(imageLink,"imageLink");
+            this.title = ensureNotNull(title, "title");
+            this.imageLink = ensureNotNull(imageLink, "imageLink");
             this.contextLink = contextLink;
             this.thumbnailLink = thumbnailLink;
         }

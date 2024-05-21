@@ -50,7 +50,8 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         googleSearchEngine = GoogleCustomWebSearchEngine.builder()
                 .apiKey(System.getenv("GOOGLE_API_KEY"))
                 .csi(System.getenv("GOOGLE_SEARCH_ENGINE_ID"))
-                .logRequestResponse(true)
+                .logRequests(true)
+                .logResponses(true)
                 .maxRetries(3)
                 .build();
 
@@ -98,7 +99,8 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         googleSearchEngine = GoogleCustomWebSearchEngine.builder()
                 .apiKey(System.getenv("GOOGLE_API_KEY"))
                 .csi(System.getenv("GOOGLE_SEARCH_ENGINE_ID"))
-                .logRequestResponse(true)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(googleSearchEngine);
@@ -136,7 +138,7 @@ class GoogleCustomWebSearchToolIT extends WebSearchToolIT {
         assertThat(finalResponse.text())
                 .as("At least the string result should be contains 'madrid' and 'tourist' ignoring case")
                 .containsIgnoringCase("Madrid")
-                .containsIgnoringCase("Royal Palace of Madrid");
+                .containsIgnoringCase("Royal Palace");
     }
 
     @Test

@@ -7,7 +7,6 @@ import com.google.api.client.http.HttpRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.stream.Collectors;
 
 class GoogleSearchApiHttpRequestLoggingInterceptor implements HttpExecuteInterceptor {
@@ -15,11 +14,11 @@ class GoogleSearchApiHttpRequestLoggingInterceptor implements HttpExecuteInterce
     private static final Logger LOGGER = LoggerFactory.getLogger(GoogleSearchApiHttpRequestLoggingInterceptor.class);
 
     @Override
-    public void intercept(HttpRequest httpRequest) throws IOException {
+    public void intercept(HttpRequest httpRequest) {
         this.log(httpRequest);
     }
 
-    private void log(HttpRequest httpRequest){
+    private void log(HttpRequest httpRequest) {
         try {
             LOGGER.debug("Request:\n- method: {}\n- url: {}\n- headers: {}\n- body: {}",
                     httpRequest.getRequestMethod(), httpRequest.getUrl(), getHeaders(httpRequest.getHeaders()), getBody(httpRequest.getContent()));
@@ -28,12 +27,12 @@ class GoogleSearchApiHttpRequestLoggingInterceptor implements HttpExecuteInterce
         }
     }
 
-    private static String getHeaders(HttpHeaders headers){
+    private static String getHeaders(HttpHeaders headers) {
         return headers.entrySet().stream()
                 .map(entry -> String.format("[%s: %s]", entry.getKey(), entry.getValue())).collect(Collectors.joining(", "));
     }
 
-    private static String getBody(HttpContent content){
+    private static String getBody(HttpContent content) {
         try {
             if (content == null) {
                 return "";

@@ -7,19 +7,18 @@ import com.google.api.client.json.gson.GsonFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.util.stream.Collectors;
 
-class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInterceptor  {
+class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInterceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GoogleSearchApiHttpResponseLoggingInterceptor.class);
 
     @Override
-    public void interceptResponse(HttpResponse httpResponse) throws IOException {
+    public void interceptResponse(HttpResponse httpResponse) {
         this.log(httpResponse);
     }
 
-    private void log(HttpResponse httpResponse){
+    private void log(HttpResponse httpResponse) {
         try {
             httpResponse.getRequest().setParser(new GsonFactory().createJsonObjectParser());
             LOGGER.debug("Response:\n- status code: {}\n- headers: {}",
@@ -29,7 +28,7 @@ class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInter
         }
     }
 
-    private static String getHeaders(HttpHeaders headers){
+    private static String getHeaders(HttpHeaders headers) {
         return headers.entrySet().stream()
                 .map(entry -> String.format("[%s: %s]", entry.getKey(), entry.getValue())).collect(Collectors.joining(", "));
     }

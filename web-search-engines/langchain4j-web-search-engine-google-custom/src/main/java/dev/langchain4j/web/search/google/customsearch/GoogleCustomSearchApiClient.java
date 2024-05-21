@@ -3,7 +3,6 @@ package dev.langchain4j.web.search.google.customsearch;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.customsearch.v1.CustomSearchAPI;
 import com.google.api.services.customsearch.v1.CustomSearchAPIRequest;
@@ -23,8 +22,9 @@ class GoogleCustomSearchApiClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GoogleCustomSearchApiClient.class);
     private static final Integer MAXIMUM_VALUE_NUM = 10;
+
     private final CustomSearchAPIRequest<Search> customSearchRequest;
-    private final Boolean logRequestResponse;
+    private final boolean logResponses;
 
     @Builder
     GoogleCustomSearchApiClient(String apiKey,
@@ -32,7 +32,8 @@ class GoogleCustomSearchApiClient {
                                 Boolean siteRestrict,
                                 Duration timeout,
                                 Integer maxRetries,
-                                Boolean logRequestResponse) {
+                                boolean logRequests,
+                                boolean logResponses) {
 
         try {
             if (isNullOrBlank(apiKey)) {
@@ -44,16 +45,19 @@ class GoogleCustomSearchApiClient {
                         "It can be created here: https://cse.google.com/cse/create/new");
             }
 
+            this.logResponses = logResponses;
+
             CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(GoogleNetHttpTransport.newTrustedTransport(), new GsonFactory(), new HttpRequestInitializer() {
                 @Override
-                public void initialize(HttpRequest httpRequest) throws IOException {
+                public void initialize(HttpRequest httpRequest) {
                     httpRequest.setConnectTimeout(Math.toIntExact(timeout.toMillis()));
                     httpRequest.setReadTimeout(Math.toIntExact(timeout.toMillis()));
                     httpRequest.setWriteTimeout(Math.toIntExact(timeout.toMillis()));
-                    httpRequest.setLoggingEnabled(logRequestResponse);
                     httpRequest.setNumberOfRetries(maxRetries);
-                    if (logRequestResponse){
+                    if (logRequests) {
                         httpRequest.setInterceptor(new GoogleSearchApiHttpRequestLoggingInterceptor());
+                    }
+                    if (logResponses) {
                         httpRequest.setResponseInterceptor(new GoogleSearchApiHttpResponseLoggingInterceptor());
                     }
                 }
@@ -66,7 +70,6 @@ class GoogleCustomSearchApiClient {
             } else {
                 customSearchRequest = customSearchAPI.cse().list().setKey(apiKey).setCx(csi);
             }
-            this.logRequestResponse = logRequestResponse;
         } catch (IOException e) {
             LOGGER.error("Error occurred while creating Google Custom Search API client", e);
             throw new RuntimeException(e);
@@ -148,41 +151,40 @@ class GoogleCustomSearchApiClient {
                         .setStart(calculateIndexStartPage(
                                 getDefaultNaturalNumber(requestQuery.getStartPage()),
                                 getDefaultNaturalNumber(requestQuery.getStartIndex())
-                                ).longValue())
+                        ).longValue())
                         .setFilter(requestQuery.getFilter())
                         .execute();
             } else {
                 throw new IllegalStateException("Invalid CustomSearchAPIRequest type");
             }
-            if (logRequestResponse) {
-                log(searchPerformed);
+            if (logResponses) {
+                logResponse(searchPerformed);
             }
             return searchPerformed;
         } catch (IOException e) {
-            LOGGER.error("Error occurred while searching", e);
             throw new RuntimeException(e);
         }
     }
 
-    private static void log(Search search){
+    private static void logResponse(Search search) {
         try {
-            LOGGER.debug("Response:\n- Response: {}", search.toPrettyString());
+            LOGGER.debug("Response:\n- body: {}", search.toPrettyString());
         } catch (IOException e) {
             LOGGER.warn("Error while logging response: {}", e.getMessage());
         }
     }
 
-    private static Integer maxResultsAllowed(Integer maxResults){
+    private static Integer maxResultsAllowed(Integer maxResults) {
         return maxResults > MAXIMUM_VALUE_NUM ? MAXIMUM_VALUE_NUM : maxResults;
     }
 
-    private static Integer getDefaultNaturalNumber(Integer number){
+    private static Integer getDefaultNaturalNumber(Integer number) {
         int defaultNumber = getOrDefault(number, 1);
         return defaultNumber > 0 ? defaultNumber : 1;
     }
 
     private static Integer calculateIndexStartPage(Integer pageNumber, Integer index) {
-        int indexStartPage = ((pageNumber -1) * MAXIMUM_VALUE_NUM) + 1;
+        int indexStartPage = ((pageNumber - 1) * MAXIMUM_VALUE_NUM) + 1;
         return indexStartPage >= index ? indexStartPage : index;
     }
 }
