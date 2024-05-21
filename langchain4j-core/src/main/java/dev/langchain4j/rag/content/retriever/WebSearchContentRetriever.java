@@ -29,7 +29,7 @@ public class WebSearchContentRetriever implements ContentRetriever {
     @Builder
     public WebSearchContentRetriever(WebSearchEngine webSearchEngine, Integer maxResults) {
         this.webSearchEngine = ensureNotNull(webSearchEngine, "webSearchEngine");
-        this.maxResults = getOrDefault(maxResults, 3);
+        this.maxResults = getOrDefault(maxResults, 5);
     }
 
     @Override
