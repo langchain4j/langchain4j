@@ -21,9 +21,9 @@
         <openai4j.version>0.17.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.8</azure-ai-openai.version>
         <azure-ai-search.version>11.6.4</azure-ai-search.version>
-        <azure.storage-blob.version>12.25.4</azure.storage-blob.version>
-        <azure.storage-common.version>12.24.4</azure.storage-common.version>
-        <azure.identity.version>1.12.0</azure.identity.version>
+        <azure.storage-blob.version>12.26.0</azure.storage-blob.version>
+        <azure.storage-common.version>12.25.0</azure.storage-common.version>
+        <azure.identity.version>1.12.1</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>
@@ -151,6 +151,12 @@
             <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>converter-gson</artifactId>
+                <version>${retrofit.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.squareup.retrofit2</groupId>
+                <artifactId>converter-jackson</artifactId>
                 <version>${retrofit.version}</version>
             </dependency>
 
@@ -305,6 +311,18 @@
                 <version>${jackson.version}</version>
                 <scope>import</scope>
                 <type>pom</type>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-xml</artifactId>
+                <version>${jackson.version}</version>
             </dependency>
 
             <dependency>
