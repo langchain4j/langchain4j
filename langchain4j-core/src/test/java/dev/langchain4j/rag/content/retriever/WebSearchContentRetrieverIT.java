@@ -15,8 +15,11 @@ public abstract class WebSearchContentRetrieverIT {
 
     @Test
     void should_retrieve_web_page_as_content() {
+
         // given
-        WebSearchContentRetriever contentRetriever = WebSearchContentRetriever.from(searchEngine());
+        WebSearchContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(searchEngine())
+                .build();
 
         Query query = Query.from("What is the current weather in New York?");
 

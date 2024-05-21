@@ -37,7 +37,9 @@ class GoogleCustomWebSearchContentRetrieverIT extends WebSearchContentRetrieverI
     void should_retrieve_web_content_with_google_and_use_AiServices_to_summary_response() {
 
         // given
-        WebSearchContentRetriever contentRetriever = WebSearchContentRetriever.from(googleSearchEngine);
+        WebSearchContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(googleSearchEngine)
+                .build();
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatModel)
