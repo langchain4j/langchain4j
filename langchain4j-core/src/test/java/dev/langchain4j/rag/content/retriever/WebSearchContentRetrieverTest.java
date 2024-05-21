@@ -28,9 +28,11 @@ class WebSearchContentRetrieverTest {
                 new WebSearchResults(
                         WebSearchInformationResult.from(3L, 1, new HashMap<>()),
                         asList(
-                                WebSearchOrganicResult.from("title 1", URI.create("https://google.com"), "snippet 1", null),
-                                WebSearchOrganicResult.from("title 2", URI.create("https://docs.langchain4j.dev"), null, "content 2"),
-                                WebSearchOrganicResult.from("title 3", URI.create("https://github.com/dewitt/opensearch/blob/master/README.md"), "snippet 3", "content 3")
+                                WebSearchOrganicResult.from("title 1", URI.create("https://one.com"), "snippet 1", null),
+                                WebSearchOrganicResult.from("title 2", URI.create("https://two.com"), null, "content 2"),
+                                WebSearchOrganicResult.from("title 3", URI.create("https://three.com"), "snippet 3", "content 3"),
+                                WebSearchOrganicResult.from("title 4", URI.create("https://four.com"), "snippet 4", "content 4"),
+                                WebSearchOrganicResult.from("title 5", URI.create("https://five.com"), "snippet 5", "content 5")
                         )
                 )
         );
@@ -56,12 +58,14 @@ class WebSearchContentRetrieverTest {
 
         // then
         assertThat(contents).containsExactly(
-                Content.from(TextSegment.from("title 1\nsnippet 1", Metadata.from("url", "https://google.com"))),
-                Content.from(TextSegment.from("title 2\ncontent 2", Metadata.from("url", "https://docs.langchain4j.dev"))),
-                Content.from(TextSegment.from("title 3\ncontent 3", Metadata.from("url", "https://github.com/dewitt/opensearch/blob/master/README.md")))
+                Content.from(TextSegment.from("title 1\nsnippet 1", Metadata.from("url", "https://one.com"))),
+                Content.from(TextSegment.from("title 2\ncontent 2", Metadata.from("url", "https://two.com"))),
+                Content.from(TextSegment.from("title 3\ncontent 3", Metadata.from("url", "https://three.com"))),
+                Content.from(TextSegment.from("title 4\ncontent 4", Metadata.from("url", "https://four.com"))),
+                Content.from(TextSegment.from("title 5\ncontent 5", Metadata.from("url", "https://five.com")))
         );
 
-        verify(webSearchEngine).search(WebSearchRequest.builder().searchTerms(query.text()).maxResults(3).build());
+        verify(webSearchEngine).search(WebSearchRequest.builder().searchTerms(query.text()).maxResults(5).build());
         verifyNoMoreInteractions(webSearchEngine);
     }
 }
