@@ -73,13 +73,11 @@
         <module>code-execution-engines/langchain4j-code-execution-engine-judge0</module>
 
         <!-- web search engines -->
+        <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
         <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
-
-        <!-- web search engines -->
-        <module>web-search-engines/langchain4j-web-search-engine-google-custom</module>
 
     </modules>
 

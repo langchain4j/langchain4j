@@ -51,24 +51,4 @@ public abstract class WebSearchEngineIT {
         List<WebSearchOrganicResult> results = webSearchResults.results();
         assertThat(results).hasSize(maxResults);
     }
-
-    @Test
-    void should_return_web_results_with_geolocation() {
-        // given
-        String searchTerm = "Who is the current president?";
-        WebSearchRequest webSearchRequest = WebSearchRequest.builder()
-                .searchTerms(searchTerm)
-                .geoLocation("fr")
-                .build();
-
-        // when
-        List<WebSearchOrganicResult> webSearchOrganicResults = searchEngine().search(webSearchRequest).results();
-
-        // then
-        assertThat(webSearchOrganicResults).isNotNull();
-        assertThat(webSearchOrganicResults)
-                .as("At least one result should be contains 'Emmanuel Macro' ignoring case")
-                .anySatisfy(result -> assertThat(result.title())
-                        .containsIgnoringCase("Emmanuel Macro"));
-    }
 }

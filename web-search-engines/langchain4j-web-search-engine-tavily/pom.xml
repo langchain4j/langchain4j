@@ -8,7 +8,7 @@
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
         <version>0.31.0-SNAPSHOT</version>
-        <relativePath>../langchain4j-parent/pom.xml</relativePath>
+        <relativePath>../../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-web-search-engine-tavily</artifactId>
@@ -53,6 +53,15 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Visibility for WebSearchEngineIT -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+            <classifier>tests</classifier>
+            <type>test-jar</type>
             <scope>test</scope>
         </dependency>
 
