@@ -73,7 +73,12 @@ public class ExpandingQueryTransformer implements QueryTransformer {
     public Collection<Query> transform(Query query) {
         Prompt prompt = createPrompt(query);
         String response = chatLanguageModel.generate(prompt.text());
-        return parse(response);
+        List<String> queries = parse(response);
+        return queries.stream()
+                .map(queryText -> query.metadata() == null
+                        ? Query.from(queryText)
+                        : Query.from(queryText, query.metadata()))
+                .collect(toList());
     }
 
     protected Prompt createPrompt(Query query) {
@@ -83,10 +88,9 @@ public class ExpandingQueryTransformer implements QueryTransformer {
         return promptTemplate.apply(variables);
     }
 
-    protected List<Query> parse(String queries) {
+    protected List<String> parse(String queries) {
         return stream(queries.split("\n"))
                 .filter(Utils::isNotNullOrBlank)
-                .map(Query::from)
                 .collect(toList());
     }
 }
