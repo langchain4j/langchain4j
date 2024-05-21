@@ -71,51 +71,13 @@
         <!-- code execution engines -->
         <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
 
-        <!-- content retrievers -->
-        <module>langchain4j-content-retriever-tavily</module>
+        <!-- web search engines -->
+        <module>web-search-engines/langchain4j-web-search-engine-tavily</module>
 
         <!-- embedding store filter parsers -->
         <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
 
     </modules>
-    <dependencies>
-        <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>retrofit</artifactId>
-            <version>2.9.0</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>0.31.0-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j</artifactId>
-            <version>0.30.0-SNAPSHOT</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>3.24.2</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.30</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>converter-gson</artifactId>
-            <version>2.9.0</version>
-            <scope>compile</scope>
-        </dependency>
-    </dependencies>
 
     <build>
         <plugins>

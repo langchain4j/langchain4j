@@ -1,4 +1,4 @@
-package dev.langchain4j.rag.retriever;
+package dev.langchain4j.web.search.tavily;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -13,7 +13,7 @@ import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 
-public class TavilyClient {
+class TavilyClient {
 
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
@@ -61,5 +61,4 @@ public class TavilyClient {
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
     }
-
 }

@@ -1,4 +1,4 @@
-package dev.langchain4j.rag.retriever;
+package dev.langchain4j.web.search.tavily;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -7,16 +7,14 @@ import java.util.List;
 
 @Getter
 @Builder
-public class TavilySearchRequest {
+class TavilySearchRequest {
 
     private String apiKey;
     private String query;
-    private SearchDepth searchDepth;
-    private Boolean includeImages;
+    private String searchDepth;
     private Boolean includeAnswer;
     private Boolean includeRawContent;
     private Integer maxResults;
     private List<String> includeDomains;
     private List<String> excludeDomains;
-
 }

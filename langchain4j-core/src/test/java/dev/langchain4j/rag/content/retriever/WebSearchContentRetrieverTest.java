@@ -4,10 +4,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.WebSearchInformationResult;
-import dev.langchain4j.web.search.WebSearchOrganicResult;
-import dev.langchain4j.web.search.WebSearchResults;
+import dev.langchain4j.web.search.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +15,6 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class WebSearchContentRetrieverTest {
@@ -28,7 +24,7 @@ class WebSearchContentRetrieverTest {
     @BeforeEach
     void mockWebSearchEngine() {
         webSearchEngine = mock(WebSearchEngine.class);
-        when(webSearchEngine.search(anyString())).thenReturn(
+        when(webSearchEngine.search(any(WebSearchRequest.class))).thenReturn(
                 new WebSearchResults(
                         WebSearchInformationResult.from(3L, 1, new HashMap<>()),
                         asList(
@@ -47,8 +43,11 @@ class WebSearchContentRetrieverTest {
 
     @Test
     void should_retrieve_web_pages_back() {
+
         // given
-        ContentRetriever contentRetriever = WebSearchContentRetriever.from(webSearchEngine);
+        ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+                .webSearchEngine(webSearchEngine)
+                .build();
 
         Query query = Query.from("query");
 
@@ -62,7 +61,7 @@ class WebSearchContentRetrieverTest {
                 Content.from(TextSegment.from("title 3\ncontent 3", Metadata.from("url", "https://github.com/dewitt/opensearch/blob/master/README.md")))
         );
 
-        verify(webSearchEngine).search(query.text());
+        verify(webSearchEngine).search(WebSearchRequest.builder().searchTerms(query.text()).maxResults(3).build());
         verifyNoMoreInteractions(webSearchEngine);
     }
 }
