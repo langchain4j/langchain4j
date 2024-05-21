@@ -10,7 +10,6 @@ import com.azure.cosmos.models.CosmosQueryRequestOptions;
 import com.azure.cosmos.models.CosmosVectorIndexSpec;
 import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
 import com.azure.cosmos.models.PartitionKey;
-import com.azure.cosmos.models.PartitionKeyDefinition;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -160,7 +159,6 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
         ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
-        PartitionKeyDefinition partitionKey = this.containerProperties.getPartitionKeyDefinition();
         List<CosmosItemOperation> operations = new ArrayList<>(ids.size());
         for (int i = 0; i < ids.size(); i++) {
             operations.add(CosmosBulkOperations.getCreateItemOperation(
