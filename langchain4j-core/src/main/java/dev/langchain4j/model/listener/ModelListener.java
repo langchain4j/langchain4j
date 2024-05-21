@@ -38,7 +38,7 @@ public interface ModelListener<Request, Response> {
      * This method is called when an error occurs.
      * <br>
      * When streaming (e.g., using {@link StreamingChatLanguageModel}),
-     * the {@code response} can contain a partial response that was received before the error occurred.
+     * the {@code response} might contain a partial response that was received before the error occurred.
      *
      * @param error    The error that occurred.
      * @param response The partial response, if available.
