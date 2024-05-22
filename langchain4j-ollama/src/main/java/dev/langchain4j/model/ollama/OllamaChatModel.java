@@ -47,11 +47,15 @@ public class OllamaChatModel implements ChatLanguageModel {
                            String format,
                            Duration timeout,
                            Integer maxRetries,
-                           Map<String, String> customHeaders) {
+                           Map<String, String> customHeaders,
+                           Boolean logRequests,
+                           Boolean logResponses) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .customHeaders(customHeaders)
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(logResponses)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()
