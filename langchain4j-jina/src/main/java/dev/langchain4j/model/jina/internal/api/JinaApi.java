@@ -10,5 +10,11 @@ public interface JinaApi {
 
     @POST("v1/embeddings")
     @Headers({"Content-Type: application/json"})
-    Call<EmbeddingResponse> embed(@Body EmbeddingRequest request, @Header("Authorization") String authorizationHeader);
+    Call<JinaEmbeddingResponse> embed(@Body JinaEmbeddingRequest request,
+                                      @Header("Authorization") String authorizationHeader);
+
+    @POST("rerank")
+    @Headers({"Content-Type: application/json"})
+    Call<JinaRerankingResponse> rerank(@Body JinaRerankingRequest request,
+                                       @Header("Authorization") String authorizationHeader);
 }

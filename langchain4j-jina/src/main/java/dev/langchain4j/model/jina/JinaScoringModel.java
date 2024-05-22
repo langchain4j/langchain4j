@@ -1,6 +1,9 @@
-package dev.langchain4j.model.jinaAi.rerank;
+package dev.langchain4j.model.jina;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.jina.internal.api.JinaRerankingRequest;
+import dev.langchain4j.model.jina.internal.api.JinaRerankingResponse;
+import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
@@ -18,14 +21,11 @@ import static java.util.stream.Collectors.toList;
 
 /**
  * An implementation of a {@link ScoringModel} that uses
- * <a href="https://jina.ai/reranker">Jina Rerank API</a>.
+ * <a href="https://jina.ai/reranker">Jina Reranker API</a>.
  */
 public class JinaScoringModel implements ScoringModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/v1/";
-    /**
-     * This is the leading Jina Reranker model
-     */
     private static final String DEFAULT_MODEL = "jina-reranker-v1-base-en";
 
     private final JinaClient client;
@@ -33,15 +33,13 @@ public class JinaScoringModel implements ScoringModel {
     private final Integer maxRetries;
 
     @Builder
-    public JinaScoringModel(
-            String baseUrl,
-            String apiKey,
-            String modelName,
-            Duration timeout,
-            Integer maxRetries,
-            Boolean logRequests,
-            Boolean logResponses
-    ) {
+    public JinaScoringModel(String baseUrl,
+                            String apiKey,
+                            String modelName,
+                            Duration timeout,
+                            Integer maxRetries,
+                            Boolean logRequests,
+                            Boolean logResponses) {
         this.client = JinaClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(ensureNotBlank(apiKey, "apiKey"))
@@ -57,27 +55,30 @@ public class JinaScoringModel implements ScoringModel {
         return JinaScoringModel.builder().apiKey(apiKey).build();
     }
 
-
-
     @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
 
-        RerankRequest request = RerankRequest.builder()
+        JinaRerankingRequest request = JinaRerankingRequest.builder()
                 .model(modelName)
                 .query(query)
                 .documents(segments.stream()
                         .map(TextSegment::text)
                         .collect(toList()))
-                .returnDocuments(false)  //decreasing response size, do not include text in response
+                .returnDocuments(false)  // decreasing response size, do not include text in response
                 .build();
 
-        RerankResponse response = withRetry(() -> client.rerank(request), maxRetries);
+        JinaRerankingResponse response = withRetry(() -> client.rerank(request), maxRetries);
 
-        List<Double> scores = response.getResults().stream()
-                .sorted(comparingInt(Result::getIndex))
-                .map(Result::getRelevanceScore)
+        List<Double> scores = response.results.stream()
+                .sorted(comparingInt(result -> result.index))
+                .map(result -> result.relevanceScore)
                 .collect(toList());
 
-        return Response.from(scores, new TokenUsage(response.getUsage().getTotalTokens()));
+        TokenUsage tokenUsage = new TokenUsage(
+                response.usage.promptTokens,
+                0,
+                response.usage.totalTokens
+        );
+        return Response.from(scores, tokenUsage);
     }
 }

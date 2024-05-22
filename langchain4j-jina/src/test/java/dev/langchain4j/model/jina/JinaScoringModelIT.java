@@ -1,7 +1,6 @@
-package dev.langchain4j.model.jinaAi.rerank;
+package dev.langchain4j.model.jina;
 
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.jinaAi.rerank.JinaScoringModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import org.junit.jupiter.api.Test;
@@ -19,14 +18,7 @@ class JinaScoringModelIT {
     void should_score_single_text() {
 
         // given
-        ScoringModel model = JinaScoringModel.builder()
-                .apiKey(System.getenv("JINA_API_KEY"))
-                .modelName("jina-reranker-v1-turbo-en")
-                .timeout(Duration.ofSeconds(30))
-                .maxRetries(2)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
+        ScoringModel model = JinaScoringModel.withApiKey(System.getenv("JINA_API_KEY"));
 
         String text = "labrador retriever";
         String query = "tell me about dogs";
@@ -35,7 +27,7 @@ class JinaScoringModelIT {
         Response<Double> response = model.score(text, query);
 
         // then
-        assertThat(response.content()).isCloseTo(0.11, withPercentage(1));
+        assertThat(response.content()).isCloseTo(0.25, withPercentage(1));
 
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(12);
 
@@ -46,7 +38,15 @@ class JinaScoringModelIT {
     void should_score_multiple_segments_with_all_parameters() {
 
         // given
-        ScoringModel model = JinaScoringModel.withApiKey(System.getenv("JINA_API_KEY"));
+        ScoringModel model = JinaScoringModel.builder()
+                .baseUrl("https://api.jina.ai/v1/")
+                .apiKey(System.getenv("JINA_API_KEY"))
+                .modelName("jina-reranker-v1-turbo-en")
+                .timeout(Duration.ofSeconds(10))
+                .maxRetries(2)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         TextSegment catSegment = TextSegment.from("maine coon");
         TextSegment dogSegment = TextSegment.from("labrador retriever");

@@ -5,14 +5,16 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
+import java.util.List;
+
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class JinaEmbedding {
+public class JinaEmbeddingResponse {
 
-    public long index;
-    public float[] embedding;
-    public String object;
+    public String model;
+    public List<JinaEmbedding> data;
+    public JinaUsage usage;
 }

@@ -10,9 +10,9 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-public class JinaEmbedding {
+public class JinaRerankingResult {
 
-    public long index;
-    public float[] embedding;
-    public String object;
+    public Integer index;
+    public JinaDocument document;
+    public Double relevanceScore;
 }

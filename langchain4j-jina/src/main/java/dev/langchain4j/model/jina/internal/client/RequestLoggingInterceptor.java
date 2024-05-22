@@ -1,4 +1,4 @@
-package dev.langchain4j.model.jinaAi.rerank;
+package dev.langchain4j.model.jina.internal.client;
 
 import okhttp3.Headers;
 import okhttp3.Interceptor;
