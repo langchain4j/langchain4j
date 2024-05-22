@@ -1,6 +1,5 @@
 package dev.langchain4j.model.dashscope;
 
-import com.google.common.base.Strings;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.model.embedding.EmbeddingModel;
