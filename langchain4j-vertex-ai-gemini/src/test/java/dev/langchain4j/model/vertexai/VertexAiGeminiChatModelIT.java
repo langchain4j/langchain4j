@@ -3,10 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -22,6 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -307,7 +305,7 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
-                .containsIgnoringCase("dog")
+//                .containsIgnoringCase("dog")  // sometimes the model replies "puppy" instead of "dog"
                 .containsIgnoringCase("dice");
     }
 
@@ -356,6 +354,49 @@ class VertexAiGeminiChatModelIT {
         // then
         System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
+    }
+
+    @Test
+    void should_handle_parallel_function_calls() {
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_PRO)
+            .build();
+
+        ToolSpecification stockInventoryToolSpec = ToolSpecification.builder()
+            .name("getProductInventory")
+            .description("Get the product inventory for a particular product ID")
+            .addParameter("product_id", JsonSchemaProperty.STRING,
+                JsonSchemaProperty.description("the ID of the product"))
+            .build();
+
+        List<ChatMessage> allMessages = new ArrayList<>();
+
+        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
+        System.out.println("Question: " + inventoryQuestion.text());
+        allMessages.add(inventoryQuestion);
+
+        // when
+        Response<AiMessage> messageResponse = model.generate(allMessages, stockInventoryToolSpec);
+
+        System.out.println("inventory response = " + messageResponse.content().text());
+
+        // then
+        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+
+        List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
+        assertThat(executionRequests.size()).isEqualTo(2);
+
+        String inventoryStock = executionRequests.stream()
+            .map(ToolExecutionRequest::arguments)
+            .collect(Collectors.joining(","));
+
+        System.out.println("inventoryStock = " + inventoryStock);
+
+        assertThat(inventoryStock).containsIgnoringCase("ABC123");
+        assertThat(inventoryStock).containsIgnoringCase("XYZ789");
     }
 
     static class Calculator {
