@@ -12,9 +12,9 @@ import static dev.langchain4j.data.message.ContentType.TEXT;
 
 class OllamaMessagesUtils {
 
-    private final static Predicate<ChatMessage> isUserMessage =
-            chatMessage -> chatMessage instanceof UserMessage;
-    private final static Predicate<UserMessage> hasImages =
+    private static final Predicate<ChatMessage> isUserMessage =
+            UserMessage.class::isInstance;
+    private static final Predicate<UserMessage> hasImages =
             userMessage -> userMessage.contents().stream()
                     .anyMatch(content -> IMAGE.equals(content.type()));
 
