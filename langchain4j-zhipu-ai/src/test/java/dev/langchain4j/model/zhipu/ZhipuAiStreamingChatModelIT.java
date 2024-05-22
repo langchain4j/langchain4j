@@ -126,4 +126,54 @@ public class ZhipuAiStreamingChatModelIT {
     }
 
 
+    ToolSpecification currentTime = ToolSpecification.builder()
+            .name("currentTime")
+            .description("currentTime")
+            .build();
+
+    @Test
+    void should_execute_get_current_time_tool_and_then_answer() {
+        // given
+        UserMessage userMessage = userMessage("What's the time now?");
+        List<ToolSpecification> toolSpecifications = singletonList(currentTime);
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(userMessage), toolSpecifications, handler);
+
+        // then
+        Response<AiMessage> response = handler.get();
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo("currentTime");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        // given
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "2024-04-23 12:00:20");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        // when
+        TestStreamingResponseHandler<AiMessage> secondHandler = new TestStreamingResponseHandler<>();
+        model.generate(messages, secondHandler);
+
+        // then
+        Response<AiMessage> secondResponse = secondHandler.get();
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("2024-04-23 12:00:20");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
 }

@@ -27,6 +27,16 @@ In this case, we should add the OpenAI dependency:
     <version>0.30.0</version>
 </dependency>
 ```
+If you want to use more of the Langchain4j non-integration specific classes, such as Services, you will also need to add 
+the base library:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j</artifactId>
+    <version>0.30.0</version>
+</dependency>
+```
 
 - For Gradle in `build.gradle`:
 ```groovy
