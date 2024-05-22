@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -31,7 +33,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     private static final Logger log = LoggerFactory.getLogger(AbstractAzureAiSearchEmbeddingStore.class);
 
-    public static final String INDEX_NAME = "vectorsearch";
+    public static final String DEFAULT_INDEX_NAME = "vectorsearch";
 
     static final String DEFAULT_FIELD_ID = "id";
 
@@ -57,8 +59,17 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected SearchClient searchClient;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index) {
+    private String indexName;
+
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName) {
+        ensureNotNull(endpoint, "endpoint");
+        if (index != null && isNotNullOrBlank(indexName)) {
+            // if an index is provided, it has its own name already configured
+            // if the indexName is provided, it will be used when creating the default index
+            throw new IllegalArgumentException("index and indexName cannot be both defined");
+        }
         this.createOrUpdateIndex = createOrUpdateIndex;
+        this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
         if (keyCredential != null) {
             if (createOrUpdateIndex) {
                 searchIndexClient = new SearchIndexClientBuilder()
@@ -70,7 +81,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
                     .credential(keyCredential)
-                    .indexName(INDEX_NAME)
+                    .indexName(this.indexName)
                     .buildClient();
         } else {
             if (createOrUpdateIndex) {
@@ -83,7 +94,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
                     .credential(tokenCredential)
-                    .indexName(INDEX_NAME)
+                    .indexName(this.indexName)
                     .buildClient();
         }
 
@@ -161,12 +172,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                                             .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
                                             .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
 
-            index = new SearchIndex(INDEX_NAME)
+            index = new SearchIndex(this.indexName)
                     .setFields(fields)
                     .setVectorSearch(vectorSearch)
                     .setSemanticSearch(semanticSearch);
         } else {
-            index = new SearchIndex(INDEX_NAME)
+            index = new SearchIndex(this.indexName)
                     .setFields(fields);
         }
 
@@ -189,7 +200,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         if (!createOrUpdateIndex) {
             throw new IllegalArgumentException("createOrUpdateIndex is false, so the index cannot be deleted");
         }
-        searchIndexClient.deleteIndex(INDEX_NAME);
+        searchIndexClient.deleteIndex(this.indexName);
     }
 
     /**
