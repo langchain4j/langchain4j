@@ -17,8 +17,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.*;
@@ -243,15 +245,14 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Removes an embedding from the store based on its unique identifier.
      *
      * @param id The unique identifier of the embedding to be removed.
-     * @return A boolean indicating whether the removal was successful or not.
      */
     @Override
-    public boolean remove(String id) {
+    public void remove(String id) {
         try (Connection connection = getConnection()) {
             PreparedStatement statement = connection.prepareStatement(String.format(
                     "DELETE FROM %s WHERE embedding_id = ?", table));
             statement.setObject(1, UUID.fromString(id));
-            return statement.executeUpdate() > 0;
+            statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -261,11 +262,55 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Removes multiple embeddings from the store.
      *
      * @param ids A list of unique identifiers of the embeddings to be removed.
-     * @return A list of unique identifiers of the embeddings that were successfully removed.
      */
     @Override
-    public List<String> removeAll(List<String> ids) {
-        return ids.stream().filter(this::remove).collect(Collectors.toList());
+    public void removeAll(List<String> ids) {
+        if (ids != null && !ids.isEmpty()) {
+            try (Connection connection = getConnection()) {
+                PreparedStatement statement = connection.prepareStatement(String.format(
+                        "DELETE FROM %s WHERE embedding_id = ANY (?)", table));
+                Array array = connection.createArrayOf("uuid", ids.stream().map(UUID::fromString).toArray());
+                statement.setArray(1, array);
+                statement.executeUpdate();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * Removes multiple embeddings from the store.
+     *
+     * @param filter         The filter to be applied to the {@link Metadata} during delete.
+     *                       Only {@link TextSegment}s whose {@link Metadata}
+     *                       matches the {@link Filter} will be deleted.
+     *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
+     *                       This is an optional parameter. Default: no filtering, all will be deleted.
+     */
+    @Override
+    public void removeAll(Filter filter) {
+        try (Connection connection = getConnection()) {
+            String whereClause = (filter == null) ? "" : metadataHandler.whereClause(filter);
+            whereClause = (whereClause.isEmpty()) ? "" : "WHERE " + whereClause;
+            PreparedStatement statement = connection.prepareStatement(String.format(
+                    "DELETE FROM %s %s", table, whereClause));
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Removes all embeddings from the store.
+     *
+     */
+    @Override
+    public void removeAll() {
+        try (Connection connection = getConnection()) {
+            connection.createStatement().executeUpdate(String.format("TRUNCATE TABLE %s", table));
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

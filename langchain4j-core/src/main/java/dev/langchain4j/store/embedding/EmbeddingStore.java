@@ -1,7 +1,9 @@
 package dev.langchain4j.store.embedding;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 
 import java.util.List;
@@ -59,9 +61,16 @@ public interface EmbeddingStore<Embedded> {
      * Removes an embedding from the store.
      *
      * @param id The unique identifier of the embedding to be removed.
-     * @return True if the embedding was successfully removed, false otherwise.
      */
-    default boolean remove(String id) {
+    default void remove(String id) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings from the store.
+     *
+     */
+    default void removeAll() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
@@ -69,9 +78,21 @@ public interface EmbeddingStore<Embedded> {
      * Removes multiple embeddings from the store.
      *
      * @param ids A list of unique identifiers of the embeddings to be removed.
-     * @return A list of unique identifiers of the embeddings that were successfully removed.
      */
-    default List<String> removeAll(List<String> ids) {
+    default void removeAll(List<String> ids) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes multiple embeddings from the store.
+     *
+     * @param filter         The filter to be applied to the {@link Metadata} during delete.
+     *                       Only {@link TextSegment}s whose {@link Metadata}
+     *                       matches the {@link Filter} will be deleted.
+     *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
+     *                       This is an optional parameter. Default: no filtering, all will be deleted.
+     */
+    default void removeAll(Filter filter) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
