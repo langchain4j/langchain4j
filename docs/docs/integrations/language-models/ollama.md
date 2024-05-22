@@ -162,6 +162,8 @@ params with the builder pattern:
 | `format`        | The desired format for the generated output.                                                                                                                                      | `String`       |
 | `timeout`       | The maximum time allowed for the API call to complete.                                                                                                                            | `Duration`     |
 | `maxRetries`    | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`      |
+| `keepAlive`    | The amount of time the model stays in memory memory.                                                                                                                        | `String`      |
+| `preLoad`    | A boolean indicating that the model will be loaded in memory at creation creation.                                                                                                                        | `Boolean`      |
 
 #### Usage Example:
 

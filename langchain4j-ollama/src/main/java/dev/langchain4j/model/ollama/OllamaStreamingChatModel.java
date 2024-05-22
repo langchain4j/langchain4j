@@ -2,14 +2,20 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaStreamingChatModelBuilderFactory;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -25,10 +31,14 @@ import static java.time.Duration.ofSeconds;
  */
 public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
 
+    private final Logger logger = LoggerFactory.getLogger(OllamaStreamingChatModel.class);
+
     private final OllamaClient client;
     private final String modelName;
     private final Options options;
     private final String format;
+    private final String keepAlive;
+    Boolean modelLoadedInMemory = false;
 
     @Builder
     public OllamaStreamingChatModel(String baseUrl,
@@ -43,6 +53,8 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     List<String> stop,
                                     String format,
                                     Duration timeout,
+                                    String keepAlive,
+                                    Boolean preload,
                                     Map<String, String> customHeaders) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
@@ -61,21 +73,45 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                 .stop(stop)
                 .build();
         this.format = format;
+        this.keepAlive = keepAlive;
+
+        /**
+         * Preload the model before the first request is made by sending an empty request.
+         * 
+         * Extracted from Ollama FAQ documentation:
+         * https://github.com/ollama/ollama/blob/main/docs/faq.md#how-can-i-pre-load-a-model-to-get-faster-response-times
+         */
+        if (preload != null && preload) {
+            this.preload();
+        }
+    }
+
+    public void preload() {
+        long startTime = System.currentTimeMillis();
+        // Empty prompt is enough to preload the model but langchain4j rejects null or blank prompts
+        generate(Arrays.asList(UserMessage.from("Say 'Model loaded'")), new NoOpStreamingResponseHandler<AiMessage>());
+        this.modelLoadedInMemory = true;
+        long endTime = System.currentTimeMillis();
+        logger.info("Model '{}' preloaded in {} ms", modelName, (endTime - startTime));
     }
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
         ensureNotEmpty(messages, "messages");
 
-        ChatRequest request = ChatRequest.builder()
+        ChatRequest.ChatRequestBuilder requestBuilder = ChatRequest.builder()
                 .model(modelName)
                 .messages(toOllamaMessages(messages))
                 .options(options)
                 .format(format)
-                .stream(true)
-                .build();
+                .stream(true);
 
+        Optional.ofNullable(keepAlive).ifPresent(requestBuilder::keepAlive);
+
+        ChatRequest request = requestBuilder.build();
+        
         client.streamingChat(request, handler);
+        this.modelLoadedInMemory = true;
     }
 
     public static OllamaStreamingChatModelBuilder builder() {

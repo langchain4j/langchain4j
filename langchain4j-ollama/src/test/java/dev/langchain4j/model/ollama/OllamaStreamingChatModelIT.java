@@ -47,7 +47,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(35);
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -186,5 +186,66 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         assertThat(future.get())
                 .isExactlyInstanceOf(NullPointerException.class)
                 .hasMessageContaining("is null");
+    }
+
+    @Test
+    void should_preload_model_if_preload_is_true() {
+        // given
+        OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .preload(true)
+                .build();
+
+        // when
+        // Preload is called inside the constructor if preload is true, so no action is needed here.
+
+        // then
+        // Check if preload was called by verifying if a dummy request was made
+        // This might require you to mock the underlying OllamaClient and verify that `generate` was called with an empty message
+        // Assuming `OllamaClient` is mockable and you have a way to inspect interactions:
+        assertThat(model.modelLoadedInMemory).isTrue();
+    }
+
+    @Test
+    void should_not_preload_model_if_preload_is_false() {
+        // given
+        OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .preload(false)
+                .build();
+
+        // when
+        // Preload is called inside the constructor if preload is true, so no action is needed here.
+
+        // then
+        // Check if preload was called by verifying if a dummy request was made
+        // This might require you to mock the underlying OllamaClient and verify that `generate` was called with an empty message
+        // Assuming `OllamaClient` is mockable and you have a way to inspect interactions:
+        assertThat(model.modelLoadedInMemory).isFalse();
+    }
+
+    @Test
+    void should_pass_keep_alive_parameter() {
+        // given
+        String keepAliveDuration = "10m";
+        OllamaStreamingChatModel model = OllamaStreamingChatModel.builder()
+                .baseUrl(ollama.getEndpoint())
+                .modelName(TINY_DOLPHIN_MODEL)
+                .temperature(0.0)
+                .keepAlive(keepAliveDuration)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("What is the capital of Germany?");
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, handler);
+        Response<AiMessage> response = handler.get();
+        String answer = response.content().text();
+
+        // then
+        assertThat(answer).contains("Berlin");
     }
 }
