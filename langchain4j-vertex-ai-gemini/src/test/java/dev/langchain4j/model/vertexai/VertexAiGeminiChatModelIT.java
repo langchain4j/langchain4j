@@ -33,19 +33,12 @@ class VertexAiGeminiChatModelIT {
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
-    public static final String GEMINI_1_0_PRO_VISION = "gemini-1.5-pro-preview-0514";
-    public static final String GEMINI_PRO = "gemini-1.5-pro-preview-0514";
+    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-preview-0514";
 
     ChatLanguageModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_PRO)
-            .build();
-
-    ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_1_0_PRO_VISION)
+            .modelName(GEMINI_1_5_PRO)
             .build();
 
     @Test
@@ -138,7 +131,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_PRO)
+                .modelName(GEMINI_1_5_PRO)
                 .maxOutputTokens(1)
                 .build();
 
@@ -165,7 +158,7 @@ class VertexAiGeminiChatModelIT {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
-        GenerativeModel generativeModel = new GenerativeModel(GEMINI_PRO, vertexAi);
+        GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
         ChatLanguageModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
@@ -190,7 +183,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -206,7 +199,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -223,7 +216,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -240,7 +233,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -259,7 +252,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -280,7 +273,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -300,7 +293,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -316,7 +309,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName(GEMINI_PRO)
+                .modelName(GEMINI_1_5_PRO)
                 .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
@@ -362,7 +355,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName(GEMINI_PRO)
+            .modelName(GEMINI_1_5_PRO)
             .build();
 
         ToolSpecification stockInventoryToolSpec = ToolSpecification.builder()
