@@ -7,8 +7,8 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
-import okhttp3.Interceptor;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.ResponseBody;
@@ -114,10 +114,10 @@ class OllamaClient {
                         byte[] bytes = new byte[1024];
                         int len = inputStream.read(bytes);
                         String partialResponse = new String(bytes, 0, len);
-                        CompletionResponse completionResponse = GSON.fromJson(partialResponse, CompletionResponse.class);
                         if (logStreamingResponses) {
-                            log.debug("Streaming completion response: {}", completionResponse);
+                            log.debug("Streaming partial response: {}", partialResponse);
                         }
+                        CompletionResponse completionResponse = GSON.fromJson(partialResponse, CompletionResponse.class);
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -155,14 +155,16 @@ class OllamaClient {
                         StringBuilder contentBuilder = new StringBuilder();
                         while (true) {
                             String partialResponse = reader.readLine();
+
+                            if (logStreamingResponses) {
+                                log.debug("Streaming partial response: {}", partialResponse);
+                            }
+
                             ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
 
-                        if (logStreamingResponses) {
-                            log.debug("Streaming chat response: {}", chatResponse);
-                        }
-                        String content = chatResponse.getMessage().getContent();
-                        contentBuilder.append(content);
-                        handler.onNext(content);
+                            String content = chatResponse.getMessage().getContent();
+                            contentBuilder.append(content);
+                            handler.onNext(content);
 
                             if (TRUE.equals(chatResponse.getDone())) {
                                 Response<AiMessage> response = Response.from(
