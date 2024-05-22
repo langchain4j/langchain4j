@@ -1,7 +1,10 @@
-package dev.langchain4j.model.jina;
+package dev.langchain4j.model.jina.internal.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import dev.langchain4j.model.jina.internal.api.EmbeddingRequest;
+import dev.langchain4j.model.jina.internal.api.EmbeddingResponse;
+import dev.langchain4j.model.jina.internal.api.JinaApi;
 import lombok.Builder;
 import okhttp3.OkHttpClient;
 import retrofit2.Retrofit;
@@ -14,6 +17,7 @@ import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 public class JinaClient {
+
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
@@ -23,7 +27,7 @@ public class JinaClient {
     private final String authorizationHeader;
 
     @Builder
-    JinaClient(String baseUrl, String apiKey, Duration timeout){
+    JinaClient(String baseUrl, String apiKey, Duration timeout) {
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -35,7 +39,6 @@ public class JinaClient {
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
 
-
         this.jinaApi = retrofit.create(JinaApi.class);
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
     }
@@ -44,7 +47,6 @@ public class JinaClient {
         try {
             retrofit2.Response<EmbeddingResponse> retrofitResponse
                     = jinaApi.embed(request, authorizationHeader).execute();
-
             if (retrofitResponse.isSuccessful()) {
                 return retrofitResponse.body();
             } else {
@@ -55,13 +57,10 @@ public class JinaClient {
         }
     }
 
-
-
     private static RuntimeException toException(retrofit2.Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
     }
-
 }
