@@ -1,4 +1,4 @@
-package dev.langchain4j.model.cohere;
+package dev.langchain4j.model.cohere.internal.client;
 
 import okhttp3.Interceptor;
 import okhttp3.Request;
@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static dev.langchain4j.model.cohere.RequestLoggingInterceptor.inOneLine;
+import static dev.langchain4j.model.cohere.internal.client.RequestLoggingInterceptor.inOneLine;
 
 class ResponseLoggingInterceptor implements Interceptor {
 

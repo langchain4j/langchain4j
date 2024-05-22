@@ -1,11 +1,10 @@
-package dev.langchain4j.model.cohere;
+package dev.langchain4j.model.cohere.internal.api;
 
 import lombok.Builder;
 
 import java.util.List;
-
 @Builder
-class RerankRequest {
+public class RerankRequest {
 
     private String model;
     private String query;
