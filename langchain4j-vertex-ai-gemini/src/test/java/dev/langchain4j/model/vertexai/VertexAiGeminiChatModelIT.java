@@ -4,7 +4,6 @@ import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
