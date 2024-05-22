@@ -83,6 +83,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-jina</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-local-ai</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -375,7 +381,7 @@
                 <artifactId>langchain4j-web-search-engine-google-custom</artifactId>
                 <version>${project.version}</version>
             </dependency>
-              
+
             <!-- experimental -->
             <dependency>
                 <groupId>dev.langchain4j</groupId>

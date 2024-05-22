@@ -13,14 +13,13 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-
-
 public class JinaEmbeddingModelIT {
+
     @Test
     public void should_embed_single_text() {
 
         // given
-        EmbeddingModel model = JinaEmbeddingModel.withApiKey(System.getenv("JINA_AI_API_KEY"));
+        EmbeddingModel model = JinaEmbeddingModel.withApiKey(System.getenv("JINA_API_KEY"));
 
         String text = "hello";
 
@@ -33,6 +32,8 @@ public class JinaEmbeddingModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(3);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(3);
+
+        assertThat(response.finishReason()).isNull();
     }
 
     @Test
@@ -41,10 +42,12 @@ public class JinaEmbeddingModelIT {
         // given
         EmbeddingModel model = JinaEmbeddingModel.builder()
                 .baseUrl("https://api.jina.ai/")
-                .apiKey(System.getenv("JINA_AI_API_KEY"))
+                .apiKey(System.getenv("JINA_API_KEY"))
                 .modelName("jina-embeddings-v2-base-en")
                 .timeout(ofSeconds(10))
                 .maxRetries(2)
+                .logRequests(true)
+                .logResponses(true)
                 .build();
 
         TextSegment segment1 = TextSegment.from("hello");
@@ -67,5 +70,7 @@ public class JinaEmbeddingModelIT {
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(6);
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(6);
+
+        assertThat(response.finishReason()).isNull();
     }
 }

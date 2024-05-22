@@ -38,8 +38,16 @@ class MistralAiChatModelIT {
             .logResponses(true)
             .build();
 
-    ChatLanguageModel model = MistralAiChatModel.builder()
+    ChatLanguageModel defaultModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .temperature(0.1)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+    ChatLanguageModel openMixtral8x22BModel = MistralAiChatModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MistralAiChatModelName.OPEN_MIXTRAL_8X22B)
             .temperature(0.1)
             .logRequests(true)
             .logResponses(true)
@@ -52,7 +60,7 @@ class MistralAiChatModelIT {
         UserMessage userMessage = userMessage("What is the capital of Peru?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage);
+        Response<AiMessage> response = defaultModel.generate(userMessage);
 
         // then
         assertThat(response.content().text()).contains("Lima");
@@ -132,7 +140,7 @@ class MistralAiChatModelIT {
         UserMessage userMessage3 = userMessage("What is the capital of Canada?");
 
         // when
-        Response<AiMessage> response = model.generate(userMessage1, userMessage2, userMessage3);
+        Response<AiMessage> response = defaultModel.generate(userMessage1, userMessage2, userMessage3);
 
         // then
         assertThat(response.content().text()).contains("Lima");
@@ -236,14 +244,14 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_tool_and_return_finishReason_tool_execution(){
+    void should_execute_tool_using_model_open8x22B_and_return_finishReason_tool_execution(){
 
         // given
         UserMessage userMessage = userMessage("What is the status of transaction T123?");
         List<ToolSpecification> toolSpecifications = singletonList(retrievePaymentStatus);
 
         // when
-        Response<AiMessage> response = mistralLargeModel.generate(singletonList(userMessage), toolSpecifications);
+        Response<AiMessage> response = openMixtral8x22BModel.generate(singletonList(userMessage), toolSpecifications);
 
         // then
         AiMessage aiMessage = response.content();
@@ -264,7 +272,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_tool_when_toolChoice_is_auto_and_answer(){
+    void should_execute_tool_using_model_open8x22B_when_toolChoice_is_auto_and_answer(){
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -279,7 +287,7 @@ class MistralAiChatModelIT {
         List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus,retrievePaymentDate);
 
         // when
-        Response<AiMessage> response = mistralLargeModel.generate(chatMessages, toolSpecifications);
+        Response<AiMessage> response = openMixtral8x22BModel.generate(chatMessages, toolSpecifications);
 
         // then
         AiMessage aiMessage = response.content();
@@ -299,7 +307,7 @@ class MistralAiChatModelIT {
         chatMessages.add(toolExecutionResultMessage);
 
         // when
-        Response<AiMessage> response2 = mistralLargeModel.generate(chatMessages);
+        Response<AiMessage> response2 = openMixtral8x22BModel.generate(chatMessages);
 
         // then
         AiMessage aiMessage2 = response2.content();
@@ -308,7 +316,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(69);
+        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(74);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
@@ -317,7 +325,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_tool_forcefully_when_toolChoice_is_any_and_answer() {
+    void should_execute_tool_forcefully_using_model_open8x22B_when_toolChoice_is_any_and_answer() {
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -330,7 +338,7 @@ class MistralAiChatModelIT {
         chatMessages.add(userMessage);
 
         // when
-        Response<AiMessage> response = mistralLargeModel.generate(singletonList(userMessage), retrievePaymentDate);
+        Response<AiMessage> response = openMixtral8x22BModel.generate(singletonList(userMessage), retrievePaymentDate);
 
         // then
         AiMessage aiMessage = response.content();
@@ -355,7 +363,7 @@ class MistralAiChatModelIT {
         chatMessages.add(toolExecutionResultMessage);
 
         // when
-        Response<AiMessage> response2 = mistralLargeModel.generate(chatMessages);
+        Response<AiMessage> response2 = openMixtral8x22BModel.generate(chatMessages);
 
         // then
         AiMessage aiMessage2 = response2.content();
@@ -364,7 +372,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(78);
+        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(83);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
@@ -373,7 +381,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_return_valid_json_object(){
+    void should_return_valid_json_object_using_model_large(){
 
         // given
         String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
@@ -397,7 +405,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_multiple_tools_then_answer(){
+    void should_execute_multiple_tools_using_model_open8x22B_then_answer(){
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -448,7 +456,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(128);
+        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(132);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());

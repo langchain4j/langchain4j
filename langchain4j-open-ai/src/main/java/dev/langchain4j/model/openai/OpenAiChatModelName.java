@@ -22,7 +22,9 @@ public enum OpenAiChatModelName {
     GPT_4_32K_0314("gpt-4-32k-0314"),
     GPT_4_32K_0613("gpt-4-32k-0613"),
 
-    GPT_4_VISION_PREVIEW("gpt-4-vision-preview");
+    GPT_4_VISION_PREVIEW("gpt-4-vision-preview"),
+
+    GPT_4_O("gpt-4o");
 
     private final String stringValue;
 

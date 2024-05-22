@@ -3,6 +3,9 @@ package dev.langchain4j.model.jina;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
+import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
+import dev.langchain4j.model.jina.internal.client.JinaClient;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -16,14 +19,13 @@ import static java.time.Duration.ofSeconds;
 import static java.util.stream.Collectors.toList;
 
 /**
- * An integration with Nomic Atlas's Text Embeddings API.
- * See more details <a href="https://api.jina.ai/redoc#tag/embeddings">Jina API reference</a>
+ * An implementation of an {@link EmbeddingModel} that uses
+ * <a href="https://jina.ai/embeddings">Jina Embeddings API</a>.
  */
-
 public class JinaEmbeddingModel implements EmbeddingModel {
 
-
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
+    private static final String DEFAULT_MODEL = "jina-embeddings-v2-base-en";
 
     private final JinaClient client;
     private final String modelName;
@@ -34,13 +36,17 @@ public class JinaEmbeddingModel implements EmbeddingModel {
                               String apiKey,
                               String modelName,
                               Duration timeout,
-                              Integer maxRetries) {
+                              Integer maxRetries,
+                              Boolean logRequests,
+                              Boolean logResponses) {
         this.client = JinaClient.builder()
-                .baseUrl(getOrDefault(baseUrl,DEFAULT_BASE_URL))
+                .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .logRequests(getOrDefault(logRequests, false))
+                .logResponses(getOrDefault(logResponses, false))
                 .build();
-        this.modelName = getOrDefault(modelName, "jina-embeddings-v2-base-en");
+        this.modelName = getOrDefault(modelName, DEFAULT_MODEL);
         this.maxRetries = getOrDefault(maxRetries, 3);
     }
 
@@ -48,21 +54,25 @@ public class JinaEmbeddingModel implements EmbeddingModel {
         return JinaEmbeddingModel.builder().apiKey(apiKey).build();
     }
 
-
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
-        EmbeddingRequest request = EmbeddingRequest.builder()
+
+        JinaEmbeddingRequest request = JinaEmbeddingRequest.builder()
                 .model(modelName)
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
                 .build();
 
-        EmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
+        JinaEmbeddingResponse response = withRetry(() -> client.embed(request), maxRetries);
 
-        List<Embedding> embeddings = response.getData().stream()
-                .map(JinaEmbedding::toEmbedding).collect(toList());
+        List<Embedding> embeddings = response.data.stream()
+                .map(jinaEmbedding -> Embedding.from(jinaEmbedding.embedding))
+                .collect(toList());
 
-        TokenUsage tokenUsage = new TokenUsage(response.getUsage().getPromptTokens(),0 );
-        return Response.from(embeddings,tokenUsage);
+        TokenUsage tokenUsage = new TokenUsage(
+                response.usage.promptTokens,
+                0,
+                response.usage.totalTokens
+        );
+        return Response.from(embeddings, tokenUsage);
     }
-
 }
