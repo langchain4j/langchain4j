@@ -1,14 +1,11 @@
 package dev.langchain4j.agent.tool;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -74,57 +71,64 @@ public class ToolSpecifications {
     }
 
     /**
+     * @param clazz the clazz.
+     * @param type the type.
+     * @param annotation the annotation.
+     * @return the {@link JsonSchemaProperty}.
+     */
+    public static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> clazz, Type type, P annotation) {
+        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
+        if (type == String.class) {
+            return removeNulls(STRING, description);
+        }
+
+        if (isBoolean(clazz)) {
+            return removeNulls(BOOLEAN, description);
+        }
+
+        if (isInteger(clazz)) {
+            return removeNulls(INTEGER, description);
+        }
+
+        if (isNumber(clazz)) {
+            return removeNulls(NUMBER, description);
+        }
+
+        if (clazz.isArray()) {
+            return removeNulls(ARRAY, arrayTypeFrom(clazz.getComponentType()), description);
+        }
+
+        if (Collection.class.isAssignableFrom(clazz)) {
+            return removeNulls(ARRAY, arrayTypeFrom(type), description);
+        }
+
+        if (clazz.isEnum()) {
+            return removeNulls(STRING, enums((Class<?>) type), description);
+        }
+
+        return removeNulls(OBJECT, properties(clazz), description);
+    }
+
+    /**
      * Convert a {@link Parameter} to a {@link JsonSchemaProperty}.
      *
      * @param parameter the parameter.
      * @return the {@link JsonSchemaProperty}.
      */
     static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Parameter parameter) {
-
-        Class<?> type = parameter.getType();
-
-        P annotation = parameter.getAnnotation(P.class);
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
-
-        if (type == String.class) {
-            return removeNulls(STRING, description);
-        }
-
-        if (isBoolean(type)) {
-            return removeNulls(BOOLEAN, description);
-        }
-
-        if (isInteger(type)) {
-            return removeNulls(INTEGER, description);
-        }
-
-        if (isNumber(type)) {
-            return removeNulls(NUMBER, description);
-        }
-
-        if (type.isArray()) {
-            return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
-        }
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom(parameter.getParameterizedType()), description);
-        }
-
-        if (type.isEnum()) {
-            return removeNulls(STRING, enums((Class<?>) type), description);
-        }
-
-        return removeNulls(OBJECT, description); // TODO provide internals
+        return toJsonSchemaProperties(parameter.getType(), parameter.getParameterizedType(), parameter.getAnnotation(P.class));
     }
 
     private static JsonSchemaProperty arrayTypeFrom(Type type) {
+        Class<?> clazz = null;
         if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
             Type[] actualTypeArguments = parameterizedType.getActualTypeArguments();
             if (actualTypeArguments.length == 1) {
-                return arrayTypeFrom((Class<?>) actualTypeArguments[0]);
+                clazz = (Class<?>) actualTypeArguments[0];
             }
         }
-        return items(JsonSchemaProperty.OBJECT);
+        return arrayTypeFrom(clazz);
     }
 
     // TODO put constraints on min and max?
@@ -159,7 +163,7 @@ public class ToolSpecifications {
         if (isNumber(clazz)) {
             return items(JsonSchemaProperty.NUMBER);
         }
-        return items(JsonSchemaProperty.OBJECT);
+        return items(JsonSchemaProperty.OBJECT, properties(clazz));
     }
 
     /**
@@ -172,5 +176,19 @@ public class ToolSpecifications {
         return stream(items)
                 .filter(Objects::nonNull)
                 .collect(toList());
+    }
+
+    public static JsonSchemaProperty properties(Class<?> type) {
+        if (null != type) {
+            Map<String, Object> fieldMap = new HashMap<>();
+            for (Field field : type.getDeclaredFields()) {
+                Iterable<JsonSchemaProperty> properties = toJsonSchemaProperties(field.getType(), field.getGenericType(), field.getAnnotation(P.class));
+                fieldMap.put(field.getName(), StreamSupport.stream(properties.spliterator(), false).collect(Collectors.toMap(JsonSchemaProperty::key, JsonSchemaProperty::value, (a, b) -> a)));
+            }
+            if (!fieldMap.isEmpty()) {
+                return JsonSchemaProperty.property("properties", fieldMap);
+            }
+        }
+        return null;
     }
 }

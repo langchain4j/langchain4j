@@ -1,9 +1,12 @@
 package dev.langchain4j.agent.tool;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Utility class for {@link ToolExecutionRequest}.
@@ -19,7 +22,7 @@ public class ToolExecutionRequestUtil {
     /**
      * Utility {@link TypeToken} describing {@code Map<String, Object>}.
      */
-    public static final Type MAP_TYPE = new TypeToken<Map<String, Object>>() {
+    public static final Type MAP_TYPE = new TypeToken<Map<String, JsonElement>>() {
     }.getType();
 
     /**
@@ -30,9 +33,23 @@ public class ToolExecutionRequestUtil {
      * @param <T> the argument type
      */
     public static <T> T argument(ToolExecutionRequest toolExecutionRequest, String name) {
-        Map<String, Object> arguments = argumentsAsMap(toolExecutionRequest.arguments()); // TODO cache
+        return argument(toolExecutionRequest, name, null);
+    }
+
+    /**
+     * Get an argument value from ToolExecutionRequest.
+     * @param toolExecutionRequest request
+     * @param name argument name
+     * @param type argument type
+     * @return argument value
+     * @param <T> the argument type
+     */
+    public static <T> T argument(ToolExecutionRequest toolExecutionRequest, String name, Type type) {
+        Map<String, JsonElement> arguments = argumentsAsMap(toolExecutionRequest.arguments()); // TODO cache
         @SuppressWarnings("unchecked")
-        T res = (T) arguments.get(name);
+        T res = (T) Optional.ofNullable(arguments.get(name))
+                .map(item -> convert(item, type))
+                .orElse(null);
         return res;
     }
 
@@ -41,7 +58,17 @@ public class ToolExecutionRequestUtil {
      * @param arguments json string
      * @return map
      */
-    public static Map<String, Object> argumentsAsMap(String arguments) {
+    public static Map<String, JsonElement> argumentsAsMap(String arguments) {
         return GSON.fromJson(arguments, MAP_TYPE);
+    }
+
+    /**
+     * Convert jsonElement to type.
+     * @param jsonElement jsonElement
+     * @param type argument type
+     * @return object
+     */
+    public static <T> T convert(JsonElement jsonElement, Type type) {
+        return GSON.fromJson(jsonElement, null == type ? Object.class : type);
     }
 }

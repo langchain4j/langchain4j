@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import com.google.gson.JsonPrimitive;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -13,8 +14,8 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
                 .build();
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
-                .containsEntry("foo", "bar")
-                        .containsEntry("qux", 12.0);
+                .containsEntry("foo", new JsonPrimitive("bar"))
+                        .containsEntry("qux", new JsonPrimitive(12.0));
 
         assertThat((String) ToolExecutionRequestUtil.argument(request, "foo"))
                 .isEqualTo("bar");

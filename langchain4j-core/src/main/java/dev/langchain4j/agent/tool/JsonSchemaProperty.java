@@ -1,12 +1,8 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.quoted;
-import static java.util.Collections.singletonMap;
 
 /**
  * Represents a property in a JSON schema.
@@ -216,10 +212,16 @@ public class JsonSchemaProperty {
     /**
      * Wraps the given type in a property with key "items".
      *
-     * @param type the type
+     * @param types the types
      * @return a property with key "items" and value type.
      */
-    public static JsonSchemaProperty items(JsonSchemaProperty type) {
-        return from("items", singletonMap(type.key, type.value));
+    public static JsonSchemaProperty items(JsonSchemaProperty... types) {
+        Map<String, Object> map = new HashMap<>();
+        for (JsonSchemaProperty type : types) {
+            if (null != type) {
+                map.put(type.key, type.value);
+            }
+        }
+        return from("items", map);
     }
 }

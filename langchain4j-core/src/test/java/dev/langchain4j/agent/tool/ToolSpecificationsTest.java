@@ -24,6 +24,13 @@ class ToolSpecificationsTest implements WithAssertions {
         A, B, C
     }
 
+    public static class User {
+        @P("username")
+        private String name;
+        @P("password")
+        private String password;
+    }
+
     @SuppressWarnings("unused")
     public static class Wrapper {
         @Tool({"line1", "line2"})
@@ -58,7 +65,8 @@ class ToolSpecificationsTest implements WithAssertions {
                 Set p26,
                 Collection p27,
                 E p28,
-                Object p29
+                Object p29,
+                @P("user info") User p30
         ) {
             return 42;
         }
@@ -104,7 +112,9 @@ class ToolSpecificationsTest implements WithAssertions {
                 Set.class,
                 Collection.class,
                 E.class,
-                Object.class);
+                Object.class,
+                User.class//30
+        );
     }
 
     public static <K, V> Map<K, V> mapOf(K k1, V v1) {
@@ -117,6 +127,12 @@ class ToolSpecificationsTest implements WithAssertions {
         Map<K, V> map = new HashMap<>();
         map.put(k1, v1);
         map.put(k2, v2);
+        return map;
+    }
+
+    public static <K, V> Map<K, V> mapOf(K k1, V v1, K k2, V v2, K k3, V v3) {
+        Map<K, V> map = mapOf(k1, v1, k2, v2);
+        map.put(k3, v3);
         return map;
     }
 
@@ -151,7 +167,7 @@ class ToolSpecificationsTest implements WithAssertions {
 
         Map<String, Map<String, Object>> properties = ts.parameters().properties();
 
-        assertThat(properties).hasSize(30);
+        assertThat(properties).hasSize(31);
         assertThat(properties)
                 .containsEntry("arg0", mapOf("type", "string", "description", "foo"))
                 .containsEntry("arg1", mapOf("type", "boolean"))
@@ -181,7 +197,10 @@ class ToolSpecificationsTest implements WithAssertions {
                 .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
                 .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
                 .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
-                .containsEntry("arg29", mapOf("type", "object"));
+                .containsEntry("arg29", mapOf("type", "object"))
+                .containsEntry("arg30", mapOf("type", "object", "description", "user info",
+                        "properties", mapOf("name", mapOf("type", "string", "description", "username"),
+                                "password", mapOf("type", "string", "description", "password"))));
 
         assertThat(properties.get("arg28")).containsEntry("type", "string");
         assertThat(properties.get("arg28").get("enum")).isEqualTo(asList("A", "B", "C"));
@@ -216,7 +235,8 @@ class ToolSpecificationsTest implements WithAssertions {
                         "arg26",
                         "arg27",
                         "arg28",
-                        "arg29"
+                        "arg29",
+                        "arg30"
                 );
     }
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import com.google.gson.JsonElement;
 import dev.langchain4j.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,7 +73,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     static Object[] prepareArguments(
             Method method,
-            Map<String, Object> argumentsMap,
+            Map<String, JsonElement> argumentsMap,
             Object memoryId
     ) {
         Parameter[] parameters = method.getParameters();
@@ -87,7 +88,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
             String parameterName = parameters[i].getName();
             if (argumentsMap.containsKey(parameterName)) {
-                Object argument = argumentsMap.get(parameterName);
+                Object argument = ToolExecutionRequestUtil.convert(argumentsMap.get(parameterName), parameters[i].getParameterizedType());
                 Class<?> parameterType = parameters[i].getType();
 
                 arguments[i] = coerceArgument(argument, parameterName, parameterType);
