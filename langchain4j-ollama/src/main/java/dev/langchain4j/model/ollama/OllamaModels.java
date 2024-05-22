@@ -17,10 +17,15 @@ public class OllamaModels {
     @Builder
     public OllamaModels(String baseUrl,
                         Duration timeout,
-                        Integer maxRetries) {
+                        Integer maxRetries,
+                        Boolean logRequests,
+                        Boolean logResponses
+                        ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout((getOrDefault(timeout, Duration.ofSeconds(60))))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
     }

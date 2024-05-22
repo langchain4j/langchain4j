@@ -125,6 +125,8 @@
                                 <rule>
                                     <excludes>
                                         <exclude>dev.langchain4j.data.document</exclude>
+                                        <exclude>dev.langchain4j.model.chat.listener</exclude>
+                                        <exclude>dev.langchain4j.model.listener</exclude>
                                         <exclude>dev.langchain4j.store.embedding</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter</exclude>
                                         <exclude>dev.langchain4j.store.embedding.filter.logical</exclude>

@@ -14,20 +14,20 @@ import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
  */
 public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingStore implements EmbeddingStore<TextSegment> {
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, boolean createOrUpdateIndex, int dimensions) {
-        this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null);
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, boolean createOrUpdateIndex, int dimensions, String indexName) {
+        this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, boolean createOrUpdateIndex, SearchIndex index) {
-        this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index);
+    public AzureAiSearchEmbeddingStore(String endpoint, AzureKeyCredential keyCredential, boolean createOrUpdateIndex, SearchIndex index, String indexName) {
+        this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions) {
-        this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null);
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, String indexName) {
+        this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName);
     }
 
-    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, boolean createOrUpdateIndex, SearchIndex index) {
-        this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index);
+    public AzureAiSearchEmbeddingStore(String endpoint, TokenCredential tokenCredential, boolean createOrUpdateIndex, SearchIndex index, String indexName) {
+        this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName);
     }
 
     public static Builder builder() {
@@ -47,6 +47,8 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
         private int dimensions;
 
         private SearchIndex index;
+
+        private String indexName;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -115,21 +117,32 @@ public class AzureAiSearchEmbeddingStore extends AbstractAzureAiSearchEmbeddingS
             return this;
         }
 
+        /**
+         * If no index is provided, set the name of the default index to be used.
+         *
+         * @param indexName The name of the index to be used.
+         * @return builder
+         */
+        public Builder indexName(String indexName) {
+            this.indexName = indexName;
+            return this;
+        }
+
         public AzureAiSearchEmbeddingStore build() {
             ensureNotNull(endpoint, "endpoint");
             ensureTrue(keyCredential != null || tokenCredential != null, "either apiKey or tokenCredential must be set");
             ensureTrue(dimensions > 0 || index != null, "either dimensions or index must be set");
             if (keyCredential == null) {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, createOrUpdateIndex, dimensions);
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, createOrUpdateIndex, dimensions, indexName);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, createOrUpdateIndex, index);
+                    return new AzureAiSearchEmbeddingStore(endpoint, tokenCredential, createOrUpdateIndex, index, indexName);
                 }
             } else {
                 if (index == null) {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, createOrUpdateIndex, dimensions);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, createOrUpdateIndex, dimensions, indexName);
                 } else {
-                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, createOrUpdateIndex, index);
+                    return new AzureAiSearchEmbeddingStore(endpoint, keyCredential, createOrUpdateIndex, index, indexName);
                 }
             }
         }

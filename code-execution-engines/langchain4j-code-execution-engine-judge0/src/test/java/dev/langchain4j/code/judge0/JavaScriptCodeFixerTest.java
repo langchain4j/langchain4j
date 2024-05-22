@@ -1,4 +1,4 @@
-package dev.langchain4j.code;
+package dev.langchain4j.code.judge0;
 
 import org.junit.jupiter.api.Test;
 

@@ -43,10 +43,15 @@ public class OllamaLanguageModel implements LanguageModel {
                                String format,
                                Duration timeout,
                                Integer maxRetries,
-                               Map<String, String> customHeaders) {
+                               Boolean logRequests,
+                               Boolean logResponses,
+                               Map<String, String> customHeaders
+                               ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");

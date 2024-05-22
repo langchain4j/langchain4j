@@ -1,11 +1,11 @@
-package dev.langchain4j.code;
+package dev.langchain4j.code.judge0;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 
 import java.time.Duration;
 
-import static dev.langchain4j.code.JavaScriptCodeFixer.fixIfNoLogToConsole;
+import static dev.langchain4j.code.judge0.JavaScriptCodeFixer.fixIfNoLogToConsole;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 /**

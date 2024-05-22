@@ -44,6 +44,9 @@ class DefaultZhipuAiHelper {
     }
 
     private static Parameters toFunctionParameters(ToolParameters toolParameters) {
+        if (toolParameters == null) {
+            return Parameters.builder().build();
+        }
         return Parameters.builder()
                 .properties(toolParameters.properties())
                 .required(toolParameters.required())

@@ -1,5 +1,6 @@
-package dev.langchain4j.code;
+package dev.langchain4j.code.judge0;
 
+import dev.langchain4j.code.CodeExecutionEngine;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
