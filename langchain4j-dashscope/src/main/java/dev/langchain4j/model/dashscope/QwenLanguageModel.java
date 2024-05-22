@@ -14,7 +14,7 @@ import lombok.Builder;
 
 import java.util.List;
 
-import static com.alibaba.dashscope.aigc.generation.models.QwenParam.ResultFormat.MESSAGE;
+import static com.alibaba.dashscope.aigc.generation.GenerationParam.ResultFormat.MESSAGE;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;

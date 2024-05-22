@@ -1,6 +1,7 @@
 package dev.langchain4j.model.openai;
 
 import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.OpenAiHttpException;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -9,12 +10,17 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
+import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
+import dev.langchain4j.model.listener.ModelListener;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 
 import java.net.Proxy;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -24,12 +30,14 @@ import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
 /**
  * Represents an OpenAI language model with a chat completion interface, such as gpt-3.5-turbo and gpt-4.
  * You can find description of parameters <a href="https://platform.openai.com/docs/api-reference/chat/create">here</a>.
  */
+@Slf4j
 public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
     private final OpenAiClient client;
@@ -46,6 +54,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
+    private final List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners;
 
     @Builder
     public OpenAiChatModel(String baseUrl,
@@ -67,7 +76,9 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Proxy proxy,
                            Boolean logRequests,
                            Boolean logResponses,
-                           Tokenizer tokenizer) {
+                           Tokenizer tokenizer,
+                           Map<String, String> customHeaders,
+                           List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -88,6 +99,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, GPT_3_5_TURBO);
         this.temperature = getOrDefault(temperature, 0.7);
@@ -102,6 +114,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
+        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
     public String modelName() {
@@ -150,13 +163,56 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatCompletionResponse response = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
+        ChatLanguageModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        listeners.forEach(listener -> {
+            try {
+                listener.onRequest(modelListenerRequest);
+            } catch (Exception e) {
+                log.warn("Exception while calling model listener", e);
+            }
+        });
 
-        return Response.from(
-                aiMessageFrom(response),
-                tokenUsageFrom(response.usage()),
-                finishReasonFrom(response.choices().get(0).finishReason())
-        );
+        try {
+            ChatCompletionResponse chatCompletionResponse = withRetry(() -> client.chatCompletion(request).execute(), maxRetries);
+
+            Response<AiMessage> response = Response.from(
+                    aiMessageFrom(chatCompletionResponse),
+                    tokenUsageFrom(chatCompletionResponse.usage()),
+                    finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
+            );
+
+            ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
+                    chatCompletionResponse.id(),
+                    chatCompletionResponse.model(),
+                    response
+            );
+            listeners.forEach(listener -> {
+                try {
+                    listener.onResponse(modelListenerResponse, modelListenerRequest);
+                } catch (Exception e) {
+                    log.warn("Exception while calling model listener", e);
+                }
+            });
+
+            return response;
+        } catch (RuntimeException e) {
+
+            Throwable error;
+            if (e.getCause() instanceof OpenAiHttpException) {
+                error = e.getCause();
+            } else {
+                error = e;
+            }
+
+            listeners.forEach(listener -> {
+                try {
+                    listener.onError(error, null, modelListenerRequest);
+                } catch (Exception e2) {
+                    log.warn("Exception while calling model listener", e2);
+                }
+            });
+            throw e;
+        }
     }
 
     @Override
