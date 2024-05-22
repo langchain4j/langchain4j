@@ -24,7 +24,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-aiplatform</artifactId>
-            <version>3.33.0</version>
+            <version>3.44.0</version>
             <exclusions>
                 <exclusion>
                     <groupId>commons-logging</groupId>

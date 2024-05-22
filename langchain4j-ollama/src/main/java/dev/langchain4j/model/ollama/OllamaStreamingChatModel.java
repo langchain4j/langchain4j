@@ -43,10 +43,15 @@ public class OllamaStreamingChatModel implements StreamingChatLanguageModel {
                                     List<String> stop,
                                     String format,
                                     Duration timeout,
-                                    Map<String, String> customHeaders) {
+                                    Boolean logRequests,
+                                    Boolean logResponses,
+                                    Map<String, String> customHeaders
+                                    ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .logRequests(logRequests)
+                .logStreamingResponses(logResponses)
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
