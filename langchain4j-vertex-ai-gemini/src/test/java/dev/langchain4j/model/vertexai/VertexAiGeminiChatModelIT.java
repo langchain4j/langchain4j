@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -35,16 +35,19 @@ class VertexAiGeminiChatModelIT {
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
+    public static final String GEMINI_1_0_PRO_VISION = "gemini-1.5-pro-preview-0514";
+    public static final String GEMINI_PRO = "gemini-1.5-pro-preview-0514";
+
     ChatLanguageModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro")
+            .modelName(GEMINI_PRO)
             .build();
 
     ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro-vision")
+            .modelName(GEMINI_1_0_PRO_VISION)
             .build();
 
     @Test
@@ -71,33 +74,33 @@ class VertexAiGeminiChatModelIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_merge_system_messages_into_user_message(List<ChatMessage> messages) {
+    void should_support_system_instructions(List<ChatMessage> messages) {
 
         // when
         Response<AiMessage> response = model.generate(messages);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("liebe");
+        assertThat(response.content().text()).containsIgnoringCase("lieb");
     }
 
-    static Stream<Arguments> should_merge_system_messages_into_user_message() {
+    static Stream<Arguments> should_support_system_instructions() {
         return Stream.<Arguments>builder()
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in German"),
-                                UserMessage.from("I love you")
+                                UserMessage.from("I love apples")
                         )
                 ))
                 .add(Arguments.of(
                         asList(
-                                UserMessage.from("I love you"),
-                                SystemMessage.from("Translate in German")
+                            UserMessage.from("I love apples"),
+                            SystemMessage.from("Translate in German")
                         )
                 ))
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in Italian"),
-                                UserMessage.from("I love you"),
+                                UserMessage.from("I love apples"),
                                 SystemMessage.from("No, translate in German!")
                         )
                 ))
@@ -105,8 +108,8 @@ class VertexAiGeminiChatModelIT {
                         asList(
                                 SystemMessage.from("Translate in German"),
                                 UserMessage.from(asList(
-                                        TextContent.from("I love you"),
-                                        TextContent.from("I see you")
+                                        TextContent.from("I love apples"),
+                                        TextContent.from("I see apples")
                                 ))
                         )
                 ))
@@ -114,17 +117,17 @@ class VertexAiGeminiChatModelIT {
                         asList(
                                 SystemMessage.from("Translate in German"),
                                 UserMessage.from(asList(
-                                        TextContent.from("I see you"),
-                                        TextContent.from("I love you")
+                                        TextContent.from("I see apples"),
+                                        TextContent.from("I love apples")
                                 ))
                         )
                 ))
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in German"),
-                                UserMessage.from("I see you"),
-                                AiMessage.from("Ich sehe dich"),
-                                UserMessage.from("I love you")
+                                UserMessage.from("I see apples"),
+                                AiMessage.from("Ich sehe Äpfel"),
+                                UserMessage.from("I love apples")
                         )
                 ))
                 .build();
@@ -137,7 +140,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
+                .modelName(GEMINI_PRO)
                 .maxOutputTokens(1)
                 .build();
 
@@ -156,7 +159,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     @Test
@@ -164,7 +167,7 @@ class VertexAiGeminiChatModelIT {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
-        GenerativeModel generativeModel = new GenerativeModel("gemini-pro", vertexAi);
+        GenerativeModel generativeModel = new GenerativeModel(GEMINI_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
         ChatLanguageModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
@@ -315,7 +318,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
+                .modelName(GEMINI_PRO)
                 .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
