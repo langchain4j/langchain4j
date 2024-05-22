@@ -25,7 +25,6 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     public static class User {
-        @P("username")
         private String name;
         @P("password")
         private String password;
@@ -199,7 +198,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
                 .containsEntry("arg29", mapOf("type", "object"))
                 .containsEntry("arg30", mapOf("type", "object", "description", "user info",
-                        "properties", mapOf("name", mapOf("type", "string", "description", "username"),
+                        "properties", mapOf("name", mapOf("type", "string"),
                                 "password", mapOf("type", "string", "description", "password"))));
 
         assertThat(properties.get("arg28")).containsEntry("type", "string");
