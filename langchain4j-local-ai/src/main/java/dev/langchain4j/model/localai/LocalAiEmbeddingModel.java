@@ -7,6 +7,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.localai.spi.LocalAiEmbeddingModelBuilderFactory;
+import dev.langchain4j.model.openai.InternalOpenAiHelper;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -39,7 +40,7 @@ public class LocalAiEmbeddingModel implements EmbeddingModel {
         timeout = timeout == null ? ofSeconds(60) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
                 .callTimeout(timeout)

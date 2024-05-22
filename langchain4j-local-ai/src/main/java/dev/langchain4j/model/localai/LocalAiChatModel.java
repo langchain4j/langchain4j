@@ -8,6 +8,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.localai.spi.LocalAiChatModelBuilderFactory;
+import dev.langchain4j.model.openai.InternalOpenAiHelper;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -48,7 +49,7 @@ public class LocalAiChatModel implements ChatLanguageModel {
         timeout = timeout == null ? ofSeconds(60) : timeout;
         maxRetries = maxRetries == null ? 3 : maxRetries;
 
-        this.client = OpenAiClient.builder()
+        this.client = InternalOpenAiHelper.defaultOpenAiClientBuilder()
                 .openAiApiKey("ignored")
                 .baseUrl(ensureNotBlank(baseUrl, "baseUrl"))
                 .callTimeout(timeout)

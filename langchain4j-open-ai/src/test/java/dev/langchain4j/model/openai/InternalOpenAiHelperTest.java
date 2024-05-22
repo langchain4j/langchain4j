@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.*;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -125,5 +126,12 @@ class InternalOpenAiHelperTest {
                 .isEqualTo(Response.from(AiMessage.from("Hello")));
         assertThat(removeTokenUsage(Response.from(AiMessage.from("Hello"), new TokenUsage(42), STOP)))
                 .isEqualTo(Response.from(AiMessage.from("Hello"), null, STOP));
+    }
+
+    @Test
+    void should_populate_default_client_builder_with_correct_defaults() {
+        OpenAiClient.Builder builder = defaultOpenAiClientBuilder();
+        assertThat(builder.userAgent).isEqualTo("LangChain4j");
+        assertThat(builder.baseUrl).isEqualTo("https://api.openai.com/v1/");
     }
 }

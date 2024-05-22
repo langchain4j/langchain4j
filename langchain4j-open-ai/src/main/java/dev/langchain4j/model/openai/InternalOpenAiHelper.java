@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import dev.ai4j.openai4j.OpenAiClient;
 import dev.ai4j.openai4j.chat.*;
 import dev.ai4j.openai4j.shared.Usage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -35,12 +36,23 @@ public class InternalOpenAiHelper {
     static final String OPENAI_DEMO_URL = "http://langchain4j.dev/demo/openai/v1";
 
 
-    static final String DEFAULT_USER_AGENT = "langchain4j-openai";
+    static final String DEFAULT_USER_AGENT = "LangChain4j";
 
     public static List<Message> toOpenAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(InternalOpenAiHelper::toOpenAiMessage)
                 .collect(toList());
+    }
+
+    /**
+     * An OpenAI client builder with default settings.
+     * @return OpenAI client builder with default settings.
+     */
+    public static OpenAiClient.Builder defaultOpenAiClientBuilder() {
+        return OpenAiClient.builder()
+                // TODO could probably move more here
+                .baseUrl(OPENAI_URL)
+                .userAgent(DEFAULT_USER_AGENT);
     }
 
     public static Message toOpenAiMessage(ChatMessage message) {

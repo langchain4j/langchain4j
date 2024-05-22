@@ -68,8 +68,9 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 .callTimeout(builder.timeout)
                 .connectTimeout(builder.timeout)
                 .readTimeout(builder.timeout)
-                .writeTimeout(builder.timeout);
-
+                .writeTimeout(builder.timeout)
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()));
         if (builder.logRequests) {
             okHttpClientBuilder.addInterceptor(new AnthropicRequestLoggingInterceptor());
         }

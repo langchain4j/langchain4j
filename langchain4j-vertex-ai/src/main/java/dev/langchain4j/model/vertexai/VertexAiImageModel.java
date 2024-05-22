@@ -152,7 +152,7 @@ public class VertexAiImageModel implements ImageModel {
 
     private Response<List<Image>> generate(String prompt, Image image, Image mask, int n) {
         try {
-            PredictionServiceSettings serviceSettings = PredictionServiceSettings.newBuilder()
+            PredictionServiceSettings serviceSettings = InternalVertexAiHelper.defaultPredictionServiceSettingsBuilder()
                 .setEndpoint(this.endpoint)
                 .build();
 

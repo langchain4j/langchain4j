@@ -69,6 +69,8 @@ class VespaQueryClient {
           request = request.newBuilder().url(url).build();
           return chain.proceed(request);
         })
+        .addInterceptor(chain -> chain.proceed(
+            chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()))
         .build();
 
       Retrofit retrofit = new Retrofit.Builder()

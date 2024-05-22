@@ -45,6 +45,8 @@ class OllamaClient {
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
+                .addInterceptor(chain -> chain.proceed(
+                        chain.request().newBuilder().addHeader("User-Agent", "LangChain4j").build()))
                 .writeTimeout(timeout);
         // add custom header interceptor
         if (customHeaders != null && !customHeaders.isEmpty()) {

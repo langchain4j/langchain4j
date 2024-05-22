@@ -63,7 +63,7 @@ public class VertexAiChatModel implements ChatLanguageModel {
                              Double topP,
                              Integer maxRetries) {
         try {
-            this.settings = PredictionServiceSettings.newBuilder()
+            this.settings = InternalVertexAiHelper.defaultPredictionServiceSettingsBuilder()
                     .setEndpoint(ensureNotBlank(endpoint, "endpoint"))
                     .build();
         } catch (IOException e) {
