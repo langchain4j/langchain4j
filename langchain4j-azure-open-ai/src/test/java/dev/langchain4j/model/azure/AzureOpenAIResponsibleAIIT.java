@@ -33,8 +33,7 @@ public class AzureOpenAIResponsibleAIIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void chat_message_should_trigger_content_filter_for_violence(String deploymentName, String gptVersion) {
 
@@ -56,8 +55,7 @@ public class AzureOpenAIResponsibleAIIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void chat_message_should_trigger_content_filter_for_self_harm(String deploymentName, String gptVersion) {
 
@@ -118,8 +116,7 @@ public class AzureOpenAIResponsibleAIIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void streaming_chat_message_should_trigger_content_filter_for_violence(String deploymentName, String gptVersion) throws Exception {
 
@@ -167,8 +164,7 @@ public class AzureOpenAIResponsibleAIIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void streaming_language_should_trigger_content_filter_for_violence(String deploymentName, String gptVersion) throws Exception {
 

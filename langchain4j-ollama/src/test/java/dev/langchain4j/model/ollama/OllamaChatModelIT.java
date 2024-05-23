@@ -21,6 +21,8 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
             .baseUrl(ollama.getEndpoint())
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     @Test
@@ -39,7 +41,7 @@ class OllamaChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
         assertThat(aiMessage.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(13);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());

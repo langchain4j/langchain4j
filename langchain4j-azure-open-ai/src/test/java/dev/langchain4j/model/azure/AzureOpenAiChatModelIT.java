@@ -42,8 +42,7 @@ public class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop(String deploymentName, String gptVersion) {
 
@@ -72,8 +71,7 @@ public class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName, String gptVersion) {
 
@@ -103,8 +101,7 @@ public class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void should_call_function_with_argument(String deploymentName, String gptVersion) {
 
@@ -170,8 +167,7 @@ public class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void should_call_function_with_no_argument(String deploymentName, String gptVersion) {
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
@@ -205,8 +201,7 @@ public class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void should_call_three_functions_in_parallel(String deploymentName, String gptVersion) throws Exception {
 
@@ -284,8 +279,7 @@ public class AzureOpenAiChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
     @CsvSource({
-            "gpt-35-turbo, gpt-3.5-turbo",
-            "gpt-4,        gpt-4"
+            "gpt-4o,        gpt-4o"
     })
     void should_use_json_format(String deploymentName, String gptVersion) {
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
