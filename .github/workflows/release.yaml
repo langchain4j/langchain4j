@@ -35,7 +35,7 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: release
-        run: mvn -B -U --fail-at-end -DskipTests -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -pl !langchain4j-core,!langchain4j-parent -Psign clean deploy
+        run: mvn -B -U --fail-at-end -DskipTests -DskipITs -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -pl !langchain4j-core,!langchain4j-parent -Psign clean deploy
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
