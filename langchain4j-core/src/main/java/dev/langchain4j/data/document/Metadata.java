@@ -1,6 +1,5 @@
 package dev.langchain4j.data.document;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 
@@ -84,8 +83,10 @@ public class Metadata {
      *
      * @param key the key
      * @return the value associated with the given key, or {@code null} if the key is not present.
+     * @deprecated as of 0.31.0, use {@link #getString(String)}, {@link #getInteger(String)}, {@link #getLong(String)},
+     * {@link #getFloat(String)}, {@link #getDouble(String)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     public String get(String key) {
         Object value = metadata.get(key);
         if (value != null) {
@@ -102,7 +103,6 @@ public class Metadata {
      * @return the {@code String} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not of type String
      */
-    @Experimental
     public String getString(String key) {
         if (!containsKey(key)) {
             return null;
@@ -133,7 +133,6 @@ public class Metadata {
      * @return the {@link Integer} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
-    @Experimental
     public Integer getInteger(String key) {
         if (!containsKey(key)) {
             return null;
@@ -166,7 +165,6 @@ public class Metadata {
      * @return the {@code Long} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
-    @Experimental
     public Long getLong(String key) {
         if (!containsKey(key)) {
             return null;
@@ -199,7 +197,6 @@ public class Metadata {
      * @return the {@code Float} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
-    @Experimental
     public Float getFloat(String key) {
         if (!containsKey(key)) {
             return null;
@@ -232,7 +229,6 @@ public class Metadata {
      * @return the {@code Double} value associated with the given key, or {@code null} if the key is not present.
      * @throws RuntimeException if the value is not {@link Number}
      */
-    @Experimental
     public Double getDouble(String key) {
         if (!containsKey(key)) {
             return null;
@@ -255,7 +251,6 @@ public class Metadata {
      * @param key the key
      * @return {@code true} if this metadata contains a given key; {@code false} otherwise.
      */
-    @Experimental
     public boolean containsKey(String key) {
         return metadata.containsKey(key);
     }
@@ -266,8 +261,10 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
+     * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
+     * {@link #put(String, float)}, {@link #put(String, double)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     public Metadata add(String key, Object value) {
         return put(key, value.toString());
     }
@@ -278,8 +275,10 @@ public class Metadata {
      * @param key   the key
      * @param value the value
      * @return {@code this}
+     * @deprecated as of 0.31.0, use {@link #put(String, String)}, {@link #put(String, int)}, {@link #put(String, long)},
+     * {@link #put(String, float)}, {@link #put(String, double)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     public Metadata add(String key, String value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -293,7 +292,6 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    @Experimental
     public Metadata put(String key, String value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -307,7 +305,6 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    @Experimental
     public Metadata put(String key, int value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -321,7 +318,6 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    @Experimental
     public Metadata put(String key, long value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -335,7 +331,6 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    @Experimental
     public Metadata put(String key, float value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -349,7 +344,6 @@ public class Metadata {
      * @param value the value
      * @return {@code this}
      */
-    @Experimental
     public Metadata put(String key, double value) {
         validate(key, value);
         this.metadata.put(key, value);
@@ -380,8 +374,9 @@ public class Metadata {
      * Get a copy of the metadata as a map of key-value pairs.
      *
      * @return the metadata as a map of key-value pairs.
+     * @deprecated as of 0.31.0, use {@link #toMap()} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     public Map<String, String> asMap() {
         Map<String, String> map = new HashMap<>();
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
@@ -395,7 +390,6 @@ public class Metadata {
      *
      * @return the metadata as a map of key-value pairs.
      */
-    @Experimental
     public Map<String, Object> toMap() {
         return new HashMap<>(metadata);
     }
