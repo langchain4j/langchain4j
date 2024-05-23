@@ -3,10 +3,13 @@ package dev.langchain4j.rag.content.retriever;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
+import lombok.Builder;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.toList;
 
@@ -21,30 +24,26 @@ import static java.util.stream.Collectors.toList;
 public class WebSearchContentRetriever implements ContentRetriever {
 
     private final WebSearchEngine webSearchEngine;
+    private final int maxResults;
 
-    /**
-     * Constructs a new WebSearchContentRetriever with the specified web search engine.
-     *
-     * @param webSearchEngine The web search engine to use for retrieving search results.
-     */
-    public WebSearchContentRetriever(WebSearchEngine webSearchEngine) {
+    @Builder
+    public WebSearchContentRetriever(WebSearchEngine webSearchEngine, Integer maxResults) {
         this.webSearchEngine = ensureNotNull(webSearchEngine, "webSearchEngine");
+        this.maxResults = getOrDefault(maxResults, 5);
     }
 
     @Override
     public List<Content> retrieve(Query query) {
-        WebSearchResults webSearchResults = webSearchEngine.search(query.text());
+
+        WebSearchRequest webSearchRequest = WebSearchRequest.builder()
+                .searchTerms(query.text())
+                .maxResults(maxResults)
+                .build();
+
+        WebSearchResults webSearchResults = webSearchEngine.search(webSearchRequest);
+
         return webSearchResults.toTextSegments().stream()
                 .map(Content::from)
                 .collect(toList());
-    }
-
-    /**
-     * Creates a new instance of {@code WebSearchContentRetriever} with the specified {@link WebSearchEngine}.
-     *
-     * @return A new instance of WebSearchContentRetriever.
-     */
-    public static WebSearchContentRetriever from(WebSearchEngine webSearchEngine) {
-        return new WebSearchContentRetriever(webSearchEngine);
     }
 }

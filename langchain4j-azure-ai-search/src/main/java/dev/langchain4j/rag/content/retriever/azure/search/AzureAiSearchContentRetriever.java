@@ -58,6 +58,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     private final AzureAiSearchQueryType azureAiSearchQueryType;
 
     private final int maxResults;
+
     private final double minScore;
 
     public AzureAiSearchContentRetriever(String endpoint,
@@ -66,6 +67,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                          boolean createOrUpdateIndex,
                                          int dimensions,
                                          SearchIndex index,
+                                         String indexName,
                                          EmbeddingModel embeddingModel,
                                          int maxResults,
                                          double minScore,
@@ -86,15 +88,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName);
             } else {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName);
             } else {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName);
             }
         }
         this.embeddingModel = embeddingModel;
@@ -285,6 +287,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         private SearchIndex index;
 
+        private String indexName;
+
         private EmbeddingModel embeddingModel;
 
         private int maxResults = EmbeddingStoreContentRetriever.DEFAULT_MAX_RESULTS.apply(null);
@@ -362,6 +366,17 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
 
         /**
+         * If no index is provided, set the name of the default index to be used.
+         *
+         * @param indexName The index name to be used.
+         * @return builder
+         */
+        public Builder indexName(String indexName) {
+            this.indexName = indexName;
+            return this;
+        }
+
+        /**
          * Sets the Embedding Model.
          *
          * @param embeddingModel The Embedding Model.
@@ -408,7 +423,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
         public AzureAiSearchContentRetriever build() {
             return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, createOrUpdateIndex, dimensions, index,
-                    embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
         }
     }
 }
