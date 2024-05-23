@@ -3,10 +3,10 @@ package dev.langchain4j.model;
 import java.util.function.Consumer;
 
 /**
- * Utility class with lambda-based streaming response handler.
+ * Utility class with lambda-based streaming response handlers.
  *
  * Lets you use Java lambda functions to receive <code>onNext</code> and <code>onError</code> events,
- * from your generative model, instead of implementing an anonymous inner class
+ * from your streaming chat model, instead of creating an anonymous inner class
  * implementing <code>StreamingResponseHandler</code>.
  *
  * Example:

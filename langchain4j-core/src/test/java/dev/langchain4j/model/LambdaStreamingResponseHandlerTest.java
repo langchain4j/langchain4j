@@ -21,8 +21,8 @@ public class LambdaStreamingResponseHandlerTest implements WithAssertions {
         List tokens = new ArrayList<>();
         tokens.add("The sky ");
         tokens.add("is blue because of ");
-        tokens.add("a phenomenom called ");
-        tokens.add("Raleygh scattering.");
+        tokens.add("a phenomenon called ");
+        tokens.add("Rayleigh scattering.");
 
         StreamingChatLanguageModel model = new DummyModel(tokens);
 
