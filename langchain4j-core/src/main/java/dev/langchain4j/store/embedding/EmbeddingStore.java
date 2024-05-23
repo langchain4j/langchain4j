@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.store.embedding.filter.Filter;
 
@@ -66,7 +65,6 @@ public interface EmbeddingStore<Embedded> {
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
      */
-    @Experimental
     default EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest request) {
         List<EmbeddingMatch<Embedded>> matches =
                 findRelevant(request.queryEmbedding(), request.maxResults(), request.minScore());
@@ -82,8 +80,9 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults) {
         return findRelevant(referenceEmbedding, maxResults, 0);
     }
@@ -98,8 +97,9 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest.builder()
                 .queryEmbedding(referenceEmbedding)
@@ -120,8 +120,9 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults) {
         return findRelevant(memoryId, referenceEmbedding, maxResults, 0);
@@ -138,8 +139,9 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of embedding matches.
      * Each embedding match includes a relevance score (derivative of cosine distance),
      * ranging from 0 (not relevant) to 1 (highly relevant).
+     * @deprecated as of 0.31.0, use {@link #search(EmbeddingSearchRequest)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     default List<EmbeddingMatch<Embedded>> findRelevant(
             Object memoryId, Embedding referenceEmbedding, int maxResults, double minScore) {
         throw new RuntimeException("Not implemented");
