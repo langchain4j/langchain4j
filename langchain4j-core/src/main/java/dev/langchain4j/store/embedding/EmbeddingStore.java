@@ -1,8 +1,12 @@
 package dev.langchain4j.store.embedding;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -53,6 +57,46 @@ public interface EmbeddingStore<Embedded> {
      * @return A list of auto-generated IDs associated with the added embeddings.
      */
     List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
+
+    /**
+     * Removes a single embedding from the store by ID.
+     *
+     * @param id The unique ID of the embedding to be removed.
+     */
+    @Experimental
+    default void remove(String id) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings that match the specified IDs from the store.
+     *
+     * @param ids A collection of unique IDs of the embeddings to be removed.
+     */
+    @Experimental
+    default void removeAll(Collection<String> ids) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings that match the specified {@link Filter} from the store.
+     *
+     * @param filter The filter to be applied to the {@link Metadata} of the {@link TextSegment} during removal.
+     *               Only embeddings whose {@code TextSegment}'s {@code Metadata}
+     *               match the {@code Filter} will be removed.
+     */
+    @Experimental
+    default void removeAll(Filter filter) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings from the store.
+     */
+    @Experimental
+    default void removeAll() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
 
     /**
      * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
