@@ -111,6 +111,7 @@ Please note that not all models support tools.
 Currently, the following models have tool support:
 - `OpenAiChatModel`
 - `AzureOpenAiChatModel`
+- `MistralAiChatModel`
 - `LocalAiChatModel`
 - `QianfanChatModel`
 :::

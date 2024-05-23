@@ -3,6 +3,7 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicHttpException;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -24,7 +25,6 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_SONNET_20240229;
 import static dev.langchain4j.model.output.FinishReason.*;
-import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
 import static java.util.Collections.singletonList;
@@ -73,8 +73,6 @@ class AnthropicChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
         // given
-        ChatLanguageModel model = AnthropicChatModel.withApiKey(getenv("ANTHROPIC_API_KEY"));
-
         UserMessage userMessage = userMessage("What is the capital of Germany?");
 
         // when
