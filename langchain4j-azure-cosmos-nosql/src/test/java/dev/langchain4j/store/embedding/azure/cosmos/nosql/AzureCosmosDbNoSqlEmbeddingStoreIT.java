@@ -1,20 +1,10 @@
-package dev.langchain4j.store.embedding.azure.cosmos.no.sql;
+package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
 import com.azure.cosmos.ConsistencyLevel;
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosDatabase;
-import com.azure.cosmos.models.CosmosContainerProperties;
-import com.azure.cosmos.models.CosmosVectorDataType;
-import com.azure.cosmos.models.CosmosVectorDistanceFunction;
-import com.azure.cosmos.models.CosmosVectorEmbedding;
-import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
-import com.azure.cosmos.models.CosmosVectorIndexSpec;
-import com.azure.cosmos.models.CosmosVectorIndexType;
-import com.azure.cosmos.models.IncludedPath;
-import com.azure.cosmos.models.IndexingMode;
-import com.azure.cosmos.models.IndexingPolicy;
-import com.azure.cosmos.models.PartitionKeyDefinition;
+import com.azure.cosmos.models.*;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -36,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_HOST", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_MASTER_KEY", matches = ".+")
-public class AzureCosmosDbNoSqlEmbeddingStoreIT extends EmbeddingStoreIT {
+class AzureCosmosDbNoSqlEmbeddingStoreIT extends EmbeddingStoreIT {
 
     protected static Logger logger = LoggerFactory.getLogger(AzureCosmosDbNoSqlEmbeddingStoreIT.class);
 

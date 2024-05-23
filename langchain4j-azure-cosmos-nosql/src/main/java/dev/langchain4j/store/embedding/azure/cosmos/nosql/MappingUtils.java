@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.azure.cosmos.no.sql;
+package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;

@@ -1,15 +1,9 @@
-package dev.langchain4j.store.embedding.azure.cosmos.no.sql;
+package dev.langchain4j.store.embedding.azure.cosmos.nosql;
 
 import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
-import com.azure.cosmos.models.CosmosBulkOperations;
-import com.azure.cosmos.models.CosmosContainerProperties;
-import com.azure.cosmos.models.CosmosItemOperation;
-import com.azure.cosmos.models.CosmosQueryRequestOptions;
-import com.azure.cosmos.models.CosmosVectorIndexSpec;
-import com.azure.cosmos.models.CosmosVectorEmbeddingPolicy;
-import com.azure.cosmos.models.PartitionKey;
+import com.azure.cosmos.models.*;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -23,13 +17,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
-import static dev.langchain4j.store.embedding.azure.cosmos.no.sql.MappingUtils.toNoSqlDbDocument;
+import static dev.langchain4j.store.embedding.azure.cosmos.nosql.MappingUtils.toNoSqlDbDocument;
 import static java.util.Collections.singletonList;
 
+/**
+ * You can read more about vector search using Azure Cosmos DB NoSQL
+ * <a href="https://aka.ms/CosmosVectorSearch">here</a>.
+ */
 public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static final Logger log = LoggerFactory.getLogger(AzureCosmosDbNoSqlEmbeddingStore.class);
@@ -44,8 +40,6 @@ public class AzureCosmosDbNoSqlEmbeddingStore implements EmbeddingStore<TextSegm
     private final CosmosDatabase database;
     private final CosmosContainer container;
 
-    // You can read more about vector search using AzureCosmosDBNoSQL here
-    // https://aka.ms/CosmosVectorSearch
     @Builder
     public AzureCosmosDbNoSqlEmbeddingStore(CosmosClient cosmosClient,
                                             String databaseName,

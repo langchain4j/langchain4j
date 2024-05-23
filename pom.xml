@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-aggregator</artifactId>
-    <version>0.31.0-SNAPSHOT</version>
+    <version>0.31.0</version>
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
@@ -42,6 +42,7 @@
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
+        <module>langchain4j-azure-cosmos-nosql</module>
         <module>langchain4j-cassandra</module>
         <module>langchain4j-chroma</module>
         <module>langchain4j-elasticsearch</module>
@@ -57,7 +58,6 @@
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
-        <module>langchain4j-azure-cosmos-no-sql</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
