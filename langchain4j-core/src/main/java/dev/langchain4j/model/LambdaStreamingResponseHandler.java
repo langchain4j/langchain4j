@@ -14,7 +14,7 @@ import java.util.function.Consumer;
  * import static dev.langchain4j.model.LambdaStreamingResponseHandler.*;
  *
  * model.generate("Why is the sky blue?",
- *       onNext(text -> System.out.println(text));
+ *       onNext(text -&gt; System.out.println(text));
  * model.generate("Why is the sky blue?",
  *       onNext(System.out::println);
  * model.generate("Why is the sky blue?",
