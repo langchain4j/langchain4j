@@ -1,10 +1,12 @@
 package dev.langchain4j.store.embedding;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.filter.Filter;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -57,41 +59,42 @@ public interface EmbeddingStore<Embedded> {
     List<String> addAll(List<Embedding> embeddings, List<Embedded> embedded);
 
     /**
-     * Removes an embedding from the store.
+     * Removes a single embedding from the store by ID.
      *
-     * @param id The unique identifier of the embedding to be removed.
+     * @param id The unique ID of the embedding to be removed.
      */
+    @Experimental
     default void remove(String id) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**
-     * Removes all embeddings from the store.
+     * Removes all embeddings that match the specified IDs from the store.
      *
+     * @param ids A collection of unique IDs of the embeddings to be removed.
      */
-    default void removeAll() {
+    @Experimental
+    default void removeAll(Collection<String> ids) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
     /**
-     * Removes multiple embeddings from the store.
+     * Removes all embeddings that match the specified {@link Filter} from the store.
      *
-     * @param ids A list of unique identifiers of the embeddings to be removed.
+     * @param filter The filter to be applied to the {@link Metadata} of the {@link TextSegment} during removal.
+     *               Only embeddings whose {@code TextSegment}'s {@code Metadata}
+     *               match the {@code Filter} will be removed.
      */
-    default void removeAll(List<String> ids) {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-    /**
-     * Removes multiple embeddings from the store.
-     *
-     * @param filter         The filter to be applied to the {@link Metadata} during delete.
-     *                       Only {@link TextSegment}s whose {@link Metadata}
-     *                       matches the {@link Filter} will be deleted.
-     *                       Please note that not all {@link EmbeddingStore}s support this feature yet.
-     *                       This is an optional parameter. Default: no filtering, all will be deleted.
-     */
+    @Experimental
     default void removeAll(Filter filter) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    /**
+     * Removes all embeddings from the store.
+     */
+    @Experimental
+    default void removeAll() {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 

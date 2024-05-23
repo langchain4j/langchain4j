@@ -15,15 +15,14 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Test upgrade from 029 to latest version
- */
 @Testcontainers
 public class PgVectorEmbeddingStoreRemoveIT {
 
@@ -70,7 +69,6 @@ public class PgVectorEmbeddingStoreRemoveIT {
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevantIds).hasSize(2);
         assertThat(relevantIds).containsExactly(id2, id3);
-
     }
 
     @Test
@@ -83,12 +81,19 @@ public class PgVectorEmbeddingStoreRemoveIT {
         String id2 = embeddingStore.add(embedding2);
         String id3 = embeddingStore.add(embedding3);
 
-        embeddingStore.removeAll(Arrays.asList(id2,id3));
+        embeddingStore.removeAll(Arrays.asList(id2, id3));
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevant).hasSize(1);
         assertThat(relevantIds).containsExactly(id);
+    }
+
+    @Test
+    void remove_all_by_ids_null() {
+        assertThatThrownBy(() -> embeddingStore.removeAll((Collection<String>) null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("ids cannot be null or empty");
     }
 
     @Test
@@ -113,40 +118,6 @@ public class PgVectorEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_all_by_ids_null() {
-        Embedding embedding = embeddingModel.embed("hello").content();
-        Embedding embedding2 = embeddingModel.embed("hello2").content();
-        Embedding embedding3 = embeddingModel.embed("hello3").content();
-
-        embeddingStore.add(embedding);
-        embeddingStore.add(embedding2);
-        embeddingStore.add(embedding3);
-
-        embeddingStore.removeAll((List<String>) null);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(relevantIds).hasSize(3);
-    }
-
-    @Test
-    void remove_all_by_filter_null() {
-        Embedding embedding = embeddingModel.embed("hello").content();
-        Embedding embedding2 = embeddingModel.embed("hello2").content();
-        Embedding embedding3 = embeddingModel.embed("hello3").content();
-
-        embeddingStore.add(embedding);
-        embeddingStore.add(embedding2);
-        embeddingStore.add(embedding3);
-
-        embeddingStore.removeAll((Filter) null);
-
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
-        List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(relevantIds).hasSize(0);
-    }
-
-    @Test
     void remove_all_by_filter_not_matching() {
         Embedding embedding = embeddingModel.embed("hello").content();
         Embedding embedding2 = embeddingModel.embed("hello2").content();
@@ -161,5 +132,12 @@ public class PgVectorEmbeddingStoreRemoveIT {
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevantIds).hasSize(3);
+    }
+
+    @Test
+    void remove_all_by_filter_null() {
+        assertThatThrownBy(() -> embeddingStore.removeAll((Filter) null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("filter cannot be null");
     }
 }
