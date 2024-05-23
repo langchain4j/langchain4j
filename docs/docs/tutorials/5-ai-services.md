@@ -163,13 +163,13 @@ you can change the return type of your AI Service method from `String` to someth
 Currently, AI Services support the following return types:
 - `String`
 - `AiMessage`
-- `Response<AiMessage>` (if you need to access `TokenUsage` or `FinishReason`)
-- `boolean`/`Boolean` (if you need to get "yes" or "no" answer)
+- `boolean`/`Boolean`, if you need to get "yes" or "no" answer
 - `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
-- `List<String>`/`Set<String>` (if you want to get the answer in the form of a list of bullet points)
-- Any `Enum` (if you want to classify text, e.g. sentiment, user intent, etc)
+- `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
+- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
 - Any custom POJO
+- `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
 Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
 the AI Service will automatically append instructions to the end of `UserMessage` indicating the format
@@ -187,7 +187,7 @@ ChatLanguageModel model = OpenAiChatModel.builder()
 
 Now let's take a look at some examples.
 
-`Enum` and `boolean` as return types:
+### `Enum` and `boolean` as return types
 ```java
 enum Sentiment {
     POSITIVE, NEUTRAL, NEGATIVE
@@ -211,7 +211,7 @@ boolean positive = sentimentAnalyzer.isPositive("It's awful!");
 // false
 ```
 
-Custom POJO as a return type:
+### Custom POJO as a return type
 ```java
 class Person {
     String firstName;
@@ -297,7 +297,7 @@ AzureOpenAiChatModel.builder()
 ```java
 MistralAiChatModel.builder()
         ...
-        .responseFormat(JSON_OBJECT)
+        .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
         .build();
 ```
 
@@ -559,7 +559,6 @@ Also, I can integration test `GreetingExpert` and `ChatBot` separately.
 I can evaluate both of them separately and find the most optimal parameters for each subtask,
 or, in the long run, even fine-tune a small specialized model for each specific subtask.
 
-TODO
 
 ## Related Tutorials
 - [LangChain4j AiServices Tutorial](https://www.sivalabs.in/langchain4j-ai-services-tutorial/) by [Siva](https://www.sivalabs.in/)

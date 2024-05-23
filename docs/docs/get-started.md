@@ -24,13 +24,23 @@ In this case, we should add the OpenAI dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.30.0</version>
+    <version>0.31.0</version>
+</dependency>
+```
+If you want to use more of the Langchain4j non-integration specific classes, such as Services, you will also need to add 
+the base library:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j</artifactId>
+    <version>0.31.0</version>
 </dependency>
 ```
 
 - For Gradle in `build.gradle`:
 ```groovy
-implementation 'dev.langchain4j:langchain4j-open-ai:0.30.0'
+implementation 'dev.langchain4j:langchain4j-open-ai:0.31.0'
 ```
 
 Then, import your OpenAI API key.

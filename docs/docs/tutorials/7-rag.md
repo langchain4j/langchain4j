@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.30.0</version>
+    <version>0.31.0</version>
 </dependency>
 ```
 
@@ -189,6 +189,21 @@ and retrieve relevant content from an `EmbeddingStore` that contains our documen
 5. And now we are ready to chat with it!
 ```java
 String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
+```
+
+## Accessing Sources
+If you wish to access the sources (retrieved `Content`s used to augment the message),
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
+
+String answer = result.content();
+List<Content> sources = result.sources();
 ```
 
 ## RAG APIs
