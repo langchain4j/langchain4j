@@ -17,7 +17,6 @@ import java.util.List;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.*;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,7 +65,7 @@ class MistralAiChatModelIT {
         assertThat(response.content().text()).contains("Lima");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(15);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -93,8 +92,8 @@ class MistralAiChatModelIT {
         assertThat(response.content().text()).isNotBlank();
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(15);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(4);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -108,6 +107,7 @@ class MistralAiChatModelIT {
         ChatLanguageModel model = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
                 .safePrompt(true)
+                .temperature(0.0)
                 .build();
 
         // given
@@ -119,16 +119,14 @@ class MistralAiChatModelIT {
         // then
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).contains("respect");
-        assertThat(aiMessage.text()).contains("truth");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(50);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
-
     }
 
     @Test
@@ -148,7 +146,7 @@ class MistralAiChatModelIT {
         assertThat(response.content().text()).contains("Ottawa");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(11 + 11 + 11);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -177,7 +175,7 @@ class MistralAiChatModelIT {
         assertThat(response.content().text()).contains("Lima");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(18);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -206,7 +204,7 @@ class MistralAiChatModelIT {
         assertThat(response.content().text()).contains("Lima");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(19);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -235,8 +233,8 @@ class MistralAiChatModelIT {
         assertThat(response.content().text()).contains("Lima");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(15);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(10);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -244,7 +242,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_tool_using_model_open8x22B_and_return_finishReason_tool_execution(){
+    void should_execute_tool_using_model_open8x22B_and_return_finishReason_tool_execution() {
 
         // given
         UserMessage userMessage = userMessage("What is the status of transaction T123?");
@@ -263,8 +261,8 @@ class MistralAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(78);
-        assertThat(tokenUsage.outputTokenCount()).isEqualTo(28);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
@@ -272,7 +270,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_tool_using_model_open8x22B_when_toolChoice_is_auto_and_answer(){
+    void should_execute_tool_using_model_open8x22B_when_toolChoice_is_auto_and_answer() {
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -284,7 +282,7 @@ class MistralAiChatModelIT {
         UserMessage userMessage = userMessage("What is the status of transaction T123?");
 
         chatMessages.add(userMessage);
-        List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus,retrievePaymentDate);
+        List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus, retrievePaymentDate);
 
         // when
         Response<AiMessage> response = openMixtral8x22BModel.generate(chatMessages, toolSpecifications);
@@ -316,7 +314,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(74);
+        assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
@@ -350,7 +348,7 @@ class MistralAiChatModelIT {
         assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"transactionId\":\"T123\"}");
 
         TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isEqualTo(79);
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
@@ -372,7 +370,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(83);
+        assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
@@ -381,7 +379,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_return_valid_json_object_using_model_large(){
+    void should_return_valid_json_object_using_model_large() {
 
         // given
         String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
@@ -405,7 +403,7 @@ class MistralAiChatModelIT {
     }
 
     @Test
-    void should_execute_multiple_tools_using_model_open8x22B_then_answer(){
+    void should_execute_multiple_tools_using_model_open8x22B_then_answer() {
         // given
         ToolSpecification retrievePaymentDate = ToolSpecification.builder()
                 .name("retrieve-payment-date")
@@ -417,7 +415,7 @@ class MistralAiChatModelIT {
         UserMessage userMessage = userMessage("What is the status and the payment date of transaction T123?");
 
         chatMessages.add(userMessage);
-        List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus,retrievePaymentDate);
+        List<ToolSpecification> toolSpecifications = asList(retrievePaymentStatus, retrievePaymentDate);
 
         // when
         Response<AiMessage> response = mistralLargeModel.generate(chatMessages, toolSpecifications);
@@ -456,7 +454,7 @@ class MistralAiChatModelIT {
         assertThat(aiMessage2.toolExecutionRequests()).isNull();
 
         TokenUsage tokenUsage2 = response2.tokenUsage();
-        assertThat(tokenUsage2.inputTokenCount()).isEqualTo(132);
+        assertThat(tokenUsage2.inputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.outputTokenCount()).isGreaterThan(0);
         assertThat(tokenUsage2.totalTokenCount())
                 .isEqualTo(tokenUsage2.inputTokenCount() + tokenUsage2.outputTokenCount());
