@@ -19,6 +19,15 @@ public class ZhipuAiImageModel implements ImageModel {
     private final Integer maxRetries;
     private final ZhipuAiClient client;
 
+    /**
+     * Instantiates ZhipuAi cogview-3 image processing model.
+     * Find the parameters description <a href="https://open.bigmodel.cn/dev/api#cogview">here</a>.
+     *
+     * @param model  cogview-3 is default
+     * @param userId A unique identifier representing your end-user, which can help ZhipuAI to monitor
+     *               and detect abuse. User ID length requirement: minimum of 6 characters, maximum of
+     *               128 characters
+     */
     @Builder
     public ZhipuAiImageModel(
             String model,
