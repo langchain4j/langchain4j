@@ -12,7 +12,6 @@ import java.util.regex.Pattern;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
-
 class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
     @Override

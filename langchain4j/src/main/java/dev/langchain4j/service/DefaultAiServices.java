@@ -238,10 +238,6 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
 
-        if (parameters.length == 0) {
-            return new HashMap<>();
-        }
-
         Map<String, Object> variables = new HashMap<>();
         for (int i = 0; i < parameters.length; i++) {
             V annotation = parameters[i].getAnnotation(V.class);
