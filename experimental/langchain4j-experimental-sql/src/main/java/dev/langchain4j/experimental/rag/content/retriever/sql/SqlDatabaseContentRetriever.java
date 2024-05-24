@@ -330,7 +330,9 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             while (resultSet.next()) {
                 List<String> columnValues = new ArrayList<>();
                 for (int i = 1; i <= columnCount; i++) {
+
                     String columnValue = resultSet.getObject(i)==null?"":resultSet.getObject(i).toString();
+
                     if (columnValue.contains(",")) {
                         columnValue = "\"" + columnValue + "\"";
                     }
