@@ -1,6 +1,8 @@
 package dev.langchain4j.spi.prompt;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A factory for creating prompt templates.
@@ -33,6 +35,14 @@ public interface PromptTemplateFactory {
          * @return the rendered template.
          */
         String render(Map<String, Object> variables);
+
+        /**
+         * Get all variables extracted from the template.
+         * @return A set of variable names.
+         */
+        default Set<String> getAllVariables() {
+            return new HashSet<>();
+        }
     }
 
     /**

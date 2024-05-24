@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
@@ -252,31 +253,33 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
 
         if (template.contains("{{it}}") && !variables.containsKey("it")) {
-            String itValue = getValueOfVariableIt(parameters, args);
-            variables.put("it", itValue);
+            int itIndex = getVariableItIndex(parameters);
+            if (itIndex != -1) {
+                variables.put("it", toString(args[itIndex]));
+            }
         }
 
         return variables;
     }
 
-    private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
+    private static int getVariableItIndex(Parameter[] parameters) {
         if (parameters.length == 1) {
             Parameter parameter = parameters[0];
             if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
                     && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
-                return toString(args[0]);
+                return 0;
             }
         }
 
         for (int i = 0; i < parameters.length; i++) {
             if (isAnnotatedWithIt(parameters[i])) {
-                return toString(args[i]);
+                return i;
             }
         }
 
-        throw illegalConfiguration("Error: cannot find the value of the prompt template variable \"{{it}}\".");
+        return -1;
     }
 
     private static boolean isAnnotatedWithIt(Parameter parameter) {
@@ -289,16 +292,21 @@ class DefaultAiServices<T> extends AiServices<T> {
         String template = getUserMessageTemplate(method, args);
         Map<String, Object> variables = findTemplateVariables(template, method, args);
 
-        Prompt prompt;
-        if (variables.isEmpty()) {
-            prompt = new Prompt(template);
-        } else {
-            prompt = PromptTemplate.from(template).apply(variables);
-        }
+        PromptTemplate promptTemplate = PromptTemplate.from(template);
+
+        variables.putAll(defaultMissingVariables(promptTemplate, variables));
+
+        Prompt prompt = PromptTemplate.from(template).apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
                 .orElseGet(prompt::toUserMessage);
+    }
+
+    private static Map<String, Object> defaultMissingVariables(PromptTemplate promptTemplate, Map<String, Object> declaredVariables) {
+        return promptTemplate.allVariables().stream()
+                .filter(v -> !declaredVariables.containsKey(v))
+                .collect(Collectors.toMap(v -> v, v -> "{{" + v + "}}"));
     }
 
     private static String getUserMessageTemplate(Method method, Object[] args) {
