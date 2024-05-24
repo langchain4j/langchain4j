@@ -11,7 +11,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
  * such as {@link ChatLanguageModel}, {@link StreamingChatLanguageModel}, {@link EmbeddingModel}, etc.
  */
 @Experimental
-public interface ModelListener<Request, Response> {
+public interface ModelListener<Request, RequestResult extends ModelListener.OnRequestResult<Request>, Response> {
 
     /**
      * This method is called before the request is sent to the model.
@@ -19,8 +19,8 @@ public interface ModelListener<Request, Response> {
      * @param request The request to the model.
      */
     @Experimental
-    default void onRequest(Request request) {
-
+    default RequestResult onRequest(Request request) {
+        return null;
     }
 
     /**
@@ -30,7 +30,7 @@ public interface ModelListener<Request, Response> {
      * @param request  The request this response corresponds to.
      */
     @Experimental
-    default void onResponse(Response response, Request request) {
+    default void onResponse(Response response, RequestResult request) {
 
     }
 
@@ -45,7 +45,14 @@ public interface ModelListener<Request, Response> {
      * @param request  The request this error corresponds to.
      */
     @Experimental
-    default void onError(Throwable error, Response response, Request request) {
+    default void onError(Throwable error, Response response, RequestResult request) {
 
+    }
+
+    /**
+     * This name is horrible, and should be replaced by something better
+     */
+    interface OnRequestResult<Request> {
+        Request request();
     }
 }

@@ -17,7 +17,7 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
  * intended to be used with {@link ModelListener}.
  */
 @Experimental
-public class ChatLanguageModelRequest {
+public class ChatLanguageModelRequest implements ModelListener.OnRequestResult<ChatLanguageModelRequest> {
 
     private final String model;
     private final Double temperature;
@@ -63,5 +63,10 @@ public class ChatLanguageModelRequest {
 
     public List<ToolSpecification> toolSpecifications() {
         return toolSpecifications;
+    }
+
+    @Override
+    public ChatLanguageModelRequest request() {
+        return this;
     }
 }

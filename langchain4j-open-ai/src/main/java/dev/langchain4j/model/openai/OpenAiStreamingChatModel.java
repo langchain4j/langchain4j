@@ -17,6 +17,7 @@ import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
 import dev.langchain4j.model.listener.ModelListener;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -57,7 +58,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final String user;
     private final Tokenizer tokenizer;
     private final boolean isOpenAiModel;
-    private final List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners;
+    private final List<ModelListener<ChatLanguageModelRequest, ModelListener.OnRequestResult<ChatLanguageModelRequest>, ChatLanguageModelResponse>> listeners;
 
     @Builder
     public OpenAiStreamingChatModel(String baseUrl,
@@ -80,7 +81,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Boolean logResponses,
                                     Tokenizer tokenizer,
                                     Map<String, String> customHeaders,
-                                    List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners) {
+                                    List<ModelListener<ChatLanguageModelRequest, ? extends ModelListener.OnRequestResult<ChatLanguageModelRequest>, ChatLanguageModelResponse>> listeners) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -111,7 +112,16 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
         this.user = user;
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
         this.isOpenAiModel = isOpenAiModel(this.modelName);
-        this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
+        if (listeners == null) {
+            this.listeners = emptyList();
+        } else {
+            this.listeners = new ArrayList<>();
+            for (ModelListener<ChatLanguageModelRequest, ?
+                    extends ModelListener.OnRequestResult<ChatLanguageModelRequest>, ChatLanguageModelResponse> listener : listeners) {
+                this.listeners.add(
+                        (ModelListener<ChatLanguageModelRequest, ModelListener.OnRequestResult<ChatLanguageModelRequest>, ChatLanguageModelResponse>) listener);
+            }
+        }
     }
 
     public String modelName() {
@@ -162,10 +172,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
+        List<ModelListener.OnRequestResult<ChatLanguageModelRequest>> onRequestResults = new ArrayList<>();
         ChatLanguageModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
         listeners.forEach(listener -> {
             try {
-                listener.onRequest(modelListenerRequest);
+                ModelListener.OnRequestResult<ChatLanguageModelRequest> onRequestResult = listener.onRequest(modelListenerRequest);
+                onRequestResults.add(onRequestResult);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener", e);
             }
@@ -197,9 +209,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                             responseModel.get(),
                             response
                     );
+                    AtomicInteger i = new AtomicInteger();
                     listeners.forEach(listener -> {
                         try {
-                            listener.onResponse(modelListenerResponse, modelListenerRequest);
+                            listener.onResponse(modelListenerResponse, onRequestResults.get(i.getAndIncrement()));
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }
@@ -215,9 +228,10 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                             responseModel.get(),
                             response
                     );
+                    AtomicInteger i = new AtomicInteger();
                     listeners.forEach(listener -> {
                         try {
-                            listener.onError(error, modelListenerResponse, modelListenerRequest);
+                            listener.onError(error, modelListenerResponse, onRequestResults.get(i.getAndIncrement()));
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }

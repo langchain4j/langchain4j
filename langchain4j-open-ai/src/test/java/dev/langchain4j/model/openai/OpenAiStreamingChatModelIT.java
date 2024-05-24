@@ -653,12 +653,13 @@ class OpenAiStreamingChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
 
-        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
-                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
                     @Override
-                    public void onRequest(ChatLanguageModelRequest request) {
+                    public ChatLanguageModelRequest onRequest(ChatLanguageModelRequest request) {
                         requestReference.set(request);
+                        return request;
                     }
 
                     @Override
@@ -734,12 +735,13 @@ class OpenAiStreamingChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
-        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
-                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
                     @Override
-                    public void onRequest(ChatLanguageModelRequest request) {
+                    public ChatLanguageModelRequest onRequest(ChatLanguageModelRequest request) {
                         requestReference.set(request);
+                        return request;
                     }
 
                     @Override
@@ -753,7 +755,7 @@ class OpenAiStreamingChatModelIT {
                                         ChatLanguageModelRequest request) {
                         errorReference.set(error);
                         assertThat(response).isNull(); // can be non-null if it fails in the middle of streaming
-                        assertThat(request).isSameAs(requestReference.get());
+                        assertThat(request.request()).isSameAs(requestReference.get());
                     }
                 };
 

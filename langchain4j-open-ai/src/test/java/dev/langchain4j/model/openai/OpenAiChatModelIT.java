@@ -487,18 +487,19 @@ class OpenAiChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<ChatLanguageModelResponse> responseReference = new AtomicReference<>();
 
-        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
-                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
                     @Override
-                    public void onRequest(ChatLanguageModelRequest request) {
+                    public ChatLanguageModelRequest onRequest(ChatLanguageModelRequest request) {
                         requestReference.set(request);
+                        return request;
                     }
 
                     @Override
                     public void onResponse(ChatLanguageModelResponse response, ChatLanguageModelRequest request) {
                         responseReference.set(response);
-                        assertThat(request).isSameAs(requestReference.get());
+                        assertThat(request.request()).isSameAs(requestReference.get());
                     }
 
                     @Override
@@ -566,12 +567,13 @@ class OpenAiChatModelIT {
         AtomicReference<ChatLanguageModelRequest> requestReference = new AtomicReference<>();
         AtomicReference<Throwable> errorReference = new AtomicReference<>();
 
-        ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
-                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>() {
+        ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse> modelListener =
+                new ModelListener<ChatLanguageModelRequest, ChatLanguageModelRequest, ChatLanguageModelResponse>() {
 
                     @Override
-                    public void onRequest(ChatLanguageModelRequest request) {
+                    public ChatLanguageModelRequest onRequest(ChatLanguageModelRequest request) {
                         requestReference.set(request);
+                        return request;
                     }
 
                     @Override
@@ -585,7 +587,7 @@ class OpenAiChatModelIT {
                                         ChatLanguageModelRequest request) {
                         errorReference.set(error);
                         assertThat(response).isNull();
-                        assertThat(request).isSameAs(requestReference.get());
+                        assertThat(request.request()).isSameAs(requestReference.get());
                     }
                 };
 
