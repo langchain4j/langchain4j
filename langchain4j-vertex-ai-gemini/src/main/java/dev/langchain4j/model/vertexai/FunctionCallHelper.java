@@ -112,20 +112,23 @@ class FunctionCallHelper {
             Schema.Builder schema = Schema.newBuilder().setType(Type.OBJECT);
 
             ToolParameters parameters = toolSpecification.parameters();
-            for (String paramName : parameters.required()) {
-                schema.addRequired(paramName);
+            if (parameters != null) {
+                for (String paramName : parameters.required()) {
+                    schema.addRequired(paramName);
+                }
+
+                parameters.properties().forEach((paramName, paramProps) -> {
+                    //TODO: is it covering all types & cases of tool parameters? (array & object in particular)
+                    Type type = fromType((String) paramProps.getOrDefault("type", Type.TYPE_UNSPECIFIED));
+
+                    String description = (String) paramProps.getOrDefault("description", "");
+
+                    schema.putProperties(paramName, Schema.newBuilder()
+                            .setDescription(description)
+                            .setType(type)
+                            .build());
+                });
             }
-            parameters.properties().forEach((paramName, paramProps) -> {
-                //TODO: is it covering all types & cases of tool parameters? (array & object in particular)
-                Type type = fromType((String) paramProps.getOrDefault("type", Type.TYPE_UNSPECIFIED));
-
-                String description = (String) paramProps.getOrDefault("description", "");
-
-                schema.putProperties(paramName, Schema.newBuilder()
-                        .setDescription(description)
-                        .setType(type)
-                        .build());
-            });
             fnBuilder.setParameters(schema.build());
             tool.addFunctionDeclarations(fnBuilder.build());
         }

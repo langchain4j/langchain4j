@@ -2,21 +2,24 @@ package dev.langchain4j.model.qianfan;
 
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
+import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanChatModelBuilderFactory;
 import lombok.Builder;
+
+import java.net.Proxy;
 import java.util.List;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
-
-import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 
 /**
  *
@@ -54,7 +57,8 @@ public class QianfanChatModel implements ChatLanguageModel {
                             String responseFormat,
                             Double penaltyScore,
                             Boolean logRequests,
-                            Boolean logResponses
+                            Boolean logResponses,
+                            Proxy proxy
                              ) {
         if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
@@ -75,6 +79,7 @@ public class QianfanChatModel implements ChatLanguageModel {
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .proxy(proxy)
                 .build();
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
