@@ -455,4 +455,29 @@ class VertexAiGeminiChatModelIT {
         verify(calculator).multiply(257, 467);
         verifyNoMoreInteractions(calculator);
     }
+
+    static class AnniversaryDate {
+        @Tool("get the anniversary date")
+        String getCurrentDate() {
+            return "2040-03-10";
+        }
+    }
+
+    @Test
+    void should_support_noarg_fn() {
+
+        // given
+        AnniversaryDate anniversaryDate = new AnniversaryDate();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+            .chatLanguageModel(model)
+            .tools(anniversaryDate)
+            .build();
+
+        // when
+        String answer = assistant.chat("What is the year of the anniversary date?");
+
+        // then
+        assertThat(answer).contains("2040");
+    }
 }

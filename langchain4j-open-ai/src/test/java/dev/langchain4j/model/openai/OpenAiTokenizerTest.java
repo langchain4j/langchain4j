@@ -45,6 +45,11 @@ class OpenAiTokenizerTest {
         assertThat(tokenizer.estimateTokenCountInText("Hello")).isEqualTo(1);
         assertThat(tokenizer.estimateTokenCountInText("Hello!")).isEqualTo(2);
         assertThat(tokenizer.estimateTokenCountInText("Hello, how are you?")).isEqualTo(6);
+
+        assertThat(tokenizer.estimateTokenCountInText("")).isEqualTo(0);
+        assertThat(tokenizer.estimateTokenCountInText("\n")).isEqualTo(1);
+        assertThat(tokenizer.estimateTokenCountInText("\n\n")).isEqualTo(1);
+        assertThat(tokenizer.estimateTokenCountInText("\n \n\n")).isEqualTo(2);
     }
 
     @Test
