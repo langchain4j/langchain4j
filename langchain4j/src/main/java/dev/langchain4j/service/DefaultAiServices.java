@@ -292,7 +292,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         variables.putAll(defaultMissingVariables(promptTemplate, variables));
 
-        Prompt prompt = PromptTemplate.from(template).apply(variables);
+        Prompt prompt = promptTemplate.apply(variables);
 
         Optional<String> maybeUserName = findUserName(method.getParameters(), args);
         return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
