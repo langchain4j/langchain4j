@@ -6,7 +6,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.31.0-SNAPSHOT</version>
+        <version>0.32.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -279,7 +279,7 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
-                <artifactId>langchain4j-embeddings-bge-small-v15-en</artifactId>
+                <artifactId>langchain4j-embeddings-bge-small-en-v15</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -298,6 +298,18 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-bge-small-zh-q</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-bge-small-zh-v15</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-embeddings-bge-small-zh-v15-q</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
