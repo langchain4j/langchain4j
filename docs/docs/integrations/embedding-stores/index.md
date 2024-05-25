@@ -4,7 +4,7 @@ hide_title: false
 sidebar_position: 0
 ---
 
-| Provider                                                                              | Storing Metadata | Filtering by Metadata | Deleting Embeddings | Local | Cloud |
+| Provider                                                                              | Storing Metadata | Filtering by Metadata | Removing Embeddings | Local | Cloud |
 |---------------------------------------------------------------------------------------|------------------|-----------------------|---------------------|-------|-------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                     |                     |       |       |
 | [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                       |                     |       |       |
