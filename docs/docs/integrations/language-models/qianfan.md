@@ -170,7 +170,7 @@ class PersistentChatMemoryStore implements ChatMemoryStore {
 
 class PersistentChatMemoryTest{
   public void test(){
-    QianfanChatModel model = QianfanChatModel.builder()
+    QianfanChatModel chatLanguageModel = QianfanChatModel.builder()
             .apiKey("apiKey")
             .secretKey("secretKey")
             .modelName("Yi-34B-Chat")
@@ -198,13 +198,14 @@ class PersistentChatMemoryTest{
 
 #### QianfanStreamingChatModel(流式回复)
 LLMs generate text one token at a time, so many LLM providers offer a way to stream the response token-by-token instead of waiting for the entire text to be generated. This significantly improves the user experience, as the user does not need to wait an unknown amount of time and can start reading the response almost immediately.（因此许多LLM提供者提供了一种逐个token地传输响应的方法，而不是等待生成整个文本。这极大地改善了用户体验，因为用户不需要等待未知的时间，几乎可以立即开始阅读响应。）
+以下是一个通过StreamingResponseHandler来实现
 ```java
   QianfanStreamingChatModel qianfanStreamingChatModel = QianfanStreamingChatModel.builder()
           .apiKey("apiKey")
           .secretKey("secretKey")
           .modelName("Yi-34B-Chat")
           .build();
-  chatLanguageModel.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
+  qianfanStreamingChatModel.generate(userMessage, new StreamingResponseHandler<AiMessage>() {
         @Override
         public void onNext(String token) {
             System.out.print(token);
@@ -219,13 +220,14 @@ LLMs generate text one token at a time, so many LLM providers offer a way to str
         }
   });
 ```
+以下是另一个通过TokenStream来实现
 ```java
   QianfanStreamingChatModel qianfanStreamingChatModel = QianfanStreamingChatModel.builder()
           .apiKey("apiKey")
           .secretKey("secretKey")
           .modelName("Yi-34B-Chat")
           .build();
-  IAiService assistant = AiServices.create(IAiService.class, chatLanguageModel);
+  IAiService assistant = AiServices.create(IAiService.class, qianfanStreamingChatModel);
   
   TokenStream tokenStream = assistant.chatInTokenStream("Tell me a story.");
   tokenStream.onNext(System.out::println)
@@ -249,7 +251,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 - Use
 ```java
 
-  QianfanChatModel model = QianfanChatModel.builder()
+  QianfanChatModel chatLanguageModel = QianfanChatModel.builder()
         .apiKey(API_KEY)
         .secretKey(SECRET_KEY)
         .modelName("Yi-34B-Chat")
