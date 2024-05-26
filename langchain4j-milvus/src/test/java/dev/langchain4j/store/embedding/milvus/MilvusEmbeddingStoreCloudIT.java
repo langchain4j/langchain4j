@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.AfterEach;
@@ -61,9 +62,12 @@ class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
         Embedding secondEmbedding = embeddingModel.embed("hi").content();
         embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-        assertThat(relevant.get(0).embedding()).isNull();
-        assertThat(relevant.get(1).embedding()).isNull();
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build()).matches();
+        assertThat(matches).hasSize(2);
+        assertThat(matches.get(0).embedding()).isNull();
+        assertThat(matches.get(1).embedding()).isNull();
     }
 }
