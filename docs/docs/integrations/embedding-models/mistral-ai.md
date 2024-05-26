@@ -43,7 +43,7 @@ public class ApiKeys {
 Don't forget set your API key as an environment variable.
 ```shell
 export MISTRAL_AI_API_KEY=your-api-key #For Unix OS based
-SET MISTRAL_AI_API_KEY=your-api-key #For Windows OS
+#For Windows OS
 ```
 More details on how to get your MistralAI API key can be found [here](https://docs.mistral.ai/#api-access)
 
