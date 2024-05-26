@@ -8,7 +8,6 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.filter.Filter;
-import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -37,8 +36,8 @@ public class MilvusEmbeddingStoreRemoveIT {
             .uri(milvus.getEndpoint())
             .collectionName(COLLECTION_NAME)
             .consistencyLevel(STRONG)
-            .username("")
-            .password("")
+            .username(System.getenv("MILVUS_USERNAME"))
+            .password(System.getenv("MILVUS_PASSWORD"))
             .dimension(384)
             .retrieveEmbeddingsOnSearch(true)
             .build();

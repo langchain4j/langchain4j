@@ -16,6 +16,7 @@ import org.testcontainers.milvus.MilvusContainer;
 
 import java.util.List;
 
+import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,8 +31,9 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
             .collectionName(COLLECTION_NAME)
-            .username("")
-            .password("")
+            .consistencyLevel(STRONG)
+            .username(System.getenv("MILVUS_USERNAME"))
+            .password(System.getenv("MILVUS_PASSWORD"))
             .dimension(384)
             .retrieveEmbeddingsOnSearch(true)
             .build();

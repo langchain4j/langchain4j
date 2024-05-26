@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,7 +24,10 @@ class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(System.getenv("MILVUS_URI"))
             .token(System.getenv("MILVUS_API_KEY"))
+            .username(System.getenv("MILVUS_USERNAME"))
+            .password(System.getenv("MILVUS_PASSWORD"))
             .collectionName(COLLECTION_NAME)
+            .consistencyLevel(STRONG)
             .dimension(384)
             .retrieveEmbeddingsOnSearch(true)
             .build();
