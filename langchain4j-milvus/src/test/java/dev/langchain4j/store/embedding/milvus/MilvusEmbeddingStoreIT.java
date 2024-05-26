@@ -41,6 +41,15 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     }
 
     @Override
+    protected void awaitUntilPersisted() {
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return embeddingStore;
     }

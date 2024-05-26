@@ -52,6 +52,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
   private final MetricType metricType;
   private final ConsistencyLevelEnum consistencyLevel;
   private final boolean retrieveEmbeddingsOnSearch;
+  private final boolean flushAfterInsert;
 
   public MilvusEmbeddingStore(
     String host,
@@ -66,6 +67,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     String password,
     ConsistencyLevelEnum consistencyLevel,
     Boolean retrieveEmbeddingsOnSearch,
+    Boolean flushAfterInsert,
     String databaseName
   ) {
     ConnectParam.Builder connectBuilder = ConnectParam
@@ -85,6 +87,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     this.metricType = getOrDefault(metricType, COSINE);
     this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
     this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
+    this.flushAfterInsert = getOrDefault(flushAfterInsert, false);
 
     if (!hasCollection(milvusClient, this.collectionName)) {
       createCollection(milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
@@ -171,7 +174,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
     insert(milvusClient, collectionName, fields);
-    flush(milvusClient, collectionName);
+    if (flushAfterInsert) {
+      flush(milvusClient, collectionName);
+    }
   }
 
   public static Builder builder() {
@@ -192,6 +197,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private String password;
     private ConsistencyLevelEnum consistencyLevel;
     private Boolean retrieveEmbeddingsOnSearch;
+    private Boolean flushAfterInsert;
     private String databaseName;
 
     /**
@@ -316,6 +322,18 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
+     * @param flushAfterInsert Whether to perform flush after inserting embeddings.
+     *                         Default value: false.
+     *                         More info can be found
+     *                         <a href="https://milvus.io/api-reference/pymilvus/v2.4.x/ORM/Collection/flush.md">here</a>.
+     * @return builder
+     */
+    public Builder flushAfterInsert(Boolean flushAfterInsert) {
+      this.flushAfterInsert = flushAfterInsert;
+      return this;
+    }
+
+    /**
      * @param databaseName Milvus name of database.
      *                     Default value: null. In this case default Milvus database name will be used.
      * @return builder
@@ -339,6 +357,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         password,
         consistencyLevel,
         retrieveEmbeddingsOnSearch,
+        flushAfterInsert,
         databaseName
       );
     }
