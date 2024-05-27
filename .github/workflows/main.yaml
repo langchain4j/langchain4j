@@ -47,15 +47,13 @@ jobs:
       - id: analyzer
         run: |
           mvn_args=''
-          [ ${{ steps.filter.outputs.anthropic_any_changed }} == 'true' ] && mvn_args+=' -DskipAnthropicITs'
-          [ ${{ steps.filter.outputs.local_ai_any_changed }} == 'true' ] && mvn_args+=' -DskipLocalAiITs'
-          [ ${{ steps.filter.outputs.milvus_any_changed }} == 'true' ] && mvn_args+=' -DskipMilvusITs'
-          [ ${{ steps.filter.outputs.mongodb_atlas_any_changed }} == 'true' ] && mvn_args+=' -DskipMongoDbAtlasITs'
-          [ ${{ steps.filter.outputs.ollama_any_changed }} == 'true' ] && mvn_args+=' -DskipOllamaITs'
-          [ ${{ steps.filter.outputs.vearch_any_changed }} == 'true' ] && mvn_args+=' -DskipVearchITs'
-          [ ${{ steps.filter.outputs.vertex_ai_gemini_any_changed }} == 'true' ] && mvn_args+=' -DskipVertexAiGeminiITs'
-          # fallback to skip all it
-          [ -z ${mvn_args} ] && mvn_args='-DskipITs'
+          [ ${{ steps.filter.outputs.anthropic_any_changed }} == 'false' ] && mvn_args+=' -DskipAnthropicITs'
+          [ ${{ steps.filter.outputs.local_ai_any_changed }} == 'false' ] && mvn_args+=' -DskipLocalAiITs'
+          [ ${{ steps.filter.outputs.milvus_any_changed }} == 'false' ] && mvn_args+=' -DskipMilvusITs'
+          [ ${{ steps.filter.outputs.mongodb_atlas_any_changed }} == 'false' ] && mvn_args+=' -DskipMongoDbAtlasITs'
+          [ ${{ steps.filter.outputs.ollama_any_changed }} == 'false' ] && mvn_args+=' -DskipOllamaITs'
+          [ ${{ steps.filter.outputs.vearch_any_changed }} == 'false' ] && mvn_args+=' -DskipVearchITs'
+          [ ${{ steps.filter.outputs.vertex_ai_gemini_any_changed }} == 'false' ] && mvn_args+=' -DskipVertexAiGeminiITs'
           # define output for this step
           echo "mvn_args=${mvn_args}" >> "$GITHUB_OUTPUT"
   java_build:
