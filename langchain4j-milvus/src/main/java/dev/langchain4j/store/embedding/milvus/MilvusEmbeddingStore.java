@@ -54,6 +54,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final MilvusServiceClient milvusClient;
     private final String collectionName;
+    private final Integer dimension;
     private final MetricType metricType;
     private final ConsistencyLevelEnum consistencyLevel;
     private final boolean retrieveEmbeddingsOnSearch;
@@ -88,16 +89,17 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         this.milvusClient = new MilvusServiceClient(connectBuilder.build());
         this.collectionName = getOrDefault(collectionName, "default");
+        this.dimension = ensureNotNull(dimension, "dimension");
         this.metricType = getOrDefault(metricType, COSINE);
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
 
-        if (!hasCollection(milvusClient, this.collectionName)) {
-            createCollection(milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
-            createIndex(milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
+        if (!hasCollection(this.milvusClient, this.collectionName)) {
+            createCollection(this.milvusClient, this.collectionName, dimension);
+            createIndex(this.milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
         }
 
-        loadCollectionInMemory(milvusClient, collectionName);
+        loadCollectionInMemory(this.milvusClient, collectionName);
     }
 
     public static Builder builder() {
@@ -105,7 +107,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     public void dropCollection(String collectionName) {
-        CollectionOperationsExecutor.dropCollection(milvusClient, collectionName);
+        CollectionOperationsExecutor.dropCollection(this.milvusClient, collectionName);
     }
 
     public String add(Embedding embedding) {
@@ -180,31 +182,26 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         fields.add(new InsertParam.Field(METADATA_FIELD_NAME, toMetadataJsons(textSegments, ids.size())));
         fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
-        insert(milvusClient, collectionName, fields);
-        flush(milvusClient, collectionName);
-    }
-
-    @Override
-    public void remove(String id) {
-        ensureNotBlank(id, "id");
-        removeAll(singletonList(id));
+        insert(this.milvusClient, this.collectionName, fields);
+        flush(this.milvusClient, this.collectionName);
     }
 
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
-        removeForVector(milvusClient, collectionName, format("%s in %s", ID_FIELD_NAME, toJson(ids).replace("\n", "")));
+        removeForVector(this.milvusClient, this.collectionName, format("%s in %s", ID_FIELD_NAME, toJson(ids).replace("\n", "")));
     }
 
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        removeForVector(milvusClient, collectionName, map(filter));
+        removeForVector(this.milvusClient, this.collectionName, map(filter));
     }
 
     @Override
     public void removeAll() {
-        removeForVector(milvusClient, collectionName, "id != \"\"");
+        dropCollection(this.collectionName);
+        createCollection(this.milvusClient, this.collectionName, this.dimension);
     }
 
     public static class Builder {
