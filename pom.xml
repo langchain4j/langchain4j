@@ -10,6 +10,10 @@
     <packaging>pom</packaging>
     <name>LangChain4j :: Aggregator</name>
 
+    <properties>
+        <gib.disable>true</gib.disable>
+    </properties>
+
     <modules>
 
         <module>langchain4j-parent</module>
@@ -90,6 +94,13 @@
     </modules>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>com.vackosar.gitflowincrementalbuilder</groupId>
+                <artifactId>gitflow-incremental-builder</artifactId>
+                <version>3.15.0</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
