@@ -9,7 +9,56 @@ on:
       - main
 
 jobs:
+  changed:
+    runs-on: ubuntu-latest
+    outputs:
+      additional_mvn_args: ${{ steps.analyzer.test_options }}
+    steps:
+      - uses: actions/checkout@4
+      # collect changed file group by module
+      - uses: tj-actions/changed-files@v44
+        id: filter
+        with:
+          # each module contained IT should list the dir and direct/indirect dependent module's dir in the files_yaml
+          files_yaml: |
+            anthropic:
+              - 'langchain4j-anthropic/**'
+              - 'langchain4j-core/**'
+            local_ai:
+              - 'langchain4j-local-ai/**'
+              - 'langchain4j-open-ai/**'
+              - 'langchain4j-core/**'
+            milvus:
+              - 'langchain4j-milvus/**'
+              - 'langchain4j-core/**'
+            mongodb_atlas:
+              - 'langchain4j-mongodb-atlas/**'
+              - 'langchain4j-core/**'
+            ollama:
+              - 'langchain4j-ollama/**'
+              - 'langchain4j-core/**'
+            vearch:
+              - 'langchain4j-vearch/**'
+              - 'langchain4j-core/**'
+            vertex_ai_gemini:
+              - 'langchain4j-vertex-ai-gemini/**'
+              - 'langchain4j-core/**'
+      # build test_options based on module changed and define output for step
+      - id: analyzer
+        run: |
+          test_options=''
+          [ ${{ steps.filter.outputs.anthropic_any_changed }} == 'true' ] && test_options+=' -DskipAnthropicITs'
+          [ ${{ steps.filter.outputs.local_ai_any_changed }} == 'true' ] && test_options+=' -DskipLocalAiITs'
+          [ ${{ steps.filter.outputs.milvus_any_changed }} == 'true' ] && test_options+=' -DskipMilvusITs'
+          [ ${{ steps.filter.outputs.mongodb_atlas_any_changed }} == 'true' ] && test_options+=' -DskipMongoDbAtlasITs'
+          [ ${{ steps.filter.outputs.ollama_any_changed }} == 'true' ] && test_options+=' -DskipOllamaITs'
+          [ ${{ steps.filter.outputs.vearch_any_changed }} == 'true' ] && test_options+=' -DskipVearchITs'
+          [ ${{ steps.filter.outputs.vertex_ai_gemini_any_changed }} == 'true' ] && test_options+=' -DskipVertexAiGeminiITs'
+          [ -z ${test_options} ] && test_options='-DskipITs'
+          echo "test_options=${test_options}" >> "$GITHUB_OUTPUT"
   java_build:
+    needs:
+      - changes
     strategy:
       matrix:
         java_version: [8, 11, 17, 21]
@@ -32,7 +81,7 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn --batch-mode install -DskipITs ${{ matrix.included_modules }}
+        run: mvn --batch-mode install ${{ needs.changes.outputs.additional_mvn_args }} ${{ matrix.included_modules }}
 
   # For checking some compliance things (require a recent JDK due to plugins so in a separate step)
   compliance:
