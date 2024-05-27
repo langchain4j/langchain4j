@@ -12,7 +12,7 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      additional_mvn_args: ${{ steps.analyzer.outputs.mvn_args }}
+      mvn_args: ${{ steps.analyzer.outputs.mvn_args }}
     steps:
       - uses: actions/checkout@v4
       # collect changed file group by module
