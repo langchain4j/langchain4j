@@ -2,6 +2,7 @@ package dev.langchain4j.model.jina;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
@@ -11,7 +12,9 @@ import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -22,7 +25,7 @@ import static java.util.stream.Collectors.toList;
  * An implementation of an {@link EmbeddingModel} that uses
  * <a href="https://jina.ai/embeddings">Jina Embeddings API</a>.
  */
-public class JinaEmbeddingModel implements EmbeddingModel {
+public class JinaEmbeddingModel extends AbstractEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
     private static final String DEFAULT_MODEL = "jina-embeddings-v2-base-en";
@@ -74,5 +77,15 @@ public class JinaEmbeddingModel implements EmbeddingModel {
                 response.usage.totalTokens
         );
         return Response.from(embeddings, tokenUsage);
+    }
+
+    @Override
+    protected Map<String, Integer> dimensionMap() {
+        return new HashMap<>();
+    }
+
+    @Override
+    protected String modelName() {
+        return modelName;
     }
 }
