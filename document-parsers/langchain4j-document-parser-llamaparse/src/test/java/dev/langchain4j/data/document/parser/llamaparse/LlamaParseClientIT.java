@@ -52,7 +52,7 @@ public class LlamaParseClientIT {
     void shouldGetJobStatus() throws InterruptedException {
         with()
                 .pollInterval(Duration.ofSeconds(10))
-                .await("check status not pending")
+                .await("check success status")
                 .atMost(Duration.ofSeconds(60))
                 .untilAsserted(() -> assertThat(client.jobStatus(JOB_ID).status)
                         .isEqualTo(LlmaParseApi.JOB_STATUS.SUCCESS.value()));
