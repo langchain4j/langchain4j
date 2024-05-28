@@ -13,10 +13,10 @@ import retrofit2.http.Path;
 interface LlmaParseApi {
 
     enum JOB_STATUS {
-        PENDING("pending"),
-        SUCCESS("success"),
-        ERROR("error"),
-        CANCELED("canceled");
+        PENDING("PENDING"),
+        SUCCESS("SUCCESS"),
+        ERROR("ERROR"),
+        CANCELED("CANCELED");
 
         private String value;
         JOB_STATUS(String value) {

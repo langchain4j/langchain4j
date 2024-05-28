@@ -52,10 +52,10 @@ public class LlamaParseClientIT {
         LlamaParseResponse responseBody = client.jobStatus(JOB_ID);
         final int MAX_ATTEMPTS = 10;
         int attempts = 0;
-        Duration interval = Duration.ofSeconds(5);
-        while (responseBody.status.equalsIgnoreCase(LlmaParseApi.JOB_STATUS.SUCCESS.value()) && attempts++ < MAX_ATTEMPTS) {
+        Duration interval = Duration.ofSeconds(30);
+        while (responseBody.status.equalsIgnoreCase(LlmaParseApi.JOB_STATUS.PENDING.value()) && attempts++ < MAX_ATTEMPTS) {
             responseBody = client.jobStatus(JOB_ID);
-            wait(interval.toMillis());
+            Thread.sleep(interval.toMillis());
         }
 
         assertThat(responseBody).isNotNull();
