@@ -12,6 +12,8 @@ import java.nio.file.Paths;
 import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.with;
+import static org.hamcrest.Matchers.equalTo;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @EnabledIfEnvironmentVariable(named = "LLAMA_PARSE_API_KEY", matches = ".+")
@@ -48,19 +50,12 @@ public class LlamaParseClientIT {
     @Test
     @Order(2)
     void shouldGetJobStatus() throws InterruptedException {
-
-        LlamaParseResponse responseBody = client.jobStatus(JOB_ID);
-        final int MAX_ATTEMPTS = 10;
-        int attempts = 0;
-        Duration interval = Duration.ofSeconds(30);
-        while (responseBody.status.equalsIgnoreCase(LlmaParseApi.JOB_STATUS.PENDING.value()) && attempts++ < MAX_ATTEMPTS) {
-            responseBody = client.jobStatus(JOB_ID);
-            Thread.sleep(interval.toMillis());
-        }
-
-        assertThat(responseBody).isNotNull();
-        assertThat(responseBody.status).isEqualTo(LlmaParseApi.JOB_STATUS.SUCCESS.value());
-
+        with()
+                .pollInterval(Duration.ofSeconds(10))
+                .await("check status not pending")
+                .atMost(Duration.ofSeconds(60))
+                .untilAsserted(() -> assertThat(client.jobStatus(JOB_ID).status)
+                        .isEqualTo(LlmaParseApi.JOB_STATUS.SUCCESS.value()));
     }
 
     @Test

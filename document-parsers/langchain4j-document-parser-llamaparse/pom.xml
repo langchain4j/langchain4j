@@ -29,7 +29,7 @@
 
         <dependency>
             <groupId>com.squareup.retrofit2</groupId>
-            <artifactId>converter-jackson</artifactId>
+            <artifactId>converter-gson</artifactId>
         </dependency>
 
         <dependency>
@@ -63,6 +63,13 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>4.2.1</version>
             <scope>test</scope>
         </dependency>
 
