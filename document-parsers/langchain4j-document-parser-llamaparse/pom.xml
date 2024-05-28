@@ -13,6 +13,7 @@
 
     <artifactId>langchain4j-document-parser-llamaparse</artifactId>
     <name>LangChain4j :: Document parser :: LlamaParse</name>
+    <packaging>jar</packaging>
     <build>
         <plugins>
             <plugin>
@@ -25,11 +26,6 @@
             </plugin>
         </plugins>
     </build>
-    <packaging>jar</packaging>
-
-    <properties>
-        <apache-tika.version>2.9.1</apache-tika.version>
-    </properties>
 
     <dependencies>
 
