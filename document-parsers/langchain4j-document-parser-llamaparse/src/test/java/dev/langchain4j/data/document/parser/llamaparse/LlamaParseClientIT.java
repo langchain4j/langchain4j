@@ -35,7 +35,7 @@ public class LlamaParseClientIT {
     @Order(1)
     void shouldParseFile() {
         File file = Paths.get(this.getClass().getResource("/files/sample.pdf").getPath()).toFile();
-        String parsingInstructions = "The provided document is a PDF sample that contain Lorem Ipsum text.";
+        String parsingInstructions = "The provided document is a PDF sample containing Lorem Ipsum text.";
 
         LlamaParseResponse responseBody = client.upload(file, parsingInstructions);
         JOB_ID =  responseBody.id;
