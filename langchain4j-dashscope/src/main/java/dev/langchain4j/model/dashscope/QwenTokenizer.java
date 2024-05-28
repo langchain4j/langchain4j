@@ -34,15 +34,17 @@ public class QwenTokenizer implements Tokenizer {
 
     @Override
     public int estimateTokenCountInText(String text) {
+        String prompt = isBlank(text) ? text + "_" : text;
         try {
             QwenParam param = QwenParam.builder()
                     .apiKey(apiKey)
                     .model(modelName)
-                    .prompt(text)
+                    .prompt(prompt)
                     .build();
 
             TokenizationResult result = tokenizer.call(param);
-            return result.getUsage().getInputTokens();
+            int tokenCount = result.getUsage().getInputTokens();
+            return prompt == text ? tokenCount : tokenCount - 1;
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }
@@ -77,5 +79,15 @@ public class QwenTokenizer implements Tokenizer {
     @Override
     public int estimateTokenCountInToolExecutionRequests(Iterable<ToolExecutionRequest> toolExecutionRequests) {
         throw new IllegalArgumentException("Tools are currently not supported by this tokenizer");
+    }
+
+    public static boolean isBlank(CharSequence cs) {
+        int strLen = cs == null ? 0 : cs.length();
+        for (int i = 0; i < strLen; ++i) {
+            if (!Character.isWhitespace(cs.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }

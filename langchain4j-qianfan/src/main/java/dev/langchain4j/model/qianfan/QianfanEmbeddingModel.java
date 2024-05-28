@@ -11,6 +11,7 @@ import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanEmbeddingModelBuilderFactory;
 import lombok.Builder;
 
+import java.net.Proxy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +44,8 @@ public class QianfanEmbeddingModel extends AbstractEmbeddingModel {
                                  String endpoint,
                                  String user,
                                  Boolean logRequests,
-                                 Boolean logResponses
+                                 Boolean logResponses,
+                                 Proxy proxy
     ) {
         if (Utils.isNullOrBlank(apiKey) || Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
@@ -64,6 +66,7 @@ public class QianfanEmbeddingModel extends AbstractEmbeddingModel {
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .proxy(proxy)
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.user = user;

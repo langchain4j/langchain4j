@@ -7,9 +7,9 @@ echo "Setting up environment variables..."
 echo "----------------------------------"
 PROJECT="langchain4j"
 RESOURCE_GROUP="rg-$PROJECT"
-LOCATION="swedencentral"
-TAG="$PROJECT"
+LOCATION="eastus"
 AI_SERVICE="ai-$PROJECT"
+TAG="$PROJECT"
 
 echo "Creating the resource group..."
 echo "------------------------------"
@@ -28,21 +28,9 @@ az cognitiveservices account create \
   --tags system="$TAG" \
   --kind "OpenAI" \
   --sku "S0"
-  
+
 # If you want to know the available models, run the following Azure CLI command:
 # az cognitiveservices account list-models --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE" -o table  
-
-echo "Deploying a gpt-35-turbo model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-35-turbo" \
-  --model-name "gpt-35-turbo" \
-  --model-version "1106"  \
-  --model-format "OpenAI" \
-  --sku-capacity 120 \
-  --sku-name "Standard"
 
 echo "Deploying a gpt-35-turbo-instruct model..."
 echo "----------------------"
@@ -56,14 +44,14 @@ az cognitiveservices account deployment create \
   --sku-capacity 120 \
   --sku-name "Standard"
 
-echo "Deploying a gpt-4 model..."
+echo "Deploying a gpt-4o model..."
 echo "----------------------"
 az cognitiveservices account deployment create \
   --name "$AI_SERVICE" \
   --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-4" \
-  --model-name "gpt-4" \
-  --model-version "1106-Preview"  \
+  --deployment-name "gpt-4o" \
+  --model-name "gpt-4o" \
+  --model-version "2024-05-13"  \
   --model-format "OpenAI" \
   --sku-capacity 10 \
   --sku-name "Standard"

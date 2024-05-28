@@ -17,7 +17,7 @@ import java.util.List;
  * - Hybrid of vector and full-text search (see {@code AzureAiSearchContentRetriever} in {@code langchain4j-azure-ai-search} module)
  * - Web Search Engine (see {@link WebSearchContentRetriever})
  * - Knowledge graph (see {@code Neo4jContentRetriever} in {@code langchain4j-neo4j} module)
- * - Relational database
+ * - SQL database (see {@code SqlDatabaseContentRetriever} in {@code langchain4j-experimental-sql} module)
  * - etc.
  * </pre>
  *
