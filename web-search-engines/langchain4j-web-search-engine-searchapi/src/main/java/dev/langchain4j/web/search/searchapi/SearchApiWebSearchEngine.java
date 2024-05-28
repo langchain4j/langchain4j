@@ -50,7 +50,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         this.searchapiClient = SearchApiClient.builder()
                 .baseUrl(getOrDefault(baseUrl, DEFAULT_BASE_URL))
                 .timeout(getOrDefault(timeout, ofSeconds(10)))
+                .logRequests(true) // TODO: make into a constructor parameter
                 .build();
+        
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.searchDepth = searchDepth;
         this.includeAnswer = includeAnswer;

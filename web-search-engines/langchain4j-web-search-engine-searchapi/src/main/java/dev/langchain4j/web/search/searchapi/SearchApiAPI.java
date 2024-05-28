@@ -5,7 +5,7 @@ import retrofit2.http.Body;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
 
-interface SearchApiApi {
+interface SearchApiAPI {
 
     @POST("/search")
     @Headers({"Content-Type: application/json"})

@@ -15,14 +15,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
 class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
-    WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv("SEARCHAPI_API_KEY"));
+	private static final String SEARCHAPI_API_KEY = "SEARCHAPI_API_KEY";
+	
+    protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(SEARCHAPI_API_KEY));
 
     @Test
     void should_search_with_raw_content() {
 
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+                .apiKey(System.getenv(SEARCHAPI_API_KEY))
                 .includeRawContent(true)
                 .build();
 
@@ -51,7 +53,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+                .apiKey(System.getenv(SEARCHAPI_API_KEY))
                 .includeAnswer(true)
                 .build();
 
