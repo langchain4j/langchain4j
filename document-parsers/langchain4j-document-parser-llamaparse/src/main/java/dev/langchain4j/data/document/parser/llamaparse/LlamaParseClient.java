@@ -12,8 +12,8 @@ import okhttp3.ResponseBody;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
@@ -51,14 +51,14 @@ public class LlamaParseClient {
     }
 
 
-    public LlamaParseResponse upload(File file, String parsingInstructions) {
+    public LlamaParseResponse upload(Path path, String parsingInstructions) {
         try {
             RequestBody requestFile = RequestBody
-                    .create(MediaType.parse("application/pdf"), file);
+                    .create(MediaType.parse("application/pdf"), path.toFile());
 
             MultipartBody.Part filePart =
                     MultipartBody.Part
-                            .createFormData("file", file.getName(), requestFile);
+                            .createFormData("file", path.toFile().getName(), requestFile);
 
             MultipartBody.Part parsingInstructionsPart =
                     MultipartBody.Part
