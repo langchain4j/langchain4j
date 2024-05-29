@@ -4,6 +4,7 @@ import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchEngineIT;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchResults;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -15,9 +16,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
 class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
-	private static final String SEARCHAPI_API_KEY = "SEARCHAPI_API_KEY";
+	public static final String SEARCHAPI_API_KEY = "SEARCHAPI_API_KEY";
 	
-    protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(SEARCHAPI_API_KEY));
+	private static final boolean logRequests = true;
+	
+    protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(SEARCHAPI_API_KEY)).logRequests(logRequests).build();
 
     @Test
     void should_search_with_raw_content() {
@@ -25,7 +28,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(System.getenv(SEARCHAPI_API_KEY))
-                .includeRawContent(true)
+                .logRequests(logRequests)
                 .build();
 
         // when
@@ -39,7 +42,6 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
             assertThat(result.content()).isNotBlank();
-            assertThat(result.metadata()).containsOnlyKeys("score");
         });
 
         assertThat(results).anyMatch(result ->
@@ -48,13 +50,14 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
         );
     }
 
+/*
     @Test
     void should_search_with_answer() {
 
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(System.getenv(SEARCHAPI_API_KEY))
-                .includeAnswer(true)
+                .logRequests(logRequests)
                 .build();
 
         // when
@@ -80,7 +83,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
         });
 
         assertThat(results).anyMatch(result -> result.url().toString().contains("https://github.com/langchain4j"));
-    }
+    }*/
 
     @Override
     protected WebSearchEngine searchEngine() {

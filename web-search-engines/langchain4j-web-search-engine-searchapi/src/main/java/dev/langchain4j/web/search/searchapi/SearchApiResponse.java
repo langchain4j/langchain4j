@@ -1,18 +1,22 @@
 package dev.langchain4j.web.search.searchapi;
 
+import com.google.gson.JsonObject;
+
 import lombok.Builder;
 import lombok.Getter;
-
-import java.util.List;
+import lombok.Setter;
 
 @Builder
 @Getter
+@Setter
 class SearchApiResponse {
 
-    private String answer;
-    private String query;
-    private Double responseTime;
-    private List<String> images;
-    private List<String> followUpQuestions;
-    private List<SearchApiSearchResult> results;
+//    private String answer;
+//    private String query;
+//    private Double responseTime;
+//    private List<String> images;
+//    private List<String> followUpQuestions;
+//    private List<SearchApiSearchResult> results;
+	private JsonObject results;
+//	private Map<String, Object> results; //= new Gson().fromJson(json, Map.class);
 }
