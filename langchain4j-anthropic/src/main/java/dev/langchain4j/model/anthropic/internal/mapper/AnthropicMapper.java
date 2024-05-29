@@ -11,8 +11,10 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.*;
@@ -32,7 +34,10 @@ public class AnthropicMapper {
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
 
-        for (ChatMessage message : messages) {
+        // Anthropic requires the first message to be from the user
+        List<ChatMessage> sanitizedMessages = ensureFirstMessageIsUser(messages);
+
+        for (ChatMessage message : sanitizedMessages) {
 
             if (message instanceof ToolExecutionResultMessage) {
                 toolContents.add(toAnthropicToolResultContent((ToolExecutionResultMessage) message));
@@ -187,5 +192,24 @@ public class AnthropicMapper {
                         .required(parameters != null ? parameters.required() : emptyList())
                         .build())
                 .build();
+    }
+
+    private static List<ChatMessage> ensureFirstMessageIsUser(List<ChatMessage> messages) {
+        if (isNullOrEmpty(messages)) {
+            return Collections.singletonList(new UserMessage("."));
+        }
+
+        List<ChatMessage> filteredMessages = messages.stream()
+                .filter(message -> !(message instanceof SystemMessage))
+                .collect(Collectors.toList());
+
+        if (filteredMessages.isEmpty() || !(filteredMessages.get(0) instanceof UserMessage)) {
+            List<ChatMessage> newMessages = new ArrayList<>(filteredMessages.size() + 1);
+            newMessages.add(new UserMessage("."));
+            newMessages.addAll(filteredMessages);
+            return newMessages;
+        }
+
+        return filteredMessages;
     }
 }

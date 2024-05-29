@@ -203,6 +203,26 @@ class AnthropicMapperTest {
                                         new AnthropicToolResultContent("67890", "6", null)
                                 ))
                         )
+                ),
+                Arguments.of(
+                        asList(
+                                SystemMessage.from("This is a system message"),
+                                AiMessage.from("This is an AI message")
+                        ),
+                        asList(
+                                new AnthropicMessage(USER, singletonList(new AnthropicTextContent("."))),
+                                new AnthropicMessage(ASSISTANT, singletonList(new AnthropicTextContent("This is an AI message")))
+                        )
+                ),
+                Arguments.of(
+                        asList(
+                                SystemMessage.from("System Message"),
+                                ToolExecutionResultMessage.from("12345", "tool", "Result")
+                        ),
+                        asList(
+                                new AnthropicMessage(USER, singletonList(new AnthropicTextContent("."))),
+                                new AnthropicMessage(USER, singletonList(new AnthropicToolResultContent("12345", "Result", null)))
+                        )
                 )
         );
     }
