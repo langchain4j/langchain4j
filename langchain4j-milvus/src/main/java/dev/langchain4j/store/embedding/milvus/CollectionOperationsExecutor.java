@@ -15,10 +15,11 @@ import io.milvus.param.dml.InsertParam;
 import io.milvus.param.dml.QueryParam;
 import io.milvus.param.dml.SearchParam;
 import io.milvus.param.index.CreateIndexParam;
+import io.milvus.param.partition.CreatePartitionParam;
+import io.milvus.param.partition.HasPartitionParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 
-import java.lang.String;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
@@ -37,6 +38,13 @@ class CollectionOperationsExecutor {
     static boolean hasCollection(MilvusServiceClient milvusClient, String collectionName) {
         HasCollectionParam request = buildHasCollectionRequest(collectionName);
         R<Boolean> response = milvusClient.hasCollection(request);
+        checkResponseNotFailed(response);
+        return response.getData();
+    }
+
+    static boolean hasPartition(MilvusServiceClient milvusClient, String collectionName, String partitionName) {
+        HasPartitionParam request = buildHasPartitionsRequest(collectionName, partitionName);
+        R<Boolean> response = milvusClient.hasPartition(request);
         checkResponseNotFailed(response);
         return response.getData();
     }
@@ -78,6 +86,16 @@ class CollectionOperationsExecutor {
         checkResponseNotFailed(response);
     }
 
+    static void createPartition(MilvusServiceClient milvusClient, String collectionName, String partitionName) {
+        CreatePartitionParam request = CreatePartitionParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withPartitionName(partitionName)
+                .build();
+
+        R<RpcStatus> response = milvusClient.createPartition(request);
+        checkResponseNotFailed(response);
+    }
+
     static void createIndex(MilvusServiceClient milvusClient,
                             String collectionName,
                             IndexType indexType,
@@ -94,8 +112,8 @@ class CollectionOperationsExecutor {
         checkResponseNotFailed(response);
     }
 
-    static void insert(MilvusServiceClient milvusClient, String collectionName, List<InsertParam.Field> fields) {
-        InsertParam request = buildInsertRequest(collectionName, fields);
+    static void insert(MilvusServiceClient milvusClient, String collectionName, List<InsertParam.Field> fields, String partitionName) {
+        InsertParam request = buildInsertRequest(collectionName, fields, partitionName);
         R<MutationResult> response = milvusClient.insert(request);
         checkResponseNotFailed(response);
     }
