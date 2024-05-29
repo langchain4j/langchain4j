@@ -1,8 +1,8 @@
 package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.Generation;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
-import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.common.ResultCallback;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
@@ -22,6 +22,12 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+/**
+ * Represents a Qwen language model with a text interface.
+ * The model's response is streamed token by token and should be handled with {@link StreamingResponseHandler}.
+ * <br>
+ * More details are available <a href="https://help.aliyun.com/zh/dashscope/developer-reference/api-details">here</a>.
+ */
 public class QwenStreamingLanguageModel implements StreamingLanguageModel {
     private final String apiKey;
     private final String modelName;
@@ -73,7 +79,7 @@ public class QwenStreamingLanguageModel implements StreamingLanguageModel {
     @Override
     public void generate(String prompt, StreamingResponseHandler<String> handler) {
         try {
-            QwenParam.QwenParamBuilder<?, ?> builder = QwenParam.builder()
+            GenerationParam.GenerationParamBuilder<?, ?> builder = GenerationParam.builder()
                     .apiKey(apiKey)
                     .model(modelName)
                     .topP(topP)
