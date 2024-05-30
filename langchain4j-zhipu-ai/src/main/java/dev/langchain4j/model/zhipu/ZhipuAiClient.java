@@ -12,6 +12,8 @@ import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
 import dev.langchain4j.model.zhipu.chat.ToolCall;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
+import dev.langchain4j.model.zhipu.image.ImageRequest;
+import dev.langchain4j.model.zhipu.image.ImageResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
@@ -217,6 +219,19 @@ public class ZhipuAiClient {
             }
         }
         return new RuntimeException(retrofitResponse.message());
+    }
+
+    public ImageResponse imagesGeneration(ImageRequest request) {
+        try {
+            retrofit2.Response<ImageResponse> responseResponse = zhipuAiApi.generations(request).execute();
+            if (responseResponse.isSuccessful()) {
+                return responseResponse.body();
+            } else {
+                throw toException(responseResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public static class Builder {
