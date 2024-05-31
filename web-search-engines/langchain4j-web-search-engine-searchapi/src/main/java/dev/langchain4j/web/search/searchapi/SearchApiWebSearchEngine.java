@@ -1,31 +1,34 @@
 package dev.langchain4j.web.search.searchapi;
 
-import dev.langchain4j.web.search.*;
-import lombok.Builder;
-
-import java.net.URI;
-import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchInformationResult;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
+import dev.langchain4j.web.search.WebSearchResults;
+import lombok.Builder;
 
 /**
  * Represents SearchApi Search API as a {@code WebSearchEngine}.
- * See more details <a href="https://docs.searchapi.io/docs/searchapi-api/rest_api">here</a>.
- * <br>
- * When {@link #includeRawContent} is set to {@code true},
- * the raw content will appear in the {@link WebSearchOrganicResult#content()} field of each result.
- * <br>
- * When {@link #includeAnswer} is set to {@code true},
- * the answer will appear in the {@link WebSearchOrganicResult#snippet()} field of the first result.
- * In this case, the {@link WebSearchOrganicResult#url()} of the first result will always be "https://searchapi.io/" and
- * the {@link WebSearchOrganicResult#title()} will always be "SearchApi Search API".
+ * See more details <a href="https://www.searchapi.io/docs/google">here</a>.
  */
 public class SearchApiWebSearchEngine implements WebSearchEngine {
 
@@ -57,7 +60,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     }
 
     @Override
-    public WebSearchResults search(WebSearchRequest webSearchRequest) {    	
+    public WebSearchResults search(final WebSearchRequest webSearchRequest) {    	
+        ensureNotNull(webSearchRequest, "webSearchRequest");
+
         final SearchApiSearchRequest.SearchApiSearchRequestBuilder requestBuilder = SearchApiSearchRequest.builder();
         
         requestBuilder
@@ -83,34 +88,80 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         final SearchApiSearchRequest request = requestBuilder.build();
         final SearchApiResponse searchapiResponse = searchapiClient.search(request);
 
-//        final List<WebSearchOrganicResult> results = searchapiResponse.getResults().stream()
-//                .map(SearchApiWebSearchEngine::toWebSearchOrganicResult)
-//                .collect(toList());
+        // TODO:
+        // outline the shape of the different types of JSON returned
+        // use the json.method()s to map elements from each of the shapes to the 3 WebSearch* classes
+        
+        final JsonObject json = searchapiResponse.getJson();
+        
+//        final Optional<String> firstKey = json.keySet().stream().findFirst();
+//        if (firstKey.isPresent()) {
+//            final String key = firstKey.get();
+//            System.out.println("********************************************************************");
+//            if ("search_metadata".equalsIgnoreCase(key)) {
+//            	System.out.println("**********************TRUE**********************************************");
 //
-//        if (searchapiResponse.getAnswer() != null) {
-//            WebSearchOrganicResult answerResult = WebSearchOrganicResult.from(
-//                    "SearchApi Search API",
-//                    URI.create("https://searchapi.io/"),
-//                    searchapiResponse.getAnswer(),
-//                    null
-//            );
-//            results.add(0, answerResult);
+//            } else if (true) {
+//            	
+//            } else {
+//            	
+//            }
 //        }
-//
-//        return WebSearchResults.from(WebSearchInformationResult.from((long) results.size()), results);
-        return null;
+        
+        final Map<String, Object> searchParamsAndInfo = new HashMap<>();
+        final Map<String, Object> searchMetadata = new HashMap<>();
+
+        
+        Map<String, JsonElement> _searchMetadata = null;
+        if (json.has("search_metadata")) {
+        	_searchMetadata = ((JsonObject)json.get("search_metadata")).getAsJsonObject().asMap();
+            searchMetadata.putAll(_searchMetadata);
+        }
+        
+        Map<String, JsonElement> _searchParamsAndInfo = null;
+        Long totalResults = null;
+        if (json.has("search_information")) {
+        	_searchParamsAndInfo = ((JsonObject)json.get("search_information")).getAsJsonObject().asMap();
+        	totalResults = _searchParamsAndInfo.get("total_results").getAsLong();
+        	searchParamsAndInfo.putAll(_searchParamsAndInfo);
+        }
+
+        if (json.has("search_parameters")) {
+        	_searchParamsAndInfo = ((JsonObject)json.get("search_parameters")).getAsJsonObject().asMap();
+        	searchParamsAndInfo.putAll(_searchParamsAndInfo);
+        }
+        
+        Integer pageNumber = null;
+        if (json.has("pagination")) {
+            pageNumber = ((JsonObject)json.get("pagination")).get("current").getAsInt();        	
+        }
+        
+        
+        final List<WebSearchOrganicResult> results = new ArrayList<>();
+        if (json.has("organic_results")) {
+        	final JsonArray _organicResults = json.getAsJsonArray("organic_results");
+        	for (int i = 0; i < _organicResults.size(); i++) {
+        		final JsonObject _obj = (JsonObject)_organicResults.get(i);
+        		final String snippet = _obj.has("snippet") ? _obj.get("snippet").getAsString() : _obj.get("displayed_link").getAsString();
+        		final WebSearchOrganicResult _objResult = WebSearchOrganicResult.from(
+        				_obj.get("title").getAsString(), 
+        				URI.create(_obj.get("link").getAsString()),
+        				snippet,
+        				null
+        				);
+        		results.add(i, _objResult);
+        	}
+        }
+        
+    	final WebSearchInformationResult result = WebSearchInformationResult.from(
+    			(Long) getOrDefault(totalResults, results.size()), 
+    			getOrDefault(pageNumber, 1), 
+    			searchParamsAndInfo);
+        return WebSearchResults.from(searchMetadata, result, results);
     }
 
-    public static SearchApiWebSearchEngineBuilder withApiKey(String apiKey) {
+    public static SearchApiWebSearchEngineBuilder withApiKey(final String apiKey) {
         return builder().apiKey(apiKey);
-    }
-
-    private static WebSearchOrganicResult toWebSearchOrganicResult(SearchApiSearchResult searchapiSearchResult) {
-        return WebSearchOrganicResult.from(searchapiSearchResult.getTitle(),
-                URI.create(searchapiSearchResult.getUrl()),
-                searchapiSearchResult.getContent(),
-                searchapiSearchResult.getRawContent(),
-                Collections.singletonMap("score", String.valueOf(searchapiSearchResult.getScore())));
     }
 }
 

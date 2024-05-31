@@ -16,7 +16,7 @@ class SearchApiResponse {
 //    private Double responseTime;
 //    private List<String> images;
 //    private List<String> followUpQuestions;
-//    private List<SearchApiSearchResult> results;
-	private JsonObject results;
-//	private Map<String, Object> results; //= new Gson().fromJson(json, Map.class);
+//    private List<SearchApiSearchResult> json;
+	private JsonObject json;
+//	private Map<String, Object> json; //= new Gson().fromJson(json, Map.class);
 }

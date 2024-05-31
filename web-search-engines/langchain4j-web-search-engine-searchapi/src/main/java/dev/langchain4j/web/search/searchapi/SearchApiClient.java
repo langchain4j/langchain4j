@@ -70,10 +70,7 @@ class SearchApiClient {
                     .execute();
             if (retrofitResponse.isSuccessful()) {
             	final SearchApiResponse resp = SearchApiResponse.builder().build();
-            	resp.setResults(retrofitResponse.body());
-//                System.out.println("########################################################################");
-//                System.out.println("########################################################################");
-//                System.out.println("" + new Gson().toJson(resp.getResults()));
+            	resp.setJson(retrofitResponse.body());
                 return resp;
             } else {
                 throw toException(retrofitResponse);
