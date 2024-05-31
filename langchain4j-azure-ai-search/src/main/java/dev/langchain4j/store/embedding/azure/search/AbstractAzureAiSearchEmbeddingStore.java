@@ -324,10 +324,10 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
                 List<Document.Metadata.Attribute> attributes = new ArrayList<>();
-                for (Map.Entry<String, String> entry : embedded.get(i).metadata().asMap().entrySet()) {
+                for (Map.Entry<String, Object> entry : embedded.get(i).metadata().toMap().entrySet()) {
                     Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
                     attribute.setKey(entry.getKey());
-                    attribute.setValue(entry.getValue());
+                    attribute.setValue((String) entry.getValue());
                     attributes.add(attribute);
                 }
                 metadata.setAttributes(attributes);

@@ -120,7 +120,7 @@ class MetadataTest implements WithAssertions {
     void test_asMap() {
         Metadata metadata = Metadata.from("key", "value");
 
-        Map<String, String> map = metadata.asMap();
+        Map<String, Object> map = metadata.toMap();
 
         assertThat(map).containsKey("key").containsValue("value");
     }
@@ -132,7 +132,7 @@ class MetadataTest implements WithAssertions {
 
         Metadata metadata = Metadata.from(map);
 
-        assertThat(metadata.get("key")).isEqualTo("value");
+        assertThat(metadata.getString("key")).isEqualTo("value");
     }
 
     @Test

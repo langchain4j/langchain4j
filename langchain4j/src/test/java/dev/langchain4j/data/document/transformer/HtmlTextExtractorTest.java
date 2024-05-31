@@ -52,7 +52,7 @@ class HtmlTextExtractorTest {
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo("Paragraph 1\nSomething");
-        assertThat(transformedDocument.metadata().asMap()).isEmpty();
+        assertThat(transformedDocument.metadata().toMap()).isEmpty();
     }
 
     @Test
@@ -68,8 +68,8 @@ class HtmlTextExtractorTest {
 
         assertThat(transformedDocument.text()).isEqualTo("Paragraph 1\nSomething");
 
-        assertThat(transformedDocument.metadata().asMap()).hasSize(1);
-        assertThat(transformedDocument.metadata("title")).isEqualTo("Title");
+        assertThat(transformedDocument.metadata().toMap()).hasSize(1);
+        assertThat(transformedDocument.metadata().getString("title")).isEqualTo("Title");
     }
 
     @Test
@@ -93,6 +93,6 @@ class HtmlTextExtractorTest {
                         " * Item one\n" +
                         " * Item two"
         );
-        assertThat(transformedDocument.metadata().asMap()).isEmpty();
+        assertThat(transformedDocument.metadata().toMap()).isEmpty();
     }
 }
