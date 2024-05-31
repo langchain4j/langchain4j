@@ -15,9 +15,9 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
 import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -127,12 +127,13 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ensureNotEmpty(messages, "messages");
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        String systemPrompt = toAnthropicSystemPrompt(messages);
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(messages))
-                .system(toAnthropicSystemPrompt(messages))
+                .messages(toAnthropicMessages(sanitizedMessages))
+                .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
                 .stream(false)
