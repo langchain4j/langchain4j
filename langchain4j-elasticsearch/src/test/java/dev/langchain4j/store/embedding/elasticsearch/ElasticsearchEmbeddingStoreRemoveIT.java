@@ -8,6 +8,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -187,6 +188,32 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(matchingIds).hasSize(3);
+    }
+
+    @Test
+    void remove_all_by_filter_null() {
+        // given
+        Embedding embedding = embeddingModel.embed("hello").content();
+        Embedding embedding2 = embeddingModel.embed("hello2").content();
+        Embedding embedding3 = embeddingModel.embed("hello3").content();
+
+        embeddingStore.add(embedding);
+        embeddingStore.add(embedding2);
+        embeddingStore.add(embedding3);
+        awaitUntilPersisted();
+
+        // when
+        embeddingStore.removeAll((Filter) null);
+        awaitUntilPersisted();
+
+        // then
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
+        List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
+        assertThat(matchingIds).hasSize(0);
     }
 
     @SneakyThrows
