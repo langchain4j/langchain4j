@@ -51,7 +51,7 @@ public class IsNotEqualTo implements Filter {
         }
 
         if (comparisonValue instanceof UUID && actualValue instanceof String) {
-            return actualValue.equals(comparisonValue.toString());
+            return !actualValue.equals(comparisonValue.toString());
         }
 
         return !actualValue.equals(comparisonValue);
