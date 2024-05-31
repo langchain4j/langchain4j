@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static java.util.Collections.singletonMap;
 
@@ -166,6 +167,10 @@ class MetadataTest implements WithAssertions {
         map.put("double_as_long", 1L);
         map.put("double_as_float", 1f);
 
+        UUID uuid = UUID.randomUUID();
+        map.put("uuid", uuid);
+        map.put("uuid_as_string", uuid.toString());
+
         // when
         Metadata metadata = new Metadata(map);
 
@@ -176,6 +181,13 @@ class MetadataTest implements WithAssertions {
                 .isExactlyInstanceOf(RuntimeException.class)
                 .hasMessage("Metadata entry with the key 'integer' has a value of '1' and type 'java.lang.Integer'. " +
                         "It cannot be returned as a String.");
+
+        assertThat(metadata.getUUID("uuid")).isEqualTo(uuid);
+        assertThat(metadata.getUUID("uuid_as_string")).isEqualTo(uuid);
+        assertThatThrownBy(() -> metadata.getUUID("integer"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Metadata entry with the key 'integer' has a value of '1' and type 'java.lang.Integer'. " +
+                        "It cannot be returned as a UUID.");
 
         assertThat(metadata.getInteger("integer")).isEqualTo(1);
         assertThat(metadata.getInteger("integer_as_string")).isEqualTo(1);
@@ -254,22 +266,23 @@ class MetadataTest implements WithAssertions {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. " +
-                        "Currently, the supported types are: [class java.lang.String, int, class java.lang.Integer, " +
+                        "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, " +
                         "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
 
         assertThatThrownBy(() -> Metadata.from(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. " +
-                        "Currently, the supported types are: [class java.lang.String, int, class java.lang.Integer, " +
+                        "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, " +
                         "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
     }
 
     @Test
     void should_get_typed_values() {
-
+        UUID uuid = UUID.randomUUID();
         Metadata metadata = new Metadata()
                 .put("string", "s")
+                .put("uuid", uuid)
                 .put("integer", 1)
                 .put("long", 1L)
                 .put("float", 1f)
@@ -277,6 +290,8 @@ class MetadataTest implements WithAssertions {
 
         assertThat(metadata.getString("string")).isEqualTo("s");
         assertThat(metadata.getString("banana")).isNull();
+
+        assertThat(metadata.getUUID("uuid")).isEqualTo(uuid);
 
         assertThat(metadata.getInteger("integer")).isEqualTo(1);
         assertThat(metadata.getInteger("banana")).isNull();
@@ -302,6 +317,11 @@ class MetadataTest implements WithAssertions {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The metadata key with the value 'value' cannot be null or blank");
 
+        UUID uuid = UUID.randomUUID();
+        assertThatThrownBy(() -> metadata.put(null, uuid))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage(String.format("The metadata key with the value '%s' cannot be null or blank", uuid));
+
         assertThatThrownBy(() -> metadata.put(null, 1))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The metadata key with the value '1' cannot be null or blank");
@@ -326,17 +346,22 @@ class MetadataTest implements WithAssertions {
         Metadata metadata = new Metadata();
 
         // when-then
-        assertThatThrownBy(() -> metadata.put("key", null))
+        assertThatThrownBy(() -> metadata.put("key", (String)null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The metadata value for the key 'key' cannot be null");
+
+        assertThatThrownBy(() -> metadata.put("key", (UUID)null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The metadata value for the key 'key' cannot be null");
     }
 
     @Test
     void should_convert_to_map() {
-
+        UUID uuid = UUID.randomUUID();
         // given
         Map<String, Object> originalMap = new HashMap<>();
         originalMap.put("string", "s");
+        originalMap.put("uuid", uuid);
         originalMap.put("integer", 1);
         originalMap.put("long", 1L);
         originalMap.put("float", 1f);

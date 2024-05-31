@@ -9,6 +9,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.store.embedding.filter.Filter.*;
@@ -90,6 +91,17 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("key", "aa"),
                                 new Metadata().put("key", "a a"),
                                 new Metadata().put("key2", "a")
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("key").isEqualTo(TEST_UUID),
+                        asList(
+                                new Metadata().put("key", TEST_UUID),
+                                new Metadata().put("key", TEST_UUID).put("key2", "b")
+                        ),
+                        asList(
+                                new Metadata().put("key", UUID.randomUUID()),
+                                new Metadata().put("key", UUID.randomUUID())
                         )
                 ))
                 .add(Arguments.of(
@@ -1210,6 +1222,18 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         asList(
                                 new Metadata().put("key", "a"),
                                 new Metadata().put("key", "a").put("key2", "b")
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("key").isNotEqualTo(TEST_UUID),
+                        asList(
+                                new Metadata().put("key", UUID.randomUUID()),
+                                new Metadata().put("key", UUID.randomUUID()),
+                                new Metadata().put("key2", TEST_UUID)
+                        ),
+                        asList(
+                                new Metadata().put("key", TEST_UUID),
+                                new Metadata().put("key", TEST_UUID).put("key2", UUID.randomUUID())
                         )
                 ))
                 .add(Arguments.of(
