@@ -140,15 +140,18 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         final List<WebSearchOrganicResult> results = new ArrayList<>();
         if (json.has("organic_results")) {
         	final JsonArray _organicResults = json.getAsJsonArray("organic_results");
+        	final Map<String, String> metadata = new HashMap<>();
         	for (int i = 0; i < _organicResults.size(); i++) {
         		final JsonObject _obj = (JsonObject)_organicResults.get(i);
         		final String snippet = _obj.has("snippet") ? _obj.get("snippet").getAsString() : _obj.get("displayed_link").getAsString();
+        		final String thumbnail = _obj.has("thumbnail") ? _obj.get("thumbnail").getAsString() : "";
+        		metadata.put("thumbnail", thumbnail);
         		final WebSearchOrganicResult _objResult = WebSearchOrganicResult.from(
         				_obj.get("title").getAsString(), 
         				URI.create(_obj.get("link").getAsString()),
         				snippet,
-        				null
-        				);
+        				null,
+        				metadata);
         		results.add(i, _objResult);
         	}
         }
