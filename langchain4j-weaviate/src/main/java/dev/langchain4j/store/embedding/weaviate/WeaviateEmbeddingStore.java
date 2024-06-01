@@ -172,6 +172,20 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+        WhereFilter whereFilter = WeaviateMetadataFilterMapper.map(filter);
+        client.batch().objectsBatchDeleter()
+                .withClassName(objectClass)
+                .withWhere(WhereFilter.builder()
+                        .path("metadata.id")
+                        .operator(Operator.ContainsAny)
+                        .valueText("1")
+                        .build())
+                .run();
+    }
+
+    @Override
     public void removeAll() {
         client.batch().objectsBatchDeleter()
                 .withClassName(objectClass)
