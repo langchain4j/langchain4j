@@ -29,7 +29,26 @@ class SearchApiWebSearchEngineTest {
 
         // when
         WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
-        
+
+        // then
+        assertThat(webSearchResults.searchInformation().totalResults() > 0);
+        assertThat(webSearchResults.searchInformation().pageNumber() == 1);
+
+        // then
+        WebSearchInformationResult searchParams = webSearchResults.searchInformation();        
+        assertThat(searchParams.metadata().containsKey("engine"));
+        assertThat(searchParams.metadata().get("engine").equals(DEFAULT_ENGINE));
+        assertThat(searchParams.metadata().containsKey("q"));
+        assertThat(searchParams.metadata().get("q").equals("chatgpt"));
+        assertThat(searchParams.metadata().containsKey("google_domain"));
+        assertThat(searchParams.metadata().get("google_domain").equals("google.com"));
+        assertThat(searchParams.metadata().containsKey("device"));
+        assertThat(searchParams.metadata().get("device").equals("desktop"));
+        assertThat(searchParams.metadata().containsKey("safe"));
+        assertThat(searchParams.metadata().get("safe").equals("active"));
+        assertThat(searchParams.metadata().containsKey("page"));
+        assertThat(searchParams.metadata().get("page").equals(1));
+
         // then
         Map<String, Object> searchMetadata = webSearchResults.searchMetadata();
         assertThat(searchMetadata.containsKey("id"));
@@ -38,22 +57,11 @@ class SearchApiWebSearchEngineTest {
         assertThat(searchMetadata.get("created_at")).isNotNull();
         assertThat(searchMetadata.containsKey("request_url"));
         assertThat(searchMetadata.get("request_url")).isNotNull();
+        assertThat(searchMetadata.containsKey("query_displayed"));
+        assertThat(searchMetadata.get("query_displayed").equals("chatgpt"));
         assertThat(searchMetadata.containsKey("status"));
         assertThat(searchMetadata.get("status").equals("Success"));
         
-        // then
-        WebSearchInformationResult info = webSearchResults.searchInformation();
-        assertThat(info.totalResults() > 0);
-        assertThat(info.pageNumber() == 1);
-        assertThat(info.metadata().containsKey("engine"));
-        assertThat(info.metadata().get("engine").equals(DEFAULT_ENGINE));
-        assertThat(info.metadata().containsKey("q"));
-        assertThat(info.metadata().get("q").equals("chatgpt"));
-        assertThat(info.metadata().containsKey("query_displayed"));
-        assertThat(info.metadata().get("query_displayed").equals("chatgpt"));
-        assertThat(info.metadata().containsKey("google_domain"));
-        assertThat(info.metadata().get("google_domain").equals("google.com"));
-
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
 
@@ -61,8 +69,8 @@ class SearchApiWebSearchEngineTest {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
-            assertThat(result.content()).isBlank();
-            assertThat(result.metadata()).containsOnlyKeys("thumbnail");
+            assertThat(result.content()).isNull();
+            assertThat(result.metadata()).isNotNull();
         });
 
         assertThat(results).anyMatch(result ->

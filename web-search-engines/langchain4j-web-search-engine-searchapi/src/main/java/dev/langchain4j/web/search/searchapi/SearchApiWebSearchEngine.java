@@ -5,25 +5,20 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.Duration.ofSeconds;
+import static java.util.stream.Collectors.toList;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
+import dev.langchain4j.web.search.searchapi.result.OrganicResult;
 import lombok.Builder;
 
 /**
@@ -86,85 +81,42 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     	}
 
         final SearchApiSearchRequest request = requestBuilder.build();
-        final SearchApiResponse searchapiResponse = searchapiClient.search(request);
-
-        // TODO:
-        // outline the shape of the different types of JSON returned
-        // use the json.method()s to map elements from each of the shapes to the 3 WebSearch* classes
         
-        final JsonObject json = searchapiResponse.getJson();
+        // conduct the search
+        final SearchApiResponse searchapiResponse = searchapiClient.search(request);        
         
-//        final Optional<String> firstKey = json.keySet().stream().findFirst();
-//        if (firstKey.isPresent()) {
-//            final String key = firstKey.get();
-//            System.out.println("********************************************************************");
-//            if ("search_metadata".equalsIgnoreCase(key)) {
-//            	System.out.println("**********************TRUE**********************************************");
-//
-//            } else if (true) {
-//            	
-//            } else {
-//            	
-//            }
-//        }
+        final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
+                .map(result -> WebSearchOrganicResult.from(
+                        result.getTitle(),
+                        URI.create(result.getLink()),
+                        result.getSnippet(),
+                        null, // searchapi does not return content
+                        toResultMetadataMap(result))) 
+                .collect(toList());
         
-        final Map<String, Object> searchParamsAndInfo = new HashMap<>();
-        final Map<String, Object> searchMetadata = new HashMap<>();
-
-        
-        Map<String, JsonElement> _searchMetadata = null;
-        if (json.has("search_metadata")) {
-        	_searchMetadata = ((JsonObject)json.get("search_metadata")).getAsJsonObject().asMap();
-            searchMetadata.putAll(_searchMetadata);
-        }
-        
-        Map<String, JsonElement> _searchParamsAndInfo = null;
-        Long totalResults = null;
-        if (json.has("search_information")) {
-        	_searchParamsAndInfo = ((JsonObject)json.get("search_information")).getAsJsonObject().asMap();
-        	totalResults = _searchParamsAndInfo.get("total_results").getAsLong();
-        	searchParamsAndInfo.putAll(_searchParamsAndInfo);
-        }
-
-        if (json.has("search_parameters")) {
-        	_searchParamsAndInfo = ((JsonObject)json.get("search_parameters")).getAsJsonObject().asMap();
-        	searchParamsAndInfo.putAll(_searchParamsAndInfo);
-        }
-        
-        Integer pageNumber = null;
-        if (json.has("pagination")) {
-            pageNumber = ((JsonObject)json.get("pagination")).get("current").getAsInt();        	
-        }
-        
-        
-        final List<WebSearchOrganicResult> results = new ArrayList<>();
-        if (json.has("organic_results")) {
-        	final JsonArray _organicResults = json.getAsJsonArray("organic_results");
-        	final Map<String, String> metadata = new HashMap<>();
-        	for (int i = 0; i < _organicResults.size(); i++) {
-        		final JsonObject _obj = (JsonObject)_organicResults.get(i);
-        		final String snippet = _obj.has("snippet") ? _obj.get("snippet").getAsString() : _obj.get("displayed_link").getAsString();
-        		final String thumbnail = _obj.has("thumbnail") ? _obj.get("thumbnail").getAsString() : "";
-        		metadata.put("thumbnail", thumbnail);
-        		final WebSearchOrganicResult _objResult = WebSearchOrganicResult.from(
-        				_obj.get("title").getAsString(), 
-        				URI.create(_obj.get("link").getAsString()),
-        				snippet,
-        				null,
-        				metadata);
-        		results.add(i, _objResult);
-        	}
-        }
-        
+        final Long totalResults = Double.valueOf(searchapiResponse.getSearchInformation().get("total_results").toString()).longValue();
     	final WebSearchInformationResult result = WebSearchInformationResult.from(
-    			(Long) getOrDefault(totalResults, results.size()), 
-    			getOrDefault(pageNumber, 1), 
-    			searchParamsAndInfo);
-        return WebSearchResults.from(searchMetadata, result, results);
+    			getOrDefault(totalResults, Long.valueOf(results.size())), 
+    			getOrDefault(searchapiResponse.getPagination().getCurrent(), 1), 
+    			searchapiResponse.getSearchParameters());
+    	
+    	// merge the "search_information" JSON element with the "search_metadata" JSON element
+    	searchapiResponse.getSearchMetadata().putAll(searchapiResponse.getSearchInformation()); 
+        return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, results);
     }
 
     public static SearchApiWebSearchEngineBuilder withApiKey(final String apiKey) {
         return builder().apiKey(apiKey);
+    }
+    
+    private static Map<String, String> toResultMetadataMap(OrganicResult result) {
+        final Map<String, String> metadata = new HashMap<>();
+       
+        metadata.put("position", String.valueOf(result.getPosition()));
+        metadata.put("source", result.getSource());
+        metadata.put("thumbnail", result.getThumbnail());
+        return metadata;
+        
     }
 }
 

@@ -7,10 +7,10 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import lombok.Builder;
 import lombok.Getter;
-
-//import java.util.List;
+import lombok.Setter;
 
 @Getter
+@Setter
 @Builder
 class SearchApiSearchRequest {
 
