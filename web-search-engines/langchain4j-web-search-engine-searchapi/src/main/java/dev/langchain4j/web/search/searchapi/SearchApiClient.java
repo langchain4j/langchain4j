@@ -3,22 +3,10 @@ package dev.langchain4j.web.search.searchapi;
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 
 import java.io.IOException;
-//import java.lang.reflect.Type;
 import java.time.Duration;
-//import java.time.LocalDateTime;
-//import java.time.format.DateTimeFormatter;
-//import java.util.Locale;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-//import com.google.gson.JsonDeserializationContext;
-//import com.google.gson.JsonDeserializer;
-//import com.google.gson.JsonElement;
-//import com.google.gson.JsonObject;
-//import com.google.gson.JsonParseException;
-//import com.google.gson.JsonPrimitive;
-//import com.google.gson.JsonSerializationContext;
-//import com.google.gson.JsonSerializer;
 
 import lombok.Builder;
 import okhttp3.OkHttpClient;
@@ -38,7 +26,6 @@ public class SearchApiClient {
     private static final Gson GSON = new GsonBuilder()
             .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
             .setPrettyPrinting()
-            //.registerTypeAdapter(LocalDateTime.class, new SearchApiClient.LocalDateTimeAdapter())
             .create();
 
     @Builder
@@ -72,7 +59,7 @@ public class SearchApiClient {
         this.searchapiAPI = retrofit.create(SearchApiAPI.class);
     }
 
-    public SearchApiResponse search(final SearchApiSearchRequest searchRequest) {
+    public SearchApiResponse search(final SearchApiRequest searchRequest) {
         try {
         	final Response<SearchApiResponse> retrofitResponse = searchapiAPI
                     .search(apiKey, 
@@ -97,22 +84,4 @@ public class SearchApiClient {
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
     }
-/*    
-    private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
-        private static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss'Z'";
-    	private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern(DATE_FORMAT);
-    	  
-    	@Override
-    	public JsonElement serialize(final LocalDateTime time, final Type typeOfSrc, final JsonSerializationContext context) {
-    	    return new JsonPrimitive(time.format(formatter));
-    	}
-    	
-    	@Override
-    	public LocalDateTime deserialize(final JsonElement json, final Type typeOfT, final JsonDeserializationContext context)
-    	throws JsonParseException {
-    	    return LocalDateTime.parse(json.getAsString(),
-    	        DateTimeFormatter.ofPattern(DATE_FORMAT).withLocale(Locale.ENGLISH));
-    	}
-    }
-*/    
 }

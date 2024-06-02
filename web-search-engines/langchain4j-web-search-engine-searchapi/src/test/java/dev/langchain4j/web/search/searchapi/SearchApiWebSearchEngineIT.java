@@ -1,29 +1,31 @@
 package dev.langchain4j.web.search.searchapi;
 
-import dev.langchain4j.web.search.WebSearchEngine;
-import dev.langchain4j.web.search.WebSearchEngineIT;
-import dev.langchain4j.web.search.WebSearchOrganicResult;
-import dev.langchain4j.web.search.WebSearchResults;
+import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFAULT_ENGINE;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import java.net.URI;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchEngineIT;
+import dev.langchain4j.web.search.WebSearchInformationResult;
+import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchResults;
 
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
 class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
 	public static final String SEARCHAPI_API_KEY = "SEARCHAPI_API_KEY";
 	
-	private static final boolean logRequests = true;
+	private static final boolean logRequests = false;
 	
     protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(SEARCHAPI_API_KEY)).logRequests(logRequests).build();
 
     @Test
-    void should_search_with_raw_content() {
+    void should_search_with_defaults() {
 
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
@@ -41,49 +43,77 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
-            assertThat(result.content()).isNotBlank();
+            assertThat(result.content()).isNull();
         });
 
         assertThat(results).anyMatch(result ->
-                result.url().toString().contains("https://github.com/langchain4j")
-                        && result.content().contains("How to get an API key")
+                result.url().toString().contains("https://www.baeldung.com/java-langchain-basics")
+                        && result.title().contains("Introduction to LangChain")
         );
     }
-
-/*
+    
+    
     @Test
-    void should_search_with_answer() {
-
+    void search_for_chatgpt() {
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv(SEARCHAPI_API_KEY))
+                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
                 .logRequests(logRequests)
                 .build();
 
         // when
-        WebSearchResults webSearchResults = searchapiWebSearchEngine.search("What is LangChain4j?");
+        WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
 
         // then
+        assertThat(webSearchResults.searchInformation().totalResults() > 0);
+        assertThat(webSearchResults.searchInformation().pageNumber() == 1);
+
+        // then
+        WebSearchInformationResult searchParams = webSearchResults.searchInformation();        
+        assertThat(searchParams.metadata().containsKey("engine"));
+        assertThat(searchParams.metadata().get("engine").equals(DEFAULT_ENGINE));
+        assertThat(searchParams.metadata().containsKey("q"));
+        assertThat(searchParams.metadata().get("q").equals("chatgpt"));
+        assertThat(searchParams.metadata().containsKey("google_domain"));
+        assertThat(searchParams.metadata().get("google_domain").equals("google.com"));
+        assertThat(searchParams.metadata().containsKey("device"));
+        assertThat(searchParams.metadata().get("device").equals("desktop"));
+        assertThat(searchParams.metadata().containsKey("safe"));
+        assertThat(searchParams.metadata().get("safe").equals("active"));
+        assertThat(searchParams.metadata().containsKey("page"));
+        assertThat(searchParams.metadata().get("page").equals(1));
+
+        // then
+        Map<String, Object> searchMetadata = webSearchResults.searchMetadata();
+        assertThat(searchMetadata.containsKey("id"));
+        assertThat(searchMetadata.get("id")).isNotNull();
+        assertThat(searchMetadata.containsKey("created_at"));
+        assertThat(searchMetadata.get("created_at")).isNotNull();
+        assertThat(searchMetadata.containsKey("request_url"));
+        assertThat(searchMetadata.get("request_url")).isNotNull();
+        assertThat(searchMetadata.containsKey("query_displayed"));
+        assertThat(searchMetadata.get("query_displayed").equals("chatgpt"));
+        assertThat(searchMetadata.containsKey("status"));
+        assertThat(searchMetadata.get("status").equals("Success"));
+        
+        // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5 + 1); // +1 for answer
 
-        WebSearchOrganicResult answerResult = results.get(0);
-        assertThat(answerResult.title()).isEqualTo("SearchApi Search API");
-        assertThat(answerResult.url()).isEqualTo(URI.create("https://searchapi.io/"));
-        assertThat(answerResult.snippet()).isNotBlank();
-        assertThat(answerResult.content()).isNull();
-        assertThat(answerResult.metadata()).isNull();
-
-        results.subList(1, results.size()).forEach(result -> {
+        results.forEach(result -> {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();
             assertThat(result.snippet()).isNotBlank();
             assertThat(result.content()).isNull();
-            assertThat(result.metadata()).containsOnlyKeys("score");
+            assertThat(result.metadata()).isNotNull();
         });
 
-        assertThat(results).anyMatch(result -> result.url().toString().contains("https://github.com/langchain4j"));
-    }*/
+        assertThat(results).anyMatch(result ->
+                result.url().toString().contains("https://chat.openai.com/")
+                        && (result.snippet().contains("ChatGPT is a free-to-use AI system.") // when "snippet" != null
+                        || result.snippet().contains("ChatGPT")) // when "displayedLink" != null
+        );
+    }
+    
 
     @Override
     protected WebSearchEngine searchEngine() {

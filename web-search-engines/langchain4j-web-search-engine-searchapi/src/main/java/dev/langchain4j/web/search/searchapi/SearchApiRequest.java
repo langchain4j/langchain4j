@@ -12,7 +12,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-class SearchApiSearchRequest {
+class SearchApiRequest {
 
 	/************************************************************************************************ 
 	 * Mandatory parameters 
