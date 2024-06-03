@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-import com.jayway.jsonpath.JsonPath;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -10,8 +9,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import lombok.SneakyThrows;
-import net.minidev.json.JSONArray;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
@@ -50,6 +47,10 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     @BeforeEach
     void beforeEach() {
         embeddingStore.removeAll();
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embeddingModel.embed("empty").content())
+                .build();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(0));
     }
 
     @Test
