@@ -50,7 +50,7 @@ public class LlamaParseClientIT {
     @Order(2)
     void shouldGetJobStatus() throws InterruptedException {
         with()
-                .pollInterval(Duration.ofSeconds(10))
+                .pollInterval(Duration.ofSeconds(3))
                 .await("check success status")
                 .atMost(Duration.ofSeconds(60))
                 .untilAsserted(() -> assertThat(client.jobStatus(JOB_ID).status)
