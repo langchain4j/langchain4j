@@ -4,6 +4,8 @@ import com.azure.ai.openai.models.ImageGenerationResponseFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,5 +72,31 @@ public class AzureOpenAiImageModelIT {
 
         assertThat(image.revisedPrompt()).isNotNull();
         logger.info("The revised prompt is: {}", image.revisedPrompt());
+    }
+
+    @ParameterizedTest(name = "Testing model {0}")
+    @EnumSource(AzureOpenAiImageModelName.class)
+    void should_support_all_string_model_names(AzureOpenAiImageModelName modelName) {
+
+        // given
+        String modelNameString = modelName.toString();
+
+        AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelNameString)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        Response<Image> response = model.generate("A coffee mug in Paris, France");
+        logger.info(response.toString());
+
+        // then
+        Image image = response.content();
+        assertThat(image).isNotNull();
+        assertThat(image.url()).isNotNull();
+        assertThat(image.base64Data()).isNull();
+        assertThat(image.revisedPrompt()).isNotNull();
     }
 }
