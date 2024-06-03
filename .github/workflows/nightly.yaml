@@ -1,41 +1,53 @@
-name: release
+name: Nightly Build
 
 on:
+  schedule:
+    - cron: '0 0 * * *'  # daily at midnight UTC
   workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 jobs:
-
-  release:
+  java_build:
+    strategy:
+      matrix:
+        java_version: [ 8, 11, 17, 21 ]
+        include:
+          - java_version: '8'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-cassandra,!langchain4j-infinispan,!langchain4j-neo4j,!langchain4j-opensearch,!langchain4j-azure-ai-search'
+          - java_version: '11'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-infinispan,!langchain4j-neo4j'
+          - java_version: '17'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+          - java_version: '21'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus'
     runs-on: ubuntu-latest
     steps:
-
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK ${{ matrix.java_version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
-          cache: maven
-          server-id: ossrh
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_PASSWORD
-          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg-passphrase: GPG_PASSPHRASE
+          cache: 'maven'
 
       - name: Authenticate to Google Cloud
+        # Needed for langchain4j-vertex-ai and langchain4j-vertex-ai-gemini modules
         uses: 'google-github-actions/auth@v2'
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
           credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
 
       - name: Setup Testcontainers Cloud Client
+        # Needed for langchain4j-ollama and other modules using testcontainers
         uses: atomicjar/testcontainers-cloud-setup-action@v1
         with:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
-      - name: release
-        run: mvn -B -U --fail-at-end -DskipTests -DskipITs -DskipAnthropicITs -DskipLocalAiITs -DskipMilvusITs -DskipMongoDbAtlasITs -DskipOllamaITs -DskipVearchITs -DskipVertexAiGeminiITs -pl !langchain4j-core,!langchain4j-parent -Psign clean deploy
+      - name: Build with JDK ${{ matrix.java_version }}
+        run: mvn -B -U --fail-at-end ${{ matrix.included_modules }} test
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -66,6 +78,3 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
           WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
