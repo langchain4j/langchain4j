@@ -96,6 +96,32 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
     }
 
     @Override
+    public void remove(String id) {
+        entries.removeIf(entry -> entry.id.equals(id));
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        entries.removeIf(entry -> ids.contains(entry.id));
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        entries.removeIf(entry -> {
+            if (entry.embedded instanceof TextSegment) {
+                return filter.test(((TextSegment) entry.embedded).metadata());
+            } else {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+        });
+    }
+
+    @Override
+    public void removeAll() {
+        entries.clear();
+    }
+
+    @Override
     public EmbeddingSearchResult<Embedded> search(EmbeddingSearchRequest embeddingSearchRequest) {
 
         Comparator<EmbeddingMatch<Embedded>> comparator = comparingDouble(EmbeddingMatch::score);
