@@ -361,6 +361,12 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-document-loader-selenium</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-document-loader-tencent-cos</artifactId>
                 <version>${project.version}</version>
             </dependency>
