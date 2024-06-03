@@ -17,6 +17,7 @@ import static org.assertj.core.data.Percentage.withPercentage;
 public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
 
     static final UUID TEST_UUID = UUID.randomUUID();
+    static final UUID TEST_UUID2 = UUID.randomUUID();
 
     @Test
     void should_add_embedding_with_segment_with_metadata() {

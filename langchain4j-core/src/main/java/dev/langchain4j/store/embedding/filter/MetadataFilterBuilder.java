@@ -204,6 +204,10 @@ public class MetadataFilterBuilder {
         return new IsIn(key, asList(values));
     }
 
+    public Filter isIn(UUID... values) {
+        return new IsIn(key, asList(values));
+    }
+
     public Filter isIn(int... values) {
         return new IsIn(key, stream(values).boxed().collect(toList()));
     }
@@ -232,6 +236,10 @@ public class MetadataFilterBuilder {
     // isNotIn
 
     public Filter isNotIn(String... values) {
+        return new IsNotIn(key, asList(values));
+    }
+
+    public Filter isNotIn(UUID... values) {
         return new IsNotIn(key, asList(values));
     }
 
