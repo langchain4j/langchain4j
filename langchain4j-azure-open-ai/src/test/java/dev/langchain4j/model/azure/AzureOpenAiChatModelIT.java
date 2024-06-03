@@ -8,20 +8,18 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
@@ -29,8 +27,6 @@ import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
@@ -300,6 +296,31 @@ public class AzureOpenAiChatModelIT {
 
         assertThat(response.content().text()).contains("Chirac", "Sarkozy", "Hollande", "Macron");
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest(name = "Testing model {0}")
+    @EnumSource(AzureOpenAiChatModelName.class)
+    void should_support_all_string_model_names(AzureOpenAiChatModelName modelName) {
+
+        // given
+        String modelNameString = modelName.toString();
+
+        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelNameString)
+                .maxTokens(1)
+                .logRequestsAndResponses(true)
+                .build();
+
+        UserMessage userMessage = userMessage("Hi");
+
+        // when
+        Response<AiMessage> response = model.generate(userMessage);
+        System.out.println(response);
+
+        // then
+        assertThat(response.content().text()).isNotBlank();
     }
 
     private static ToolParameters getToolParameters() {

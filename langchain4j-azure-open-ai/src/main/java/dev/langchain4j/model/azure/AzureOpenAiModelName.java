@@ -1,9 +1,9 @@
 package dev.langchain4j.model.azure;
 
 /**
- * You can get the latest model names from the Azure OpenAI documentation or by executing the Azure CLI command:
- * az cognitiveservices account list-models --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE" -o table
+ * @deprecated use {@link AzureOpenAiChatModelName}, {@link AzureOpenAiEmbeddingModelName}, {@link AzureOpenAiImageModelName} and {@link AzureOpenAiLanguageModelName}, instead.
  */
+@Deprecated
 public class AzureOpenAiModelName {
 
     // Use with AzureOpenAiChatModel and AzureOpenAiStreamingChatModel
