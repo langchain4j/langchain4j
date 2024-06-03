@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
+import com.jayway.jsonpath.JsonPath;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -10,12 +11,16 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.SneakyThrows;
+import net.minidev.json.JSONArray;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -56,20 +61,18 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         embeddingStore.add(embedding);
         embeddingStore.add(embedding2);
         embeddingStore.add(embedding3);
-        awaitUntilPersisted();
 
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
                 .maxResults(10)
                 .build();
-        assertThat(embeddingStore.search(request).matches()).hasSize(3);
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
 
         // when
         embeddingStore.removeAll();
-        awaitUntilPersisted();
 
         // then
-        assertThat(embeddingStore.search(request).matches()).hasSize(0);
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(0));
     }
 
     @Test
@@ -82,21 +85,20 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         String id = embeddingStore.add(embedding);
         String id2 = embeddingStore.add(embedding2);
         String id3 = embeddingStore.add(embedding3);
-        awaitUntilPersisted();
+
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
                 .maxResults(10)
                 .build();
-        assertThat(embeddingStore.search(request).matches()).hasSize(3);
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
 
         // when
         embeddingStore.remove(id);
-        awaitUntilPersisted();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(2));
 
         // then
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(matchingIds).hasSize(2);
         assertThat(matchingIds).containsExactly(id2, id3);
     }
 
@@ -110,20 +112,20 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         String id = embeddingStore.add(embedding);
         String id2 = embeddingStore.add(embedding2);
         String id3 = embeddingStore.add(embedding3);
-        awaitUntilPersisted();
 
-        // when
-        embeddingStore.removeAll(Arrays.asList(id2, id3));
-        awaitUntilPersisted();
-
-        // then
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
                 .maxResults(10)
                 .build();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
+
+        // when
+        embeddingStore.removeAll(Arrays.asList(id2, id3));
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(1));
+
+        // then
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(matchingIds).hasSize(1);
         assertThat(matchingIds).containsExactly(id);
     }
 
@@ -141,23 +143,26 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         TextSegment segment = TextSegment.from("matching", metadata);
         Embedding embedding = embeddingModel.embed(segment).content();
         embeddingStore.add(embedding, segment);
-        awaitUntilPersisted();
+
+        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(1));
+
         Embedding embedding2 = embeddingModel.embed("hello2").content();
         Embedding embedding3 = embeddingModel.embed("hello3").content();
 
         String id2 = embeddingStore.add(embedding2);
         String id3 = embeddingStore.add(embedding3);
-        awaitUntilPersisted();
+
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
 
         // when
         embeddingStore.removeAll(metadataKey("id").isEqualTo("1"));
-        awaitUntilPersisted();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(2));
 
         // then
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embedding)
-                .maxResults(10)
-                .build();
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(matchingIds).hasSize(2);
@@ -174,17 +179,16 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         embeddingStore.add(embedding);
         embeddingStore.add(embedding2);
         embeddingStore.add(embedding3);
-        awaitUntilPersisted();
-
-        // when
-        embeddingStore.removeAll(metadataKey("unknown").isEqualTo("1"));
-        awaitUntilPersisted();
-
-        // then
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
                 .maxResults(10)
                 .build();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
+
+        // when
+        embeddingStore.removeAll(metadataKey("unknown").isEqualTo("1"));
+
+        // then
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(matchingIds).hasSize(3);
@@ -200,26 +204,25 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         embeddingStore.add(embedding);
         embeddingStore.add(embedding2);
         embeddingStore.add(embedding3);
-        awaitUntilPersisted();
-
-        // when
-        embeddingStore.removeAll((Filter) null);
-        awaitUntilPersisted();
-
-        // then
         EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                 .queryEmbedding(embedding)
                 .maxResults(10)
                 .build();
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
+
+        // when
+        embeddingStore.removeAll((Filter) null);
+        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(0));
+
+        // then
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(matchingIds).hasSize(0);
     }
 
-    @SneakyThrows
-    protected void awaitUntilPersisted() {
-        // TODO: not sure if it is ok, 1 sec was not enough
-        Thread.sleep(3000);
+    private static void awaitAssertion(ThrowingRunnable assertionRunnable) {
+        Awaitility.await().pollInterval(Duration.ofSeconds(1))
+                .atMost(Duration.ofSeconds(5))
+                .untilAsserted(assertionRunnable);
     }
-
 }
