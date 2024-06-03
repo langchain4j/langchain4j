@@ -22,6 +22,11 @@
         </dependency>
 
         <dependency>
+            <groupId>dev.ai4j</groupId>
+            <artifactId>openai4j</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-ai-openai</artifactId>
         </dependency>
@@ -41,9 +46,8 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <scope>test</scope>
+            <groupId>com.knuddels</groupId>
+            <artifactId>jtokkit</artifactId>
         </dependency>
 
         <dependency>
