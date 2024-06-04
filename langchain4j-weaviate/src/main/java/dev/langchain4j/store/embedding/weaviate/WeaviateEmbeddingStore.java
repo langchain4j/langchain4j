@@ -177,11 +177,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         WhereFilter whereFilter = WeaviateMetadataFilterMapper.map(filter);
         client.batch().objectsBatchDeleter()
                 .withClassName(objectClass)
-                .withWhere(WhereFilter.builder()
-                        .path("metadata.id")
-                        .operator(Operator.ContainsAny)
-                        .valueText("1")
-                        .build())
+                .withWhere(whereFilter)
                 .run();
     }
 

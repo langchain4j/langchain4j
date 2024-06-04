@@ -134,8 +134,6 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
         String id2 = embeddingStore.add(embedding2);
         String id3 = embeddingStore.add(embedding3);
 
-        List<EmbeddingMatch<TextSegment>> relevant1 = embeddingStore.findRelevant(embedding, 10);
-
         embeddingStore.removeAll(metadataKey("id").isEqualTo("1"));
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(embedding, 10);
