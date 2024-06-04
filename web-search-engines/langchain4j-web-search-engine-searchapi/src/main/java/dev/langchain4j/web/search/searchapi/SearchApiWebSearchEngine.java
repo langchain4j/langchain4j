@@ -114,7 +114,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         return builder().apiKey(apiKey);
     }
     
-    private static Map<String, String> toResultMetadataMap(OrganicResult result) {
+    private static Map<String, String> toResultMetadataMap(final OrganicResult result) {
         final Map<String, String> metadata = new HashMap<>();
        
         metadata.put("position", String.valueOf(result.getPosition()));
@@ -162,7 +162,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     	
 
         if (title !=  null && website != null) {
-        	results.add(0, WebSearchOrganicResult.from(title, URI.create(website), description, null));
+        	OrganicResult result = new OrganicResult();
+        	result.setPosition(0); result.setSource("inline");
+        	results.add(0, WebSearchOrganicResult.from(title, URI.create(website), description, null, toResultMetadataMap(result)));
         }
     }
 }
