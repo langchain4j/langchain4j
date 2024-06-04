@@ -4,7 +4,11 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionResponse;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -15,8 +19,7 @@ import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
-import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static java.util.Collections.singletonList;
 
 /**
@@ -59,7 +62,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
      * @param maxRetries   the maximum number of retries for API requests. It uses the default value 3 if not specified
      */
     @Builder
-    public MistralAiChatModel(String baseUrl,
+    private MistralAiChatModel(String baseUrl,
                               String apiKey,
                               String modelName,
                               Double temperature,
@@ -74,7 +77,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
                               Integer maxRetries) {
 
         this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, MISTRALAI_API_URL))
+                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
@@ -169,16 +172,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
         );
     }
 
-    public static MistralAiChatModelBuilder builder() {
-        for (MistralAiChatModelBuilderFactory factory : loadFactories(MistralAiChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new MistralAiChatModelBuilder();
-    }
-
     public static class MistralAiChatModelBuilder {
-        public MistralAiChatModelBuilder() {
-        }
 
         public MistralAiChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;

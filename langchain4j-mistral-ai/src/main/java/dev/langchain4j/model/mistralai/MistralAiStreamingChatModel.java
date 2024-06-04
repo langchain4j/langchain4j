@@ -5,6 +5,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRequest;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiStreamingChatModelBuilderFactory;
 import lombok.Builder;
 
@@ -14,8 +18,8 @@ import java.util.List;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.toMistralAiTools;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toMistralAiTools;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
@@ -53,7 +57,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
      * @param timeout      the timeout duration for API requests
      */
     @Builder
-    public MistralAiStreamingChatModel(String baseUrl,
+    private MistralAiStreamingChatModel(String baseUrl,
                                        String apiKey,
                                        String modelName,
                                        Double temperature,
@@ -67,7 +71,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
                                        Duration timeout) {
 
         this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, MISTRALAI_API_URL))
+                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
@@ -157,16 +161,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         client.streamingChatCompletion(request, handler);
     }
 
-    public static MistralAiStreamingChatModelBuilder builder() {
-        for (MistralAiStreamingChatModelBuilderFactory factory : loadFactories(MistralAiStreamingChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new MistralAiStreamingChatModelBuilder();
-    }
-
     public static class MistralAiStreamingChatModelBuilder {
-        public MistralAiStreamingChatModelBuilder() {
-        }
 
         public MistralAiStreamingChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
