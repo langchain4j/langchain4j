@@ -1,6 +1,7 @@
 package dev.langchain4j.web.search.searchapi;
 
 import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFAULT_ENGINE;
+import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFAULT_ENV_VAR;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
@@ -18,18 +19,17 @@ import dev.langchain4j.web.search.WebSearchResults;
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
 class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
-	public static final String SEARCHAPI_API_KEY = "SEARCHAPI_API_KEY";
 	
 	private static final boolean logRequests = false;
 	
-    protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(SEARCHAPI_API_KEY)).logRequests(logRequests).build();
+    protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(DEFAULT_ENV_VAR)).logRequests(logRequests).build();
 
     @Test
     void should_search_with_defaults() {
 
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv(SEARCHAPI_API_KEY))
+                .apiKey(System.getenv(DEFAULT_ENV_VAR))
                 .logRequests(logRequests)
                 .build();
 
@@ -57,7 +57,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
     void search_for_chatgpt() {
         // given
         SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+                .apiKey(System.getenv(DEFAULT_ENV_VAR))
                 .logRequests(logRequests)
                 .build();
 

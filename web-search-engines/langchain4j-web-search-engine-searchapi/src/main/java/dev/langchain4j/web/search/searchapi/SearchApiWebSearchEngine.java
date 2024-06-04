@@ -26,7 +26,7 @@ import lombok.Builder;
  * See more details <a href="https://www.searchapi.io/docs/google">here</a>.
  */
 public class SearchApiWebSearchEngine implements WebSearchEngine {
-
+	public static final String DEFAULT_ENV_VAR = "SEARCHAPI_API_KEY";
     public static final String DEFAULT_BASE_URL = "https://www.searchapi.io";
     public static final String DEFAULT_ENGINE = "google";
     private static final Integer DEFAULT_MAX_RESULTS = 5;
