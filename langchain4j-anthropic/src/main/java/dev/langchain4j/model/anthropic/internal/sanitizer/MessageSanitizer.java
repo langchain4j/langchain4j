@@ -19,7 +19,6 @@ public class MessageSanitizer {
 
     public static List<ChatMessage> sanitizeMessages(List<ChatMessage> messages) {
         ensureNotEmpty(messages, "messages");
-
         List<ChatMessage> sanitizedMessages = new ArrayList<>(messages);
         stripSystemMessages(sanitizedMessages);
         ensureFirstMessageIsUserMessage(sanitizedMessages);
@@ -59,9 +58,4 @@ public class MessageSanitizer {
         }
     }
 
-    private static void ensureNotEmpty(List<ChatMessage> messages, String message) {
-        if (messages == null || messages.isEmpty()) {
-            throw new IllegalArgumentException(message + " must not be null or empty");
-        }
-    }
 }
