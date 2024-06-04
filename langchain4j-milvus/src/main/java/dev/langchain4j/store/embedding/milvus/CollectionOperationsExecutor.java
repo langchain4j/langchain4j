@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.milvus;
 
+import dev.langchain4j.store.embedding.milvus.parameter.IndexParam;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.grpc.FlushResponse;
@@ -81,12 +82,14 @@ class CollectionOperationsExecutor {
     static void createIndex(MilvusServiceClient milvusClient,
                             String collectionName,
                             IndexType indexType,
+                            IndexParam indexParam,
                             MetricType metricType) {
 
         CreateIndexParam request = CreateIndexParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFieldName(VECTOR_FIELD_NAME)
                 .withIndexType(indexType)
+                .withExtraParam(indexParam.toExtraParam())
                 .withMetricType(metricType)
                 .build();
 
