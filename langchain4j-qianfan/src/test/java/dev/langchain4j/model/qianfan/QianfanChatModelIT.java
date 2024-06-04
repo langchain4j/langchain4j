@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.qianfan.client.QianfanApiException;
 import dev.langchain4j.model.qianfan.client.QianfanHttpException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -165,7 +166,7 @@ class QianfanChatModelIT {
         try {
             chatModel.generate(userMessage("Where is the capital of China"));
         } catch (RuntimeException e) {
-          assertThat(e.getCause()).isInstanceOf(QianfanHttpException.class);
+          assertThat(e.getCause()).isInstanceOf(QianfanApiException.class);
         }
     }
 
