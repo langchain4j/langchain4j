@@ -1,10 +1,19 @@
 package dev.langchain4j.model.output;
 
-public class BooleanOutputParser implements OutputParser<Boolean> {
+import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.setOf;
+
+public class BooleanOutputParser implements TextOutputParser<Boolean> {
 
     @Override
     public Boolean parse(String string) {
         return Boolean.parseBoolean(string);
+    }
+
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Boolean.class, boolean.class);
     }
 
     @Override

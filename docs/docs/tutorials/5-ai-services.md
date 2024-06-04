@@ -160,16 +160,19 @@ interface Friend {
 ## Output Parsing (aka Structured Outputs)
 If you want to receive a structured output from the LLM,
 you can change the return type of your AI Service method from `String` to something else.
-Currently, AI Services support the following return types:
+Currently, AI Services support the following return types by default:
 - `String`
 - `AiMessage`
 - `boolean`/`Boolean`, if you need to get "yes" or "no" answer
 - `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
-- `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
+- `List<>`/`Set<>` (if you want to get the answer in the form of a list of bullet points)
+  - Note that the list/set elements can be of any type supported by AI Services
+- Any `Enum` (if you want to classify text, e.g. sentiment, user intent, etc)
 - Any custom POJO
 - `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
+
+In addition to the built-in types, you can define your own output parsers.
 
 Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
 the AI Service will automatically append instructions to the end of `UserMessage` indicating the format
@@ -245,8 +248,139 @@ String text = """
 
 Person person = personExtractor.extractPersonFrom(text);
 
-System.out.println(person); // // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
+System.out.println(person); // Person { firstName = "John", lastName = "Doe", birthDate = 1968-07-04, address = Address { ... } }
 ```
+
+## Custom Parsers
+
+LangChain4j allows you to define custom parsers for any type you want.
+
+## Output parsers
+
+If you want your parser to be available to all methods that need it, you can pass it into the service builder. Note
+that this will replace the default parser for the specified types.
+
+```java
+public class YesNoParser implements TextOutputParser<Boolean> {
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Boolean.class, boolean.class);
+    }
+
+    @Override
+    public Boolean parse(final String text) {
+        return null != text && "yes".equalsIgnoreCase(text.trim());
+    }
+
+    // These instructions will be shown to the LLM automatically
+    @Override
+    public String formatInstructions() {
+        return "yes or no";
+    }
+}
+
+interface Mathematician {
+    @UserMessage("Is {{it}} a number?")
+    boolean isNumber(String text);
+}
+
+Mathematician mathematician = AiServices.builder(Mathematician.class)
+      .chatLanguageModel(model)
+      .parser(new YesNoParser())
+      .build();
+
+// under the hood, the LLM is told to respond with either "yes" or "no"
+System.out.println(mathematician.isNumber("42")); // true
+```
+
+### Output parser factories
+
+You can also create parsers just in time by providing a `ParserFactory` to the service builder. Parser factories
+will be called only when a parser instance is not found. All factories will be invoked in the order they were added
+until one of them returns a parser.
+
+This technique is used to create parsers just-in-time for things like generic lists.
+
+```java
+Mathematician mathematician = AiServices.builder(Mathematician.class)
+        .chatLanguageModel(model)
+        .parserFactory((typeInformation, parserProvider) -> Optional.of(new YesNoParser()))
+        .build();
+```
+
+### @Parse Annotation
+
+You can also apply a parser to a specific method using the `@Parse` annotation. This parser will be used only for this
+method, regardless of what other parsers or parser factories have been configured elsewhere.
+
+The parser must have a no-argument constructor.
+
+```java
+interface Mathematician {
+    @Parse(parser = YesNoParser.class)
+    @UserMessage("Is {{it}} a number?")
+    boolean isNumber(String text);
+}
+
+Mathematician mathematician = AiServices.create(Methematician.class, model);
+System.out.println(mathematician.isNumber("42")); // true
+```
+
+Note that you can also declare parser factories using annotations. The factory specified in this annotation will always
+be used, regardless of what other parsers or parser factories have been configured elsewhere.
+
+```java
+public static class CsvAddressParserFactory implements ParserFactory {
+    @Override
+    public Optional<OutputParser<?>> create(final TypeInformation typeInformation, final ParserProvider parserProvider) {
+        return Optional.of(new YesNoParser());
+    }
+}
+
+interface Mathematician {
+  @Parse(factory = MyCustomParserFactory.class)
+  @UserMessage("Is {{it}} a number?")
+  boolean isNumber(String text);
+}
+```
+
+### Parser provider
+
+Finally, if you want to fully control all the parsing logic for your service, you can implement the `ParserProvider`
+interface and pass it into the service builder. All parsers will be requested through that interface.
+
+By default, the `DefaultParserProvider` will be used, which has support for all built-in types.
+
+```java
+Mathematician mathematician = AiServices.builder(Mathematician.class)
+        .chatLanguageModel(model)
+        .parserProvider(new ParserProvider() { 
+            @Override
+            public Optional<OutputParser<?>> get(final TypeInformation typeInformation) {
+                // your logic here
+            }
+
+            @Override
+            public OutputParser<?> getDefaultParser(final TypeInformation typeInformation) {
+                // note that you must always return some fallback parser
+            }
+        })
+        .build();
+```
+
+### DefaultParserProvider
+
+The default parser provider contains a set of built-in parsers for all supported types (see `StandardOutputParsers`).
+
+In addition, it has a number of parser factories that can be used to create parsers for specific types. For example,
+lists, sets, and enums are all supported by default using these factories.
+
+Finally, if no appropriate parser is found, the default parser provider will attempt to create a parser using the
+`JsonOutputParser.Factory`.
+
+The parsers and parser factories passed into the `AiServices` builder above will be added to this default parser
+provider. Parser instances will replace any built-in parsers for that type, while parser factories are added to the list
+of standard factories.
 
 ## JSON mode
 

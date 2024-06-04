@@ -1,23 +1,25 @@
 package dev.langchain4j.model.output;
 
-import java.math.BigInteger;
 import java.util.Set;
 
 import static dev.langchain4j.internal.Utils.setOf;
 
-public class BigIntegerOutputParser implements TextOutputParser<BigInteger> {
+/**
+ * Parser that simply returns the text as-is.
+ */
+public class StringOutputParser implements TextOutputParser<String> {
     @Override
     public Set<Class<?>> getSupportedTypes() {
-        return setOf(BigInteger.class);
+        return setOf(String.class);
     }
 
     @Override
-    public BigInteger parse(String string) {
-        return new BigInteger(string);
+    public String parse(String text) {
+        return text;
     }
 
     @Override
     public String formatInstructions() {
-        return "integer number";
+        return null;
     }
 }

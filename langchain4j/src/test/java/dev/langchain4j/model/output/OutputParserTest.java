@@ -98,9 +98,8 @@ class OutputParserTest implements WithAssertions {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void test_Enum() {
-        EnumOutputParser parser = new EnumOutputParser(Enum.class);
+        EnumOutputParser<Enum> parser = EnumOutputParser.forClass(Enum.class);
         assertThat(parser.formatInstructions())
                 .isEqualTo("one of [A, B, C]");
 

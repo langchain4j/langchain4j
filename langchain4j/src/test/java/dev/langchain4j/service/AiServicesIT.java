@@ -8,8 +8,9 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
-import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.output.*;
 import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.model.output.structured.Parse;
 import lombok.Builder;
 import lombok.ToString;
 import org.junit.jupiter.api.AfterEach;
@@ -21,10 +22,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.internal.Utils.setOf;
 import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
@@ -561,12 +567,13 @@ public class AiServicesIT {
         List<String> bulletPoints = summarizer.summarize(text, 3);
         System.out.println(bulletPoints);
 
-        assertThat(bulletPoints).hasSize(3);
 
         verify(chatLanguageModel).generate(asList(
                 systemMessage("Summarize every message from user in 3 bullet points. Provide only bullet points."),
                 userMessage(text + "\nYou must put every item on a separate line.")
         ));
+
+        assertThat(bulletPoints).hasSize(3);
     }
 
 
@@ -611,7 +618,6 @@ public class AiServicesIT {
         verify(chatLanguageModel).generate(singletonList(userMessage(message)));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
     }
-
 
     interface AssistantReturningResult {
 
@@ -697,5 +703,174 @@ public class AiServicesIT {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
                         "parameterized with a type, for example: Result<String> or Result<MyCustomPojo>");
+    }
+
+    public static class CsvAddressParser implements TextOutputParser<List<Address>> {
+        @Override
+        public Set<Class<?>> getSupportedTypes() {
+            return setOf(List.class);
+        }
+
+        @Override
+        public List<Address> parse(final String text) {
+            return Arrays.stream(text.split("\n"))
+                    .map(line -> {
+                        String[] parts = Arrays.stream(line.split(",")).map(String::trim).toArray(String[]::new);
+                        Address address = new Address();
+                        address.streetNumber = Integer.parseInt(parts[0]);
+                        address.street = parts[1];
+                        address.city = parts[2];
+                        return address;
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        public String formatInstructions() {
+            return "Each address must be a CSV row as follows: streetNumber (integer), street (string), city (string)";
+        }
+    }
+
+    public static class CsvAddressParserFactory implements ParserFactory {
+        @Override
+        public Optional<OutputParser<?>> create(final TypeInformation typeInformation, final ParserProvider parserProvider) {
+            return Optional.of(new CsvAddressParser());
+        }
+    }
+
+    interface CsvAddressExtractorWithAnnotation {
+        @Parse(parser = CsvAddressParser.class)
+        @UserMessage("Extract the addresses from {{it}}")
+        List<Address> extractAddresses(final String addresses);
+
+        @Parse(factory = CsvAddressParserFactory.class)
+        @UserMessage("Extract the addresses from {{it}}")
+        List<Address> extractAddressesWithFactory(final String addresses);
+    }
+
+    @Test
+    void test_custom_parser_via_parser_annotation() {
+        CsvAddressExtractorWithAnnotation csvAddressExtractor = AiServices.create(CsvAddressExtractorWithAnnotation.class, chatLanguageModel);
+
+        String addresses = "345 Whispering Pines Avenue in Springfield and 123 Elm Street in Shady Oaks";
+
+        List<Address> parsedAddresses = csvAddressExtractor.extractAddresses(addresses);
+        System.out.println(parsedAddresses);
+
+        assertThat(parsedAddresses).hasSize(2);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Extract the addresses from 345 Whispering Pines Avenue in Springfield and 123 Elm Street in Shady Oaks\n" +
+        "You must answer strictly in the following format: Each address must be a CSV row as follows: streetNumber (integer), street (string), city (string)")));
+    }
+
+    @Test
+    void test_custom_parser_via_factory_annotation() {
+        CsvAddressExtractorWithAnnotation csvAddressExtractor = AiServices.create(CsvAddressExtractorWithAnnotation.class, chatLanguageModel);
+
+        String addresses = "345 Whispering Pines Avenue in Springfield and 123 Elm Street in Shady Oaks";
+
+        List<Address> parsedAddresses = csvAddressExtractor.extractAddressesWithFactory(addresses);
+        System.out.println(parsedAddresses);
+
+        assertThat(parsedAddresses).hasSize(2);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Extract the addresses from 345 Whispering Pines Avenue in Springfield and 123 Elm Street in Shady Oaks\n" +
+                "You must answer strictly in the following format: Each address must be a CSV row as follows: streetNumber (integer), street (string), city (string)")));
+    }
+
+    interface CsvAddressExtractor {
+        @UserMessage("Extract the addresses from {{it}}")
+        List<Address> extractAddresses(final String addresses);
+    }
+
+    @Test
+    void test_custom_generic_parser_via_builder() {
+        CsvAddressExtractor csvAddressExtractor = AiServices.builder(CsvAddressExtractor.class)
+                .chatLanguageModel(chatLanguageModel)
+                .parserFactory((typeInformation, parserProvider) -> Optional.of(new CsvAddressParser()))
+                .build();
+
+        String addresses = "345 Whispering Pines Avenue in Springfield and 123 Elm Street in Shady Oaks";
+        List<Address> parsedAddresses = csvAddressExtractor.extractAddresses(addresses);
+        System.out.println(parsedAddresses);
+        assertThat(parsedAddresses).hasSize(2);
+        verify(chatLanguageModel).generate(singletonList(userMessage("Extract the addresses from 345 Whispering Pines Avenue in Springfield and 123 Elm Street in Shady Oaks\n" +
+                "You must answer strictly in the following format: Each address must be a CSV row as follows: streetNumber (integer), street (string), city (string)\n" +
+                "You must put every item on a separate line.")));
+    }
+
+    private static class YesNoParser implements TextOutputParser<Boolean> {
+        @Override
+        public Set<Class<?>> getSupportedTypes() {
+            return setOf(Boolean.class, boolean.class);
+        }
+
+        @Override
+        public Boolean parse(final String text) {
+            return null != text && "yes".equalsIgnoreCase(text.trim());
+        }
+
+        @Override
+        public String formatInstructions() {
+            return "yes or no";
+        }
+    }
+
+    interface Mathematician {
+        @UserMessage("Is {{it}} a number?")
+        boolean isNumber(String text);
+    }
+
+    @Test
+    void test_custom_parser_via_builder() {
+        Mathematician mathematician = AiServices.builder(Mathematician.class)
+                .chatLanguageModel(chatLanguageModel)
+                .parser(new YesNoParser())
+                .build();
+
+        boolean number = mathematician.isNumber("123");
+        assertThat(number).isTrue();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Is 123 a number?\n" +
+                "You must answer strictly in the following format: yes or no")));
+    }
+
+    @Test
+    void test_custom_parser_via_provider() {
+        Mathematician mathematician = AiServices.builder(Mathematician.class)
+                .chatLanguageModel(chatLanguageModel)
+                .parserProvider(new ParserProvider() {
+                    @Override
+                    public Optional<OutputParser<?>> get(final TypeInformation typeInformation) {
+                        return Optional.of(new YesNoParser());
+                    }
+
+                    @Override
+                    public OutputParser<?> getDefaultParser(final TypeInformation typeInformation) {
+                        return null;
+                    }
+                })
+                .build();
+
+        boolean number = mathematician.isNumber("123");
+        assertThat(number).isTrue();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Is 123 a number?\n" +
+                "You must answer strictly in the following format: yes or no")));
+    }
+
+    @Test
+    void test_custom_parser_via_factory() {
+        Mathematician mathematician = AiServices.builder(Mathematician.class)
+                .chatLanguageModel(chatLanguageModel)
+                .parserFactory((info, parserProvider) -> Optional.of(new YesNoParser()))
+                .parser(new YesNoParser())
+                .build();
+
+        boolean number = mathematician.isNumber("123");
+        assertThat(number).isTrue();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Is 123 a number?\n" +
+                "You must answer strictly in the following format: yes or no")));
     }
 }

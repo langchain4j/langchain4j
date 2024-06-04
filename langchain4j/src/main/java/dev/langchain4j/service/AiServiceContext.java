@@ -7,8 +7,11 @@ import dev.langchain4j.memory.chat.ChatMemoryProvider;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.output.*;
 import dev.langchain4j.rag.RetrievalAugmentor;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,6 +37,15 @@ public class AiServiceContext {
     public RetrievalAugmentor retrievalAugmentor;
 
     public Function<Object, Optional<String>> systemMessageProvider = DEFAULT_MESSAGE_PROVIDER;
+    public ParserProvider parserProvider;
+    public List<OutputParser<?>> outputParsers = new ArrayList<>();
+    public List<ParserFactory> parserFactories = new ArrayList<>();
+
+    public ParserProvider createParserProvider() {
+        return Optional.ofNullable(this.parserProvider).orElseGet(DefaultParserProvider::create)
+                .withParsers(this.outputParsers)
+                .withFactories(this.parserFactories);
+    }
 
     public AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;

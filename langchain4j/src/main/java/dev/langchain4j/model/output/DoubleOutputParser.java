@@ -1,6 +1,15 @@
 package dev.langchain4j.model.output;
 
-public class DoubleOutputParser implements OutputParser<Double> {
+import java.util.Set;
+
+import static dev.langchain4j.internal.Utils.setOf;
+
+public class DoubleOutputParser implements TextOutputParser<Double> {
+
+    @Override
+    public Set<Class<?>> getSupportedTypes() {
+        return setOf(Double.class, double.class);
+    }
 
     @Override
     public Double parse(String string) {

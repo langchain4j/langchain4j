@@ -14,6 +14,9 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
+import dev.langchain4j.model.output.OutputParser;
+import dev.langchain4j.model.output.ParserFactory;
+import dev.langchain4j.model.output.ParserProvider;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.RetrievalAugmentor;
@@ -335,6 +338,60 @@ public abstract class AiServices<T> {
             }
         }
 
+        return this;
+    }
+
+    /**
+     * Configures the output parser provider that will be used to get parsers for the output of the AI Service.
+     * For example, a method that returns a {@link java.time.LocalDate} would call the {@link ParserProvider} to find the
+     * appropriate parser.
+     *
+     * @param parserProvider The provider that will be used to get parsers for the output of the AI Service.
+     * @return builder
+     */
+    public AiServices<T> parserProvider(final ParserProvider parserProvider) {
+        context.parserProvider = parserProvider;
+        return this;
+    }
+
+    /**
+     * Configures an output parser that will be used to parse the output of the AI Service.
+     *
+     * @param parser The parser to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> parser(final OutputParser<?> parser) {
+        this.context.outputParsers.add(parser);
+        return this;
+    }
+
+    /**
+     * Configures output parsers that will be used to parse the output of the AI Service.
+     * @param parsers The parsers to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> parsers(final OutputParser<?>... parsers) {
+        this.context.outputParsers.addAll(Arrays.asList(parsers));
+        return this;
+    }
+
+    /**
+     * Configures a parser factory that will be used to create parsers for the output of the AI Service.
+     * @param parserFactory The factory to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> parserFactory(final ParserFactory parserFactory) {
+        this.context.parserFactories.add(parserFactory);
+        return this;
+    }
+
+    /**
+     * Configures parser factories that will be used to create parsers for the output of the AI Service.
+     * @param parserFactories The factories to be used by the AI Service.
+     * @return builder
+     */
+    public AiServices<T> parserFactories(final ParserFactory... parserFactories) {
+        this.context.parserFactories.addAll(Arrays.asList(parserFactories));
         return this;
     }
 

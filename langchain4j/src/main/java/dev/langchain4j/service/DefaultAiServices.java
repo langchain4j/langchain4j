@@ -15,6 +15,7 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.rag.AugmentationRequest;
 import dev.langchain4j.rag.AugmentationResult;
+import dev.langchain4j.model.output.*;
 import dev.langchain4j.rag.query.Metadata;
 
 import java.io.InputStream;
@@ -27,8 +28,6 @@ import java.util.concurrent.Future;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static dev.langchain4j.service.ServiceOutputParser.parse;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
@@ -72,6 +71,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             }
         }
 
+
         Object proxyInstance = Proxy.newProxyInstance(
                 context.aiServiceClass.getClassLoader(),
                 new Class<?>[]{context.aiServiceClass},
@@ -81,6 +81,9 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                     @Override
                     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
+
+                        final ParserProvider parserProvider = context.createParserProvider();
+                        final ServiceOutputParser parser = ServiceOutputParser.create(parserProvider, method);
 
                         if (method.getDeclaringClass() == Object.class) {
                             // methods like equals(), hashCode() and toString() should not be handled by this proxy
@@ -104,19 +107,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
-                        // TODO give user ability to provide custom OutputParser
-                        Class<?> returnType = method.getReturnType();
-                        boolean isReturnTypeResult = false;
-                        if (returnType == Result.class) {
-                            isReturnTypeResult = true;
-                            AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
-                            ParameterizedType type = (ParameterizedType) annotatedReturnType.getType();
-                            Type[] typeArguments = type.getActualTypeArguments();
-                            for (Type typeArg : typeArguments) {
-                                returnType = Class.forName(typeArg.getTypeName());
-                            }
-                        }
-                        String outputFormatInstructions = outputFormatInstructions(returnType);
+                        String outputFormatInstructions = parser.outputFormatInstructions();
                         userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
 
                         if (context.hasChatMemory()) {
@@ -136,7 +127,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (returnType == TokenStream.class) {
+                        if (method.getReturnType() == TokenStream.class) {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
@@ -191,17 +182,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        Object parsedResponse = parse(response, returnType);
-
-                        if (isReturnTypeResult) {
-                            return Result.builder()
-                                    .content(parsedResponse)
-                                    .tokenUsage(tokenUsageAccumulator)
-                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                    .build();
-                        } else {
-                            return parsedResponse;
-                        }
+                        final OutputParsingContext parsingContext = OutputParsingContext.builder()
+                                .response(response)
+                                .tokenUsage(tokenUsageAccumulator)
+                                .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                .build();
+                        return parser.parse(parsingContext);
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
