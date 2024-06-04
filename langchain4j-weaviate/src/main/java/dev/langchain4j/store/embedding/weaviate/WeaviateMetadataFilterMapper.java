@@ -8,7 +8,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 import io.weaviate.client.v1.filters.Operator;
 import io.weaviate.client.v1.filters.WhereFilter;
 
-public class WeaviateMetadataFilterMapper {
+class WeaviateMetadataFilterMapper {
 
     static WhereFilter map(Filter filter) {
         if (filter instanceof IsEqualTo) {
