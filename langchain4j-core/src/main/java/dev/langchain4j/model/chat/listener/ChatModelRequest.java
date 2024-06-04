@@ -5,7 +5,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.listener.ModelListener;
 import lombok.Builder;
 
 import java.util.List;
@@ -14,10 +13,10 @@ import static dev.langchain4j.internal.Utils.copyIfNotNull;
 
 /**
  * A request to the {@link ChatLanguageModel} or {@link StreamingChatLanguageModel},
- * intended to be used with {@link ModelListener}.
+ * intended to be used with {@link ChatModelListener}.
  */
 @Experimental
-public class ChatLanguageModelRequest {
+public class ChatModelRequest {
 
     private final String model;
     private final Double temperature;
@@ -27,12 +26,12 @@ public class ChatLanguageModelRequest {
     private final List<ToolSpecification> toolSpecifications;
 
     @Builder
-    public ChatLanguageModelRequest(String model,
-                                    Double temperature,
-                                    Double topP,
-                                    Integer maxTokens,
-                                    List<ChatMessage> messages,
-                                    List<ToolSpecification> toolSpecifications) {
+    public ChatModelRequest(String model,
+                            Double temperature,
+                            Double topP,
+                            Integer maxTokens,
+                            List<ChatMessage> messages,
+                            List<ToolSpecification> toolSpecifications) {
         this.model = model;
         this.temperature = temperature;
         this.topP = topP;
