@@ -23,35 +23,6 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 	private static final boolean logRequests = false;
 	
     protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(DEFAULT_ENV_VAR)).logRequests(logRequests).build();
-
-    @Test
-    void should_search_with_defaults() {
-
-        // given
-        SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
-                .apiKey(System.getenv(DEFAULT_ENV_VAR))
-                .logRequests(logRequests)
-                .build();
-
-        // when
-        WebSearchResults webSearchResults = searchapiWebSearchEngine.search("What is LangChain4j?");
-
-        // then
-        List<WebSearchOrganicResult> results = webSearchResults.results();
-
-        results.forEach(result -> {
-            assertThat(result.title()).isNotBlank();
-            assertThat(result.url()).isNotNull();
-            assertThat(result.snippet()).isNotBlank();
-            assertThat(result.content()).isNull();
-        });
-
-        assertThat(results).anyMatch(result ->
-                result.url().toString().contains("https://www.baeldung.com/java-langchain-basics")
-                        && result.title().contains("Introduction to LangChain")
-        );
-    }
-    
     
     @Test
     void search_for_chatgpt() {
