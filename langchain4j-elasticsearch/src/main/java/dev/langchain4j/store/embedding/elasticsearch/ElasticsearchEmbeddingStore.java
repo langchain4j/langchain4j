@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
+import co.elastic.clients.elasticsearch._types.ErrorCause;
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
@@ -266,8 +267,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
             return new EmbeddingSearchResult<>(toMatches(response));
         } catch (IOException e) {
-            // TODO improve
-            log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
@@ -286,12 +285,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     @Override
     public void removeAll(Filter filter) {
-        Query query;
-        if (filter == null) {
-            query = Query.of(q -> q.matchAll(m -> m));
-        } else {
-            query = ElasticsearchMetadataFilterMapper.map(filter);
-        }
+        ensureNotNull(filter, "filter");
+        Query query = ElasticsearchMetadataFilterMapper.map(filter);
         removeByQuery(query);
     }
 
@@ -348,7 +343,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         try {
             bulkIndex(ids, embeddings, embedded);
         } catch (IOException e) {
-            log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
@@ -390,12 +384,20 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         BulkResponse response = client.bulk(bulkBuilder.build());
+        handleBulkResponseErrors(response);
+    }
+
+    private void handleBulkResponseErrors(BulkResponse response) {
         if (response.errors()) {
             for (BulkResponseItem item : response.items()) {
-                if (item.error() != null) {
-                    throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
-                }
+                throwIfError(item.error());
             }
+        }
+    }
+
+    private void throwIfError(ErrorCause errorCause) {
+        if (errorCause != null) {
+            throw new ElasticsearchRequestFailedException("type: " + errorCause.type() + ", reason: " + errorCause.reason());
         }
     }
 
@@ -406,13 +408,10 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     .query(query));
             if (!response.failures().isEmpty()) {
                 for (BulkIndexByScrollFailure item : response.failures()) {
-                    if (item.cause() != null) {
-                        throw new ElasticsearchRequestFailedException("type: " + item.cause().type() + ", reason: " + item.cause().reason());
-                    }
+                    throwIfError(item.cause());
                 }
             }
         } catch (IOException e) {
-            log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
@@ -421,7 +420,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         try {
             bulkRemove(ids);
         } catch (IOException e) {
-            log.error("[ElasticSearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
@@ -434,13 +432,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                     .id(id)));
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
-        if (response.errors()) {
-            for (BulkResponseItem item : response.items()) {
-                if (item.error() != null) {
-                    throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
-                }
-            }
-        }
+        handleBulkResponseErrors(response);
     }
 
     private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {

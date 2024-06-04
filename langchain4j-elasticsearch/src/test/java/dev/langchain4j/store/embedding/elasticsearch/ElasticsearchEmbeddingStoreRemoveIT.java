@@ -197,28 +197,9 @@ class ElasticsearchEmbeddingStoreRemoveIT {
 
     @Test
     void remove_all_by_filter_null() {
-        // given
-        Embedding embedding = embeddingModel.embed("hello").content();
-        Embedding embedding2 = embeddingModel.embed("hello2").content();
-        Embedding embedding3 = embeddingModel.embed("hello3").content();
-
-        embeddingStore.add(embedding);
-        embeddingStore.add(embedding2);
-        embeddingStore.add(embedding3);
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embedding)
-                .maxResults(10)
-                .build();
-        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(3));
-
-        // when
-        embeddingStore.removeAll((Filter) null);
-        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(0));
-
-        // then
-        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
-        List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(matchingIds).hasSize(0);
+        assertThatThrownBy(() -> embeddingStore.removeAll((Filter) null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("filter cannot be null");
     }
 
     private static void awaitAssertion(ThrowingRunnable assertionRunnable) {
