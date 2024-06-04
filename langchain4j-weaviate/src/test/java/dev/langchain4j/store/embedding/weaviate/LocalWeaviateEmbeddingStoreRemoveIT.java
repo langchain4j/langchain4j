@@ -61,7 +61,8 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
                     "double_minus_1",
                     "double_0",
                     "double_1",
-                    "double_123"))
+                    "double_123",
+                    "id"))
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
