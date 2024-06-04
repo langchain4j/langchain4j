@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: '0 0 * * *'  # daily at midnight UTC
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
 
 jobs:
   java_build:
