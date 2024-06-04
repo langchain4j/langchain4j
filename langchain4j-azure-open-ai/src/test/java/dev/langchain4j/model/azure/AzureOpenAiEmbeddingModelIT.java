@@ -7,13 +7,15 @@ import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.TEXT_EMBEDDING_ADA_002;
+import static dev.langchain4j.model.openai.OpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class AzureOpenAiEmbeddingModelIT {
@@ -67,5 +69,27 @@ public class AzureOpenAiEmbeddingModelIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(numberOfSegments * 3);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @ParameterizedTest(name = "Testing model {0}")
+    @EnumSource(AzureOpenAiEmbeddingModelName.class)
+    void should_support_all_string_model_names(AzureOpenAiEmbeddingModelName modelName) {
+
+        // given
+        String modelNameString = modelName.toString();
+
+        EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelNameString)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        Response<Embedding> response = model.embed("hello world");
+        System.out.println(response.toString());
+
+        // then
+        assertThat(response.content().vector()).isNotEmpty();
     }
 }
