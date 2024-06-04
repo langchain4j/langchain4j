@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Testcontainers
-public class WeaviateEmbeddingStoreRemoveIT {
+class LocalWeaviateEmbeddingStoreRemoveIT {
 
     @Container
     static WeaviateContainer weaviate = new WeaviateContainer("semitechnologies/weaviate:latest")
