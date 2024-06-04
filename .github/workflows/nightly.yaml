@@ -44,7 +44,7 @@ jobs:
           token: ${{ secrets.TC_CLOUD_TOKEN }}
 
       - name: Build with JDK ${{ matrix.java_version }}
-        run: mvn -B -U --fail-at-end ${{ matrix.included_modules }} test
+        run: mvn -B -U --fail-at-end ${{ matrix.included_modules }} verify
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
