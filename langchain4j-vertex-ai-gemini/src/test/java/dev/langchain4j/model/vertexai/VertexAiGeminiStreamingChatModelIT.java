@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
