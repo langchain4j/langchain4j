@@ -2,24 +2,21 @@ package dev.langchain4j.model.qianfan;
 
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
-import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanChatModelBuilderFactory;
 import lombok.Builder;
-
-import java.net.Proxy;
 import java.util.List;
-
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+
+import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 
 /**
  *
@@ -44,24 +41,32 @@ public class QianfanChatModel implements ChatLanguageModel {
 
     private final String responseFormat;
 
+    private final String userId;
+    private final List<String> stop;
+    private final Integer maxOutputTokens;
+    private final String system;
 
     @Builder
     public QianfanChatModel(String baseUrl,
-                            String apiKey,
-                            String secretKey,
-                            Double temperature,
-                            Integer maxRetries,
-                            Double topP,
-                            String modelName,
-                            String endpoint,
-                            String responseFormat,
-                            Double penaltyScore,
-                            Boolean logRequests,
-                            Boolean logResponses,
-                            Proxy proxy
-                             ) {
-        if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
-            throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
+            String apiKey,
+            String secretKey,
+            Double temperature,
+            Integer maxRetries,
+            Double topP,
+            String modelName,
+            String endpoint,
+            String responseFormat,
+            Double penaltyScore,
+            Boolean logRequests,
+            Boolean logResponses,
+            String userId,
+            List<String> stop,
+            Integer maxOutputTokens,
+            String system
+    ) {
+        if (Utils.isNullOrBlank(apiKey) || Utils.isNullOrBlank(secretKey)) {
+            throw new IllegalArgumentException(
+                    " api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
         }
      
         this.modelName=modelName;
@@ -79,13 +84,16 @@ public class QianfanChatModel implements ChatLanguageModel {
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
-                .proxy(proxy)
                 .build();
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.topP = topP;
         this.penaltyScore = penaltyScore;
         this.responseFormat = responseFormat;
+        this.maxOutputTokens = maxOutputTokens;
+        this.stop = stop;
+        this.userId = userId;
+        this.system = system;
     }
 
 
@@ -113,14 +121,18 @@ public class QianfanChatModel implements ChatLanguageModel {
     ) {
 
         ChatCompletionRequest.Builder builder = ChatCompletionRequest.builder()
-                    .messages(toOpenAiMessages(messages))
-                    .temperature(temperature)
-                    .topP(topP)
-                    .penaltyScore(penaltyScore)
-                    .system(getSystemMessage(messages))
-                    .responseFormat(responseFormat)
-                    ;
-
+                .messages(toOpenAiMessages(messages))
+                .temperature(temperature)
+                .topP(topP)
+                .maxOutputTokens(maxOutputTokens)
+                .stop(stop)
+                .system(system)
+                .userId(userId)
+                .penaltyScore(penaltyScore)
+                .responseFormat(responseFormat);
+        if (system == null || system.length() == 0) {
+            builder.system(getSystemMessage(messages));
+        }
 
             if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
                 builder.functions(toFunctions(toolSpecifications));
