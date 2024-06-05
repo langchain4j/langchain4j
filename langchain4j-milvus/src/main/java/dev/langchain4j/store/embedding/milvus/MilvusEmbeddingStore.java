@@ -83,7 +83,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .withPort(getOrDefault(port, 19530))
                 .withUri(uri)
                 .withToken(token)
-                .withAuthorization(username, password);
+                .withAuthorization(getOrDefault(username, ""), getOrDefault(password, ""));
 
         if (databaseName != null) {
             connectBuilder.withDatabaseName(databaseName);
