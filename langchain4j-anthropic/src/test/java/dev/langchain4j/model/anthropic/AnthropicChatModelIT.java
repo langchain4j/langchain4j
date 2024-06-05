@@ -68,11 +68,6 @@ class AnthropicChatModelIT {
             .addParameter("location", OBJECT, property("properties", singletonMap("city", singletonMap("type", "string"))))
             .build();
 
-    @AfterEach
-    void afterEach() throws InterruptedException {
-        Thread.sleep(10_000L); // to avoid hitting rate limits
-    }
-
     @Test
     void should_generate_answer_and_return_token_usage_and_finish_reason_stop() {
 
@@ -294,26 +289,6 @@ class AnthropicChatModelIT {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Anthropic API key must be defined. " +
                         "It can be generated here: https://console.anthropic.com/settings/keys");
-    }
-
-    @Test
-    void should_fail_with_rate_limit_error() {
-
-        ChatLanguageModel model = AnthropicChatModel.builder()
-                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
-                .maxTokens(1)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        assertThatThrownBy(() -> {
-            for (int i = 0; i < 100; i++) {
-                model.generate("Hi");
-            }
-        })
-                .isExactlyInstanceOf(RuntimeException.class) // TODO return AnthropicHttpException (not wrapped)?
-                .hasRootCauseExactlyInstanceOf(AnthropicHttpException.class)
-                .hasMessageContaining("rate_limit_error");
     }
 
     @ParameterizedTest

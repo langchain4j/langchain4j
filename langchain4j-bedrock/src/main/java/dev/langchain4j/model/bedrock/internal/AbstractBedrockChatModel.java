@@ -13,6 +13,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeAsyncClient;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
@@ -30,47 +31,14 @@ import static java.util.stream.Collectors.joining;
  */
 @Getter
 @SuperBuilder
-public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse> implements ChatLanguageModel {
-    private static final String HUMAN_PROMPT = "Human:";
-    private static final String ASSISTANT_PROMPT = "Assistant:";
-
-    @Builder.Default
-    private final String humanPrompt = HUMAN_PROMPT;
-    @Builder.Default
-    private final String assistantPrompt = ASSISTANT_PROMPT;
-    @Builder.Default
-    private final Integer maxRetries = 5;
-    @Builder.Default
-    private final Region region = Region.US_EAST_1;
-    @Builder.Default
-    private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
-    @Builder.Default
-    private final int maxTokens = 300;
-    @Builder.Default
-    private final float temperature = 1;
-    @Builder.Default
-    private final float topP = 0.999f;
-    @Builder.Default
-    private final String[] stopSequences = new String[]{};
+public abstract class AbstractBedrockChatModel<T extends BedrockChatModelResponse> extends AbstractSharedBedrockChatModel implements ChatLanguageModel {
     @Getter(lazy = true)
     private final BedrockRuntimeClient client = initClient();
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
 
-        final String context = messages.stream()
-                .filter(message -> message.type() == ChatMessageType.SYSTEM)
-                .map(ChatMessage::text)
-                .collect(joining("\n"));
-
-        final String userMessages = messages.stream()
-                .filter(message -> message.type() != ChatMessageType.SYSTEM)
-                .map(this::chatMessageToString)
-                .collect(joining("\n"));
-
-        final String prompt = String.format("%s\n\n%s\n%s", context, userMessages, ASSISTANT_PROMPT);
-        final Map<String, Object> requestParameters = getRequestParameters(prompt);
-        final String body = Json.toJson(requestParameters);
+        final String body = convertMessagesToAwsBody(messages);
 
         InvokeModelResponse invokeModelResponse = withRetry(() -> invoke(body), maxRetries);
         final String response = invokeModelResponse.body().asUtf8String();
@@ -81,26 +49,6 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
                 result.getFinishReason());
     }
 
-    /**
-     * Convert chat message to string
-     *
-     * @param message chat message
-     * @return string
-     */
-    protected String chatMessageToString(ChatMessage message) {
-        switch (message.type()) {
-            case SYSTEM:
-                return message.text();
-            case USER:
-                return humanPrompt + " " + message.text();
-            case AI:
-                return assistantPrompt + " " + message.text();
-            case TOOL_EXECUTION_RESULT:
-                throw new IllegalArgumentException("Tool execution results are not supported for Bedrock models");
-        }
-
-        throw new IllegalArgumentException("Unknown message type: " + message.type());
-    }
 
     /**
      * Get request parameters
@@ -109,13 +57,6 @@ public abstract class AbstractBedrockChatModel<T extends BedrockChatModelRespons
      * @return request body
      */
     protected abstract Map<String, Object> getRequestParameters(final String prompt);
-
-    /**
-     * Get model id
-     *
-     * @return model id
-     */
-    protected abstract String getModelId();
 
 
     /**

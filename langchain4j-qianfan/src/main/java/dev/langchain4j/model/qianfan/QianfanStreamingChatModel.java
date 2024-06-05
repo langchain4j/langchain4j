@@ -15,9 +15,12 @@ import dev.langchain4j.model.qianfan.client.chat.ChatCompletionRequest;
 import dev.langchain4j.model.qianfan.client.chat.ChatCompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanStreamingChatModelBuilderFactory;
 import lombok.Builder;
-import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+
+import java.net.Proxy;
 import java.util.List;
+
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.getSystemMessage;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
@@ -52,7 +55,8 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
                                      String responseFormat,
                                      Double penaltyScore,
                                      Boolean logRequests,
-                                     Boolean logResponses
+                                     Boolean logResponses,
+                                     Proxy proxy
                              ) {
         if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
@@ -71,6 +75,7 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logStreamingResponses(logResponses)
+                .proxy(proxy)
                 .build();
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;

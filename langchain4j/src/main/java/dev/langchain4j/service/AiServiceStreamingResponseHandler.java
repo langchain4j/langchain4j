@@ -10,7 +10,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -82,14 +81,14 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                             tokenHandler,
                             completionHandler,
                             errorHandler,
-                            tokenUsage.add(response.tokenUsage())
+                            TokenUsage.sum(tokenUsage, response.tokenUsage())
                     )
             );
         } else {
             if (completionHandler != null) {
                 completionHandler.accept(Response.from(
                         aiMessage,
-                        tokenUsage.add(response.tokenUsage()),
+                        TokenUsage.sum(tokenUsage, response.tokenUsage()),
                         response.finishReason())
                 );
             }

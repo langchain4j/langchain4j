@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.filter;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 
@@ -16,7 +15,6 @@ import static java.util.stream.Collectors.toList;
 /**
  * A helper class for building a {@link Filter} for {@link Metadata} key.
  */
-@Experimental
 public class MetadataFilterBuilder {
 
     private final String key;
@@ -25,7 +23,6 @@ public class MetadataFilterBuilder {
         this.key = ensureNotBlank(key, "key");
     }
 
-    @Experimental
     public static MetadataFilterBuilder metadataKey(String key) {
         return new MetadataFilterBuilder(key);
     }

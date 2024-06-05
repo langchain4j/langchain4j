@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -15,7 +14,6 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
  */
-@Experimental
 @ToString
 @EqualsAndHashCode
 public class EmbeddingSearchRequest {
@@ -41,7 +39,6 @@ public class EmbeddingSearchRequest {
      *                       This is an optional parameter. Default: no filtering
      */
     @Builder
-    @Experimental
     public EmbeddingSearchRequest(Embedding queryEmbedding, Integer maxResults, Double minScore, Filter filter) {
         this.queryEmbedding = ensureNotNull(queryEmbedding, "queryEmbedding");
         this.maxResults = ensureGreaterThanZero(getOrDefault(maxResults, 3), "maxResults");
@@ -49,22 +46,18 @@ public class EmbeddingSearchRequest {
         this.filter = filter;
     }
 
-    @Experimental
     public Embedding queryEmbedding() {
         return queryEmbedding;
     }
 
-    @Experimental
     public int maxResults() {
         return maxResults;
     }
 
-    @Experimental
     public double minScore() {
         return minScore;
     }
 
-    @Experimental
     public Filter filter() {
         return filter;
     }
