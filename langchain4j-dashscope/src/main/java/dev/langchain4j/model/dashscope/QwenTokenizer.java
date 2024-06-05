@@ -1,6 +1,6 @@
 package dev.langchain4j.model.dashscope;
 
-import com.alibaba.dashscope.aigc.generation.models.QwenParam;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.tokenizers.Tokenization;
@@ -36,7 +36,7 @@ public class QwenTokenizer implements Tokenizer {
     public int estimateTokenCountInText(String text) {
         String prompt = isBlank(text) ? text + "_" : text;
         try {
-            QwenParam param = QwenParam.builder()
+            GenerationParam param = GenerationParam.builder()
                     .apiKey(apiKey)
                     .model(modelName)
                     .prompt(prompt)
@@ -58,7 +58,7 @@ public class QwenTokenizer implements Tokenizer {
     @Override
     public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
         try {
-            QwenParam param = QwenParam.builder()
+            GenerationParam param = GenerationParam.builder()
                     .apiKey(apiKey)
                     .model(modelName)
                     .messages(toQwenMessages(messages))
