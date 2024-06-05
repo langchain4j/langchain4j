@@ -9,6 +9,7 @@ import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.ConnectParam;
@@ -22,18 +23,18 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static dev.langchain4j.internal.Json.toJson;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.milvus.CollectionOperationsExecutor.*;
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.buildSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.Generator.generateRandomIds;
 import static dev.langchain4j.store.embedding.milvus.Mapper.*;
 import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.map;
+import static dev.langchain4j.store.embedding.milvus.MilvusMetadataFilterMapper.mapIn;
 import static io.milvus.common.clientenum.ConsistencyLevelEnum.EVENTUALLY;
 import static io.milvus.param.IndexType.FLAT;
 import static io.milvus.param.MetricType.COSINE;
-import static java.lang.String.format;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -56,6 +57,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String collectionName;
     private final Integer dimension;
     private final MetricType metricType;
+    private final IndexType indexType;
     private final ConsistencyLevelEnum consistencyLevel;
     private final boolean retrieveEmbeddingsOnSearch;
 
@@ -90,13 +92,14 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.milvusClient = new MilvusServiceClient(connectBuilder.build());
         this.collectionName = getOrDefault(collectionName, "default");
         this.dimension = ensureNotNull(dimension, "dimension");
+        this.indexType = getOrDefault(indexType, FLAT);
         this.metricType = getOrDefault(metricType, COSINE);
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
             createCollection(this.milvusClient, this.collectionName, dimension);
-            createIndex(this.milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
+            createIndex(this.milvusClient, this.collectionName, this.indexType, this.metricType);
         }
 
         loadCollectionInMemory(this.milvusClient, collectionName);
@@ -189,7 +192,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
-        removeForVector(this.milvusClient, this.collectionName, format("%s in %s", ID_FIELD_NAME, toJson(ids).replace("\n", "")));
+        removeForVector(this.milvusClient, this.collectionName, mapIn(new IsIn(ID_FIELD_NAME, ids)));
     }
 
     @Override
@@ -202,6 +205,8 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     public void removeAll() {
         dropCollection(this.collectionName);
         createCollection(this.milvusClient, this.collectionName, this.dimension);
+        createIndex(this.milvusClient, this.collectionName, indexType, this.metricType);
+        loadCollectionInMemory(this.milvusClient, collectionName);
     }
 
     public static class Builder {
