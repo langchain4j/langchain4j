@@ -287,7 +287,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param uri The URI of the managed Milvus instance. ("<a href="https://xxx.api.gcp-us-west1.zillizcloud.com">e.g.</a>")
+         * @param uri The URI of the managed Milvus instance. ("<a href="https://docs.zilliz.com/docs/quick-start#connect-to-zilliz-cloud-cluster">e.g.</a>")
          * @return builder
          */
         public Builder uri(String uri) {
