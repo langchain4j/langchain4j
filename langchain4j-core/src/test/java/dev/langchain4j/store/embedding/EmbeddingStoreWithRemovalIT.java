@@ -82,8 +82,8 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
         Embedding embedding2 = embeddingModel().embed("hello2").content();
         Embedding embedding3 = embeddingModel().embed("hello3").content();
 
-        String id2 = embeddingStore().add(embedding2, new TextSegment("hello2", new Metadata()));
-        String id3 = embeddingStore().add(embedding3, new TextSegment("hello3", new Metadata()));
+        String id2 = embeddingStore().add(embedding2);
+        String id3 = embeddingStore().add(embedding3);
 
         embeddingStore().removeAll(metadataKey("id").isEqualTo("1"));
 
@@ -99,9 +99,9 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
         Embedding embedding2 = embeddingModel().embed("hello2").content();
         Embedding embedding3 = embeddingModel().embed("hello3").content();
 
-        embeddingStore().add(embedding, new TextSegment("hello", new Metadata()));
-        embeddingStore().add(embedding2, new TextSegment("hello2", new Metadata()));
-        embeddingStore().add(embedding3, new TextSegment("hello3", new Metadata()));
+        embeddingStore().add(embedding);
+        embeddingStore().add(embedding2);
+        embeddingStore().add(embedding3);
 
         embeddingStore().removeAll(metadataKey("unknown").isEqualTo("1"));
 

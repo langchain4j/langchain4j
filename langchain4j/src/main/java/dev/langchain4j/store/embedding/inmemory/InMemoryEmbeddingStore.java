@@ -115,6 +115,8 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         entries.removeIf(entry -> {
             if (entry.embedded instanceof TextSegment) {
                 return filter.test(((TextSegment) entry.embedded).metadata());
+            } else if (entry.embedded == null) {
+                return false;
             } else {
                 throw new UnsupportedOperationException("Not supported yet.");
             }
