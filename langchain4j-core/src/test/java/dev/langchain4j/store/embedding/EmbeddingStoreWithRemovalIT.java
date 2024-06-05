@@ -36,12 +36,12 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
         assertThat(id2).isNotBlank();
         assertThat(id3).isNotBlank();
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant = findRelevant(embedding);
         assertThat(relevant).hasSize(3);
 
         embeddingStore().remove(id);
 
-        relevant = embeddingStore().findRelevant(embedding, 10);
+        relevant = findRelevant(embedding);
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevantIds).hasSize(2);
         assertThat(relevantIds).containsExactly(id2, id3);
@@ -59,7 +59,7 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
 
         embeddingStore().removeAll(Arrays.asList(id2, id3));
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant = findRelevant(embedding);
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevant).hasSize(1);
         assertThat(relevantIds).containsExactly(id);
@@ -87,7 +87,7 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
 
         embeddingStore().removeAll(metadataKey("id").isEqualTo("1"));
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant = findRelevant(embedding);
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevantIds).hasSize(2);
         assertThat(relevantIds).containsExactly(id2, id3);
@@ -105,7 +105,7 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
 
         embeddingStore().removeAll(metadataKey("unknown").isEqualTo("1"));
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
+        List<EmbeddingMatch<TextSegment>> relevant = findRelevant(embedding);
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevantIds).hasSize(3);
     }
@@ -115,5 +115,15 @@ public abstract class EmbeddingStoreWithRemovalIT extends EmbeddingStoreIT{
         assertThatThrownBy(() -> embeddingStore().removeAll((Filter) null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("filter cannot be null");
+    }
+
+    List<EmbeddingMatch<TextSegment>> findRelevant(Embedding embedding) {
+        EmbeddingSearchRequest embeddingSearchRequest = EmbeddingSearchRequest
+                .builder()
+                .queryEmbedding(embedding)
+                .maxResults(10)
+                .build();
+
+        return embeddingStore().search(embeddingSearchRequest).matches();
     }
 }
