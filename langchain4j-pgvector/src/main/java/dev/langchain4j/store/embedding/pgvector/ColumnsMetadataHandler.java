@@ -77,7 +77,7 @@ class ColumnsMetadataHandler implements MetadataHandler {
         // only column names fields will be stored
         for (String c : this.columnsName) {
             try {
-                upsertStmt.setObject(parameterInitialIndex + i, metadata.getString(c), Types.OTHER);
+                upsertStmt.setObject(parameterInitialIndex + i, metadata.get(c), Types.OTHER);
                 i++;
             } catch (SQLException e) {
                 throw new RuntimeException(e);

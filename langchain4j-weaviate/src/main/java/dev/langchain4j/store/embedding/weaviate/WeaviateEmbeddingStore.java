@@ -245,7 +245,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             if (!segment.metadata().toMap().isEmpty()) {
                 for (String property : metadataKeys) {
                     if (segment.metadata().containsKey(property)) {
-                        metadata.put(property, segment.metadata().getString(property));
+                        metadata.put(property, segment.metadata().get(property));
                     }
                 }
             } else {

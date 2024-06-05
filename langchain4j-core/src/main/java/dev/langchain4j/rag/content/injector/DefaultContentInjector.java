@@ -135,7 +135,7 @@ public class DefaultContentInjector implements ContentInjector {
     protected String format(Metadata metadata) {
         StringBuilder formattedMetadata = new StringBuilder();
         for (String metadataKey : metadataKeysToInclude) {
-            String metadataValue = metadata.getString(metadataKey);
+            String metadataValue = metadata.get(metadataKey);
             if (metadataValue != null) {
                 if (formattedMetadata.length() > 0) {
                     formattedMetadata.append("\n");

@@ -327,7 +327,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 for (Map.Entry<String, Object> entry : embedded.get(i).metadata().toMap().entrySet()) {
                     Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
                     attribute.setKey(entry.getKey());
-                    attribute.setValue((String) entry.getValue());
+                    attribute.setValue(String.valueOf(entry.getValue()));
                     attributes.add(attribute);
                 }
                 metadata.setAttributes(attributes);
