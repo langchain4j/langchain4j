@@ -55,9 +55,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final MilvusServiceClient milvusClient;
     private final String collectionName;
-    private final Integer dimension;
     private final MetricType metricType;
-    private final IndexType indexType;
     private final ConsistencyLevelEnum consistencyLevel;
     private final boolean retrieveEmbeddingsOnSearch;
 
@@ -91,15 +89,13 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         this.milvusClient = new MilvusServiceClient(connectBuilder.build());
         this.collectionName = getOrDefault(collectionName, "default");
-        this.dimension = ensureNotNull(dimension, "dimension");
-        this.indexType = getOrDefault(indexType, FLAT);
         this.metricType = getOrDefault(metricType, COSINE);
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
-            createCollection(this.milvusClient, this.collectionName, dimension);
-            createIndex(this.milvusClient, this.collectionName, this.indexType, this.metricType);
+            createCollection(this.milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
+            createIndex(this.milvusClient, this.collectionName, getOrDefault(indexType, FLAT), this.metricType);
         }
 
         loadCollectionInMemory(this.milvusClient, collectionName);
@@ -331,7 +327,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param uri The URI of the managed Milvus instance. ("<a href="https://docs.zilliz.com/docs/quick-start#connect-to-zilliz-cloud-cluster">e.g.</a>")
+         * @param uri The URI of the managed Milvus instance. (e.g. "https://xxx.api.gcp-us-west1.zillizcloud.com")
          * @return builder
          */
         public Builder uri(String uri) {

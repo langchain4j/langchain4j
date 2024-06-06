@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.milvus;
 
-import dev.langchain4j.internal.Utils;
 import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
 import io.milvus.param.MetricType;
@@ -89,12 +88,10 @@ class CollectionRequestBuilder {
 
     static DeleteParam buildDeleteRequest(String collectionName,
                                           String expr) {
-        DeleteParam.Builder builder = DeleteParam.newBuilder()
-                .withCollectionName(collectionName);
-        if (Utils.isNotNullOrBlank(expr)) {
-            builder.withExpr(expr);
-        }
-        return builder.build();
+        return DeleteParam.newBuilder()
+                .withCollectionName(collectionName)
+                .withExpr(expr)
+                .build();
     }
 
     private static String buildQueryExpression(List<String> rowIds) {
