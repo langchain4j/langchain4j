@@ -147,7 +147,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -363,7 +363,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -789,7 +789,7 @@ class AzureOpenAiTokenizerIT {
 
         List<ChatMessage> dummyMessages = singletonList(userMessage("hi"));
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
 
         int expectedTokenCount = model.generate(dummyMessages, toolSpecifications).tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(dummyMessages);
@@ -1078,7 +1078,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = response.tokenUsage().outputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
@@ -1118,7 +1118,7 @@ class AzureOpenAiTokenizerIT {
 
         Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecification);
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
 
         int expectedTokenCountInSpecification = response.tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(singletonList(userMessage));
@@ -1354,7 +1354,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = response.tokenUsage().outputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.modelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);

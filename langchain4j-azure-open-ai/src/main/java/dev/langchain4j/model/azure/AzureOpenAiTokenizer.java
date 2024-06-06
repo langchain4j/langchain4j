@@ -49,28 +49,28 @@ public class AzureOpenAiTokenizer implements Tokenizer {
      * It should be suitable for all current OpenAI models, as they all use the same cl100k_base encoding.
      */
     public AzureOpenAiTokenizer() {
-        this(GPT_3_5_TURBO.getModelType());
+        this(GPT_3_5_TURBO.modelType());
     }
 
     /**
      * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiChatModelName}.
      */
     public AzureOpenAiTokenizer(AzureOpenAiChatModelName modelName) {
-        this(modelName.getModelType());
+        this(modelName.modelType());
     }
 
     /**
      * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiEmbeddingModelName}.
      */
     public AzureOpenAiTokenizer(AzureOpenAiEmbeddingModelName modelName) {
-        this(modelName.getModelType());
+        this(modelName.modelType());
     }
 
     /**
      * Creates an instance of the {@code AzureOpenAiTokenizer} for a given {@link AzureOpenAiLanguageModelName}.
      */
     public AzureOpenAiTokenizer(AzureOpenAiLanguageModelName modelName) {
-        this(modelName.getModelType());
+        this(modelName.modelType());
     }
 
     /**
@@ -177,7 +177,7 @@ public class AzureOpenAiTokenizer implements Tokenizer {
     }
 
     private int extraTokensPerMessage() {
-        if (modelName.equals(GPT_3_5_TURBO_0301.getModelName())) {
+        if (modelName.equals(GPT_3_5_TURBO_0301.modelName())) {
             return 4;
         } else {
             return 3;

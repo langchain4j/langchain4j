@@ -46,15 +46,15 @@ public enum AzureOpenAiChatModelName {
         this.modelVersion = modelVersion;
     }
 
-    public String getModelName() {
+    public String modelName() {
         return modelName;
     }
 
-    public String getModelType() {
+    public String modelType() {
         return modelType;
     }
 
-    public String getModelVersion() {
+    public String modelVersion() {
         return modelVersion;
     }
 

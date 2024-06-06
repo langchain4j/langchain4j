@@ -16,7 +16,7 @@ import java.util.List;
 
 class AzureOpenAiTokenizerTest {
 
-    AzureOpenAiTokenizer tokenizer = new AzureOpenAiTokenizer(GPT_3_5_TURBO.getModelType());
+    AzureOpenAiTokenizer tokenizer = new AzureOpenAiTokenizer(GPT_3_5_TURBO.modelType());
 
     @Test
     void should_encode_and_decode_text() {
