@@ -136,7 +136,7 @@ class DefaultRetrievalAugmentorTest {
                 .executor(executor)
                 .build();
 
-        UserMessage userMessage = UserMessage.from("userName", "query");
+        UserMessage userMessage = UserMessage.from("query");
 
         Metadata metadata = Metadata.from(userMessage, null, null);
 
