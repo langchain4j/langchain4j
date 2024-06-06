@@ -58,7 +58,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final MetricType metricType;
     private final ConsistencyLevelEnum consistencyLevel;
     private final boolean retrieveEmbeddingsOnSearch;
-
+    private final boolean autoFlushOnInsert;
 
     public MilvusEmbeddingStore(
             String host,
@@ -73,6 +73,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
             String password,
             ConsistencyLevelEnum consistencyLevel,
             Boolean retrieveEmbeddingsOnSearch,
+            Boolean autoFlushOnInsert,
             String databaseName
     ) {
         ConnectParam.Builder connectBuilder = ConnectParam
@@ -92,6 +93,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.metricType = getOrDefault(metricType, COSINE);
         this.consistencyLevel = getOrDefault(consistencyLevel, EVENTUALLY);
         this.retrieveEmbeddingsOnSearch = getOrDefault(retrieveEmbeddingsOnSearch, false);
+        this.autoFlushOnInsert = getOrDefault(autoFlushOnInsert, false);
 
         if (!hasCollection(this.milvusClient, this.collectionName)) {
             createCollection(this.milvusClient, this.collectionName, ensureNotNull(dimension, "dimension"));
@@ -182,7 +184,9 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         fields.add(new InsertParam.Field(VECTOR_FIELD_NAME, toVectors(embeddings)));
 
         insert(this.milvusClient, this.collectionName, fields);
-        flush(this.milvusClient, this.collectionName);
+        if (autoFlushOnInsert) {
+            flush(this.milvusClient, this.collectionName);
+        }
     }
 
     /**
@@ -264,6 +268,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         private ConsistencyLevelEnum consistencyLevel;
         private Boolean retrieveEmbeddingsOnSearch;
         private String databaseName;
+        private Boolean autoFlushOnInsert;
 
         /**
          * @param host The host of the self-managed Milvus instance.
@@ -387,6 +392,19 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * @param autoFlushOnInsert Whether to automatically flush after each insert
+         *                          ({@code add(...)} or {@code addAll(...)} methods).
+         *                          Default value: false.
+         *                          More info can be found
+         *                          <a href="https://milvus.io/api-reference/pymilvus/v2.4.x/ORM/Collection/flush.md">here</a>.
+         * @return builder
+         */
+        public Builder autoFlushOnInsert(Boolean autoFlushOnInsert) {
+            this.autoFlushOnInsert = autoFlushOnInsert;
+            return this;
+        }
+
+        /**
          * @param databaseName Milvus name of database.
          *                     Default value: null. In this case default Milvus database name will be used.
          * @return builder
@@ -410,6 +428,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
                     password,
                     consistencyLevel,
                     retrieveEmbeddingsOnSearch,
+                    autoFlushOnInsert,
                     databaseName
             );
         }

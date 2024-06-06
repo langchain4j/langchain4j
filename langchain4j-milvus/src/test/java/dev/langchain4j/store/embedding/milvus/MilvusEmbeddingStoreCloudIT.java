@@ -57,7 +57,8 @@ class MilvusEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
         EmbeddingStore<TextSegment> embeddingStore = MilvusEmbeddingStore.builder()
                 .uri(System.getenv("MILVUS_URI"))
                 .token(System.getenv("MILVUS_API_KEY"))
-                .collectionName("test")
+                .collectionName(COLLECTION_NAME)
+                .consistencyLevel(STRONG)
                 .dimension(384)
                 .retrieveEmbeddingsOnSearch(retrieveEmbeddingsOnSearch)
                 .build();

@@ -62,8 +62,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .host(milvus.getHost())
                 .port(milvus.getMappedPort(19530))
                 .collectionName(COLLECTION_NAME)
-                .username("")
-                .password("")
+                .consistencyLevel(STRONG)
                 .dimension(384)
                 .retrieveEmbeddingsOnSearch(false)
                 .build();
