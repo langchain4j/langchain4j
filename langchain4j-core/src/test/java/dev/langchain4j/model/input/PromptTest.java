@@ -24,6 +24,8 @@ class PromptTest implements WithAssertions {
                 .isEqualTo(systemMessage("abc"));
         assertThat(p.toUserMessage())
                 .isEqualTo(userMessage("abc"));
+        assertThat(p.toUserMessage("userName"))
+                .isEqualTo(userMessage("userName", "abc"));
         assertThat(p.toAiMessage())
                 .isEqualTo(aiMessage("abc"));
     }
