@@ -9,7 +9,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -19,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 
-import static dev.langchain4j.model.openai.OpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
+import static dev.langchain4j.model.azure.AzureOpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,7 +41,7 @@ public class AzureOpenAIResponsibleAIIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
-                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -64,7 +63,7 @@ public class AzureOpenAIResponsibleAIIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
-                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -101,7 +100,7 @@ public class AzureOpenAIResponsibleAIIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName("gpt-35-turbo-instruct")
-                .tokenizer(new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
+                .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
                 .temperature(0.0)
                 .maxTokens(20)
                 .logRequestsAndResponses(true)
@@ -128,7 +127,7 @@ public class AzureOpenAIResponsibleAIIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
-                .tokenizer(new OpenAiTokenizer(gptVersion))
+                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -173,7 +172,7 @@ public class AzureOpenAIResponsibleAIIT {
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName("gpt-35-turbo-instruct")
-                .tokenizer(new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
+                .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
                 .temperature(0.0)
                 .maxTokens(20)
                 .logRequestsAndResponses(true)
