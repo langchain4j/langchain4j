@@ -22,11 +22,6 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.ai4j</groupId>
-            <artifactId>openai4j</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-ai-openai</artifactId>
         </dependency>

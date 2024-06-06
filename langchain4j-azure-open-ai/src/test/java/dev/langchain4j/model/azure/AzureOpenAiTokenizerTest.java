@@ -1,8 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import dev.ai4j.openai4j.chat.ChatCompletionModel;
-import dev.ai4j.openai4j.completion.CompletionModel;
-import dev.ai4j.openai4j.embedding.EmbeddingModel;
 import dev.langchain4j.model.Tokenizer;
 import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.model.azure.AzureOpenAiTokenizer.countArguments;
@@ -111,20 +108,6 @@ class AzureOpenAiTokenizerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(ChatCompletionModel.class)
-    void should_support_all_chat_models_from_openai4j(ChatCompletionModel model) {
-
-        // given
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(model.toString());
-
-        // when
-        int tokenCount = tokenizer.estimateTokenCountInText("a");
-
-        // then
-        assertThat(tokenCount).isEqualTo(1);
-    }
-
-    @ParameterizedTest
     @EnumSource(AzureOpenAiEmbeddingModelName.class)
     void should_support_all_embedding_models(AzureOpenAiEmbeddingModelName modelName) {
 
@@ -139,39 +122,11 @@ class AzureOpenAiTokenizerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(EmbeddingModel.class)
-    void should_support_all_embedding_models_from_openai4j(EmbeddingModel model) {
-
-        // given
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(model.toString());
-
-        // when
-        int tokenCount = tokenizer.estimateTokenCountInText("a");
-
-        // then
-        assertThat(tokenCount).isEqualTo(1);
-    }
-
-    @ParameterizedTest
     @EnumSource(AzureOpenAiLanguageModelName.class)
     void should_support_all_language_models(AzureOpenAiLanguageModelName modelName) {
 
         // given
         Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName);
-
-        // when
-        int tokenCount = tokenizer.estimateTokenCountInText("a");
-
-        // then
-        assertThat(tokenCount).isEqualTo(1);
-    }
-
-    @ParameterizedTest
-    @EnumSource(CompletionModel.class)
-    void should_support_all_language_models_from_openai4j(CompletionModel model) {
-
-        // given
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(model.toString());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInText("a");
