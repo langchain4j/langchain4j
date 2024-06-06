@@ -26,15 +26,15 @@ public class FileChatMemoryStore implements ChatMemoryStore {
     private static final Logger log = LoggerFactory.getLogger(FileChatMemoryStore.class);
 
     private final String storageDirectory;
-    private final String fileExtension;
+
+    public static final String FILE_EXTENSION = ".json";
 
     /**
      * Constructor for FileChatMemoryStore.
      *
      * @param storageDirectory Folder path where msg is stored.
-     * @param fileExtension    File extension to store messages.
      */
-    public FileChatMemoryStore(String storageDirectory, String fileExtension) {
+    public FileChatMemoryStore(String storageDirectory) {
         Path directoryPath = Paths.get(storageDirectory);
         if (Files.exists(directoryPath)) {
             if (!Files.isDirectory(directoryPath)) {
@@ -44,25 +44,21 @@ public class FileChatMemoryStore implements ChatMemoryStore {
             try {
                 Files.createDirectories(directoryPath);
             } catch (IOException e) {
+                log.error("Failed to create directory: {}", directoryPath, e);
                 throw runtime("Something is wrong, Failed to create folder %s", storageDirectory);
             }
             log.debug("Created directory {} to store messages", storageDirectory);
         }
         this.storageDirectory = storageDirectory;
-        this.fileExtension = fileExtension.startsWith(".") ? fileExtension : "." + fileExtension;
     }
 
     public String getStorageDirectory() {
         return storageDirectory;
     }
 
-    public String getFileExtension() {
-        return fileExtension;
-    }
-
     @Override
     public List<ChatMessage> getMessages(Object memoryId) {
-        Path memoryFilePath = Paths.get(storageDirectory, memoryId + fileExtension);
+        Path memoryFilePath = Paths.get(storageDirectory, memoryId + FILE_EXTENSION);
         if (Files.notExists(memoryFilePath)) {
             return Collections.emptyList();
         }
@@ -79,7 +75,7 @@ public class FileChatMemoryStore implements ChatMemoryStore {
 
     @Override
     public void updateMessages(Object memoryId, List<ChatMessage> messages) {
-        Path memoryFilePath = Paths.get(storageDirectory, memoryId + fileExtension);
+        Path memoryFilePath = Paths.get(storageDirectory, memoryId + FILE_EXTENSION);
         // TODO：Maybe it would be better to store it item by item.
         String messagesToJson = ChatMessageSerializer.messagesToJson(messages);
         try {
@@ -91,7 +87,7 @@ public class FileChatMemoryStore implements ChatMemoryStore {
 
     @Override
     public void deleteMessages(Object memoryId) {
-        Path memoryFilePath = Paths.get(storageDirectory, memoryId + fileExtension);
+        Path memoryFilePath = Paths.get(storageDirectory, memoryId + FILE_EXTENSION);
         try {
             Files.deleteIfExists(memoryFilePath);
         } catch (IOException e) {
@@ -106,7 +102,6 @@ public class FileChatMemoryStore implements ChatMemoryStore {
     public static class Builder {
 
         private String storageDirectory = System.getProperty("java.io.tmpdir");
-        private String fileExtension = ".json";
 
         /**
          * @param storageDirectory Local folder path where messages are stored.
@@ -117,17 +112,8 @@ public class FileChatMemoryStore implements ChatMemoryStore {
             return this;
         }
 
-        /**
-         * @param fileExtension File extension, default is `.json`.
-         * @return builder
-         */
-        public Builder fileExtension(String fileExtension) {
-            this.fileExtension = fileExtension;
-            return this;
-        }
-
         public FileChatMemoryStore build() {
-            return new FileChatMemoryStore(storageDirectory, fileExtension);
+            return new FileChatMemoryStore(storageDirectory);
         }
     }
 }

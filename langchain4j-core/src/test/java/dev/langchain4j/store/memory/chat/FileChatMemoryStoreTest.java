@@ -28,7 +28,8 @@ class FileChatMemoryStoreTest implements WithAssertions {
     static final String tempStorageDirectory = System.getProperty("java.io.tmpdir");
 
     static final Path directoryPath = Paths.get(tempStorageDirectory, randomDirName);
-    static final Path memoryFilePath = Paths.get(tempStorageDirectory, randomDirName, "foo.txt");
+    static final Path memoryFilePath =
+            Paths.get(tempStorageDirectory, randomDirName, "foo" + FileChatMemoryStore.FILE_EXTENSION);
 
     @AfterAll
     @SneakyThrows
@@ -37,28 +38,18 @@ class FileChatMemoryStoreTest implements WithAssertions {
     }
 
     @Test
-    public void test_constructor() {
-        FileChatMemoryStore tempDirStore = FileChatMemoryStore.builder().build();
-        FileChatMemoryStore fixedDirStore = FileChatMemoryStore.builder()
-                .storageDirectory(tempStorageDirectory)
-                .build();
-        FileChatMemoryStore txtExtMemoryStore = FileChatMemoryStore.builder()
-                .storageDirectory(tempStorageDirectory)
-                .fileExtension(".txt")
-                .build();
+    public void testConstructor() {
+        FileChatMemoryStore fixedDirStore = new FileChatMemoryStore(directoryPath.toString());
         FileChatMemoryStore notExistDirStore = FileChatMemoryStore.builder()
                 .storageDirectory(directoryPath.toString())
-                .fileExtension("txt")
                 .build();
 
-        assertThat(tempDirStore.getFileExtension()).isEqualTo(fixedDirStore.getFileExtension());
-        assertThat(fixedDirStore.getStorageDirectory()).isEqualTo(txtExtMemoryStore.getStorageDirectory());
-        assertThat(fixedDirStore.getFileExtension()).isNotEqualTo(txtExtMemoryStore.getFileExtension());
+        assertThat(fixedDirStore.getStorageDirectory()).endsWith(notExistDirStore.getStorageDirectory());
         assertThat(new File(notExistDirStore.getStorageDirectory())).exists();
     }
 
     @Test
-    public void test_store() {
+    public void testStore() {
         FileChatMemoryStore store = FileChatMemoryStore.builder().build();
 
         assertThat(store.getMessages("foo")).isEmpty();
@@ -74,20 +65,18 @@ class FileChatMemoryStoreTest implements WithAssertions {
 
     @Test
     @SneakyThrows
-    void illegalArgumentExceptionTesting() {
+    void illegalArgumentExceptionTest() {
         File tempFile = File.createTempFile("temp", ".txt");
         String tempFileAbsolutePath = tempFile.getAbsolutePath();
         IllegalArgumentException illegalArgumentException =
-                catchIllegalArgumentException(() -> new FileChatMemoryStore(tempFileAbsolutePath, ".json"));
+                catchIllegalArgumentException(() -> new FileChatMemoryStore(tempFileAbsolutePath));
         assertThat(illegalArgumentException).isNotNull();
     }
 
     @Test
     @SneakyThrows
-    void createDriExceptionTesting() {
-        FileChatMemoryStore.Builder builder = FileChatMemoryStore.builder()
-                .storageDirectory(directoryPath.toString())
-                .fileExtension(".txt");
+    void createDriExceptionTest() {
+        FileChatMemoryStore.Builder builder = FileChatMemoryStore.builder().storageDirectory(directoryPath.toString());
 
         try (MockedStatic<Files> mockFiles = mockStatic(Files.class)) {
             mockFiles.when(() -> Files.createDirectories(directoryPath)).thenThrow(IOException.class);
@@ -98,12 +87,13 @@ class FileChatMemoryStoreTest implements WithAssertions {
 
     @Test
     @SneakyThrows
-    void writeExceptionTesting() {
+    void writeExceptionTest() {
         List<ChatMessage> messages = Arrays.asList(new UserMessage("abc def"), new AiMessage("ghi jkl"));
         String messagesToJson = ChatMessageSerializer.messagesToJson(messages);
 
-        FileChatMemoryStore store = new FileChatMemoryStore(directoryPath.toString(), ".txt");
+        FileChatMemoryStore.Builder builder = FileChatMemoryStore.builder().storageDirectory(directoryPath.toString());
         try (MockedStatic<Files> mockFiles = mockStatic(Files.class)) {
+            FileChatMemoryStore store = builder.build();
             mockFiles
                     .when(() -> Files.write(memoryFilePath, messagesToJson.getBytes(StandardCharsets.UTF_8)))
                     .thenThrow(IOException.class);
@@ -114,10 +104,11 @@ class FileChatMemoryStoreTest implements WithAssertions {
 
     @Test
     @SneakyThrows
-    void readExceptionTesting() {
-        FileChatMemoryStore store = new FileChatMemoryStore(directoryPath.toString(), ".txt");
+    void readExceptionTest() {
+        FileChatMemoryStore.Builder builder = FileChatMemoryStore.builder().storageDirectory(directoryPath.toString());
         try (MockedStatic<Files> mockFiles = mockStatic(Files.class)) {
             mockFiles.when(() -> Files.readAllBytes(memoryFilePath)).thenThrow(IOException.class);
+            FileChatMemoryStore store = builder.build();
             List<ChatMessage> messages = store.getMessages("foo");
             assertThat(messages).isEmpty();
         }
@@ -125,8 +116,10 @@ class FileChatMemoryStoreTest implements WithAssertions {
 
     @Test
     @SneakyThrows
-    void delDriExceptionTesting() {
-        FileChatMemoryStore store = new FileChatMemoryStore(directoryPath.toString(), ".txt");
+    void delDriExceptionTest() {
+        FileChatMemoryStore store = FileChatMemoryStore.builder()
+                .storageDirectory(directoryPath.toString())
+                .build();
         try (MockedStatic<Files> mockFiles = mockStatic(Files.class)) {
             mockFiles.when(() -> Files.deleteIfExists(memoryFilePath)).thenThrow(IOException.class);
             Throwable throwable = catchThrowable(() -> store.deleteMessages("foo"));
