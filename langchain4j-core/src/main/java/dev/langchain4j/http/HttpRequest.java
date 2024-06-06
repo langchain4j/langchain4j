@@ -16,7 +16,7 @@ public class HttpRequest {
     private final HttpMethod method;
     private final String url;
     private final Map<String, String> headers;
-    private final String body;
+    private final String body; // TODO type
 
     @Builder
     public HttpRequest(HttpMethod method, String url, Map<String, String> headers, String body) {

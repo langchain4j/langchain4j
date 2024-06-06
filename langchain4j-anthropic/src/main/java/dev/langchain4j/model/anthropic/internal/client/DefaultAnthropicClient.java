@@ -64,7 +64,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
         }
 
         this.httpClient = ensureNotNull(builder.httpClientBuilder, "httpClientBuilder")
-                .timeout(builder.timeout)
+                .connectTimeout(builder.timeout)
+                .readTimeout(builder.timeout)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
                 // TODO other fields
@@ -219,8 +220,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     handler.onError(throwable); // TODO
                 }
             });
-        } catch (IOException e) {
-            throw new RuntimeException(e); // TODO
+        } catch (Exception e) {
+            handler.onError(e);
         }
     }
 

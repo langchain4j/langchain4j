@@ -7,9 +7,13 @@ import java.time.Duration;
 @Experimental
 public interface HttpClientBuilder {  // TODO move inside HttpClient?
 
-    Duration timeout();
+    Duration connectTimeout();
 
-    HttpClientBuilder timeout(Duration timeout);
+    HttpClientBuilder connectTimeout(Duration timeout);
+
+    Duration readTimeout();
+
+    HttpClientBuilder readTimeout(Duration timeout);
 
     boolean logRequests();
 
@@ -19,9 +23,10 @@ public interface HttpClientBuilder {  // TODO move inside HttpClient?
 
     HttpClientBuilder logResponses(boolean logResponses);
 
-    // TODO customHeaders / defaultHeaders?
-    // TODO proxy
+    // TODO baseUrl?
     // TODO retries?
+    // TODO customHeaders / defaultHeaders?
+    // TODO proxy?
     // TODO what else?
 
     HttpClient build();

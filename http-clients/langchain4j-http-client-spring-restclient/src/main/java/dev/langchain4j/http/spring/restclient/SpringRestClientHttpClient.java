@@ -1,8 +1,11 @@
 package dev.langchain4j.http.spring.restclient;
 
 import dev.langchain4j.http.*;
+import org.springframework.boot.web.client.ClientHttpRequestFactories;
+import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 import java.io.BufferedReader;
@@ -21,9 +24,15 @@ public class SpringRestClientHttpClient extends AbstractHttpClient {
 
     public SpringRestClientHttpClient(SpringRestClientHttpClientBuilder builder) {
         RestClient.Builder restClientBuilder = getOrDefault(builder.restClientBuilder(), RestClient::builder);
-        // TODO timeouts!
-        // TODO other params
-        this.restClient = restClientBuilder.build();
+
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
+                .withConnectTimeout(builder.connectTimeout())
+                .withReadTimeout(builder.readTimeout());
+        ClientHttpRequestFactory clientHttpRequestFactory = ClientHttpRequestFactories.get(settings);
+
+        this.restClient = restClientBuilder
+                .requestFactory(clientHttpRequestFactory)
+                .build();
         this.logRequests = builder.logRequests();
         this.logResponses = builder.logResponses();
     }
