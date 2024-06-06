@@ -9,10 +9,10 @@ import java.time.Duration;
 public class OkHttpHttpClientBuilder implements HttpClientBuilder {
 
     private OkHttpClient.Builder okHttpClientBuilder;
-    private Duration timeout;
+    private Duration connectTimeout;
+    private Duration readTimeout;
     private boolean logRequests;
     private boolean logResponses;
-    // TODO baseUrl?
 
     public OkHttpClient.Builder okHttpClientBuilder() {
         return okHttpClientBuilder;
@@ -24,13 +24,24 @@ public class OkHttpHttpClientBuilder implements HttpClientBuilder {
     }
 
     @Override
-    public Duration timeout() {
-        return timeout;
+    public Duration connectTimeout() {
+        return connectTimeout;
     }
 
     @Override
-    public HttpClientBuilder timeout(Duration timeout) {
-        this.timeout = timeout;
+    public HttpClientBuilder connectTimeout(Duration connectTimeout) {
+        this.connectTimeout = connectTimeout;
+        return this;
+    }
+
+    @Override
+    public Duration readTimeout() {
+        return readTimeout;
+    }
+
+    @Override
+    public HttpClientBuilder readTimeout(Duration readTimeout) {
+        this.readTimeout = readTimeout;
         return this;
     }
 

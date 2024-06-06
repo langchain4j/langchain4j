@@ -9,5 +9,5 @@ public interface HttpClient {
 
     HttpResponse execute(HttpRequest httpRequest);
 
-    void execute(HttpRequest httpRequest, ServerSentEventListener listener);
+    void execute(HttpRequest httpRequest, ServerSentEventListener listener); // TODO name stream?
 }

@@ -23,13 +23,10 @@ public class OkHttpHttpClient extends AbstractHttpClient {
 
     public OkHttpHttpClient(OkHttpHttpClientBuilder builder) {
         OkHttpClient.Builder okHttpClientBuilder = getOrDefault(builder.okHttpClientBuilder(), OkHttpClient.Builder::new);
-        okHttpClientBuilder
-                .callTimeout(builder.timeout())
-                .connectTimeout(builder.timeout())
-                .readTimeout(builder.timeout())
-                .writeTimeout(builder.timeout());
-        this.client = okHttpClientBuilder.build();
-
+        this.client = okHttpClientBuilder
+                .connectTimeout(builder.connectTimeout())
+                .readTimeout(builder.readTimeout())
+                .build();
         this.logRequests = builder.logRequests();
         this.logResponses = builder.logResponses();
     }
