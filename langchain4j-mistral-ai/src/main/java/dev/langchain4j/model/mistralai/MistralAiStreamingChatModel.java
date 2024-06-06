@@ -57,7 +57,7 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
      * @param timeout      the timeout duration for API requests
      */
     @Builder
-    private MistralAiStreamingChatModel(String baseUrl,
+    public MistralAiStreamingChatModel(String baseUrl,
                                        String apiKey,
                                        String modelName,
                                        Double temperature,
@@ -161,7 +161,17 @@ public class MistralAiStreamingChatModel implements StreamingChatLanguageModel {
         client.streamingChatCompletion(request, handler);
     }
 
+    public static MistralAiStreamingChatModelBuilder builder() {
+        for (MistralAiStreamingChatModelBuilderFactory factory : loadFactories(MistralAiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new MistralAiStreamingChatModelBuilder();
+    }
+
     public static class MistralAiStreamingChatModelBuilder {
+
+        public MistralAiStreamingChatModelBuilder() {
+        }
 
         public MistralAiStreamingChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;

@@ -9,6 +9,7 @@ import dev.langchain4j.model.mistralai.internal.api.MistralAiChatCompletionRespo
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiToolChoiceName;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
+import dev.langchain4j.model.mistralai.spi.MistralAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -20,6 +21,7 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
 /**
@@ -62,7 +64,7 @@ public class MistralAiChatModel implements ChatLanguageModel {
      * @param maxRetries   the maximum number of retries for API requests. It uses the default value 3 if not specified
      */
     @Builder
-    private MistralAiChatModel(String baseUrl,
+    public MistralAiChatModel(String baseUrl,
                               String apiKey,
                               String modelName,
                               Double temperature,
@@ -172,7 +174,17 @@ public class MistralAiChatModel implements ChatLanguageModel {
         );
     }
 
+    public static MistralAiChatModelBuilder builder() {
+        for (MistralAiChatModelBuilderFactory factory : loadFactories(MistralAiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new MistralAiChatModelBuilder();
+    }
+
     public static class MistralAiChatModelBuilder {
+
+        public MistralAiChatModelBuilder() {
+        }
 
         public MistralAiChatModelBuilder modelName(String modelName) {
             this.modelName = modelName;
