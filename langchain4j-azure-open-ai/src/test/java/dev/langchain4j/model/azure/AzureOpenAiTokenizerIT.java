@@ -1,17 +1,5 @@
 package dev.langchain4j.model.azure;
 
-import dev.ai4j.openai4j.chat.ChatCompletionModel;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_0125;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_3_5_TURBO_1106;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_0125_PREVIEW;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_0314;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_1106_PREVIEW;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0314;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_32K_0613;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_TURBO_PREVIEW;
-import static dev.ai4j.openai4j.chat.ChatCompletionModel.GPT_4_VISION_PREVIEW;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.ARRAY;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
@@ -28,6 +16,16 @@ import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecut
 import dev.langchain4j.data.message.UserMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import dev.langchain4j.model.Tokenizer;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_0613;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0125_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_0613;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_1106_PREVIEW;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_32K;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_32K_0613;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_TURBO_2024_04_09;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_VISION_PREVIEW;
 import dev.langchain4j.model.output.Response;
 import static java.util.Arrays.asList;
 import static java.util.Arrays.stream;
@@ -51,30 +49,28 @@ import java.util.stream.Stream;
 class AzureOpenAiTokenizerIT {
 
     // my API key does not have access to these models
-    private static final Set<ChatCompletionModel> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
-            GPT_3_5_TURBO_0125,
+    private static final Set<AzureOpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
+            GPT_3_5_TURBO_0613,
             GPT_4_32K,
-            GPT_4_32K_0314,
             GPT_4_32K_0613
     ));
 
-    private static final Set<ChatCompletionModel> MODELS_WITHOUT_TOOL_SUPPORT = new HashSet<>(asList(
-            GPT_4_0314,
+    private static final Set<AzureOpenAiChatModelName> MODELS_WITHOUT_TOOL_SUPPORT = new HashSet<>(asList(
+            GPT_4_0613,
             GPT_4_VISION_PREVIEW
     ));
 
-    private static final Set<ChatCompletionModel> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
+    private static final Set<AzureOpenAiChatModelName> MODELS_WITH_PARALLEL_TOOL_SUPPORT = new HashSet<>(asList(
             // TODO add GPT_3_5_TURBO once it points to GPT_3_5_TURBO_1106
             GPT_3_5_TURBO_1106,
-            GPT_3_5_TURBO_0125,
-            GPT_4_TURBO_PREVIEW,
+            GPT_4_TURBO_2024_04_09,
             GPT_4_1106_PREVIEW,
             GPT_4_0125_PREVIEW
     ));
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_in_messages(List<ChatMessage> messages, ChatCompletionModel modelName) {
+    void should_count_tokens_in_messages(List<ChatMessage> messages, AzureOpenAiChatModelName modelName) {
 
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
@@ -87,7 +83,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer("gpt-3.5-turbo");
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -97,7 +93,7 @@ class AzureOpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_messages() {
-        return stream(ChatCompletionModel.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .flatMap(model -> Stream.of(
                         arguments(singletonList(systemMessage("Be friendly.")), model),
@@ -138,7 +134,7 @@ class AzureOpenAiTokenizerIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, ChatCompletionModel modelName) {
+    void should_count_tokens_in_messages_with_single_tool(List<ChatMessage> messages, AzureOpenAiChatModelName modelName) {
 
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
@@ -151,7 +147,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -161,7 +157,7 @@ class AzureOpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_messages_with_single_tool() {
-        return stream(ChatCompletionModel.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
@@ -355,7 +351,7 @@ class AzureOpenAiTokenizerIT {
     @ParameterizedTest
     @MethodSource
     void should_count_tokens_in_messages_with_multiple_tools(List<ChatMessage> messages,
-                                                             ChatCompletionModel modelName) {
+                                                             AzureOpenAiChatModelName modelName) {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -367,7 +363,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = model.generate(messages).tokenUsage().inputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInMessages(messages);
@@ -377,7 +373,7 @@ class AzureOpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_messages_with_multiple_tools() {
-        return stream(ChatCompletionModel.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(
@@ -781,7 +777,7 @@ class AzureOpenAiTokenizerIT {
     @ParameterizedTest
     @MethodSource
     void should_count_tokens_in_tool_specifications(List<ToolSpecification> toolSpecifications,
-                                                    ChatCompletionModel modelName) {
+                                                    AzureOpenAiChatModelName modelName) {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -793,7 +789,7 @@ class AzureOpenAiTokenizerIT {
 
         List<ChatMessage> dummyMessages = singletonList(userMessage("hi"));
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
 
         int expectedTokenCount = model.generate(dummyMessages, toolSpecifications).tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(dummyMessages);
@@ -806,7 +802,7 @@ class AzureOpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_tool_specifications() {
-        return stream(ChatCompletionModel.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
@@ -1061,7 +1057,7 @@ class AzureOpenAiTokenizerIT {
     void should_count_tokens_in_tool_execution_request(UserMessage userMessage,
                                                        ToolSpecification toolSpecification,
                                                        ToolExecutionRequest expectedToolExecutionRequest,
-                                                       ChatCompletionModel modelName) {
+                                                       AzureOpenAiChatModelName modelName) {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -1082,7 +1078,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = response.tokenUsage().outputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
@@ -1111,7 +1107,7 @@ class AzureOpenAiTokenizerIT {
     void should_count_tokens_in_forceful_tool_specification_and_execution_request(UserMessage userMessage,
                                                                                   ToolSpecification toolSpecification,
                                                                                   ToolExecutionRequest expectedToolExecutionRequest,
-                                                                                  ChatCompletionModel modelName) {
+                                                                                  AzureOpenAiChatModelName modelName) {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -1122,7 +1118,7 @@ class AzureOpenAiTokenizerIT {
 
         Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecification);
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
 
         int expectedTokenCountInSpecification = response.tokenUsage().inputTokenCount()
                 - tokenizer.estimateTokenCountInMessages(singletonList(userMessage));
@@ -1152,7 +1148,7 @@ class AzureOpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_tool_execution_request() {
-        return stream(ChatCompletionModel.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(model -> !MODELS_WITHOUT_TOOL_SUPPORT.contains(model))
                 .flatMap(model -> Stream.of(
@@ -1334,7 +1330,7 @@ class AzureOpenAiTokenizerIT {
     void should_count_tokens_in_multiple_tool_execution_requests(UserMessage userMessage,
                                                                  List<ToolSpecification> toolSpecifications,
                                                                  List<ToolExecutionRequest> expectedToolExecutionRequests,
-                                                                 ChatCompletionModel modelName) {
+                                                                 AzureOpenAiChatModelName modelName) {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
@@ -1358,7 +1354,7 @@ class AzureOpenAiTokenizerIT {
 
         int expectedTokenCount = response.tokenUsage().outputTokenCount();
 
-        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.toString());
+        Tokenizer tokenizer = new AzureOpenAiTokenizer(modelName.getModelVersion());
 
         // when
         int tokenCount = tokenizer.estimateTokenCountInToolExecutionRequests(toolExecutionRequests);
@@ -1368,7 +1364,7 @@ class AzureOpenAiTokenizerIT {
     }
 
     static Stream<Arguments> should_count_tokens_in_multiple_tool_execution_requests() {
-        return stream(ChatCompletionModel.values())
+        return stream(AzureOpenAiChatModelName.values())
                 .filter(model -> !MODELS_WITHOUT_ACCESS.contains(model))
                 .filter(MODELS_WITH_PARALLEL_TOOL_SUPPORT::contains)
                 .flatMap(model -> Stream.of(
