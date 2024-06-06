@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.INDEX_NAME;
+import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -49,7 +49,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
                  .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
                  .buildClient();
 
-         searchIndexClient.deleteIndex(INDEX_NAME);
+         searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
 
          contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
          contentRetrieverWithFullText =  createFullTextSearchContentRetriever();

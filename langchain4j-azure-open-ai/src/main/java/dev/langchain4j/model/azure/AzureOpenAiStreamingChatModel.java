@@ -274,16 +274,13 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
-            options.setFunctions(toFunctions(singletonList(toolThatMustBeExecuted)));
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
-            }
-        } else if (!isNullOrEmpty(toolSpecifications)) {
-            options.setFunctions(toFunctions(toolSpecifications));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-            }
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+        }
+        if (!isNullOrEmpty(toolSpecifications)) {
+            options.setTools(toToolDefinitions(toolSpecifications));
+            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);

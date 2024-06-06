@@ -82,6 +82,6 @@ class MongoDbEmbeddingStoreCloudIT extends EmbeddingStoreIT {
     @Override
     @SneakyThrows
     protected void awaitUntilPersisted() {
-        Thread.sleep(2000);
+        Thread.sleep(3000);
     }
 }

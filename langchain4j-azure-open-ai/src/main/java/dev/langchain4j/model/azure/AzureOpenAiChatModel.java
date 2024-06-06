@@ -24,6 +24,7 @@ import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
@@ -244,11 +245,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .setSeed(seed)
                 .setResponseFormat(responseFormat);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            options.setFunctions(toFunctions(toolSpecifications));
-        }
         if (toolThatMustBeExecuted != null) {
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+        }
+        if (!isNullOrEmpty(toolSpecifications)) {
+            options.setTools(toToolDefinitions(toolSpecifications));
         }
 
         try {
