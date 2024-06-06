@@ -74,6 +74,8 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         Embedding secondEmbedding = embeddingModel.embed("hi").content();
         embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
 
+        awaitUntilPersisted();
+
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
         assertThat(relevant.get(0).embedding()).isNull();
