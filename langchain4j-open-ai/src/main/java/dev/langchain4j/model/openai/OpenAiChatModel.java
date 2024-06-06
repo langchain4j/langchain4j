@@ -10,9 +10,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
-import dev.langchain4j.model.listener.ModelListener;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.openai.spi.OpenAiChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -23,6 +21,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -54,7 +53,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
-    private final List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners;
+    private final List<ChatModelListener> listeners;
 
     @Builder
     public OpenAiChatModel(String baseUrl,
@@ -78,7 +77,7 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                            Boolean logResponses,
                            Tokenizer tokenizer,
                            Map<String, String> customHeaders,
-                           List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners) {
+                           List<ChatModelListener> listeners) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -163,10 +162,12 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatLanguageModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
         listeners.forEach(listener -> {
             try {
-                listener.onRequest(modelListenerRequest);
+                listener.onRequest(requestContext);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener", e);
             }
@@ -181,14 +182,19 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                     finishReasonFrom(chatCompletionResponse.choices().get(0).finishReason())
             );
 
-            ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
+            ChatModelResponse modelListenerResponse = createModelListenerResponse(
                     chatCompletionResponse.id(),
                     chatCompletionResponse.model(),
                     response
             );
+            ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                    modelListenerResponse,
+                    modelListenerRequest,
+                    attributes
+            );
             listeners.forEach(listener -> {
                 try {
-                    listener.onResponse(modelListenerResponse, modelListenerRequest);
+                    listener.onResponse(responseContext);
                 } catch (Exception e) {
                     log.warn("Exception while calling model listener", e);
                 }
@@ -204,13 +210,21 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
                 error = e;
             }
 
+            ChatModelErrorContext errorContext = new ChatModelErrorContext(
+                    error,
+                    modelListenerRequest,
+                    null,
+                    attributes
+            );
+
             listeners.forEach(listener -> {
                 try {
-                    listener.onError(error, null, modelListenerRequest);
+                    listener.onError(errorContext);
                 } catch (Exception e2) {
                     log.warn("Exception while calling model listener", e2);
                 }
             });
+
             throw e;
         }
     }
