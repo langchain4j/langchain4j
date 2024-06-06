@@ -248,7 +248,7 @@ az cognitiveservices account deployment create \
 echo "Deploying Image Models"
 echo "======================"
 
-echo "Deploying a dall-e-3 model..."
+echo "Deploying a dall-e-2 model..."
 echo "----------------------"
 az cognitiveservices account deployment create \
   --name "$AI_SERVICE" \
