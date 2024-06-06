@@ -55,8 +55,6 @@ public class PgVectorEmbeddingStoreUpgradeIT {
                 .build();
     }
 
-
-
     @Test
     void upgrade() {
 

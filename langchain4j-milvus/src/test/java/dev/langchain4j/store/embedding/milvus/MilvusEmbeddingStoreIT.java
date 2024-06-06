@@ -5,6 +5,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.AfterEach;
@@ -15,6 +16,7 @@ import org.testcontainers.milvus.MilvusContainer;
 
 import java.util.List;
 
+import static io.milvus.common.clientenum.ConsistencyLevelEnum.STRONG;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -24,11 +26,14 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     private static final String COLLECTION_NAME = "test_collection";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.3.1");
+    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.3.16");
 
     MilvusEmbeddingStore embeddingStore = MilvusEmbeddingStore.builder()
             .uri(milvus.getEndpoint())
             .collectionName(COLLECTION_NAME)
+            .consistencyLevel(STRONG)
+            .username(System.getenv("MILVUS_USERNAME"))
+            .password(System.getenv("MILVUS_PASSWORD"))
             .dimension(384)
             .retrieveEmbeddingsOnSearch(true)
             .build();
@@ -57,6 +62,7 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 .host(milvus.getHost())
                 .port(milvus.getMappedPort(19530))
                 .collectionName(COLLECTION_NAME)
+                .consistencyLevel(STRONG)
                 .dimension(384)
                 .retrieveEmbeddingsOnSearch(false)
                 .build();
@@ -65,9 +71,12 @@ class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
         Embedding secondEmbedding = embeddingModel.embed("hi").content();
         embeddingStore.addAll(asList(firstEmbedding, secondEmbedding));
 
-        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore.findRelevant(firstEmbedding, 10);
-        assertThat(relevant).hasSize(2);
-        assertThat(relevant.get(0).embedding()).isNull();
-        assertThat(relevant.get(1).embedding()).isNull();
+        List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(firstEmbedding)
+                .maxResults(10)
+                .build()).matches();
+        assertThat(matches).hasSize(2);
+        assertThat(matches.get(0).embedding()).isNull();
+        assertThat(matches.get(1).embedding()).isNull();
     }
 }

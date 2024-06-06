@@ -27,6 +27,7 @@ import java.util.concurrent.Future;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
 
@@ -117,7 +118,12 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
                         String outputFormatInstructions = outputFormatInstructions(returnType);
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
+                        String text = userMessage.singleText() + outputFormatInstructions;
+                        if (isNotNullOrBlank(userMessage.name())) {
+                            userMessage = UserMessage.from(userMessage.name(), text);
+                        } else {
+                            userMessage = UserMessage.from(text);
+                        }
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
