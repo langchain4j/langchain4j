@@ -10,8 +10,8 @@ import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -283,10 +283,10 @@ public class InternalOpenAiHelper {
         return Response.from(response.content(), null, response.finishReason());
     }
 
-    static ChatLanguageModelRequest createModelListenerRequest(ChatCompletionRequest request,
-                                                               List<ChatMessage> messages,
-                                                               List<ToolSpecification> toolSpecifications) {
-        return ChatLanguageModelRequest.builder()
+    static ChatModelRequest createModelListenerRequest(ChatCompletionRequest request,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
                 .model(request.model())
                 .temperature(request.temperature())
                 .topP(request.topP())
@@ -296,14 +296,14 @@ public class InternalOpenAiHelper {
                 .build();
     }
 
-    static ChatLanguageModelResponse createModelListenerResponse(String responseId,
-                                                                 String responseModel,
-                                                                 Response<AiMessage> response) {
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
         if (response == null) {
             return null;
         }
 
-        return ChatLanguageModelResponse.builder()
+        return ChatModelResponse.builder()
                 .id(responseId)
                 .model(responseModel)
                 .tokenUsage(response.tokenUsage())

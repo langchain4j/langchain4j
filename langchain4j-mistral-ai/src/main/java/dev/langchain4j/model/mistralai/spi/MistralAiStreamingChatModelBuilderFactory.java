@@ -7,5 +7,5 @@ import java.util.function.Supplier;
 /**
  * A factory for building {@link MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder} instances.
  */
-public interface MistralAiStreamingChatModelBuilderFactory extends Supplier<MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder>{
+public interface MistralAiStreamingChatModelBuilderFactory extends Supplier<MistralAiStreamingChatModel.MistralAiStreamingChatModelBuilder> {
 }
