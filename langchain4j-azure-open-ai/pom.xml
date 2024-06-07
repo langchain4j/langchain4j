@@ -41,9 +41,8 @@
         </dependency>
 
         <dependency>
-            <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-open-ai</artifactId>
-            <scope>test</scope>
+            <groupId>com.knuddels</groupId>
+            <artifactId>jtokkit</artifactId>
         </dependency>
 
         <dependency>

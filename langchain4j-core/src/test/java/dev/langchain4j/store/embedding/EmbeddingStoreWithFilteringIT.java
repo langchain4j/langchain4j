@@ -8,6 +8,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -29,21 +30,29 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                    List<Metadata> matchingMetadatas,
                                    List<Metadata> notMatchingMetadatas) {
         // given
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> segments = new ArrayList<>();
+
         for (Metadata matchingMetadata : matchingMetadatas) {
             TextSegment matchingSegment = TextSegment.from("matching", matchingMetadata);
             Embedding matchingEmbedding = embeddingModel().embed(matchingSegment).content();
-            embeddingStore().add(matchingEmbedding, matchingSegment);
+            embeddings.add(matchingEmbedding);
+            segments.add(matchingSegment);
         }
 
         for (Metadata notMatchingMetadata : notMatchingMetadatas) {
             TextSegment notMatchingSegment = TextSegment.from("not matching", notMatchingMetadata);
             Embedding notMatchingEmbedding = embeddingModel().embed(notMatchingSegment).content();
-            embeddingStore().add(notMatchingEmbedding, notMatchingSegment);
+            embeddings.add(notMatchingEmbedding);
+            segments.add(notMatchingSegment);
         }
 
         TextSegment notMatchingSegmentWithoutMetadata = TextSegment.from("not matching, without metadata");
-        Embedding notMatchingWithoutMetadataEmbedding = embeddingModel().embed(notMatchingSegmentWithoutMetadata).content();
-        embeddingStore().add(notMatchingWithoutMetadataEmbedding, notMatchingSegmentWithoutMetadata);
+        Embedding notMatchingEmbeddingWithoutMetadata = embeddingModel().embed(notMatchingSegmentWithoutMetadata).content();
+        embeddings.add(notMatchingEmbeddingWithoutMetadata);
+        segments.add(notMatchingSegmentWithoutMetadata);
+
+        embeddingStore().addAll(embeddings, segments);
 
         awaitUntilPersisted();
 
@@ -1138,21 +1147,29 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                        List<Metadata> matchingMetadatas,
                                        List<Metadata> notMatchingMetadatas) {
         // given
+        List<Embedding> embeddings = new ArrayList<>();
+        List<TextSegment> segments = new ArrayList<>();
+
         for (Metadata matchingMetadata : matchingMetadatas) {
             TextSegment matchingSegment = TextSegment.from("matching", matchingMetadata);
             Embedding matchingEmbedding = embeddingModel().embed(matchingSegment).content();
-            embeddingStore().add(matchingEmbedding, matchingSegment);
+            embeddings.add(matchingEmbedding);
+            segments.add(matchingSegment);
         }
 
         for (Metadata notMatchingMetadata : notMatchingMetadatas) {
             TextSegment notMatchingSegment = TextSegment.from("not matching", notMatchingMetadata);
             Embedding notMatchingEmbedding = embeddingModel().embed(notMatchingSegment).content();
-            embeddingStore().add(notMatchingEmbedding, notMatchingSegment);
+            embeddings.add(notMatchingEmbedding);
+            segments.add(notMatchingSegment);
         }
 
         TextSegment notMatchingSegmentWithoutMetadata = TextSegment.from("matching");
-        Embedding notMatchingWithoutMetadataEmbedding = embeddingModel().embed(notMatchingSegmentWithoutMetadata).content();
-        embeddingStore().add(notMatchingWithoutMetadataEmbedding, notMatchingSegmentWithoutMetadata);
+        Embedding notMatchingEmbeddingWithoutMetadata = embeddingModel().embed(notMatchingSegmentWithoutMetadata).content();
+        embeddings.add(notMatchingEmbeddingWithoutMetadata);
+        segments.add(notMatchingSegmentWithoutMetadata);
+
+        embeddingStore().addAll(embeddings, segments);
 
         awaitUntilPersisted();
 
