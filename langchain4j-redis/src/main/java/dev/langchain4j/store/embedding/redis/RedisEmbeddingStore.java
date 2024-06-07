@@ -60,7 +60,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotNull(port, "port");
         ensureNotNull(dimension, "dimension");
 
-        this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
+        this.client = Objects.isNull(password) ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
