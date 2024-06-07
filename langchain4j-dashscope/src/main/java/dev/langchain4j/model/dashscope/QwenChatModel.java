@@ -1,8 +1,8 @@
 package dev.langchain4j.model.dashscope;
 
 import com.alibaba.dashscope.aigc.generation.Generation;
+import com.alibaba.dashscope.aigc.generation.GenerationParam;
 import com.alibaba.dashscope.aigc.generation.GenerationResult;
-import com.alibaba.dashscope.aigc.generation.models.QwenParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversation;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationParam;
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
@@ -24,6 +24,10 @@ import static com.alibaba.dashscope.aigc.conversation.ConversationParam.ResultFo
 import static dev.langchain4j.model.dashscope.QwenHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+/**
+ * Represents a Qwen language model with a chat completion interface.
+ * More details are available <a href="https://help.aliyun.com/zh/dashscope/developer-reference/api-details">here</a>.
+ */
 public class QwenChatModel implements ChatLanguageModel {
     private final String apiKey;
     private final String modelName;
@@ -85,7 +89,7 @@ public class QwenChatModel implements ChatLanguageModel {
 
     private Response<AiMessage> generateByNonMultimodalModel(List<ChatMessage> messages) {
         try {
-            QwenParam.QwenParamBuilder<?, ?> builder = QwenParam.builder()
+            GenerationParam.GenerationParamBuilder<?, ?> builder = GenerationParam.builder()
                     .apiKey(apiKey)
                     .model(modelName)
                     .topP(topP)
