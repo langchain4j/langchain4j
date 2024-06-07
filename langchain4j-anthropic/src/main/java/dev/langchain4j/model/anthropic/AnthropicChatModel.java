@@ -34,6 +34,11 @@ import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitize
  * <br>
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
  * If there are multiple {@link SystemMessage}s, they are concatenated with a double newline (\n\n).
+ * <br>
+ * <br>
+ * Sanitization is performed on the {@link ChatMessage}s provided to conform to Anthropic API requirements. This process
+ * includes verifying that the first message is a {@link UserMessage} and removing any consecutive {@link UserMessage}s.
+ * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  */
 public class AnthropicChatModel implements ChatLanguageModel {
 
