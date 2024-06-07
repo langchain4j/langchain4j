@@ -12,9 +12,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
-import dev.langchain4j.model.chat.listener.ChatLanguageModelRequest;
-import dev.langchain4j.model.chat.listener.ChatLanguageModelResponse;
-import dev.langchain4j.model.listener.ModelListener;
+import dev.langchain4j.model.chat.listener.*;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -25,6 +23,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.*;
@@ -57,7 +56,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
     private final String user;
     private final Tokenizer tokenizer;
     private final boolean isOpenAiModel;
-    private final List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners;
+    private final List<ChatModelListener> listeners;
 
     @Builder
     public OpenAiStreamingChatModel(String baseUrl,
@@ -80,7 +79,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                                     Boolean logResponses,
                                     Tokenizer tokenizer,
                                     Map<String, String> customHeaders,
-                                    List<ModelListener<ChatLanguageModelRequest, ChatLanguageModelResponse>> listeners) {
+                                    List<ChatModelListener> listeners) {
 
         timeout = getOrDefault(timeout, ofSeconds(60));
 
@@ -162,10 +161,12 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         ChatCompletionRequest request = requestBuilder.build();
 
-        ChatLanguageModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        ChatModelRequest modelListenerRequest = createModelListenerRequest(request, messages, toolSpecifications);
+        Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        ChatModelRequestContext requestContext = new ChatModelRequestContext(modelListenerRequest, attributes);
         listeners.forEach(listener -> {
             try {
-                listener.onRequest(modelListenerRequest);
+                listener.onRequest(requestContext);
             } catch (Exception e) {
                 log.warn("Exception while calling model listener", e);
             }
@@ -192,14 +193,19 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .onComplete(() -> {
                     Response<AiMessage> response = createResponse(responseBuilder, toolThatMustBeExecuted);
 
-                    ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatModelResponse modelListenerResponse = createModelListenerResponse(
                             responseId.get(),
                             responseModel.get(),
                             response
                     );
+                    ChatModelResponseContext responseContext = new ChatModelResponseContext(
+                            modelListenerResponse,
+                            modelListenerRequest,
+                            attributes
+                    );
                     listeners.forEach(listener -> {
                         try {
-                            listener.onResponse(modelListenerResponse, modelListenerRequest);
+                            listener.onResponse(responseContext);
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }
@@ -210,14 +216,22 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
                 .onError(error -> {
                     Response<AiMessage> response = createResponse(responseBuilder, toolThatMustBeExecuted);
 
-                    ChatLanguageModelResponse modelListenerResponse = createModelListenerResponse(
+                    ChatModelResponse modelListenerPartialResponse = createModelListenerResponse(
                             responseId.get(),
                             responseModel.get(),
                             response
                     );
+
+                    ChatModelErrorContext errorContext = new ChatModelErrorContext(
+                            error,
+                            modelListenerRequest,
+                            modelListenerPartialResponse,
+                            attributes
+                    );
+
                     listeners.forEach(listener -> {
                         try {
-                            listener.onError(error, modelListenerResponse, modelListenerRequest);
+                            listener.onError(errorContext);
                         } catch (Exception e) {
                             log.warn("Exception while calling model listener", e);
                         }
