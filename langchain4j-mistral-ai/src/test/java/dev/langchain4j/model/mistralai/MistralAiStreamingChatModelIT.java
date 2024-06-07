@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiResponseFormatType;
@@ -15,6 +16,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -488,5 +492,24 @@ class MistralAiStreamingChatModelIT {
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
+    }
+
+    @Test
+    void bugfix_1218_allow_blank() {
+        // given
+        StreamingChatLanguageModel model = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .modelName(MistralAiChatModelName.MISTRAL_SMALL_LATEST)
+                .temperature(0d)
+                .build();
+
+        String userMessage = "What was inflation rate in germany in 2020? Answer in 1 short sentence. Begin your answer with 'In 2020, ...'";
+
+        // when
+        TestStreamingResponseHandler<AiMessage> responseHandler = new TestStreamingResponseHandler<>();
+        model.generate(userMessage, responseHandler);
+
+        // results in: "In2020, Germany's inflation rate was0.5%."
+        assertThat(responseHandler.get().content().text()).containsIgnoringCase("In 2020");
     }
 }
