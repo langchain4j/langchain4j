@@ -11,12 +11,27 @@ import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPooled;
 import redis.clients.jedis.Pipeline;
 import redis.clients.jedis.json.Path2;
-import redis.clients.jedis.search.*;
+import redis.clients.jedis.search.Document;
+import redis.clients.jedis.search.FTCreateParams;
+import redis.clients.jedis.search.IndexDataType;
+import redis.clients.jedis.search.IndexDefinition;
+import redis.clients.jedis.search.Query;
+import redis.clients.jedis.search.SearchResult;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
-import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static dev.langchain4j.store.embedding.redis.RedisSchema.SCORE_FIELD_NAME;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -60,7 +75,12 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureNotNull(port, "port");
         ensureNotNull(dimension, "dimension");
 
-        this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
+        if (password != null) {
+            ensureNotBlank(password, "password");
+            this.client = new JedisPooled(host, port, user, password);
+        } else {
+            this.client = new JedisPooled(host, port);
+        }
         this.schema = RedisSchema.builder()
                 .indexName(getOrDefault(indexName, "embedding-index"))
                 .dimension(dimension)
