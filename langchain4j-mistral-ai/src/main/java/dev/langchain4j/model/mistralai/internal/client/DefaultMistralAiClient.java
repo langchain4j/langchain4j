@@ -133,7 +133,7 @@ public class DefaultMistralAiClient extends MistralAiClient {
                         MistralAiChatCompletionChoice choice = chatCompletionResponse.getChoices().get(0);
 
                         String chunk = choice.getDelta().getContent();
-                        if (isNotNullOrBlank(chunk)) {
+                        if (isNotNullOrEmpty(chunk)) {
                             contentBuilder.append(chunk);
                             handler.onNext(chunk);
                         }
