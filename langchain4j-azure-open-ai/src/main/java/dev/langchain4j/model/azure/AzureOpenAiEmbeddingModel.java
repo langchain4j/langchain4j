@@ -174,7 +174,7 @@ public class AzureOpenAiEmbeddingModel extends AbstractEmbeddingModel implements
 
     @Override
     protected Map<String, Integer> dimensionMap() {
-        return AzureOpenAiModelName.embeddingModelDimensionMap();
+        return AzureOpenAiEmbeddingModelName.embeddingModelDimensionMap();
     }
 
     @Override
