@@ -131,10 +131,12 @@ public class QwenChatModel implements ChatLanguageModel {
             }
 
             GenerationResult generationResult = generation.call(builder.build());
-            String answer = answerFrom(generationResult);
 
-            return Response.from(AiMessage.from(answer),
-                    tokenUsageFrom(generationResult), finishReasonFrom(generationResult));
+            return Response.from(
+                    aiMessageFrom(generationResult),
+                    tokenUsageFrom(generationResult),
+                    finishReasonFrom(generationResult)
+            );
         } catch (NoApiKeyException | InputRequiredException e) {
             throw new RuntimeException(e);
         }

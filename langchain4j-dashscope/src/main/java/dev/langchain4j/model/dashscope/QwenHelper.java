@@ -7,11 +7,9 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationO
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
-import com.alibaba.dashscope.tools.FunctionDefinition;
-import com.alibaba.dashscope.tools.ToolBase;
-import com.alibaba.dashscope.tools.ToolChoice;
-import com.alibaba.dashscope.tools.ToolFunction;
+import com.alibaba.dashscope.tools.*;
 import com.alibaba.dashscope.utils.JsonUtils;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import com.google.gson.JsonObject;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -339,5 +337,42 @@ class QwenHelper {
         public ToolChoiceFunction(String name) {
             this.name = name;
         }
+    }
+
+    static AiMessage aiMessageFrom(GenerationResult result) {
+        return isFunctionToolCalls(result) ?
+                new AiMessage(functionToolCallsFrom(result)) : new AiMessage(answerFrom(result));
+    }
+
+    private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {
+        List<ToolCallBase> toolCalls = Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls)
+                .orElseThrow(IllegalStateException::new);
+
+        return toolCalls.stream()
+                .filter(toolCall -> toolCall instanceof ToolCallFunction)
+                .map(toolCall -> (ToolCallFunction) toolCall)
+                .map(toolCall -> ToolExecutionRequest.builder()
+                        .id(toolCall.getId())
+                        .name(toolCall.getFunction().getName())
+                        .arguments(toolCall.getFunction().getArguments())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    static boolean isFunctionToolCalls(GenerationResult result) {
+        Optional<List<ToolCallBase>> toolCallBases = Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls);
+        return toolCallBases.isPresent() && !isNullOrEmpty(toolCallBases.get());
     }
 }
