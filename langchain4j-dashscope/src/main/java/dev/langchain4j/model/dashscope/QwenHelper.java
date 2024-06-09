@@ -7,9 +7,18 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationO
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
+import com.alibaba.dashscope.tools.FunctionDefinition;
+import com.alibaba.dashscope.tools.ToolBase;
+import com.alibaba.dashscope.tools.ToolChoice;
+import com.alibaba.dashscope.tools.ToolFunction;
+import com.alibaba.dashscope.utils.JsonUtils;
+import com.google.gson.JsonObject;
+import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
+import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 
@@ -23,6 +32,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.common.Role.*;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.stream.Collectors.toList;
@@ -84,7 +94,7 @@ class QwenHelper {
     static List<Map<String, Object>> toMultiModalContents(ChatMessage message) {
         switch (message.type()) {
             case USER:
-                return((UserMessage) message).contents()
+                return ((UserMessage) message).contents()
                         .stream()
                         .map(QwenHelper::toMultiModalContent)
                         .collect(Collectors.toList());
@@ -268,5 +278,66 @@ class QwenHelper {
     public static boolean isMultimodalModel(String modelName) {
         // for now, multimodal models start with "qwen-vl"
         return modelName.startsWith("qwen-vl");
+    }
+
+    /**
+     * build ToolFunction(ToolBase) coll from ToolSpecification coll
+     *
+     * @param toolSpecifications {@link ToolSpecification}
+     * @return {@link ToolFunction}
+     */
+    static List<ToolBase> toToolFunctions(Collection<ToolSpecification> toolSpecifications) {
+        if (isNullOrEmpty(toolSpecifications)) {
+            return Collections.emptyList();
+        }
+
+        return toolSpecifications.stream()
+                .map(tool -> FunctionDefinition
+                        .builder()
+                        .name(tool.name())
+                        .description(tool.description())
+                        .parameters(toParameters(tool.parameters()))
+                        .build()
+                )
+                .map(definition -> (ToolBase) ToolFunction
+                        .builder()
+                        .function(definition)
+                        .build()
+                )
+                .collect(Collectors.toList());
+    }
+
+    private static JsonObject toParameters(ToolParameters toolParameters) {
+        QwenParameters qwenParameters = QwenParameters.from(toolParameters);
+        return JsonUtils.parseString(JsonUtils.toJson(qwenParameters)).getAsJsonObject();
+    }
+
+    /**
+     * Because of the interface definition, only implement the strategy of "must be called" here.{@link ChatLanguageModel}
+     *
+     * @param toolThatMustBeExecuted {@link ToolSpecification}
+     * @return tool choice strategy
+     * More details are available <a href="https://help.aliyun.com/zh/dashscope/developer-reference/api-details">here</a>.
+     */
+    static ToolChoiceStrategy buildToolChoiceStrategy(ToolSpecification toolThatMustBeExecuted) {
+        return new ToolChoiceStrategy(new ToolChoiceFunction(toolThatMustBeExecuted.name()));
+    }
+
+    private static class ToolChoiceStrategy {
+        private final String type = "function";
+
+        private final ToolChoiceFunction function;
+
+        public ToolChoiceStrategy(ToolChoiceFunction function) {
+            this.function = function;
+        }
+    }
+
+    private static class ToolChoiceFunction {
+        private final String name;
+
+        public ToolChoiceFunction(String name) {
+            this.name = name;
+        }
     }
 }
