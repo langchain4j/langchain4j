@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.Response;
 
 import java.util.List;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static java.util.Arrays.asList;
 
 /**
@@ -79,5 +80,30 @@ public interface ChatLanguageModel {
      */
     default Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
+    }
+
+    /**
+     * TODO
+     *
+     * @param request
+     * @return
+     */
+    default ChatModelResult generate(ChatModelRequest request) { // TODO names
+        if (request.parameters() != null) {
+            throw new UnsupportedOperationException(""); // TODO
+        }
+
+        Response<AiMessage> response;
+        if (isNullOrEmpty(request.toolSpecifications())) {
+            response = generate(request.messages());
+        } else {
+            response = generate(request.messages(), request.toolSpecifications());
+        }
+
+        return ChatModelResult.builder()
+                .aiMessage(response.content())
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .build();
     }
 }
