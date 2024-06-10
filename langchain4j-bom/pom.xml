@@ -17,10 +17,6 @@
     <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules
     </description>
 
-    <properties>
-        <tinylog.version>2.6.2</tinylog.version>
-    </properties>
-
     <dependencyManagement>
         <dependencies>
 
