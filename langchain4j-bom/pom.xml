@@ -14,7 +14,12 @@
     <packaging>pom</packaging>
 
     <name>LangChain4j :: BOM</name>
-    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules</description>
+    <description>Bill of Materials POM for getting full, complete set of compatible versions of LangChain4j modules
+    </description>
+
+    <properties>
+        <tinylog.version>2.6.2</tinylog.version>
+    </properties>
 
     <dependencyManagement>
         <dependencies>
@@ -411,6 +416,19 @@
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-experimental-sql</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <!-- other -->
+            
+            <dependency>
+                <groupId>org.tinylog</groupId>
+                <artifactId>tinylog-impl</artifactId>
+                <version>${tinylog.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.tinylog</groupId>
+                <artifactId>slf4j-tinylog</artifactId>
+                <version>${tinylog.version}</version>
             </dependency>
 
         </dependencies>
