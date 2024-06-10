@@ -4,6 +4,11 @@ sidebar_position: 2
 
 # Chat and Language Models
 
+:::note
+This page describes a low-level LLM API.
+See [AI Services](/tutorials/ai-services) for a high-level LLM API.
+:::
+
 LLMs are currently available in two API types:
 - `LanguageModel`s. Their API is very simple - they accept a `String` as input and return a `String` as output.
 This API is now becoming obsolete in favor of chat API (second API type).
