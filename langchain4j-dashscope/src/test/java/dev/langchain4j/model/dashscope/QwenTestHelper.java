@@ -49,6 +49,12 @@ public class QwenTestHelper {
         );
     }
 
+    public static Stream<Arguments> functionCallChatModelNameProvider() {
+        return Stream.of(
+                Arguments.of(QwenModelName.QWEN_MAX)
+        );
+    }
+
     public static Stream<Arguments> multimodalChatModelNameProvider() {
         return Stream.of(
                 Arguments.of(QwenModelName.QWEN_VL_PLUS),
