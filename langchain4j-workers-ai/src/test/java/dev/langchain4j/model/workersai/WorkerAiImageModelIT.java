@@ -4,7 +4,6 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -16,7 +15,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Base64;
 
-@Disabled("Requires a Workers ai account")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
 class WorkerAiImageModelIT {
@@ -26,10 +24,10 @@ class WorkerAiImageModelIT {
     @BeforeAll
     static void initializeModel() {
         imageModel = WorkersAiImageModel.builder()
-                .modelName(WorkersAiModelName.STABLE_DIFFUSION_XL)
-                .accountIdentifier(System.getenv("WORKERS_AI_ACCOUNT_ID"))
-                .token(System.getenv("WORKERS_AI_API_KEY"))
-                .buildImageModel();
+                .modelName(WorkersAiImageModelName.STABLE_DIFFUSION_XL.toString())
+                .accountId(System.getenv("WORKERS_AI_ACCOUNT_ID"))
+                .apiToken(System.getenv("WORKERS_AI_API_KEY"))
+                .build();
     }
 
     @Test

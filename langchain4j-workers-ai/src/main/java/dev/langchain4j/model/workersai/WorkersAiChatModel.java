@@ -8,6 +8,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiChatCompletionRequest;
+import dev.langchain4j.model.workersai.spi.WorkersAiChatModelBuilderFactory;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,6 +16,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * WorkerAI Chat model.
@@ -30,7 +33,103 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
      *      builder.
      */
     public WorkersAiChatModel(Builder builder) {
-       super(builder);
+       this(builder.accountId, builder.modelName, builder.apiToken);
+    }
+
+    /**
+     * Constructor with Builder.
+     *
+     * @param accountId
+     *      account identifier
+     * @param modelName
+     *      model name
+     * @param apiToken
+     *     api token
+     */
+    public WorkersAiChatModel(String accountId, String modelName, String apiToken) {
+        super(accountId, modelName, apiToken);
+    }
+
+    /**
+     * Builder access.
+     *
+     * @return
+     *      builder instance
+     */
+    public static Builder builder() {
+        for (WorkersAiChatModelBuilderFactory factory : loadFactories(WorkersAiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new Builder();
+    }
+
+    /**
+     * Internal Builder.
+     */
+    public static class Builder {
+
+        /**
+         * Account identifier, provided by the WorkerAI platform.
+         */
+        public String accountId;
+        /**
+         * ModelName, preferred as enum for extensibility.
+         */
+        public String apiToken;
+        /**
+         * ModelName, preferred as enum for extensibility.
+         */
+        public String modelName;
+
+        /**
+         * Simple constructor.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Simple constructor.
+         *
+         * @param accountId
+         *      account identifier.
+         * @return
+         *      self reference
+         */
+        public Builder accountId(String accountId) {
+            this.accountId = accountId;
+            return this;
+        }
+
+        /**
+         * Sets the apiToken for the Worker AI model builder.
+         *
+         * @param apiToken The apiToken to set.
+         * @return The current instance of {@link Builder}.
+         */
+        public Builder apiToken(String apiToken) {
+            this.apiToken = apiToken;
+            return this;
+        }
+
+        /**
+         * Sets the model name for the Worker AI model builder.
+         *
+         * @param modelName The name of the model to set.
+         * @return The current instance of {@link Builder}.
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        /**
+         * Builds a new instance of Worker AI Chat Model.
+         *
+         * @return A new instance of {@link WorkersAiChatModel}.
+         */
+        public WorkersAiChatModel build() {
+            return new WorkersAiChatModel(this);
+        }
     }
 
     /** {@inheritDoc} */
@@ -92,7 +191,7 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
     private String generate(WorkersAiChatCompletionRequest req) {
         try {
             retrofit2.Response<dev.langchain4j.model.workersai.client.WorkersAiChatCompletionResponse> retrofitResponse = workerAiClient
-                    .generateChat(req, accountIdentifier, modelName)
+                    .generateChat(req, accountId, modelName)
                     .execute();
             processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
             if (retrofitResponse.body() == null) {
@@ -103,6 +202,5 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatLa
             throw new RuntimeException(e);
         }
     }
-
 
 }

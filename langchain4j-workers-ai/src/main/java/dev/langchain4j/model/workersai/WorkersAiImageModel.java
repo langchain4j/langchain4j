@@ -6,13 +6,10 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
+import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
 import okhttp3.ResponseBody;
 
 import javax.imageio.ImageIO;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -21,6 +18,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.Base64;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * WorkerAI Image model.
@@ -39,7 +40,103 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      *      builder.
      */
     public WorkersAiImageModel(Builder builder) {
-        super(builder);
+        this(builder.accountId, builder.modelName, builder.apiToken);
+    }
+
+    /**
+     * Constructor with Builder.
+     *
+     * @param accountId
+     *      account identifier
+     * @param modelName
+     *      model name
+     * @param apiToken
+     *     api token
+     */
+    public WorkersAiImageModel(String accountId, String modelName, String apiToken) {
+        super(accountId, modelName, apiToken);
+    }
+
+    /**
+     * Builder access.
+     *
+     * @return
+     *      builder instance
+     */
+    public static Builder builder() {
+        for (WorkersAiImageModelBuilderFactory factory : loadFactories(WorkersAiImageModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new WorkersAiImageModel.Builder();
+    }
+
+    /**
+     * Internal Builder.
+     */
+    public static class Builder {
+
+        /**
+         * Account identifier, provided by the WorkerAI platform.
+         */
+        public String accountId;
+        /**
+         * ModelName, preferred as enum for extensibility.
+         */
+        public String apiToken;
+        /**
+         * ModelName, preferred as enum for extensibility.
+         */
+        public String modelName;
+
+        /**
+         * Simple constructor.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Simple constructor.
+         *
+         * @param accountId
+         *      account identifier.
+         * @return
+         *      self reference
+         */
+        public Builder accountId(String accountId) {
+            this.accountId = accountId;
+            return this;
+        }
+
+        /**
+         * Sets the apiToken for the Worker AI model builder.
+         *
+         * @param apiToken The apiToken to set.
+         * @return The current instance of {@link WorkersAiChatModel.Builder}.
+         */
+        public Builder apiToken(String apiToken) {
+            this.apiToken = apiToken;
+            return this;
+        }
+
+        /**
+         * Sets the model name for the Worker AI model builder.
+         *
+         * @param modelName The name of the model to set.
+         * @return The current instance of {@link WorkersAiChatModel.Builder}.
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        /**
+         * Builds a new instance of Worker AI Chat Model.
+         *
+         * @return A new instance of {@link WorkersAiChatModel}.
+         */
+        public WorkersAiImageModel build() {
+            return new WorkersAiImageModel(this);
+        }
     }
 
     /** {@inheritDoc} */
@@ -103,21 +200,18 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
             if (image != null) {
                 if (image.url() != null) {
                     imgReq.setImage(getPixels(image.url().toURL()));
-                    System.out.println("Adding Image");
                 }
             }
             if (mask != null) {
                 if (mask.url() != null) {
                     imgReq.setMask(getPixels(mask.url().toURL()));
-                    System.out.println("Adding mask");
                 }
             }
 
             retrofit2.Response<ResponseBody> response = workerAiClient
-                    .generateImage(imgReq, accountIdentifier, modelName)
+                    .generateImage(imgReq, accountId, modelName)
                     .execute();
 
-            System.out.println(response.code() + " " + response.message());
             if (response.isSuccessful() && response.body() != null) {
                 InputStream inputStream = response.body().byteStream();
                 ByteArrayOutputStream buffer = new ByteArrayOutputStream();
@@ -135,6 +229,15 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         }
     }
 
+    /**
+     * Convert an image into a array of number, supposedly the Pixels.
+     * @param imageUrl
+     *      current image URL
+     * @return
+     *      pixels of the image
+     * @throws Exception
+     *      return an exception if pixel not returned
+     */
     public int[] getPixels(URL imageUrl) throws Exception {
         BufferedImage image = ImageIO.read(imageUrl);
 

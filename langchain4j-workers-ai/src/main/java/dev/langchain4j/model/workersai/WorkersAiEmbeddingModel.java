@@ -6,10 +6,11 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
+import dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse;
+import dev.langchain4j.model.workersai.spi.WorkersAiEmbeddingModelBuilderFactory;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -17,6 +18,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * WorkerAI Embedding model.
@@ -32,22 +35,103 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      *      builder.
      */
     public WorkersAiEmbeddingModel(Builder builder) {
-        super(builder);
+        this(builder.accountId, builder.modelName, builder.apiToken);
     }
 
     /**
-     * Simple constructor.
+     * Constructor with Builder.
      *
-     * @param accountIdentifier
-     *      account identifier.
+     * @param accountId
+     *      account identifier
      * @param modelName
-     *      model name.
-     * @param token
-     *      api token from .
+     *      model name
+     * @param apiToken
+     *     api token
      */
-    @SuppressWarnings("unused")
-    public WorkersAiEmbeddingModel(String accountIdentifier, String modelName, String token) {
-        super(accountIdentifier, modelName, token);
+    public WorkersAiEmbeddingModel(String accountId, String modelName, String apiToken) {
+        super(accountId, modelName, apiToken);
+    }
+
+    /**
+     * Builder access.
+     *
+     * @return
+     *      builder instance
+     */
+    public static Builder builder() {
+        for (WorkersAiEmbeddingModelBuilderFactory factory : loadFactories(WorkersAiEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new WorkersAiEmbeddingModel.Builder();
+    }
+
+    /**
+     * Internal Builder.
+     */
+    public static class Builder {
+
+        /**
+         * Account identifier, provided by the WorkerAI platform.
+         */
+        public String accountId;
+        /**
+         * ModelName, preferred as enum for extensibility.
+         */
+        public String apiToken;
+        /**
+         * ModelName, preferred as enum for extensibility.
+         */
+        public String modelName;
+
+        /**
+         * Simple constructor.
+         */
+        public Builder() {
+        }
+
+        /**
+         * Simple constructor.
+         *
+         * @param accountId
+         *      account identifier.
+         * @return
+         *      self reference
+         */
+        public Builder accountId(String accountId) {
+            this.accountId = accountId;
+            return this;
+        }
+
+        /**
+         * Sets the apiToken for the Worker AI model builder.
+         *
+         * @param apiToken The apiToken to set.
+         * @return The current instance of {@link WorkersAiChatModel.Builder}.
+         */
+        public Builder apiToken(String apiToken) {
+            this.apiToken = apiToken;
+            return this;
+        }
+
+        /**
+         * Sets the model name for the Worker AI model builder.
+         *
+         * @param modelName The name of the model to set.
+         * @return The current instance of {@link WorkersAiChatModel.Builder}.
+         */
+        public Builder modelName(String modelName) {
+            this.modelName = modelName;
+            return this;
+        }
+
+        /**
+         * Builds a new instance of Worker AI Chat Model.
+         *
+         * @return A new instance of {@link WorkersAiChatModel}.
+         */
+        public WorkersAiEmbeddingModel build() {
+            return new WorkersAiEmbeddingModel(this);
+        }
     }
 
     /** {@inheritDoc} */
@@ -58,7 +142,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
             req.getText().add(text);
 
             retrofit2.Response<dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse> retrofitResponse = workerAiClient
-                    .embed(req, accountIdentifier, modelName)
+                    .embed(req, accountId, modelName)
                     .execute();
 
             processErrors(retrofitResponse.body(), retrofitResponse.errorBody());
@@ -98,7 +182,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
             final int chunkSize = 100;
             for (int i = 0; i < textSegments.size(); i += chunkSize) {
                 List<TextSegment> chunk = textSegments.subList(i, Math.min(textSegments.size(), i + chunkSize));
-                Future<List<Embedding>> future = executor.submit(() -> processChunk(chunk, accountIdentifier, modelName));
+                Future<List<Embedding>> future = executor.submit(() -> processChunk(chunk, accountId, modelName));
                 futures.add(future);
             }
             // Wait for all futures to complete and collect results
@@ -148,7 +232,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         if (retrofitResponse.body() == null) {
             throw new RuntimeException("Unexpected response: " + retrofitResponse);
         }
-        dev.langchain4j.model.workersai.client.WorkersAiEmbeddingResponse.EmbeddingResult res = retrofitResponse.body().getResult();
+        WorkersAiEmbeddingResponse.EmbeddingResult res = retrofitResponse.body().getResult();
 
         List<List<Float>> embeddings = res.getData();
         List<Embedding> embeddingsList = new ArrayList<>();

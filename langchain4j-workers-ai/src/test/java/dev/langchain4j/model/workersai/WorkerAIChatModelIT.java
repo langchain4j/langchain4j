@@ -7,7 +7,6 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -17,9 +16,9 @@ import java.util.List;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.workersai.WorkersAiChatModelName.LLAMA2_7B_FULL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("Requires a Workers ai account")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
 class WorkerAIChatModelIT {
@@ -29,10 +28,10 @@ class WorkerAIChatModelIT {
     @BeforeAll
     static void initializeModel() {
         chatModel = WorkersAiChatModel.builder()
-                .modelName(WorkersAiModelName.LLAMA2_7B_FULL)
-                .accountIdentifier(System.getenv("WORKERS_AI_ACCOUNT_ID"))
-                .token(System.getenv("WORKERS_AI_API_KEY"))
-                .buildChatModel();
+                .modelName(LLAMA2_7B_FULL.toString())
+                .accountId(System.getenv("WORKERS_AI_ACCOUNT_ID"))
+                .apiToken(System.getenv("WORKERS_AI_API_KEY"))
+                .build();
     }
 
     @Test

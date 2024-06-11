@@ -26,14 +26,14 @@ public class WorkersAiClient {
     /**
      * Initialization of okHTTP.
      *
-     * @param authToken
+     * @param apiToken
      *      authorization token
      * @return
      *      api
      */
-    public static WorkersAiApi createService(String authToken) {
+    public static WorkersAiApi createService(String apiToken) {
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(new AuthInterceptor(authToken))
+                .addInterceptor(new AuthInterceptor(apiToken))
                 // Slow but can be needed for images
                 .callTimeout(Duration.ofSeconds(30))
                 .readTimeout(Duration.ofSeconds(30))
@@ -53,15 +53,15 @@ public class WorkersAiClient {
      * Implements the {@link Interceptor} interface.
      */
     public static class AuthInterceptor implements Interceptor {
-        private final String authToken;
+        private final String apiToken;
 
         /**
          * Constructs an AuthInterceptor with a specified authorization token.
          *
-         * @param authToken The authorization token to be used in HTTP headers.
+         * @param apiToken The authorization token to be used in HTTP headers.
          */
-        public AuthInterceptor(String authToken) {
-            this.authToken = authToken;
+        public AuthInterceptor(String apiToken) {
+            this.apiToken = apiToken;
         }
 
         /**
@@ -76,7 +76,7 @@ public class WorkersAiClient {
         public Response intercept(Chain chain) throws IOException {
             Request.Builder builder = chain
                     .request().newBuilder()
-                    .header("Authorization", "Bearer " + authToken);
+                    .header("Authorization", "Bearer " + apiToken);
             Request request = builder.build();
             return chain.proceed(request);
         }

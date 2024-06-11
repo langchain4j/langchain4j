@@ -6,14 +6,12 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@Disabled("Requires a Workers ai account")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
 class WorkerAIEmbeddingModelIT {
@@ -23,10 +21,10 @@ class WorkerAIEmbeddingModelIT {
     @BeforeAll
     static void initializeModel() {
         embeddingModel = WorkersAiEmbeddingModel.builder()
-                .modelName(WorkersAiModelName.BAAI_EMBEDDING_BASE)
-                .accountIdentifier(System.getenv("WORKERS_AI_ACCOUNT_ID"))
-                .token(System.getenv("WORKERS_AI_API_KEY"))
-                .buildEmbeddingModel();
+                .modelName(WorkersAiEmbeddingModelName.BAAI_EMBEDDING_BASE.toString())
+                .accountId(System.getenv("WORKERS_AI_ACCOUNT_ID"))
+                .apiToken(System.getenv("WORKERS_AI_API_KEY"))
+                .build();
     }
 
     @Test
@@ -42,5 +40,6 @@ class WorkerAIEmbeddingModelIT {
         data.add(new TextSegment("Sentence2", new Metadata()));
         Response<List<Embedding>> out = embeddingModel.embedAll(data);
         Assertions.assertNotNull(out.content());
+        Assertions.assertEquals(2, out.content().size());
     }
 }
