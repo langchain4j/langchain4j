@@ -87,24 +87,28 @@ public class QwenChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        return isMultimodalModel ? generateByMultimodalModel(messages) : generateByNonMultimodalModel(messages, null, null);
+        return isMultimodalModel ?
+                generateByMultimodalModel(messages, null, null) :
+                generateByNonMultimodalModel(messages, null, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        return generateByNonMultimodalModel(messages, toolSpecifications, null);
+        return isMultimodalModel ?
+                generateByMultimodalModel(messages, toolSpecifications, null) :
+                generateByNonMultimodalModel(messages, toolSpecifications, null);
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, ToolSpecification toolSpecification) {
-        return generateByNonMultimodalModel(messages, null, toolSpecification);
+        return isMultimodalModel ?
+                generateByMultimodalModel(messages, null, toolSpecification) :
+                generateByNonMultimodalModel(messages, null, toolSpecification);
     }
 
-    private Response<AiMessage> generateByNonMultimodalModel(
-            List<ChatMessage> messages,
-            List<ToolSpecification> toolSpecifications,
-            ToolSpecification toolThatMustBeExecuted
-    ) {
+    private Response<AiMessage> generateByNonMultimodalModel(List<ChatMessage> messages,
+                                                             List<ToolSpecification> toolSpecifications,
+                                                             ToolSpecification toolThatMustBeExecuted) {
         try {
             GenerationParam.GenerationParamBuilder<?, ?> builder = GenerationParam.builder()
                     .apiKey(apiKey)
@@ -127,7 +131,7 @@ public class QwenChatModel implements ChatLanguageModel {
                 builder.tools(toToolFunctions(toolSpecifications));
             } else if (toolThatMustBeExecuted != null) {
                 builder.tools(toToolFunctions(Collections.singleton(toolThatMustBeExecuted)));
-                builder.toolChoice(buildToolChoiceStrategy(toolThatMustBeExecuted));
+                builder.toolChoice(toToolFunction(toolThatMustBeExecuted));
             }
 
             GenerationResult generationResult = generation.call(builder.build());
@@ -142,7 +146,13 @@ public class QwenChatModel implements ChatLanguageModel {
         }
     }
 
-    private Response<AiMessage> generateByMultimodalModel(List<ChatMessage> messages) {
+    private Response<AiMessage> generateByMultimodalModel(List<ChatMessage> messages,
+                                                          List<ToolSpecification> toolSpecifications,
+                                                          ToolSpecification toolThatMustBeExecuted) {
+        if (toolThatMustBeExecuted != null || !isNullOrEmpty(toolSpecifications)) {
+            throw new IllegalArgumentException("Tools are currently not supported by this model");
+        }
+
         try {
             MultiModalConversationParam param = MultiModalConversationParam.builder()
                     .apiKey(apiKey)
