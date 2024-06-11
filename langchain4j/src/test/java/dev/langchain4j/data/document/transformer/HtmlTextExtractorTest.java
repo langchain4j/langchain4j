@@ -106,7 +106,7 @@ class HtmlTextExtractorTest {
     void should_extract_text_with_absolute_links_from_html_with_relative_links_and_url_metadata() {
         HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
         Document htmlDocument = Document.from(SAMPLE_HTML_WITH_RELATIVE_LINKS);
-        htmlDocument.metadata().add(Document.URL, "https://example.org/page.html");
+        htmlDocument.metadata().put(Document.URL, "https://example.org/page.html");
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
@@ -122,7 +122,7 @@ class HtmlTextExtractorTest {
     void should_extract_text_with_absolute_links_from_html_with_absolute_links_and_url_metadata() {
         HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
         Document htmlDocument = Document.from(SAMPLE_HTML);
-        htmlDocument.metadata().add(Document.URL, "https://other.example.org/page.html");
+        htmlDocument.metadata().put(Document.URL, "https://other.example.org/page.html");
 
         Document transformedDocument = transformer.transform(htmlDocument);
 
