@@ -10,8 +10,13 @@ public enum WorkersAiEmbeddingModelName {
     // https://developers.cloudflare.com/workers-ai/models/text-embeddings/
     // ---------------------------------------------------------------------
 
+    /** BAAI general embedding (bge) models transform any given text into a compact vector. */
     BAAI_EMBEDDING_SMALL("@cf/baai/bge-small-en-v1.5"),
+
+    /** BAAI general embedding (bge) models transform any given text into a compact vector. */
     BAAI_EMBEDDING_BASE("@cf/baai/bge-base-en-v1.5"),
+
+    /** BAAI general embedding (bge) models transform any given text into a compact vector. */
     BAAI_EMBEDDING_LARGE("@cf/baai/bge-large-en-v1.5");
 
     private final String stringValue;
