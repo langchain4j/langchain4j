@@ -32,7 +32,6 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
 
     private final OpenAiClient client;
     private final String modelName;
-    private final Integer dimensions;
     private final String user;
     private final Integer maxRetries;
     private final Tokenizer tokenizer;
@@ -42,7 +41,7 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
                                 String apiKey,
                                 String organizationId,
                                 String modelName,
-                                Integer dimensions,
+                                Integer dimension,
                                 String user,
                                 Duration timeout,
                                 Integer maxRetries,
@@ -74,7 +73,7 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
                 .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_EMBEDDING_ADA_002);
-        this.dimensions = dimensions;
+        this.dimension = dimension;
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
@@ -105,7 +104,7 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
         EmbeddingRequest request = EmbeddingRequest.builder()
                 .input(texts)
                 .model(modelName)
-                .dimensions(dimensions)
+                .dimensions(dimension)
                 .user(user)
                 .build();
 
