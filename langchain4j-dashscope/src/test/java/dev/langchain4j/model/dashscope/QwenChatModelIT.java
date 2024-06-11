@@ -4,16 +4,26 @@ import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Collections;
+import java.util.List;
 
+import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
+import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.*;
+import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "DASHSCOPE_API_KEY", matches = ".+")
@@ -35,7 +45,7 @@ public class QwenChatModelIT {
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
-    public void should_call_function_with_no_argument(String modelName) {
+    public void should_call_function_with_no_argument_then_answer(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
                 .modelName(modelName)
@@ -49,18 +59,35 @@ public class QwenChatModelIT {
 
         UserMessage userMessage = UserMessage.from("What time is it?");
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), Collections.singletonList(noArgToolSpec));
+        Response<AiMessage> response = model.generate(singletonList(userMessage), singletonList(noArgToolSpec));
 
         assertThat(response.content().text()).isNull();
         assertThat(response.content().toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "10 o'clock");
+        List<ChatMessage> messages = asList(userMessage, response.content(), toolExecutionResultMessage);
+
+        Response<AiMessage> secondResponse = model.generate(messages, singletonList(noArgToolSpec));
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("10");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
-    public void should_call_function_with_argument(String modelName) {
+    public void should_call_function_with_argument_then_answer(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
                 .modelName(modelName)
@@ -75,13 +102,30 @@ public class QwenChatModelIT {
 
         UserMessage userMessage = UserMessage.from("Weather in Beijing?");
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), Collections.singletonList(hasArgToolSpec));
+        Response<AiMessage> response = model.generate(singletonList(userMessage), singletonList(hasArgToolSpec));
 
         assertThat(response.content().text()).isNull();
         assertThat(response.content().toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).contains("Beijing");
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "rainy");
+        List<ChatMessage> messages = asList(userMessage, response.content(), toolExecutionResultMessage);
+
+        Response<AiMessage> secondResponse = model.generate(messages, singletonList(hasArgToolSpec));
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("rainy");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest
@@ -102,13 +146,120 @@ public class QwenChatModelIT {
         // not related to tools
         UserMessage userMessage = UserMessage.from("How many students in the classroom?");
 
-        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), mustBeExecutedTool);
+        Response<AiMessage> response = model.generate(singletonList(userMessage), mustBeExecutedTool);
 
         assertThat(response.content().text()).isNull();
         assertThat(response.content().toolExecutionRequests()).hasSize(1);
         ToolExecutionRequest toolExecutionRequest = response.content().toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).hasSizeGreaterThan(0);
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
+    void should_call_must_be_executed_call_function_then_answer(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        String toolName = "calculator";
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name(toolName)
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        UserMessage userMessage = userMessage("2+2=?");
+
+        Response<AiMessage> response = model.generate(singletonList(userMessage), calculator);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotNull();
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        Response<AiMessage> secondResponse = model.generate(messages, singletonList(calculator));
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("4");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest
+    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
+    void should_call_must_be_executed_call_function_with_argument_then_answer(String modelName) {
+        ChatLanguageModel model = QwenChatModel.builder()
+                .apiKey(apiKey())
+                .modelName(modelName)
+                .build();
+
+        String toolName = "calculator";
+        ToolSpecification calculator = ToolSpecification.builder()
+                .name(toolName)
+                .description("returns a sum of two numbers")
+                .addParameter("first", INTEGER)
+                .addParameter("second", INTEGER)
+                .build();
+
+        UserMessage userMessage = userMessage("2+2=?");
+
+        Response<AiMessage> response = model.generate(singletonList(userMessage), calculator);
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.id()).isNotNull();
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
+
+        TokenUsage tokenUsage = response.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
+
+        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
+        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
+
+        Response<AiMessage> secondResponse = model.generate(messages, singletonList(calculator));
+
+        AiMessage secondAiMessage = secondResponse.content();
+        assertThat(secondAiMessage.text()).contains("4");
+        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
+
+        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
+        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(secondTokenUsage.totalTokenCount())
+                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
+        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest
