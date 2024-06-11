@@ -91,11 +91,6 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
     }
 
     @Override
-    public int dimension() {
-        return dimensions;
-    }
-
-    @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
 
         List<String> texts = textSegments.stream()

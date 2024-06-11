@@ -1,7 +1,6 @@
 package dev.langchain4j.model.embedding;
 
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * An Embedding Model which contains
@@ -14,7 +13,7 @@ public abstract class AbstractEmbeddingModel implements EmbeddingModel {
     protected Integer dimension;
 
     /**
-     * A map contains known model name and its dimension
+     * A map contains known model's name and its dimension
      *
      * @return A map, key is the common represented model name, value is its dimension
      */
@@ -33,9 +32,13 @@ public abstract class AbstractEmbeddingModel implements EmbeddingModel {
             return dimension;
         }
 
-        return dimensionMap().compute(modelName(), (key, value) -> {
-            this.dimension = Optional.ofNullable(value).orElse(embed("test").content().dimension());
-            return dimension;
-        });
+        // get known model's dimension first, otherwise embed "test" to get dimension
+        if (dimensionMap().containsKey(modelName())) {
+            this.dimension = dimensionMap().get(modelName());
+        } else {
+            this.dimension = embed("test").content().dimension();
+        }
+
+        return this.dimension;
     }
 }
