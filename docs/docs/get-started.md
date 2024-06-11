@@ -4,20 +4,15 @@ sidebar_position: 5
 
 # Get Started
 
-## Prerequisites
 :::note
-Ensure you have Java 8 or higher installed. Verify it by typing this command in your terminal:
-```shell
-java --version
-```
+If you are using Quarkus, see [Quarkus Integration](/tutorials/quarkus-integration/).
+
+If you are using Spring Boot, see [Spring Boot Integration](/tutorials/spring-boot-integration).
 :::
 
-## Write a "Hello World" program
-
-The simplest way to begin is with the OpenAI integration.
-LangChain4j offers integration with many LLMs.
-Each integration has its own dependency.
-In this case, we should add the OpenAI dependency:
+LangChain4j offers [integration with many LLM providers](/integrations/language-models/).
+Each integration has its own maven dependency.
+The simplest way to begin is with the OpenAI integration:
 
 - For Maven in `pom.xml`:
 ```xml
@@ -27,8 +22,9 @@ In this case, we should add the OpenAI dependency:
     <version>0.31.0</version>
 </dependency>
 ```
-If you want to use more of the Langchain4j non-integration specific classes, such as Services, you will also need to add 
-the base library:
+
+If you wish to use a high-level [AI Services](/tutorials/ai-services) API, you will also need to add 
+the following dependency:
 
 ```xml
 <dependency>
@@ -41,6 +37,7 @@ the base library:
 - For Gradle in `build.gradle`:
 ```groovy
 implementation 'dev.langchain4j:langchain4j-open-ai:0.31.0'
+implementation 'dev.langchain4j:langchain4j:0.31.0'
 ```
 
 Then, import your OpenAI API key.

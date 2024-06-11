@@ -4,17 +4,18 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class BedrockStreamingChatModelIT {
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
+class BedrockStreamingChatModelIT {
+
     @Test
-    @Disabled("To run this test, you must have provide your own access key, secret, region")
     void testBedrockAnthropicStreamingChatModel() {
         //given
         BedrockAnthropicStreamingChatModel bedrockChatModel = BedrockAnthropicStreamingChatModel
@@ -34,6 +35,4 @@ public class BedrockStreamingChatModelIT {
         //then
         assertThat(response.content().text()).contains("Warsaw");
     }
-
-
 }
