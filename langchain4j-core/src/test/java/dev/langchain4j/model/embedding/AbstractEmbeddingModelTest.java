@@ -17,9 +17,23 @@ class AbstractEmbeddingModelTest implements WithAssertions {
 
     public static class EmbeddingModelImpl extends AbstractEmbeddingModel {
 
+        Map<String, Integer> dimensionMap;
+
+        EmbeddingModelImpl() {
+
+        }
+
+        EmbeddingModelImpl(Integer dimension) {
+            this.dimension = dimension;
+        }
+
+        EmbeddingModelImpl(Map<String, Integer> dimensionMap) {
+            this.dimensionMap = dimensionMap;
+        }
+
         @Override
         protected Map<String, Integer> dimensionMap() {
-            return new HashMap<>();
+            return dimensionMap == null ? new HashMap<>() : dimensionMap;
         }
 
         @Override
@@ -40,8 +54,27 @@ class AbstractEmbeddingModelTest implements WithAssertions {
     }
 
     @Test
-    void should_return_correct_dimension() {
+    void should_return_correct_dimension_and_cached() {
         EmbeddingModel model = new EmbeddingModelImpl();
         assertThat(model.dimension()).isEqualTo(2);
+
+        // twice call model.dimension() should use cache result
+        assertThat(model.dimension()).isEqualTo(2);
+    }
+
+    @Test
+    void should_return_init_dimension() {
+        // init class with dimension
+        EmbeddingModel model = new EmbeddingModelImpl(5);
+        assertThat(model.dimension()).isEqualTo(5);
+    }
+
+    @Test
+    void should_return_dimension_from_cached_map() {
+        Map<String, Integer> dimensionMap = new HashMap<>();
+        dimensionMap.put("test-model", 6);
+
+        EmbeddingModel model = new EmbeddingModelImpl(dimensionMap);
+        assertThat(model.dimension()).isEqualTo(6);
     }
 }
