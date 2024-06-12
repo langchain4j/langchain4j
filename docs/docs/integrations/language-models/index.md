@@ -22,3 +22,4 @@ sidebar_position: 0
 | [Qianfan](/integrations/language-models/qianfan)                       | ✅                                          | ✅                         |              |                                                         |        |
 | [Cloudflare Workers AI](/integrations/language-models/workers-ai)      |                                            |                           |              |                                                         |        |
 | [Zhipu AI](/integrations/language-models/zhipu-ai)                     | ✅                                          | ✅                         |              |                                                         |        |
+| [Volcengine Ark](/integrations/language-models/zhipu-ai)               | ✅                                          | ✅                         |              |                                                         |        |

@@ -52,6 +52,7 @@
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
         <infinispan.version>15.0.0.Final</infinispan.version>
+        <ark.version>0.1.114</ark.version>
     </properties>
 
     <dependencyManagement>
@@ -389,6 +390,12 @@
                 <groupId>ch.qos.logback</groupId>
                 <artifactId>logback-classic</artifactId>
                 <version>1.3.14</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.volcengine</groupId>
+                <artifactId>volcengine-java-sdk-ark-runtime</artifactId>
+                <version>${ark.version}</version>
             </dependency>
 
         </dependencies>
