@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ReturnAsOutput;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
@@ -30,7 +29,6 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
 
@@ -50,8 +48,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         for (Parameter parameter : parameters) {
             V v = parameter.getAnnotation(V.class);
-            dev.langchain4j.service.UserMessage userMessage = parameter.getAnnotation(
-                    dev.langchain4j.service.UserMessage.class);
+            dev.langchain4j.service.UserMessage userMessage = parameter.getAnnotation(dev.langchain4j.service.UserMessage.class);
             MemoryId memoryId = parameter.getAnnotation(MemoryId.class);
             UserName userName = parameter.getAnnotation(UserName.class);
             if (v == null && userMessage == null && memoryId == null && userName == null) {
@@ -69,9 +66,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
         for (Method method : context.aiServiceClass.getMethods()) {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
-                throw illegalConfiguration(
-                        "The @Moderate annotation is present, but the moderationModel is not set up. " +
-                                "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
+                throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
+                        "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
             if (method.getReturnType() == Result.class) {
                 validateResultReturnType(method);
@@ -186,7 +182,6 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         toolExecutionRequest,
                                         toolExecutionResult
                                 );
-
                                 if (context.hasChatMemory()) {
                                     context.chatMemory(memoryId).add(toolExecutionResultMessage);
                                 } else {
@@ -247,11 +242,9 @@ class DefaultAiServices<T> extends AiServices<T> {
     }
 
     private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
-        dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(
-                dev.langchain4j.service.SystemMessage.class);
+        dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            return Optional.of(getTemplate(method, "System", annotation.fromResource(), annotation.value(),
-                    annotation.delimiter()));
+            return Optional.of(getTemplate(method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
         }
 
         return context.systemMessageProvider.apply(memoryId);
@@ -318,8 +311,7 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static String getUserMessageTemplate(Method method, Object[] args) {
 
         Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
-        Optional<String> templateFromParameterAnnotation = findUserMessageTemplateFromAnnotatedParameter(
-                method.getParameters(), args);
+        Optional<String> templateFromParameterAnnotation = findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
 
         if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
             throw illegalConfiguration(
@@ -335,8 +327,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return templateFromParameterAnnotation.get();
         }
 
-        Optional<String> templateFromTheOnlyArgument = findUserMessageTemplateFromTheOnlyArgument(
-                method.getParameters(), args);
+        Optional<String> templateFromTheOnlyArgument = findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
         if (templateFromTheOnlyArgument.isPresent()) {
             return templateFromTheOnlyArgument.get();
         }
@@ -349,8 +340,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                 .map(a -> getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()));
     }
 
-    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(Parameter[] parameters,
-            Object[] args) {
+    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(Parameter[] parameters, Object[] args) {
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
                 return Optional.of(toString(args[i]));
@@ -400,7 +390,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             return null;
         }
         try (Scanner scanner = new Scanner(inputStream);
-                Scanner s = scanner.useDelimiter("\\A")) {
+             Scanner s = scanner.useDelimiter("\\A")) {
             return s.hasNext() ? s.next() : "";
         }
     }
