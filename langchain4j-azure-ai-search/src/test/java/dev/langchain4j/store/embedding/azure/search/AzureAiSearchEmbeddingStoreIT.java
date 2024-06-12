@@ -101,7 +101,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     }
 
     @Test
-    public void when_an_index_is_not_provided_its_name_is_the_default() {
+    public void when_an_index_is_not_provided_the_default_name_is_used() {
         AzureAiSearchEmbeddingStore store =new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
             new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null);
 
