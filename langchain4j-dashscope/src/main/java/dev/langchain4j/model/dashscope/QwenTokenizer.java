@@ -12,13 +12,11 @@ import dev.langchain4j.model.Tokenizer;
 
 import java.util.Collections;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.dashscope.QwenHelper.toQwenMessages;
 import static dev.langchain4j.model.dashscope.QwenModelName.QWEN_PLUS;
 
 public class QwenTokenizer implements Tokenizer {
-
     private final String apiKey;
     private final String modelName;
     private final Tokenization tokenizer;
@@ -57,6 +55,10 @@ public class QwenTokenizer implements Tokenizer {
 
     @Override
     public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
+        if (isNullOrEmpty(messages)) {
+            return 0;
+        }
+
         try {
             GenerationParam param = GenerationParam.builder()
                     .apiKey(apiKey)
