@@ -158,59 +158,6 @@ public class QwenChatModelIT {
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
-    void should_call_must_be_executed_call_function_then_answer(String modelName) {
-        ChatLanguageModel model = QwenChatModel.builder()
-                .apiKey(apiKey())
-                .modelName(modelName)
-                .build();
-
-        String toolName = "calculator";
-        ToolSpecification calculator = ToolSpecification.builder()
-                .name(toolName)
-                .description("returns a sum of two numbers")
-                .addParameter("first", INTEGER)
-                .addParameter("second", INTEGER)
-                .build();
-
-        UserMessage userMessage = userMessage("2+2=?");
-
-        Response<AiMessage> response = model.generate(singletonList(userMessage), calculator);
-
-        AiMessage aiMessage = response.content();
-        assertThat(aiMessage.text()).isNull();
-        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
-
-        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-        assertThat(toolExecutionRequest.id()).isNotNull();
-        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"first\": 2, \"second\": 2}");
-
-        TokenUsage tokenUsage = response.tokenUsage();
-        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(tokenUsage.totalTokenCount())
-                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
-        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
-
-        ToolExecutionResultMessage toolExecutionResultMessage = from(toolExecutionRequest, "4");
-        List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
-
-        Response<AiMessage> secondResponse = model.generate(messages, singletonList(calculator));
-
-        AiMessage secondAiMessage = secondResponse.content();
-        assertThat(secondAiMessage.text()).contains("4");
-        assertThat(secondAiMessage.toolExecutionRequests()).isNull();
-
-        TokenUsage secondTokenUsage = secondResponse.tokenUsage();
-        assertThat(secondTokenUsage.inputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.outputTokenCount()).isGreaterThan(0);
-        assertThat(secondTokenUsage.totalTokenCount())
-                .isEqualTo(secondTokenUsage.inputTokenCount() + secondTokenUsage.outputTokenCount());
-        assertThat(secondResponse.finishReason()).isEqualTo(STOP);
-    }
-
-    @ParameterizedTest
-    @MethodSource("dev.langchain4j.model.dashscope.QwenTestHelper#functionCallChatModelNameProvider")
     void should_call_must_be_executed_call_function_with_argument_then_answer(String modelName) {
         ChatLanguageModel model = QwenChatModel.builder()
                 .apiKey(apiKey())
