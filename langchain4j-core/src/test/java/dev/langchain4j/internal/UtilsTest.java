@@ -84,6 +84,13 @@ class UtilsTest {
     }
 
     @Test
+    public void test_iterable_isNullOrEmpty() {
+        assertThat(Utils.isNullOrEmpty((Iterable<?>) null)).isTrue();
+        assertThat(Utils.isNullOrEmpty((Iterable<?>) emptyList())).isTrue();
+        assertThat(Utils.isNullOrEmpty((Iterable<?>) Collections.singletonList("abc"))).isFalse();
+    }
+
+    @Test
     @SuppressWarnings("deprecation")
     public void test_isCollectionEmpty() {
         assertThat(Utils.isCollectionEmpty(null)).isTrue();
