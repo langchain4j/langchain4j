@@ -2,7 +2,7 @@
 sidebar_position: 4
 ---
 
-# ApachePdfBoxDocumentParser
+# Apache PDFBox
 
 `ApachePdfBoxDocumentParser` can be found in the following module:
 ```xml

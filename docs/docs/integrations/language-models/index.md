@@ -1,4 +1,5 @@
 ---
+id: supported-language-models
 title: Comparison Table of all supported Language Models
 hide_title: false
 sidebar_position: 0

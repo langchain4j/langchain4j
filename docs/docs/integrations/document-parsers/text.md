@@ -2,7 +2,7 @@
 sidebar_position: 1
 ---
 
-# TextDocumentParser
+# Text
 
 `TextDocumentParser` can be found in the main module:
 ```xml

@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# ApachePoiDocumentParser
+# Apache POI
 
 `ApachePoiDocumentParser` can be found in the following module:
 ```xml

@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# ApacheTikaDocumentParser
+# Apache Tika
 
 `ApacheTikaDocumentParser` can be found in the following module:
 ```xml
