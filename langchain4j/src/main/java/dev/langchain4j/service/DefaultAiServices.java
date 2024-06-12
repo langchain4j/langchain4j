@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ReturnAsOutput;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.SystemMessage;
@@ -29,6 +30,7 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
 
@@ -190,7 +192,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 } else {
                                     messages.add(toolExecutionResultMessage);
                                 }
-                                if (method.isAnnotationPresent(ReturnAsOutput.class)) {
+                                boolean returnAsFinalAnswer = method.getAnnotation(Tool.class).returnAsFinalAnswer();
+                                if (returnAsFinalAnswer) {
                                     if (context.hasChatMemory()) {
                                         context.chatMemory(memoryId).add(AiMessage.aiMessage(toolExecutionResult));
                                     } else {
@@ -281,8 +284,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
-                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(
-                    parameter))) {
+                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
                 return toString(args[0]);
             }
         }

@@ -29,4 +29,10 @@ public @interface Tool {
      * @return description of the tool.
      */
     String[] value() default "";
+
+    /**
+     * if set to true,llm  use tool function return value as output,default is false and request LLM after function call to generate final answer
+     * @return if use tool function return value as output.default is false
+     */
+    boolean returnAsFinalAnswer() default false;
 }
