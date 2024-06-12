@@ -191,7 +191,7 @@ public final class RetryUtils {
                 try {
                     return action.call();
                 } catch (Exception e) {
-                    if (attempt == maxAttempts) {
+                    if (attempt >= maxAttempts) {
                         throw new RuntimeException(e);
                     }
 

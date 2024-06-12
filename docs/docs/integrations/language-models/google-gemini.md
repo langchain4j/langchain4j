@@ -1,5 +1,6 @@
 ---
-sidebar_position: 9
+id: gemini-language-model
+sidebar_position: 6
 ---
 
 # Google Vertex AI Gemini

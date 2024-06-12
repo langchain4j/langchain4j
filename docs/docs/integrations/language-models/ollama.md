@@ -1,5 +1,6 @@
 ---
-sidebar_position: 18
+id: ollama-language-model
+sidebar_position: 11
 ---
 
 # Ollama

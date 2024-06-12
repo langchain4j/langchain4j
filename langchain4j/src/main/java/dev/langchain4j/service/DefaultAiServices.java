@@ -13,6 +13,8 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 
 import java.io.InputStream;
@@ -22,16 +24,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
-import static java.util.Collections.singletonMap;
 
 class DefaultAiServices<T> extends AiServices<T> {
-
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -52,8 +52,8 @@ class DefaultAiServices<T> extends AiServices<T> {
             UserName userName = parameter.getAnnotation(UserName.class);
             if (v == null && userMessage == null && memoryId == null && userName == null) {
                 throw illegalConfiguration(
-                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage or @UserName or @MemoryId",
-                        parameter.getName(), method.getName()
+                        "Parameter '%s' of method '%s' should be annotated with @V or @UserMessage " +
+                                "or @UserName or @MemoryId", parameter.getName(), method.getName()
                 );
             }
         }
@@ -67,6 +67,9 @@ class DefaultAiServices<T> extends AiServices<T> {
             if (method.isAnnotationPresent(Moderate.class) && context.moderationModel == null) {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
+            }
+            if (method.getReturnType() == Result.class) {
+                validateResultReturnType(method);
             }
         }
 
@@ -87,22 +90,40 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         validateParameters(method);
 
-                        Optional<SystemMessage> systemMessage = prepareSystemMessage(method, args);
+                        Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
+
+                        Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
-
-                        Object memoryId = memoryId(method, args).orElse(DEFAULT);
-
+                        AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
                                     ? context.chatMemory(memoryId).messages()
                                     : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
-                            userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
+                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         // TODO give user ability to provide custom OutputParser
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-                        userMessage = UserMessage.from(userMessage.text() + outputFormatInstructions);
+                        Class<?> returnType = method.getReturnType();
+                        boolean isReturnTypeResult = false;
+                        if (returnType == Result.class) {
+                            isReturnTypeResult = true;
+                            AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
+                            ParameterizedType type = (ParameterizedType) annotatedReturnType.getType();
+                            Type[] typeArguments = type.getActualTypeArguments();
+                            for (Type typeArg : typeArguments) {
+                                returnType = Class.forName(typeArg.getTypeName());
+                            }
+                        }
+                        String outputFormatInstructions = outputFormatInstructions(returnType);
+                        String text = userMessage.singleText() + outputFormatInstructions;
+                        if (isNotNullOrBlank(userMessage.name())) {
+                            userMessage = UserMessage.from(userMessage.name(), text);
+                        } else {
+                            userMessage = UserMessage.from(text);
+                        }
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -121,7 +142,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (method.getReturnType() == TokenStream.class) {
+                        if (returnType == TokenStream.class) {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
@@ -172,11 +193,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             response = context.chatModel.generate(messages, context.toolSpecifications);
-                            tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
+                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        return parse(response, method.getReturnType());
+                        Object parsedResponse = parse(response, returnType);
+
+                        if (isReturnTypeResult) {
+                            return Result.builder()
+                                    .content(parsedResponse)
+                                    .tokenUsage(tokenUsageAccumulator)
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .build();
+                        } else {
+                            return parsedResponse;
+                        }
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {
@@ -193,91 +224,138 @@ class DefaultAiServices<T> extends AiServices<T> {
         return (T) proxyInstance;
     }
 
-    private Optional<SystemMessage> prepareSystemMessage(Method method, Object[] args) {
-
-        Parameter[] parameters = method.getParameters();
-        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
-
-        dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
-        if (annotation != null) {
-
-            String systemMessageTemplate = getPromptText(
-                    method,
-                    "System",
-                    annotation.fromResource(),
-                    annotation.value(),
-                    annotation.delimiter()
-            );
-
-            Prompt prompt = PromptTemplate.from(systemMessageTemplate).apply(variables);
-            return Optional.of(prompt.toSystemMessage());
-        }
-
-        return Optional.empty();
+    private Optional<SystemMessage> prepareSystemMessage(Object memoryId, Method method, Object[] args) {
+        return findSystemMessageTemplate(memoryId, method)
+                .map(systemMessageTemplate -> PromptTemplate.from(systemMessageTemplate)
+                        .apply(findTemplateVariables(systemMessageTemplate, method, args))
+                        .toSystemMessage());
     }
 
-    private static UserMessage prepareUserMessage(Method method, Object[] args) {
-        Parameter[] parameters = method.getParameters();
-        Map<String, Object> variables = getPromptTemplateVariables(args, parameters);
-
-
-        String userName = getUserName(parameters, args);
-
-        dev.langchain4j.service.UserMessage annotation = method.getAnnotation(dev.langchain4j.service.UserMessage.class);
+    private Optional<String> findSystemMessageTemplate(Object memoryId, Method method) {
+        dev.langchain4j.service.SystemMessage annotation = method.getAnnotation(dev.langchain4j.service.SystemMessage.class);
         if (annotation != null) {
-            String userMessageTemplate = getPromptText(
-                    method,
-                    "User",
-                    annotation.fromResource(),
-                    annotation.value(),
-                    annotation.delimiter()
-            );
+            return Optional.of(getTemplate(method, "System", annotation.fromResource(), annotation.value(), annotation.delimiter()));
+        }
 
-            if (userMessageTemplate.contains("{{it}}")) {
-                if (parameters.length != 1) {
-                    throw illegalConfiguration("Error: The {{it}} placeholder is present but the method does not have exactly one parameter. " +
-                            "Please ensure that methods using the {{it}} placeholder have exactly one parameter.");
-                }
+        return context.systemMessageProvider.apply(memoryId);
+    }
 
-                variables = singletonMap("it", toString(args[0]));
+    private static Map<String, Object> findTemplateVariables(String template, Method method, Object[] args) {
+        Parameter[] parameters = method.getParameters();
+
+        Map<String, Object> variables = new HashMap<>();
+        for (int i = 0; i < parameters.length; i++) {
+            V annotation = parameters[i].getAnnotation(V.class);
+            if (annotation != null) {
+                String variableName = annotation.value();
+                Object variableValue = args[i];
+                variables.put(variableName, variableValue);
             }
+        }
 
-            Prompt prompt = PromptTemplate.from(userMessageTemplate).apply(variables);
-            if (userName != null) {
-                return userMessage(userName, prompt.text());
-            } else {
-                return prompt.toUserMessage();
+        if (template.contains("{{it}}") && !variables.containsKey("it")) {
+            String itValue = getValueOfVariableIt(parameters, args);
+            variables.put("it", itValue);
+        }
+
+        return variables;
+    }
+
+    private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
+        if (parameters.length == 1) {
+            Parameter parameter = parameters[0];
+            if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
+                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
+                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
+                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
+                return toString(args[0]);
             }
         }
 
         for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
-                String text = toString(args[i]);
-                if (userName != null) {
-                    return userMessage(userName, text);
-                } else {
-                    return userMessage(text);
-                }
+            if (isAnnotatedWithIt(parameters[i])) {
+                return toString(args[i]);
             }
         }
 
-        if (args == null || args.length == 0) {
-            throw illegalConfiguration("Method should have at least one argument");
-        }
-
-        if (args.length == 1) {
-            String text = toString(args[0]);
-            if (userName != null) {
-                return userMessage(userName, text);
-            } else {
-                return userMessage(text);
-            }
-        }
-
-        throw illegalConfiguration("For methods with multiple parameters, each parameter must be annotated with @V, @UserMessage, @UserName or @MemoryId");
+        throw illegalConfiguration("Error: cannot find the value of the prompt template variable \"{{it}}\".");
     }
 
-    private static String getPromptText(Method method, String type, String resource, String[] value, String delimiter) {
+    private static boolean isAnnotatedWithIt(Parameter parameter) {
+        V annotation = parameter.getAnnotation(V.class);
+        return annotation != null && "it".equals(annotation.value());
+    }
+
+    private static UserMessage prepareUserMessage(Method method, Object[] args) {
+
+        String template = getUserMessageTemplate(method, args);
+        Map<String, Object> variables = findTemplateVariables(template, method, args);
+
+        Prompt prompt = PromptTemplate.from(template).apply(variables);
+
+        Optional<String> maybeUserName = findUserName(method.getParameters(), args);
+        return maybeUserName.map(userName -> UserMessage.from(userName, prompt.text()))
+                .orElseGet(prompt::toUserMessage);
+    }
+
+    private static String getUserMessageTemplate(Method method, Object[] args) {
+
+        Optional<String> templateFromMethodAnnotation = findUserMessageTemplateFromMethodAnnotation(method);
+        Optional<String> templateFromParameterAnnotation = findUserMessageTemplateFromAnnotatedParameter(method.getParameters(), args);
+
+        if (templateFromMethodAnnotation.isPresent() && templateFromParameterAnnotation.isPresent()) {
+            throw illegalConfiguration(
+                    "Error: The method '%s' has multiple @UserMessage annotations. Please use only one.",
+                    method.getName()
+            );
+        }
+
+        if (templateFromMethodAnnotation.isPresent()) {
+            return templateFromMethodAnnotation.get();
+        }
+        if (templateFromParameterAnnotation.isPresent()) {
+            return templateFromParameterAnnotation.get();
+        }
+
+        Optional<String> templateFromTheOnlyArgument = findUserMessageTemplateFromTheOnlyArgument(method.getParameters(), args);
+        if (templateFromTheOnlyArgument.isPresent()) {
+            return templateFromTheOnlyArgument.get();
+        }
+
+        throw illegalConfiguration("Error: The method '%s' does not have a user message defined.", method.getName());
+    }
+
+    private static Optional<String> findUserMessageTemplateFromMethodAnnotation(Method method) {
+        return Optional.ofNullable(method.getAnnotation(dev.langchain4j.service.UserMessage.class))
+                .map(a -> getTemplate(method, "User", a.fromResource(), a.value(), a.delimiter()));
+    }
+
+    private static Optional<String> findUserMessageTemplateFromAnnotatedParameter(Parameter[] parameters, Object[] args) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(dev.langchain4j.service.UserMessage.class)) {
+                return Optional.of(toString(args[i]));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<String> findUserMessageTemplateFromTheOnlyArgument(Parameter[] parameters, Object[] args) {
+        if (parameters != null && parameters.length == 1 && parameters[0].getAnnotations().length == 0) {
+            return Optional.of(toString(args[0]));
+        }
+        return Optional.empty();
+    }
+
+    private static Optional<String> findUserName(Parameter[] parameters, Object[] args) {
+        for (int i = 0; i < parameters.length; i++) {
+            if (parameters[i].isAnnotationPresent(UserName.class)) {
+                return Optional.of(args[i].toString());
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static String getTemplate(Method method, String type, String resource, String[] value, String delimiter) {
         String messageTemplate;
         if (!resource.trim().isEmpty()) {
             messageTemplate = getResourceText(method.getDeclaringClass(), resource);
@@ -307,42 +385,21 @@ class DefaultAiServices<T> extends AiServices<T> {
         }
     }
 
-    private Optional<Object> memoryId(Method method, Object[] args) {
+    private static Optional<Object> findMemoryId(Method method, Object[] args) {
         Parameter[] parameters = method.getParameters();
         for (int i = 0; i < parameters.length; i++) {
             if (parameters[i].isAnnotationPresent(MemoryId.class)) {
                 Object memoryId = args[i];
                 if (memoryId == null) {
-                    throw illegalArgument("The value of parameter %s annotated with @MemoryId in method %s must not be null",
-                            parameters[i].getName(), method.getName());
+                    throw illegalArgument(
+                            "The value of parameter '%s' annotated with @MemoryId in method '%s' must not be null",
+                            parameters[i].getName(), method.getName()
+                    );
                 }
                 return Optional.of(memoryId);
             }
         }
         return Optional.empty();
-    }
-
-
-    private static String getUserName(Parameter[] parameters, Object[] args) {
-        for (int i = 0; i < parameters.length; i++) {
-            if (parameters[i].isAnnotationPresent(UserName.class)) {
-                return args[i].toString();
-            }
-        }
-        return null;
-    }
-
-    private static Map<String, Object> getPromptTemplateVariables(Object[] args, Parameter[] parameters) {
-        Map<String, Object> variables = new HashMap<>();
-        for (int i = 0; i < parameters.length; i++) {
-            V varAnnotation = parameters[i].getAnnotation(V.class);
-            if (varAnnotation != null) {
-                String variableName = varAnnotation.value();
-                Object variableValue = args[i];
-                variables.put(variableName, variableValue);
-            }
-        }
-        return variables;
     }
 
     private static String toString(Object arg) {

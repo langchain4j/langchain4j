@@ -7,7 +7,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.29.0</version>
+        <version>0.32.0-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -94,7 +94,7 @@
                 <artifactId>libraries-bom</artifactId>
                 <scope>import</scope>
                 <type>pom</type>
-                <version>26.34.0</version>
+                <version>26.39.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

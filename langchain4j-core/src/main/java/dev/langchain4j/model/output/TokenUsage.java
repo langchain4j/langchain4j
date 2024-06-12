@@ -32,7 +32,7 @@ public class TokenUsage {
     /**
      * Creates a new {@link TokenUsage} instance with the given input and output token counts.
      *
-     * @param inputTokenCount The input token count, or null if unknown.
+     * @param inputTokenCount  The input token count, or null if unknown.
      * @param outputTokenCount The output token count, or null if unknown.
      */
     public TokenUsage(Integer inputTokenCount, Integer outputTokenCount) {
@@ -42,9 +42,9 @@ public class TokenUsage {
     /**
      * Creates a new {@link TokenUsage} instance with the given input, output and total token counts.
      *
-     * @param inputTokenCount The input token count, or null if unknown.
+     * @param inputTokenCount  The input token count, or null if unknown.
      * @param outputTokenCount The output token count, or null if unknown.
-     * @param totalTokenCount The total token count, or null if unknown.
+     * @param totalTokenCount  The total token count, or null if unknown.
      */
     public TokenUsage(Integer inputTokenCount, Integer outputTokenCount, Integer totalTokenCount) {
         this.inputTokenCount = inputTokenCount;
@@ -54,6 +54,7 @@ public class TokenUsage {
 
     /**
      * Returns the input token count, or null if unknown.
+     *
      * @return the input token count, or null if unknown.
      */
     public Integer inputTokenCount() {
@@ -62,6 +63,7 @@ public class TokenUsage {
 
     /**
      * Returns the output token count, or null if unknown.
+     *
      * @return the output token count, or null if unknown.
      */
     public Integer outputTokenCount() {
@@ -70,10 +72,38 @@ public class TokenUsage {
 
     /**
      * Returns the total token count, or null if unknown.
+     *
      * @return the total token count, or null if unknown.
      */
     public Integer totalTokenCount() {
         return totalTokenCount;
+    }
+
+    /**
+     * Adds two token usages.
+     * <br>
+     * If one of the token usages is null, the other is returned without changes.
+     * <br>
+     * Fields which are null in both responses will be null in the result.
+     *
+     * @param first The first token usage to add.
+     * @param second The second token usage to add.
+     * @return a new {@link TokenUsage} instance with the sum of token usages.
+     */
+    public static TokenUsage sum(TokenUsage first, TokenUsage second) {
+        if (first == null) {
+            return second;
+        }
+
+        if (second == null) {
+            return first;
+        }
+
+        return new TokenUsage(
+                sum(first.inputTokenCount, second.inputTokenCount),
+                sum(first.outputTokenCount, second.outputTokenCount),
+                sum(first.totalTokenCount, second.totalTokenCount)
+        );
     }
 
     /**
@@ -83,8 +113,14 @@ public class TokenUsage {
      *
      * @param that The token usage to add to this one.
      * @return a new {@link TokenUsage} instance with the token usage of both responses added together.
+     * @deprecated use {@link #sum(TokenUsage, TokenUsage)} instead
      */
+    @Deprecated
     public TokenUsage add(TokenUsage that) {
+        if (that == null) {
+            return new TokenUsage(inputTokenCount, outputTokenCount, totalTokenCount);
+        }
+
         return new TokenUsage(
                 sum(this.inputTokenCount, that.inputTokenCount),
                 sum(this.outputTokenCount, that.outputTokenCount),
@@ -94,7 +130,8 @@ public class TokenUsage {
 
     /**
      * Sum two integers, returning null if both are null.
-     * @param first The first integer, or null.
+     *
+     * @param first  The first integer, or null.
      * @param second The second integer, or null.
      * @return the sum of the two integers, or null if both are null.
      */

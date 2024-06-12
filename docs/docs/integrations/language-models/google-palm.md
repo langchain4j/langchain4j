@@ -1,12 +1,12 @@
 ---
-sidebar_position: 9
+sidebar_position: 7
 ---
 
 # Google Vertex AI PaLM 2
 
 ## Get started
 
-To get started follow the steps outlined in the `Get started` section of [Vertex AI Gemini integration tutorial](/google-gemini) to create a 
+To get started follow the steps outlined in the `Get started` section of [Vertex AI Gemini integration tutorial](/integrations/language-models/google-gemini) to create a 
 Google Cloud Platform account and establish a new project with access to Vertex AI API.
 
 ## Add dependencies
