@@ -1,4 +1,5 @@
 ---
+id: spring-boot-integration
 sidebar_position: 27
 ---
 
