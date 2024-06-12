@@ -20,3 +20,4 @@ sidebar_position: 0
 | [OpenAI](/integrations/language-models/open-ai)                        | ✅                                          | ✅                         | ✅            | Compatible with: Groq, Ollama, LM Studio, GPT4All, etc. | ✅      |
 | [Qianfan](/integrations/language-models/qianfan)                       | ✅                                          | ✅                         |              |                                                         |        |
 | [Zhipu AI](/integrations/language-models/zhipu-ai)                     | ✅                                          | ✅                         |              |                                                         |        |
+| [Volcengine Ark](/integrations/language-models/zhipu-ai)               | ✅                                          | ✅                         |              |                                                         |        |
