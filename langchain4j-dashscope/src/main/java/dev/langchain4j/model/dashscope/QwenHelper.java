@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.common.Role.*;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
@@ -351,14 +352,28 @@ class QwenHelper {
                 .orElseThrow(IllegalStateException::new);
 
         return toolCalls.stream()
-                .filter(toolCall -> toolCall instanceof ToolCallFunction)
-                .map(toolCall -> (ToolCallFunction) toolCall)
+                .filter(ToolCallFunction.class::isInstance)
+                .map(ToolCallFunction.class::cast)
                 .map(toolCall -> ToolExecutionRequest.builder()
-                        .id(toolCall.getId())
+                        .id(getOrDefault(toolCall.getId(), () -> toolCallIdFromMessage(result)))
                         .name(toolCall.getFunction().getName())
                         .arguments(toolCall.getFunction().getArguments())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    static String toolCallIdFromMessage(GenerationResult result) {
+        // Not sure about the difference between Message::getToolCallId() and ToolCallFunction::getId().
+        // Currently, they all return null.
+        // Encapsulate a method to get the ID using Message::getToolCallId() when ToolCallFunction::getId() is null.
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCallId)
+                .orElse(null);
     }
 
     static boolean isFunctionToolCalls(GenerationResult result) {
