@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.azure.search;
 
+import com.azure.core.credential.AzureKeyCredential;
+import com.azure.search.documents.indexes.models.SearchIndex;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -17,6 +19,8 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
 public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -29,14 +33,18 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     private int dimensions;
 
+    private String AZURE_SEARCH_ENDPOINT = System.getenv("AZURE_SEARCH_ENDPOINT");
+
+    private String AZURE_SEARCH_KEY = System.getenv("AZURE_SEARCH_KEY");
+
     public AzureAiSearchEmbeddingStoreIT() {
 
         embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
         dimensions = embeddingModel.embed("test").content().vector().length;
 
         embeddingStore =  AzureAiSearchEmbeddingStore.builder()
-                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+                .endpoint(AZURE_SEARCH_ENDPOINT)
+                .apiKey(AZURE_SEARCH_KEY)
                 .dimensions(dimensions)
                 .build();
     }
@@ -47,7 +55,32 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     }
 
     @Test
-    void testAddEmbeddingsAndFindRelevant() {
+    public void when_an_index_is_provided_its_name_should_be_used() {
+        SearchIndex providedIndex = new SearchIndex("PROVIDED_INDEX");
+        AzureAiSearchEmbeddingStore store =
+                new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), false, providedIndex, null);
+
+        assertEquals(providedIndex.getName(), store.searchClient.getIndexName());
+    }
+
+
+    @Test
+    public void when_an_index_is_provided_it_cannot_be_created() {
+        try {
+            SearchIndex providedIndex = new SearchIndex("PROVIDED_INDEX");
+            AzureAiSearchEmbeddingStore store =
+                    new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
+                            new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null);
+
+            fail("Expected IllegalArgumentException to be thrown");
+        } catch (IllegalArgumentException e) {
+            assertEquals("createOrUpdateIndex is true: if the index is created or updated, then the index cannot also be provided", e.getMessage());
+        }
+    }
+
+    @Test
+    void test_add_embeddings_and_find_relevant() {
         String content1 = "banana";
         String content2 = "computer";
         String content3 = "apple";
