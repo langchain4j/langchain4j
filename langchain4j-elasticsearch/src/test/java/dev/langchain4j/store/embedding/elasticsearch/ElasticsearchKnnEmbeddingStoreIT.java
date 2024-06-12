@@ -1,8 +1,8 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
-class ElasticsearchEmbeddingStoreIT extends AbstractElasticsearchEmbeddingStoreIT {
+class ElasticsearchKnnEmbeddingStoreIT extends AbstractElasticsearchEmbeddingStoreIT {
     AbstractElasticsearchEmbeddingStore internalCreateEmbeddingStore() {
-        return ElasticsearchEmbeddingStore.builder()
+        return ElasticsearchKnnEmbeddingStore.builder()
                 .restClient(restClient)
                 .indexName(indexName)
                 .build();
