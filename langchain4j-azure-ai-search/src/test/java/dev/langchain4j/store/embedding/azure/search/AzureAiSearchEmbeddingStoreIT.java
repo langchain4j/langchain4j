@@ -1,6 +1,10 @@
 package dev.langchain4j.store.embedding.azure.search;
 
 import com.azure.core.credential.AzureKeyCredential;
+import com.azure.search.documents.indexes.SearchIndexClient;
+import com.azure.search.documents.indexes.SearchIndexClientBuilder;
+import com.azure.search.documents.indexes.models.SearchField;
+import com.azure.search.documents.indexes.models.SearchFieldDataType;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -15,8 +19,11 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
+import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -56,27 +63,49 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Test
     public void when_an_index_is_provided_its_name_should_be_used() {
-        SearchIndex providedIndex = new SearchIndex("PROVIDED_INDEX");
+        String providedIndexName = "provided-index";
+        // Clear the index before running tests
+        SearchIndexClient searchIndexClient = new SearchIndexClientBuilder()
+                .endpoint(AZURE_SEARCH_ENDPOINT)
+                .credential(new AzureKeyCredential(AZURE_SEARCH_KEY))
+                .buildClient();
+        try {
+            searchIndexClient.deleteIndex(providedIndexName);
+        } catch (Exception e) {
+            // The index didn't exist, so we can ignore the exception
+        }
+
+        // Run the tests
+        List<SearchField> fields = new ArrayList<>();
+        fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
+                .setKey(true)
+                .setFilterable(true));
+        SearchIndex providedIndex = new SearchIndex(providedIndexName).setFields(fields);
         AzureAiSearchEmbeddingStore store =
                 new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                        new AzureKeyCredential(AZURE_SEARCH_KEY), false, providedIndex, null);
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null);
 
-        assertEquals(providedIndex.getName(), store.searchClient.getIndexName());
-    }
+        assertEquals(providedIndexName, store.searchClient.getIndexName());
 
-
-    @Test
-    public void when_an_index_is_provided_it_cannot_be_created() {
         try {
-            SearchIndex providedIndex = new SearchIndex("PROVIDED_INDEX");
-            AzureAiSearchEmbeddingStore store =
-                    new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                            new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null);
+            new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME");
 
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
-            assertEquals("createOrUpdateIndex is true: if the index is created or updated, then the index cannot also be provided", e.getMessage());
+            assertEquals("index and indexName cannot be both defined", e.getMessage());
         }
+
+        // Clear index
+        searchIndexClient.deleteIndex(providedIndexName);
+    }
+
+    @Test
+    public void when_an_index_is_not_provided_its_name_is_the_default() {
+        AzureAiSearchEmbeddingStore store =new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
+            new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null);
+
+        assertEquals(DEFAULT_INDEX_NAME, store.searchClient.getIndexName());
     }
 
     @Test

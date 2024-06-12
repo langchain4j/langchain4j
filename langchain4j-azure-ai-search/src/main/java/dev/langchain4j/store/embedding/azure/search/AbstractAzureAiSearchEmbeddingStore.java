@@ -69,14 +69,11 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             throw new IllegalArgumentException("index and indexName cannot be both defined");
         }
         if (createOrUpdateIndex && index != null) {
-            throw new IllegalArgumentException("createOrUpdateIndex is true: if the index is created or updated, then the index cannot also be provided");
+            this.indexName = index.getName();
+        } else {
+            this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
         }
         this.createOrUpdateIndex = createOrUpdateIndex;
-        if (createOrUpdateIndex) {
-            this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
-        } else {
-            this.indexName = index.getName();
-        }
         if (keyCredential != null) {
             if (createOrUpdateIndex) {
                 searchIndexClient = new SearchIndexClientBuilder()
