@@ -6,6 +6,10 @@ sidebar_position: 7
 
 Some LLMs, in addition to generating text, can also trigger actions.
 
+:::note
+All LLMs supporting tools can be found [here](/integrations/language-models) (see the "Tools" column).
+:::
+
 There is a concept known as "tools," or "function calling".
 It allows the LLM to call, when necessary, one or more available tools, usually defined by the developer.
 A tool can be anything: a web search, a call to an external API, or the execution of a specific piece of code, etc.
