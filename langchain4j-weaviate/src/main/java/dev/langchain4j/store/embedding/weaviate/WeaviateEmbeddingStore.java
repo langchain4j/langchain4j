@@ -5,7 +5,6 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.filter.Filter;
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateAuthClient;
 import io.weaviate.client.WeaviateClient;
@@ -25,7 +24,8 @@ import org.apache.commons.lang3.ArrayUtils;
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
@@ -147,15 +147,6 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> embedded) {
         return addAll(null, embeddings, embedded);
-    }
-
-    @Override
-    public void remove(String id) {
-        ensureNotBlank(id, "id");
-        client.data().deleter().
-                withClassName(objectClass).
-                withID(id).
-                run();
     }
 
     @Override

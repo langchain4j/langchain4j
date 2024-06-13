@@ -16,9 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -94,11 +92,6 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return newEntries.stream()
                 .map(entry -> entry.id)
                 .collect(toList());
-    }
-
-    @Override
-    public void remove(String id) {
-        entries.removeIf(entry -> entry.id.equals(id));
     }
 
     @Override

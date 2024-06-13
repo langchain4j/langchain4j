@@ -6,7 +6,8 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 
-public class InMemoryEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
+class InMemoryEmbeddingStoreRemovalTest extends EmbeddingStoreWithRemovalIT {
+
     EmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
