@@ -10,13 +10,19 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiStreamingChatModelBuilderFactory;
 import lombok.Builder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -32,6 +38,16 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private final GenerationConfig generationConfig;
     private final VertexAI vertexAI;
 
+    private final Map<HarmCategory, SafetyThreshold> safetySettings;
+
+    private final Tool googleSearch;
+    private final Tool vertexSearch;
+
+    private final Boolean logRequests;
+    private final Boolean logResponses;
+
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+
     @Builder
     public VertexAiGeminiStreamingChatModel(String project,
                                             String location,
@@ -39,7 +55,13 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Float temperature,
                                             Integer maxOutputTokens,
                                             Integer topK,
-                                            Float topP) {
+                                            Float topP,
+                                            String responseMimeType,
+                                            Map<HarmCategory, SafetyThreshold> safetySettings,
+                                            Boolean useGoogleSearch,
+                                            String vertexSearchDatastore,
+                                            Boolean logRequests,
+                                            Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -53,7 +75,27 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
         }
+        if (responseMimeType != null) {
+            generationConfigBuilder.setResponseMimeType(responseMimeType);
+        }
         this.generationConfig = generationConfigBuilder.build();
+
+        if (safetySettings != null) {
+            this.safetySettings = safetySettings;
+        } else {
+            this.safetySettings = new HashMap<>();
+        }
+
+        if (useGoogleSearch != null && useGoogleSearch) {
+            googleSearch = ResponseGrounding.googleSearchTool();
+        } else {
+            googleSearch = null;
+        }
+        if (vertexSearchDatastore != null) {
+            vertexSearch = ResponseGrounding.vertexAiSearch(vertexSearchDatastore);
+        } else {
+            vertexSearch = null;
+        }
 
         this.vertexAI = new VertexAI(
             ensureNotBlank(project, "project"),
@@ -62,6 +104,17 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.generativeModel = new GenerativeModel(
             ensureNotBlank(modelName, "modelName"), vertexAI)
             .withGenerationConfig(generationConfig);
+
+        if (logRequests != null) {
+            this.logRequests = logRequests;
+        } else {
+            this.logRequests = false;
+        }
+        if (logResponses != null) {
+            this.logResponses = logResponses;
+        } else {
+            this.logResponses = false;
+        }
     }
 
     public VertexAiGeminiStreamingChatModel(GenerativeModel generativeModel,
@@ -69,6 +122,11 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.vertexAI = null;
+        this.safetySettings = new HashMap<>();
+        this.googleSearch = null;
+        this.vertexSearch = null;
+        this.logRequests = false;
+        this.logResponses = false;
     }
 
     @Override
@@ -78,18 +136,37 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
 
     @Override
     public void generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications, StreamingResponseHandler<AiMessage> handler) {
-        GenerativeModel model = this.generativeModel;
+        String modelName = generativeModel.getModelName();
 
+        List<Tool> tools = new ArrayList<>();
         if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
             Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
-            model = model.withTools(Collections.singletonList(tool));
+            tools.add(tool);
         }
 
-        ContentsMapper.InstructionAndContent instructionAndContent
-            = ContentsMapper.splitInstructionAndContent(messages);
+        if (this.googleSearch != null) {
+            tools.add(this.googleSearch);
+        }
+        if (this.vertexSearch != null) {
+            tools.add(this.vertexSearch);
+        }
+
+        GenerativeModel model = this.generativeModel
+            .withTools(tools);
+
+        ContentsMapper.InstructionAndContent instructionAndContent =
+            ContentsMapper.splitInstructionAndContent(messages);
 
         if (instructionAndContent.systemInstruction != null) {
             model = model.withSystemInstruction(instructionAndContent.systemInstruction);
+        }
+
+        if (!this.safetySettings.isEmpty()) {
+            model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
+        }
+
+        if (this.logRequests && logger.isDebugEnabled()) {
+            logger.debug("GEMINI ({}) tools: {}\nrequest: {}", modelName, tools, instructionAndContent);
         }
 
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
@@ -98,10 +175,17 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             model.generateContentStream(instructionAndContent.contents)
                 .stream()
                 .forEach(partialResponse -> {
-                    responseBuilder.append(partialResponse);
-                    handler.onNext(ResponseHandler.getText(partialResponse));
+                    if (partialResponse.getCandidatesCount() > 0) {
+                        responseBuilder.append(partialResponse);
+                        handler.onNext(ResponseHandler.getText(partialResponse));
+                    }
                 });
-            handler.onComplete(responseBuilder.build());
+            Response<AiMessage> fullResponse = responseBuilder.build();
+            handler.onComplete(fullResponse);
+
+            if (this.logResponses && logger.isDebugEnabled()) {
+                logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
+            }
         } catch (Exception exception) {
             handler.onError(exception);
         }
@@ -116,18 +200,18 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         }
     }
 
-    public static VertexAiGeminiStreamingChatModelBuilder builder() {
-        for (VertexAiGeminiStreamingChatModelBuilderFactory factory : loadFactories(VertexAiGeminiStreamingChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new VertexAiGeminiStreamingChatModelBuilder();
-    }
-
     @Override
     public void close() throws IOException {
         if (this.vertexAI != null) {
             this.vertexAI.close();
         }
+    }
+
+    public static VertexAiGeminiStreamingChatModelBuilder builder() {
+        for (VertexAiGeminiStreamingChatModelBuilderFactory factory : loadFactories(VertexAiGeminiStreamingChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new VertexAiGeminiStreamingChatModelBuilder();
     }
 
     public static class VertexAiGeminiStreamingChatModelBuilder {

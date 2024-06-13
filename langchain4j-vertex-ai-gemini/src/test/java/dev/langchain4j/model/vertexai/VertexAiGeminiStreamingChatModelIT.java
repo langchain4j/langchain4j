@@ -4,12 +4,17 @@ import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.TokenStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -17,21 +22,36 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onNext;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_HARASSMENT;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_HATE_SPEECH;
+import static dev.langchain4j.model.vertexai.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_LOW_AND_ABOVE;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_MEDIUM_AND_ABOVE;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_NONE;
+import static dev.langchain4j.model.vertexai.SafetyThreshold.BLOCK_ONLY_HIGH;
 import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.CAT_IMAGE_URL;
 import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class VertexAiGeminiStreamingChatModelIT {
 
-    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-preview-0514";
+    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-001";
 
     StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
@@ -366,5 +386,124 @@ class VertexAiGeminiStreamingChatModelIT {
         // then
         System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
+    }
+
+    static class StockInventory {
+        @Tool("Get the stock inventory for a product identified by its ID")
+        public int getStockInventory(@P("ID of the product") String product) {
+            if (product.equals("ABC")) {
+                return 10;
+            } else if (product.equals("XYZ")) {
+                return 42;
+            } else {
+                return 0;
+            }
+        }
+    }
+
+    interface StreamingStockAssistant {
+        @dev.langchain4j.service.SystemMessage(
+            "You MUST call `getStockInventory()` for stock inventory requests.")
+        TokenStream chat(String msg);
+    }
+
+    @Test
+    void should_work_with_parallel_function_calls() throws InterruptedException, ExecutionException, TimeoutException {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-1.5-flash-001")
+            .logRequests(true)
+            .logResponses(true)
+            .temperature(0f)
+            .topK(1)
+            .build();
+
+        StreamingStockAssistant assistant = AiServices.builder(StreamingStockAssistant.class)
+            .streamingChatLanguageModel(model)
+            .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+            .tools(new StockInventory())
+            .build();
+
+        // when
+        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        assistant.chat("Is there more stock of ABC or of XYZ?")
+            .onNext(System.out::println)
+            .onComplete(future::complete)
+            .onError(future::completeExceptionally)
+            .start();
+        Response<AiMessage> response = future.get(30, TimeUnit.SECONDS);
+
+        // then
+        assertThat(response.content().toString()).contains("XYZ");
+    }
+
+    @Test
+    void should_use_google_search() {
+
+        // given
+        VertexAiGeminiStreamingChatModel modelWithSearch = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName("gemini-1.5-flash-001")
+            .useGoogleSearch(true)
+            .build();
+
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+
+        // when
+        modelWithSearch.generate("Why is the sky blue?", handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("scatter");
+    }
+
+    @Test
+    void should_support_json_response_mime_type() {
+
+        // given
+        VertexAiGeminiStreamingChatModel modelWithResponseMimeType = VertexAiGeminiStreamingChatModel.builder()
+            .project("genai-java-demos")
+            .location("us-central1")
+            .modelName("gemini-1.5-flash-001")
+            .responseMimeType("application/json")
+            .build();
+
+        // when
+        StringBuilder accumulatedResponse = new StringBuilder();
+        modelWithResponseMimeType.generate("Run a dice roll", onNext(accumulatedResponse::append));
+        String response = accumulatedResponse.toString();
+
+        // then
+        System.out.println("streamed response = " + response);
+        assertThat(response).containsAnyOf("1", "2", "3", "4", "5", "6");
+    }
+
+    @Test
+    void should_allow_defining_safety_settings() {
+        // given
+        HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
+        safetySettings.put(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE);
+        safetySettings.put(HARM_CATEGORY_DANGEROUS_CONTENT, BLOCK_ONLY_HIGH);
+        safetySettings.put(HARM_CATEGORY_HATE_SPEECH, BLOCK_NONE);
+        safetySettings.put(HARM_CATEGORY_SEXUALLY_EXPLICIT, BLOCK_MEDIUM_AND_ABOVE);
+
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project("genai-java-demos")
+            .location("us-central1")
+            .modelName("gemini-1.5-flash-001")
+            .safetySettings(safetySettings)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        Exception exception = assertThrows(RuntimeException.class, () -> {
+            model.generate("You're a dumb bastard!!!", onNext(System.out::println));
+        });
+
+        // then
+        assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
     }
 }

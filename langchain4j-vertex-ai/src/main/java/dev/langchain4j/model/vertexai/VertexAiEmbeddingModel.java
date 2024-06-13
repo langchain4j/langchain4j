@@ -73,7 +73,8 @@ public class VertexAiEmbeddingModel implements EmbeddingModel {
     private final String titleMetadataKey;
 
     public enum TaskType {
-        RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION, CLUSTERING
+        RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION,
+        CLUSTERING, QUESTION_ANSWERING, FACT_VERIFICATION
     }
 
     public VertexAiEmbeddingModel(String endpoint,

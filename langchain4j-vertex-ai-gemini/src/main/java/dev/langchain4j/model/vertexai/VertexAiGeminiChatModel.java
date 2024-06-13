@@ -12,11 +12,16 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.spi.VertexAiGeminiChatModelBuilderFactory;
 import lombok.Builder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
@@ -51,6 +56,15 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     private final Integer maxRetries;
     private final VertexAI vertexAI;
 
+    private final Map<HarmCategory, SafetyThreshold> safetySettings;
+
+    private final Tool googleSearch;
+    private final Tool vertexSearch;
+
+    private final Boolean logRequests;
+    private final Boolean logResponses;
+    private static final Logger logger = LoggerFactory.getLogger(VertexAiGeminiChatModel.class);
+
     @Builder
     public VertexAiGeminiChatModel(String project,
                                    String location,
@@ -59,7 +73,13 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                                    Integer maxOutputTokens,
                                    Integer topK,
                                    Float topP,
-                                   Integer maxRetries) {
+                                   Integer maxRetries,
+                                   String responseMimeType,
+                                   Map<HarmCategory, SafetyThreshold> safetySettings,
+                                   Boolean useGoogleSearch,
+                                   String vertexSearchDatastore,
+                                   Boolean logRequests,
+                                   Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
             generationConfigBuilder.setTemperature(temperature);
@@ -73,7 +93,27 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         if (topP != null) {
             generationConfigBuilder.setTopP(topP);
         }
+        if (responseMimeType != null) {
+            generationConfigBuilder.setResponseMimeType(responseMimeType);
+        }
         this.generationConfig = generationConfigBuilder.build();
+
+        if (safetySettings != null) {
+            this.safetySettings = safetySettings;
+        } else {
+            this.safetySettings = new HashMap<>();
+        }
+
+        if (useGoogleSearch != null && useGoogleSearch) {
+            googleSearch = ResponseGrounding.googleSearchTool();
+        } else {
+            googleSearch = null;
+        }
+        if (vertexSearchDatastore != null) {
+            vertexSearch = ResponseGrounding.vertexAiSearch(vertexSearchDatastore);
+        } else {
+            vertexSearch = null;
+        }
 
         this.vertexAI = new VertexAI(
             ensureNotBlank(project, "project"),
@@ -84,6 +124,17 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .withGenerationConfig(generationConfig);
 
         this.maxRetries = getOrDefault(maxRetries, 3);
+
+        if (logRequests != null) {
+            this.logRequests = logRequests;
+        } else {
+            this.logRequests = false;
+        }
+        if (logResponses != null) {
+            this.logResponses = logResponses;
+        } else {
+            this.logResponses = false;
+        }
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel,
@@ -99,43 +150,60 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             .withGenerationConfig(generationConfig);
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.vertexAI = null;
+        this.safetySettings = new HashMap<>();
+        this.googleSearch = null;
+        this.vertexSearch = null;
+        this.logRequests = false;
+        this.logResponses = false;
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ContentsMapper.InstructionAndContent instructionAndContent
-            = ContentsMapper.splitInstructionAndContent(messages);
-
-        GenerativeModel model = instructionAndContent.systemInstruction != null ?
-            this.generativeModel.withSystemInstruction(instructionAndContent.systemInstruction) :
-            this.generativeModel;
-
-        GenerateContentResponse response = withRetry(() ->
-            model.generateContent(instructionAndContent.contents), maxRetries);
-
-        return Response.from(
-            AiMessage.from(ResponseHandler.getText(response)),
-            TokenUsageMapper.map(response.getUsageMetadata()),
-            FinishReasonMapper.map(ResponseHandler.getFinishReason(response))
-        );
+        return generate(messages, new ArrayList<>());
     }
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+        String modelName = generativeModel.getModelName();
 
-        GenerativeModel modelWithTools = this.generativeModel
-            .withTools(Collections.singletonList(tool));
+        List<Tool> tools = new ArrayList<>();
+        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
+            Tool tool = FunctionCallHelper.convertToolSpecifications(toolSpecifications);
+            tools.add(tool);
+        }
 
-        ContentsMapper.InstructionAndContent instructionAndContent
-            = ContentsMapper.splitInstructionAndContent(messages);
+        if (this.googleSearch != null) {
+            tools.add(this.googleSearch);
+        }
+        if (this.vertexSearch != null) {
+            tools.add(this.vertexSearch);
+        }
 
-        GenerativeModel model = instructionAndContent.systemInstruction != null ?
-            modelWithTools.withSystemInstruction(instructionAndContent.systemInstruction) :
-            modelWithTools;
+        GenerativeModel model = this.generativeModel
+            .withTools(tools);
 
+        ContentsMapper.InstructionAndContent instructionAndContent =
+            ContentsMapper.splitInstructionAndContent(messages);
+
+        if (instructionAndContent.systemInstruction != null) {
+            model = model.withSystemInstruction(instructionAndContent.systemInstruction);
+        }
+
+        if (!this.safetySettings.isEmpty()) {
+            model = model.withSafetySettings(SafetySettingsMapper.mapSafetySettings(this.safetySettings));
+        }
+
+        if (this.logRequests && logger.isDebugEnabled()) {
+            logger.debug("GEMINI ({}) tools: {} request: {}", modelName, tools, instructionAndContent);
+        }
+
+        GenerativeModel finalModel = model;
         GenerateContentResponse response = withRetry(() ->
-            model.generateContent(instructionAndContent.contents), maxRetries);
+            finalModel.generateContent(instructionAndContent.contents), maxRetries);
+
+        if (this.logResponses && logger.isDebugEnabled()) {
+            logger.debug("GEMINI ({}) response: {}", modelName, response);
+        }
 
         Content content = ResponseHandler.getContent(response);
 
@@ -170,18 +238,18 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         }
     }
 
-    public static VertexAiGeminiChatModelBuilder builder() {
-        for (VertexAiGeminiChatModelBuilderFactory factory : loadFactories(VertexAiGeminiChatModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new VertexAiGeminiChatModelBuilder();
-    }
-
     @Override
     public void close() throws IOException {
         if (this.vertexAI != null) {
             vertexAI.close();
         }
+    }
+
+    public static VertexAiGeminiChatModelBuilder builder() {
+        for (VertexAiGeminiChatModelBuilderFactory factory : loadFactories(VertexAiGeminiChatModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new VertexAiGeminiChatModelBuilder();
     }
 
     public static class VertexAiGeminiChatModelBuilder {
