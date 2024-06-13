@@ -31,9 +31,9 @@ class DocumentByRegexSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment("one", metadata("index", "0").add("document", "0")),
-                textSegment("two", metadata("index", "1").add("document", "0")),
-                textSegment("three", metadata("index", "2").add("document", "0"))
+                textSegment("one", metadata("index", "0").put("document", "0")),
+                textSegment("two", metadata("index", "1").put("document", "0")),
+                textSegment("three", metadata("index", "2").put("document", "0"))
         );
     }
 
@@ -50,8 +50,8 @@ class DocumentByRegexSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment("one\ntwo", metadata("index", "0").add("document", "0")),
-                textSegment("three", metadata("index", "1").add("document", "0"))
+                textSegment("one\ntwo", metadata("index", "0").put("document", "0")),
+                textSegment("three", metadata("index", "1").put("document", "0"))
         );
     }
 
@@ -72,12 +72,12 @@ class DocumentByRegexSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment("This is a first", metadata("index", "0").add("document", "0")),
-                textSegment("line.", metadata("index", "1").add("document", "0")),
-                textSegment("This is a", metadata("index", "2").add("document", "0")),
-                textSegment("second line.", metadata("index", "3").add("document", "0")),
-                textSegment("This is a third", metadata("index", "4").add("document", "0")),
-                textSegment("line.", metadata("index", "5").add("document", "0"))
+                textSegment("This is a first", metadata("index", "0").put("document", "0")),
+                textSegment("line.", metadata("index", "1").put("document", "0")),
+                textSegment("This is a", metadata("index", "2").put("document", "0")),
+                textSegment("second line.", metadata("index", "3").put("document", "0")),
+                textSegment("This is a third", metadata("index", "4").put("document", "0")),
+                textSegment("line.", metadata("index", "5").put("document", "0"))
         );
     }
 }

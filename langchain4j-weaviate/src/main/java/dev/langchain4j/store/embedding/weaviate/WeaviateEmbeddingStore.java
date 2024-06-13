@@ -242,7 +242,7 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         Map<String, Object> metadata = prefillMetadata();
         if (segment != null) {
             props.put(METADATA_TEXT_SEGMENT, segment.text());
-            if (!segment.metadata().asMap().isEmpty()) {
+            if (!segment.metadata().toMap().isEmpty()) {
                 for (String property : metadataKeys) {
                     if (segment.metadata().containsKey(property)) {
                         metadata.put(property, segment.metadata().get(property));
