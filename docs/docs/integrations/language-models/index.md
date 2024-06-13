@@ -20,4 +20,5 @@ sidebar_position: 0
 | [Ollama](/integrations/language-models/ollama)                         | ✅                                          |                           | ✅            | ✅                                                       |        |
 | [OpenAI](/integrations/language-models/open-ai)                        | ✅                                          | ✅                         | ✅            | Compatible with: Groq, Ollama, LM Studio, GPT4All, etc. | ✅      |
 | [Qianfan](/integrations/language-models/qianfan)                       | ✅                                          | ✅                         |              |                                                         |        |
+| [Cloudflare Workers AI](/integrations/language-models/workers-ai)      |                                            |                           |              |                                                         |        |
 | [Zhipu AI](/integrations/language-models/zhipu-ai)                     | ✅                                          | ✅                         |              |                                                         |        |
