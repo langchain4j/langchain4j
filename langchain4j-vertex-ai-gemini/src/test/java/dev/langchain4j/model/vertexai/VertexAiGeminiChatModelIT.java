@@ -3,10 +3,7 @@ package dev.langchain4j.model.vertexai;
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
-import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -22,10 +19,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
-import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -35,16 +33,12 @@ class VertexAiGeminiChatModelIT {
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
     static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
+    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-preview-0514";
+
     ChatLanguageModel model = VertexAiGeminiChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro")
-            .build();
-
-    ChatLanguageModel visionModel = VertexAiGeminiChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro-vision")
+            .modelName(GEMINI_1_5_PRO)
             .build();
 
     @Test
@@ -71,33 +65,33 @@ class VertexAiGeminiChatModelIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_merge_system_messages_into_user_message(List<ChatMessage> messages) {
+    void should_support_system_instructions(List<ChatMessage> messages) {
 
         // when
         Response<AiMessage> response = model.generate(messages);
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("liebe");
+        assertThat(response.content().text()).containsIgnoringCase("lieb");
     }
 
-    static Stream<Arguments> should_merge_system_messages_into_user_message() {
+    static Stream<Arguments> should_support_system_instructions() {
         return Stream.<Arguments>builder()
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in German"),
-                                UserMessage.from("I love you")
+                                UserMessage.from("I love apples")
                         )
                 ))
                 .add(Arguments.of(
                         asList(
-                                UserMessage.from("I love you"),
-                                SystemMessage.from("Translate in German")
+                            UserMessage.from("I love apples"),
+                            SystemMessage.from("Translate in German")
                         )
                 ))
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in Italian"),
-                                UserMessage.from("I love you"),
+                                UserMessage.from("I love apples"),
                                 SystemMessage.from("No, translate in German!")
                         )
                 ))
@@ -105,8 +99,8 @@ class VertexAiGeminiChatModelIT {
                         asList(
                                 SystemMessage.from("Translate in German"),
                                 UserMessage.from(asList(
-                                        TextContent.from("I love you"),
-                                        TextContent.from("I see you")
+                                        TextContent.from("I love apples"),
+                                        TextContent.from("I see apples")
                                 ))
                         )
                 ))
@@ -114,17 +108,17 @@ class VertexAiGeminiChatModelIT {
                         asList(
                                 SystemMessage.from("Translate in German"),
                                 UserMessage.from(asList(
-                                        TextContent.from("I see you"),
-                                        TextContent.from("I love you")
+                                        TextContent.from("I see apples"),
+                                        TextContent.from("I love apples")
                                 ))
                         )
                 ))
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in German"),
-                                UserMessage.from("I see you"),
-                                AiMessage.from("Ich sehe dich"),
-                                UserMessage.from("I love you")
+                                UserMessage.from("I see apples"),
+                                AiMessage.from("Ich sehe Äpfel"),
+                                UserMessage.from("I love apples")
                         )
                 ))
                 .build();
@@ -137,7 +131,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
+                .modelName(GEMINI_1_5_PRO)
                 .maxOutputTokens(1)
                 .build();
 
@@ -156,7 +150,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     @Test
@@ -164,7 +158,7 @@ class VertexAiGeminiChatModelIT {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
-        GenerativeModel generativeModel = new GenerativeModel("gemini-pro", vertexAi);
+        GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
         ChatLanguageModel model = new VertexAiGeminiChatModel(generativeModel, generationConfig);
@@ -189,7 +183,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -205,7 +199,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -222,7 +216,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text()).containsIgnoringCase("cat");
@@ -239,7 +233,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -258,7 +252,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -279,7 +273,7 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
@@ -299,12 +293,12 @@ class VertexAiGeminiChatModelIT {
         );
 
         // when
-        Response<AiMessage> response = visionModel.generate(userMessage);
+        Response<AiMessage> response = model.generate(userMessage);
 
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
-                .containsIgnoringCase("dog")
+//                .containsIgnoringCase("dog")  // sometimes the model replies "puppy" instead of "dog"
                 .containsIgnoringCase("dice");
     }
 
@@ -315,7 +309,7 @@ class VertexAiGeminiChatModelIT {
         ChatLanguageModel model = VertexAiGeminiChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
+                .modelName(GEMINI_1_5_PRO)
                 .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()
@@ -353,6 +347,49 @@ class VertexAiGeminiChatModelIT {
         // then
         System.out.println("Answer: " + weatherResponse.content().text());
         assertThat(weatherResponse.content().text()).containsIgnoringCase("sunny");
+    }
+
+    @Test
+    void should_handle_parallel_function_calls() {
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .build();
+
+        ToolSpecification stockInventoryToolSpec = ToolSpecification.builder()
+            .name("getProductInventory")
+            .description("Get the product inventory for a particular product ID")
+            .addParameter("product_id", JsonSchemaProperty.STRING,
+                JsonSchemaProperty.description("the ID of the product"))
+            .build();
+
+        List<ChatMessage> allMessages = new ArrayList<>();
+
+        UserMessage inventoryQuestion = UserMessage.from("Is there more stock of product ABC123 or of XYZ789?");
+        System.out.println("Question: " + inventoryQuestion.text());
+        allMessages.add(inventoryQuestion);
+
+        // when
+        Response<AiMessage> messageResponse = model.generate(allMessages, stockInventoryToolSpec);
+
+        System.out.println("inventory response = " + messageResponse.content().text());
+
+        // then
+        assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
+
+        List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
+        assertThat(executionRequests.size()).isEqualTo(2);
+
+        String inventoryStock = executionRequests.stream()
+            .map(ToolExecutionRequest::arguments)
+            .collect(Collectors.joining(","));
+
+        System.out.println("inventoryStock = " + inventoryStock);
+
+        assertThat(inventoryStock).containsIgnoringCase("ABC123");
+        assertThat(inventoryStock).containsIgnoringCase("XYZ789");
     }
 
     static class Calculator {
@@ -417,5 +454,30 @@ class VertexAiGeminiChatModelIT {
 
         verify(calculator).multiply(257, 467);
         verifyNoMoreInteractions(calculator);
+    }
+
+    static class AnniversaryDate {
+        @Tool("get the anniversary date")
+        String getCurrentDate() {
+            return "2040-03-10";
+        }
+    }
+
+    @Test
+    void should_support_noarg_fn() {
+
+        // given
+        AnniversaryDate anniversaryDate = new AnniversaryDate();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+            .chatLanguageModel(model)
+            .tools(anniversaryDate)
+            .build();
+
+        // when
+        String answer = assistant.chat("What is the year of the anniversary date?");
+
+        // then
+        assertThat(answer).contains("2040");
     }
 }

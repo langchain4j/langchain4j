@@ -7,6 +7,7 @@ import lombok.Builder;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -37,10 +38,17 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                                         Integer numCtx,
                                         List<String> stop,
                                         String format,
-                                        Duration timeout) {
+                                        Duration timeout,
+                                        Boolean logRequests,
+                                        Boolean logResponses,
+                                        Map<String, String> customHeaders
+                                        ) {
         this.client = OllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
+                .logRequests(logRequests)
+                .logStreamingResponses(logResponses)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = ensureNotBlank(modelName, "modelName");
         this.options = Options.builder()

@@ -14,6 +14,8 @@ import dev.langchain4j.model.input.structured.StructuredPromptProcessor;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.rag.AugmentationRequest;
+import dev.langchain4j.rag.AugmentationResult;
 import dev.langchain4j.rag.query.Metadata;
 
 import java.io.InputStream;
@@ -28,6 +30,7 @@ import java.util.stream.Stream;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
 import static dev.langchain4j.service.ServiceOutputParser.parse;
 
@@ -68,6 +71,9 @@ class DefaultAiServices<T> extends AiServices<T> {
                 throw illegalConfiguration("The @Moderate annotation is present, but the moderationModel is not set up. " +
                         "Please ensure a valid moderationModel is configured before using the @Moderate annotation.");
             }
+            if (method.getReturnType() == Result.class) {
+                validateResultReturnType(method);
+            }
         }
 
         Object proxyInstance = Proxy.newProxyInstance(
@@ -91,26 +97,44 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
-
+                        AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
                             List<ChatMessage> chatMemory = context.hasChatMemory()
                                     ? context.chatMemory(memoryId).messages()
                                     : null;
                             Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
-                            userMessage = context.retrievalAugmentor.augment(userMessage, metadata);
+                            AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+                            augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
+                            userMessage = (UserMessage) augmentationResult.chatMessage();
                         }
 
                         // TODO give user ability to provide custom OutputParser
-                        String outputFormatInstructions = outputFormatInstructions(method.getReturnType());
-                        if(userMessage.contents().stream().filter(content -> content instanceof TextContent).count() > 1) {
+                        Class<?> returnType = method.getReturnType();
+                        boolean isReturnTypeResult = false;
+                        if (returnType == Result.class) {
+                            isReturnTypeResult = true;
+                            AnnotatedType annotatedReturnType = method.getAnnotatedReturnType();
+                            ParameterizedType type = (ParameterizedType) annotatedReturnType.getType();
+                            Type[] typeArguments = type.getActualTypeArguments();
+                            for (Type typeArg : typeArguments) {
+                                returnType = Class.forName(typeArg.getTypeName());
+                            }
+                        }
+                        if (userMessage.contents().stream().filter(content -> content instanceof TextContent).count() > 1) {
                             throw illegalConfiguration("Error: The method '%s' has multiple text contents. Please use only one.", method.getName());
                         }
-                        if(userMessage.contents().size() > 1 && !(userMessage.contents().get(0) instanceof TextContent)) {
+                        if (userMessage.contents().size() > 1 && !(userMessage.contents().get(0) instanceof TextContent)) {
                             throw illegalConfiguration("Error: The first content should be text content.", method.getName());
                         }
+                        String outputFormatInstructions = outputFormatInstructions(returnType);
                         String text = ((TextContent) userMessage.contents().get(0)).text() + outputFormatInstructions;
                         List<Content> images = userMessage.contents().subList(1, userMessage.contents().size());
-                        userMessage = UserMessage.from(Stream.concat(Stream.of(TextContent.from(text)), images.stream()).collect(Collectors.toList()));
+                        List<Content> contents = Stream.concat(Stream.of(TextContent.from(text)), images.stream()).collect(Collectors.toList());
+                        if (isNotNullOrBlank(userMessage.name())) {
+                            userMessage = UserMessage.from(userMessage.name(), contents);
+                        } else {
+                            userMessage = UserMessage.from(contents);
+                        }
 
                         if (context.hasChatMemory()) {
                             ChatMemory chatMemory = context.chatMemory(memoryId);
@@ -129,7 +153,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
 
-                        if (method.getReturnType() == TokenStream.class) {
+                        if (returnType == TokenStream.class) {
                             return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
                         }
 
@@ -180,11 +204,21 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
 
                             response = context.chatModel.generate(messages, context.toolSpecifications);
-                            tokenUsageAccumulator = tokenUsageAccumulator.add(response.tokenUsage());
+                            tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        return parse(response, method.getReturnType());
+                        Object parsedResponse = parse(response, returnType);
+
+                        if (isReturnTypeResult) {
+                            return Result.builder()
+                                    .content(parsedResponse)
+                                    .tokenUsage(tokenUsageAccumulator)
+                                    .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .build();
+                        } else {
+                            return parsedResponse;
+                        }
                     }
 
                     private Future<Moderation> triggerModerationIfNeeded(Method method, List<ChatMessage> messages) {

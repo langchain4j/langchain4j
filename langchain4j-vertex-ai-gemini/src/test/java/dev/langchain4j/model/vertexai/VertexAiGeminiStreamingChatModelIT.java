@@ -7,7 +7,6 @@ import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.TestStreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -19,7 +18,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
@@ -29,21 +27,16 @@ import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.CAT_IMAGE
 import static dev.langchain4j.model.vertexai.VertexAiGeminiChatModelIT.DICE_IMAGE_URL;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class VertexAiGeminiStreamingChatModelIT {
 
+    public static final String GEMINI_1_5_PRO = "gemini-1.5-pro-preview-0514";
+
     StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
             .project(System.getenv("GCP_PROJECT_ID"))
             .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro")
-            .build();
-
-    StreamingChatLanguageModel visionModel = VertexAiGeminiStreamingChatModel.builder()
-            .project(System.getenv("GCP_PROJECT_ID"))
-            .location(System.getenv("GCP_LOCATION"))
-            .modelName("gemini-pro-vision")
+            .modelName(GEMINI_1_5_PRO)
             .build();
 
     @Test
@@ -70,7 +63,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
     @ParameterizedTest
     @MethodSource
-    void should_merge_system_messages_into_user_message(List<ChatMessage> messages) {
+    void should_support_system_instructions(List<ChatMessage> messages) {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
@@ -78,27 +71,27 @@ class VertexAiGeminiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         // then
-        assertThat(response.content().text()).containsIgnoringCase("liebe");
+        assertThat(response.content().text()).containsIgnoringCase("lieb");
     }
 
-    static Stream<Arguments> should_merge_system_messages_into_user_message() {
+    static Stream<Arguments> should_support_system_instructions() {
         return Stream.<Arguments>builder()
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in German"),
-                                UserMessage.from("I love you")
+                                UserMessage.from("I love apples")
                         )
                 ))
                 .add(Arguments.of(
                         asList(
-                                UserMessage.from("I love you"),
+                                UserMessage.from("I love apples"),
                                 SystemMessage.from("Translate in German")
                         )
                 ))
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in Italian"),
-                                UserMessage.from("I love you"),
+                                UserMessage.from("I love apples"),
                                 SystemMessage.from("No, translate in German!")
                         )
                 ))
@@ -106,8 +99,8 @@ class VertexAiGeminiStreamingChatModelIT {
                         asList(
                                 SystemMessage.from("Translate in German"),
                                 UserMessage.from(asList(
-                                        TextContent.from("I love you"),
-                                        TextContent.from("I see you")
+                                        TextContent.from("I love apples"),
+                                        TextContent.from("I see apples")
                                 ))
                         )
                 ))
@@ -115,17 +108,17 @@ class VertexAiGeminiStreamingChatModelIT {
                         asList(
                                 SystemMessage.from("Translate in German"),
                                 UserMessage.from(asList(
-                                        TextContent.from("I see you"),
-                                        TextContent.from("I love you")
+                                        TextContent.from("I see apples"),
+                                        TextContent.from("I love apples")
                                 ))
                         )
                 ))
                 .add(Arguments.of(
                         asList(
                                 SystemMessage.from("Translate in German"),
-                                UserMessage.from("I see you"),
-                                AiMessage.from("Ich sehe dich"),
-                                UserMessage.from("I love you")
+                                UserMessage.from("I see appels"),
+                                AiMessage.from("Ich sehe Äpfel"),
+                                UserMessage.from("I love apples")
                         )
                 ))
                 .build();
@@ -138,7 +131,7 @@ class VertexAiGeminiStreamingChatModelIT {
         StreamingChatLanguageModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
+                .modelName(GEMINI_1_5_PRO)
                 .maxOutputTokens(1)
                 .build();
 
@@ -157,7 +150,7 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(STOP);
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
     }
 
     @Test
@@ -165,7 +158,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         VertexAI vertexAi = new VertexAI(System.getenv("GCP_PROJECT_ID"), System.getenv("GCP_LOCATION"));
-        GenerativeModel generativeModel = new GenerativeModel("gemini-pro", vertexAi);
+        GenerativeModel generativeModel = new GenerativeModel(GEMINI_1_5_PRO, vertexAi);
         GenerationConfig generationConfig = GenerationConfig.getDefaultInstance();
 
         StreamingChatLanguageModel model = new VertexAiGeminiStreamingChatModel(generativeModel, generationConfig);
@@ -192,7 +185,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -210,7 +203,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -229,7 +222,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -248,7 +241,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -269,7 +262,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -292,7 +285,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
@@ -314,13 +307,13 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-        visionModel.generate(singletonList(userMessage), handler);
+        model.generate(singletonList(userMessage), handler);
         Response<AiMessage> response = handler.get();
 
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat")
-                .containsIgnoringCase("dog")
+//                .containsIgnoringCase("dog")  // sometimes model replies with "puppy" instead of "dog"
                 .containsIgnoringCase("dice");
     }
 
@@ -331,7 +324,7 @@ class VertexAiGeminiStreamingChatModelIT {
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project(System.getenv("GCP_PROJECT_ID"))
                 .location(System.getenv("GCP_LOCATION"))
-                .modelName("gemini-pro")
+                .modelName(GEMINI_1_5_PRO)
                 .build();
 
         ToolSpecification weatherToolSpec = ToolSpecification.builder()

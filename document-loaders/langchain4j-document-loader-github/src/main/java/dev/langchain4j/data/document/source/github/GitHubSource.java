@@ -28,19 +28,19 @@ public class GitHubSource implements DocumentSource {
     @Override
     public Metadata metadata() {
         Metadata metadata = new Metadata();
-        metadata.add("github_git_url", content.getGitUrl());
+        metadata.put("github_git_url", content.getGitUrl());
         try {
-            metadata.add("github_download_url", content.getDownloadUrl());
+            metadata.put("github_download_url", content.getDownloadUrl());
         } catch (IOException e) {
             // Ignore if download_url is not available
         }
-        metadata.add("github_html_url", content.getHtmlUrl());
-        metadata.add("github_url", content.getUrl());
-        metadata.add("github_file_name", content.getName());
-        metadata.add("github_file_path", content.getPath());
-        metadata.add("github_file_sha", content.getSha());
-        metadata.add("github_file_size", Long.toString(content.getSize()));
-        metadata.add("github_file_encoding", content.getEncoding());
+        metadata.put("github_html_url", content.getHtmlUrl());
+        metadata.put("github_url", content.getUrl());
+        metadata.put("github_file_name", content.getName());
+        metadata.put("github_file_path", content.getPath());
+        metadata.put("github_file_sha", content.getSha());
+        metadata.put("github_file_size", Long.toString(content.getSize()));
+        metadata.put("github_file_encoding", content.getEncoding());
         return metadata;
     }
 }

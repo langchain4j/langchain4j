@@ -16,6 +16,8 @@ public final class ChatCompletionRequest {
     private final String userId;
     private final List<Function> functions;
     private final String system;
+    private final List<String> stop;
+    private final Integer maxOutputTokens;
 
     private final String responseFormat;
 
@@ -29,6 +31,8 @@ public final class ChatCompletionRequest {
         this.functions = builder.functions;
         this.system = builder.system;
         this.responseFormat = builder.responseFormat;
+        this.stop = builder.stop;
+        this.maxOutputTokens=builder.maxOutputTokens;
     }
 
 
@@ -67,9 +71,6 @@ public final class ChatCompletionRequest {
     }
 
 
-
-
-
     @Override
     public String toString() {
         return "ChatCompletionRequest{" +
@@ -81,6 +82,9 @@ public final class ChatCompletionRequest {
                 ", userId='" + userId + '\'' +
                 ", functions=" + functions +
                 ", system='" + system + '\'' +
+                ", stop=" + stop +
+                ", maxOutputTokens=" + maxOutputTokens +
+                ", responseFormat='" + responseFormat + '\'' +
                 '}';
     }
 
@@ -100,7 +104,8 @@ public final class ChatCompletionRequest {
         private  String system;
 
         private  String responseFormat;
-
+        private  List<String> stop;
+        private  Integer maxOutputTokens;
         private Builder() {
         }
 
@@ -167,12 +172,21 @@ public final class ChatCompletionRequest {
             return this;
         }
 
+
         public Builder temperature(Double temperature) {
             this.temperature = temperature;
             return this;
         }
         public Builder system(String system) {
             this.system = system;
+            return this;
+        }
+        public Builder maxOutputTokens(Integer maxOutputTokens) {
+            this.maxOutputTokens = maxOutputTokens;
+            return this;
+        }
+        public Builder stop(List<String> stop) {
+            this.stop = stop;
             return this;
         }
 
