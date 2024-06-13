@@ -16,7 +16,7 @@ sidebar_position: 12
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.29.1</version>
+    <version>0.31.0</version>
 </dependency>
 ```
 
@@ -71,6 +71,8 @@ OpenAiChatModel model = OpenAiChatModel.builder()
     .proxy(...)
     .logRequests(...)
     .logResponses(...)
+    .tokenizer(...)
+    .customHeaders(...)
     .build();
 ```
 See the description of some of the parameters above [here](https://platform.openai.com/docs/api-reference/chat/create).

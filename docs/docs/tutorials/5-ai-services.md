@@ -1,4 +1,5 @@
 ---
+id: ai-services
 sidebar_position: 6
 ---
 
@@ -116,8 +117,18 @@ Friend friend = AiServices.create(Friend.class, model);
 
 String answer = friend.chat("Hello"); // Hey! What's up?
 ```
-In this example, we have added the `@SystemMessage` annotation with a prompt we want to use.
+In this example, we have added the `@SystemMessage` annotation with a system prompt we want to use.
 This will be converted into a `SystemMessage` behind the scenes and sent to the LLM along with the `UserMessage`.
+
+### System Message Provider
+System messages can also be defined dynamically with the system message provider:
+```java
+Friend friend = AiServices.builder(Friend.class)
+    .chatLanguageModel(model)
+    .systemMessageProvider(chatMemoryId -> "You are a good friend of mine. Answer using slang.")
+    .build();
+```
+As you can see, you can provide different system messages based on a chat memory ID (user or conversation).
 
 ## @UserMessage
 
@@ -153,13 +164,13 @@ you can change the return type of your AI Service method from `String` to someth
 Currently, AI Services support the following return types:
 - `String`
 - `AiMessage`
-- `Response<AiMessage>` (if you need to access `TokenUsage` or `FinishReason`)
-- `boolean`/`Boolean` (if you need to get "yes" or "no" answer)
+- `boolean`/`Boolean`, if you need to get "yes" or "no" answer
 - `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
-- `List<String>`/`Set<String>` (if you want to get the answer in the form of a list of bullet points)
-- Any `Enum` (if you want to classify text, e.g. sentiment, user intent, etc)
+- `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
+- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
 - Any custom POJO
+- `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
 Unless the return type is `String`, `AiMessage`, or `Response<AiMessage>`,
 the AI Service will automatically append instructions to the end of `UserMessage` indicating the format
@@ -177,7 +188,7 @@ ChatLanguageModel model = OpenAiChatModel.builder()
 
 Now let's take a look at some examples.
 
-`Enum` and `boolean` as return types:
+### `Enum` and `boolean` as return types
 ```java
 enum Sentiment {
     POSITIVE, NEUTRAL, NEGATIVE
@@ -201,7 +212,7 @@ boolean positive = sentimentAnalyzer.isPositive("It's awful!");
 // false
 ```
 
-Custom POJO as a return type:
+### Custom POJO as a return type
 ```java
 class Person {
     String firstName;
@@ -287,7 +298,7 @@ AzureOpenAiChatModel.builder()
 ```java
 MistralAiChatModel.builder()
         ...
-        .responseFormat(JSON_OBJECT)
+        .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
         .build();
 ```
 
@@ -304,25 +315,147 @@ prompt engineering is your best bet. Also, try lowering the `temperature` for mo
 
 [More examples](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/OtherServiceExamples.java)
 
+
 ## Streaming
-[Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
+
+The AI Service can [stream response](/tutorials/response-streaming) token-by-token
+when using the `TokenStream` return type:
+```java
+
+interface Assistant {
+
+    TokenStream chat(String message);
+}
+
+StreamingChatLanguageModel model = OpenAiStreamingChatModel.withApiKey(System.getenv("OPENAI_API_KEY"));
+
+Assistant assistant = AiServices.create(Assistant.class, model);
+
+TokenStream tokenStream = assistant.chat("Tell me a joke");
+
+tokenStream.onNext(System.out::println)
+    .onComplete(System.out::println)
+    .onError(Throwable::printStackTrace)
+    .start();
+```
+
+[Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
+
 
 ## Chat Memory
-[Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
-[Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
-[Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
-[Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
+
+The AI Service can use [chat memory](/tutorials/chat-memory) in order to "remember" previous interactions:
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+    .build();
+```
+In this scenario, the same `ChatMemory` instance will be used for all invocations of the AI Service.
+However, this approach will not work if you have multiple users,
+as each user would require their own instance of `ChatMemory` to maintain their individual conversation.
+
+The solution to this issue is to use `ChatMemoryProvider`:
+```java
+
+interface Assistant  {
+    String chat(@MemoryId int memoryId, @UserMessage String message);
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
+    .build();
+
+String answerToKlaus = assistant.chat(1, "Hello, my name is Klaus");
+String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
+```
+In this scenario, two distinct instances of `ChatMemory` will be provided by `ChatMemoryProvider`, one for each memory ID.
+
+:::note
+Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,
+the value of `memoryId` in `ChatMemoryProvider` will default to a string `"default"`.
+:::
+
+- [Example with a single ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryExample.java)
+- [Example with ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithMemoryForEachUserExample.java)
+- [Example with a single persistent ChatMemory](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryExample.java)
+- [Example with persistent ChatMemory for each user](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithPersistentMemoryForEachUserExample.java)
+
 
 ## Tools (Function Calling)
-[Tools](/tutorials/tools)
+
+AI Service can be configured with tools that LLM can use:
+
+```java
+
+class Tools {
+    
+    @Tool
+    int add(int a, int b) {
+        return a + b;
+    }
+
+    @Tool
+    int multiply(int a, int b) {
+        return a * b;
+    }
+}
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .tools(new Tools())
+    .build();
+
+String answer = assistant.chat("What is 1+2 and 3*4?");
+```
+In this scenario, LLM will execute `add(1, 2)` and `multiply(3, 4)` methods before providing an answer.
+
+More details about tools can be found [here](/tutorials/tools).
+
 
 ## RAG
-[Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithRetrieverExample.java)
+
+AI Service can be configured with a `ContentRetriever` in order to enable RAG:
+```java
+
+EmbeddingStore embeddingStore  = ...
+EmbeddingModel embeddingModel = ...
+
+ContentRetriever contentRetriever = new EmbeddingStoreContentRetriever(embeddingStore, embeddingModel);
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .contentRetriever(contentRetriever)
+    .build();
+```
+
+Configuring a `RetrievalAugmentor` provides even more flexibility,
+enabling advanced RAG capabilities such as query transformation, re-ranking, etc:
+```java
+RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
+        .queryTransformer(...)
+        .queryRouter(...)
+        .contentAggregator(...)
+        .contentInjector(...)
+        .build();
+
+Assistant assistant = AiServices.builder(Assistant.class)
+    .chatLanguageModel(model)
+    .retrievalAugmentor(retrievalAugmentor)
+    .build();
+```
+
+More details about RAG can be found [here](/tutorials/rag).
+
+More RAG examples can be found [here](https://github.com/langchain4j/langchain4j-examples/tree/main/rag-examples/src/main/java).
+
 
 ## Auto-Moderation
 [Example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithAutoModerationExample.java)
 
-## Chaining
+
+## Chaining multiple AI Services
 The more complex the logic of your LLM-powered application becomes,
 the more crucial it is to break it down into smaller parts, as is common practice in software development.
 
@@ -427,7 +560,6 @@ Also, I can integration test `GreetingExpert` and `ChatBot` separately.
 I can evaluate both of them separately and find the most optimal parameters for each subtask,
 or, in the long run, even fine-tune a small specialized model for each specific subtask.
 
-TODO
 
 ## Related Tutorials
 - [LangChain4j AiServices Tutorial](https://www.sivalabs.in/langchain4j-ai-services-tutorial/) by [Siva](https://www.sivalabs.in/)

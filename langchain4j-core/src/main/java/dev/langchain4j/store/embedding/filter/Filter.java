@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding.filter;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
@@ -31,7 +30,6 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
  * @see Not
  * @see Or
  */
-@Experimental
 public interface Filter {
 
     /**

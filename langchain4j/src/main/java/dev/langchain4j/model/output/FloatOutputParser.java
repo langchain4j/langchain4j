@@ -4,7 +4,7 @@ public class FloatOutputParser implements OutputParser<Float> {
 
     @Override
     public Float parse(String string) {
-        return Float.parseFloat(string);
+        return Float.parseFloat(string.trim());
     }
 
     @Override

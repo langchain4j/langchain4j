@@ -1,8 +1,15 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonValue;
+
+import java.util.Locale;
 
 public enum ToolChoiceMode {
-    @SerializedName("none") NONE,
-    @SerializedName("auto") AUTO
+    NONE,
+    AUTO;
+
+    @JsonValue
+    public String serialize() {
+        return name().toLowerCase(Locale.ROOT);
+    }
 }

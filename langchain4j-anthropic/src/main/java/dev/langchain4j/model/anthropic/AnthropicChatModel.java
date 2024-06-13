@@ -1,7 +1,11 @@
 package dev.langchain4j.model.anthropic;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -11,14 +15,17 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
  * <br>
  * More details are available <a href="https://docs.anthropic.com/claude/reference/messages_post">here</a>.
+ * <br>
+ * <br>
+ * It supports tools. See more information <a href="https://docs.anthropic.com/claude/docs/tool-use">here</a>.
  * <br>
  * <br>
  * It supports {@link Image}s as inputs. {@link UserMessage}s can contain one or multiple {@link ImageContent}s.
@@ -29,7 +36,9 @@ import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
  * If there are multiple {@link SystemMessage}s, they are concatenated with a double newline (\n\n).
  * <br>
  * <br>
- * Does not support tools.
+ * Sanitization is performed on the {@link ChatMessage}s provided to conform to Anthropic API requirements. This process
+ * includes verifying that the first message is a {@link UserMessage} and removing any consecutive {@link UserMessage}s.
+ * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  */
 public class AnthropicChatModel implements ChatLanguageModel {
 
@@ -48,6 +57,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
      * @param baseUrl       The base URL of the Anthropic API. Default: "https://api.anthropic.com/v1/"
      * @param apiKey        The API key for authentication with the Anthropic API.
      * @param version       The version of the Anthropic API. Default: "2023-06-01"
+     * @param beta          The value of the "anthropic-beta" HTTP header. It is used when tools are present in the request. Default: "tools-2024-04-04"
      * @param modelName     The name of the Anthropic model to use. Default: "claude-3-haiku-20240307"
      * @param temperature   The temperature
      * @param topP          The top-P
@@ -63,6 +73,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
     private AnthropicChatModel(String baseUrl,
                                String apiKey,
                                String version,
+                               String beta,
                                String modelName,
                                Double temperature,
                                Double topP,
@@ -77,6 +88,7 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 .baseUrl(getOrDefault(baseUrl, "https://api.anthropic.com/v1/"))
                 .apiKey(apiKey)
                 .version(getOrDefault(version, "2023-06-01"))
+                .beta(getOrDefault(beta, "tools-2024-04-04"))
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
@@ -115,18 +127,25 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages) {
-        ensureNotEmpty(messages, "messages");
+        return generate(messages, (List<ToolSpecification>) null);
+    }
+
+    @Override
+    public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        String systemPrompt = toAnthropicSystemPrompt(messages);
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(messages))
-                .system(toAnthropicSystemPrompt(messages))
+                .messages(toAnthropicMessages(sanitizedMessages))
+                .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
                 .stream(false)
                 .temperature(temperature)
                 .topP(topP)
                 .topK(topK)
+                .tools(toAnthropicTools(toolSpecifications))
                 .build();
 
         AnthropicCreateMessageResponse response = withRetry(() -> client.createMessage(request), maxRetries);
@@ -137,4 +156,6 @@ public class AnthropicChatModel implements ChatLanguageModel {
                 toFinishReason(response.stopReason)
         );
     }
+
+    // TODO forcing tool use?
 }
