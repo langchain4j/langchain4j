@@ -130,5 +130,36 @@ class StreamingAiServicesWithToolsIT {
         );
     }
 
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_tool_without_memory(StreamingChatLanguageModel model) throws Exception {
+
+        // given
+        TransactionService transactionService = spy(new TransactionService());
+
+        StreamingChatLanguageModel spyModel = spy(model);
+
+        // AiService with tools but without memory
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatLanguageModel(spyModel)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What are the amounts of transactions T001 and T002?";
+
+        // when
+        CompletableFuture<Response<AiMessage>> future = new CompletableFuture<>();
+        assistant.chat(userMessage)
+                .onNext(token -> {
+                })
+                .onComplete(future::complete)
+                .onError(future::completeExceptionally)
+                .start();
+        Response<AiMessage> response = future.get(60, TimeUnit.SECONDS);
+
+        // then
+        assertThat(response.content().text()).contains("42", "57");
+    }
+
     // TODO all other tests from sync version
 }
