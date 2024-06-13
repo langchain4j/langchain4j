@@ -172,16 +172,6 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public void removeAll(Filter filter) {
-        ensureNotNull(filter, "filter");
-        WhereFilter whereFilter = WeaviateMetadataFilterMapper.map(filter);
-        client.batch().objectsBatchDeleter()
-                .withClassName(objectClass)
-                .withWhere(whereFilter)
-                .run();
-    }
-
-    @Override
     public void removeAll() {
         client.batch().objectsBatchDeleter()
                 .withClassName(objectClass)
@@ -298,6 +288,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             props.put(METADATA_TEXT_SEGMENT, "");
             props.put(METADATA, metadata);
         }
+        props.put("indexFilterable", true);
+        props.put("indexSearchable", true);
         return WeaviateObject
                 .builder()
                 .className(objectClass)

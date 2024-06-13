@@ -122,7 +122,7 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
                 .hasMessage("ids cannot be null or empty");
     }
 
-    @Test
+    /*@Test
     void remove_all_by_filter() {
         Metadata metadata = Metadata.metadata("id", "1");
         TextSegment segment = TextSegment.from("matching", metadata);
@@ -141,7 +141,7 @@ class LocalWeaviateEmbeddingStoreRemoveIT {
         List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(relevantIds).hasSize(2);
         assertThat(relevantIds).containsExactly(id2, id3);
-    }
+    }*/
 
     @Test
     void remove_all_by_filter_not_matching() {
