@@ -51,11 +51,6 @@ class LocalWeaviateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
 
     @Test
     @Disabled("should be enabled once implemented")
-    void should_remove_all_by_filter_not_matching() {
-    }
-
-    @Test
-    @Disabled("should be enabled once implemented")
     void should_fail_to_remove_all_by_filter_null() {
     }
 

@@ -1,6 +1,5 @@
 package dev.langchain4j.store.embedding;
 
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -12,8 +11,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
+import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -100,43 +99,27 @@ public abstract class EmbeddingStoreWithRemovalIT {
     @Test
     void should_remove_all_by_filter() {
 
-        // TODO
-        Metadata metadata = Metadata.metadata("id", "1");
-        TextSegment segment = TextSegment.from("matching", metadata);
-        Embedding embedding1 = embeddingModel().embed(segment).content();
-        embeddingStore().add(embedding1, segment);
+        // given
+        TextSegment segment1 = TextSegment.from("matching", metadata("type", "a"));
+        Embedding embedding1 = embeddingModel().embed(segment1).content();
+        embeddingStore().add(embedding1, segment1);
 
-        Embedding embedding2 = embeddingModel().embed("hello2").content();
-        Embedding embedding3 = embeddingModel().embed("hello3").content();
+        TextSegment segment2 = TextSegment.from("matching", metadata("type", "a"));
+        Embedding embedding2 = embeddingModel().embed(segment2).content();
+        embeddingStore().add(embedding2, segment2);
 
-        String id2 = embeddingStore().add(embedding2);
+        Embedding embedding3 = embeddingModel().embed("not matching").content();
         String id3 = embeddingStore().add(embedding3);
 
-        embeddingStore().removeAll(metadataKey("id").isEqualTo("1"));
+        assertThat(getAllEmbeddings()).hasSize(3);
 
+        // when
+        embeddingStore().removeAll(metadataKey("type").isEqualTo("a"));
+
+        // then
         List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
-        List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(relevantIds).hasSize(2);
-        assertThat(relevantIds).containsExactly(id2, id3);
-    }
-
-    @Test
-    void should_remove_all_by_filter_not_matching() {
-
-        // TODO
-        Embedding embedding1 = embeddingModel().embed("hello").content();
-        Embedding embedding2 = embeddingModel().embed("hello2").content();
-        Embedding embedding3 = embeddingModel().embed("hello3").content();
-
-        embeddingStore().add(embedding1);
-        embeddingStore().add(embedding2);
-        embeddingStore().add(embedding3);
-
-        embeddingStore().removeAll(metadataKey("unknown").isEqualTo("1"));
-
-        List<EmbeddingMatch<TextSegment>> relevant = getAllEmbeddings();
-        List<String> relevantIds = relevant.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
-        assertThat(relevantIds).hasSize(3);
+        assertThat(relevant).hasSize(1);
+        assertThat(relevant.get(0).embeddingId()).isEqualTo(id3);
     }
 
     @Test
