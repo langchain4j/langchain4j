@@ -4,6 +4,11 @@ sidebar_position: 13
 
 # Embedding (Vector) Stores
 
+Documentation on embedding stores can be found [here](/tutorials/rag#embedding-store).
+
+All supported embedding stores can be found [here](/integrations/embedding-stores/).
+
+## Examples
 - [Example of using in-memory embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/embedding/store/InMemoryEmbeddingStoreExample.java)
 - [Example of using Chroma embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/chroma-example/src/main/java/ChromaEmbeddingStoreExample.java)
 - [Example of using Elasticsearch embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/elasticsearch-example/src/main/java/ElasticsearchEmbeddingStoreExample.java)
@@ -16,5 +21,3 @@ sidebar_position: 13
 - [Example of using Vespa embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/vespa-example/src/main/java/VespaEmbeddingStoreExample.java)
 - [Example of using Weaviate embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/weaviate-example/src/main/java/WeaviateEmbeddingStoreExample.java)
 - [Example of using PGVector embedding store](https://github.com/langchain4j/langchain4j-examples/blob/main/pgvector-example/src/main/java/PgVectorEmbeddingStoreExample.java)
-
-More info coming soon
