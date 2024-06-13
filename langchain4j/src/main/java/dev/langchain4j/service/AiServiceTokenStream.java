@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -78,6 +79,7 @@ public class AiServiceTokenStream implements TokenStream {
             AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
                     context,
                     memoryId,
+                    Collections.emptyList(),
                     tokenHandler,
                     completionHandler,
                     errorHandler,
