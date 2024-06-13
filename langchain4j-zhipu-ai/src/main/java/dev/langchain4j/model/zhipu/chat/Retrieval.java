@@ -1,47 +1,20 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Builder;
+import lombok.Data;
 
-@Getter
-@ToString
-@EqualsAndHashCode
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
+@Data
+@Builder
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class Retrieval {
-    @SerializedName("knowledge_id")
-    private final String knowledgeId;
-    @SerializedName("prompt_template")
-    private final String promptTemplate;
-
-    Retrieval(RetrievalBuilder builder) {
-        this.knowledgeId = builder.knowledgeId;
-        this.promptTemplate = builder.promptTemplate;
-    }
-
-    public static RetrievalBuilder builder() {
-        return new RetrievalBuilder();
-    }
-
-    public static class RetrievalBuilder {
-        private String knowledgeId;
-        private String promptTemplate;
-
-        RetrievalBuilder() {
-        }
-
-        public RetrievalBuilder knowledgeId(String knowledgeId) {
-            this.knowledgeId = knowledgeId;
-            return this;
-        }
-
-        public RetrievalBuilder promptTemplate(String promptTemplate) {
-            this.promptTemplate = promptTemplate;
-            return this;
-        }
-
-        public Retrieval build() {
-            return new Retrieval(this);
-        }
-    }
+    private String knowledgeId;
+    private String promptTemplate;
 }
