@@ -9,23 +9,24 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class AzureAiSearchEmbeddingStoreTest {
 
-    @Test
-    public void testConstructorParameters() {
-        String endpoint = "http://localhost";
-        AzureKeyCredential keyCredential = new AzureKeyCredential("TEST");
-        int dimensions = 1536;
-        SearchIndex index = new SearchIndex("TEST");
-        String indexName = "TEST";
+    String endpoint = "http://localhost";
+    AzureKeyCredential keyCredential = new AzureKeyCredential("TEST");
+    int dimensions = 1536;
+    SearchIndex index = new SearchIndex("TEST");
+    String indexName = "TEST";
 
-        // Test empty endpoint
+    @Test
+    public void empty_endpoint_should_not_be_allowed() {
         try {
             new AzureAiSearchEmbeddingStore(null, keyCredential, false, dimensions, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("endpoint cannot be null", e.getMessage());
         }
+    }
 
-        // Test index and indexName should not both be defined
+    @Test
+    public void index_and_index_name_should_not_both_be_defined() {
         try {
             new AzureAiSearchEmbeddingStore(endpoint, keyCredential, false, index, indexName);
             fail("Expected IllegalArgumentException to be thrown");
