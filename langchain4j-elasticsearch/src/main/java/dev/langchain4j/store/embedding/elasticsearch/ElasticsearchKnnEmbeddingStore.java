@@ -1,7 +1,7 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import org.elasticsearch.client.RestClient;
@@ -55,25 +55,23 @@ public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddi
 
     @Override
     public SearchResponse<Document> internalSearch(EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
-        Query query;
-        if (embeddingSearchRequest.filter() == null) {
-            query = Query.of(q -> q.matchAll(m -> m));
-        } else {
-            query = ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter());
-        }
+        KnnQuery.Builder krb = new KnnQuery.Builder()
+                .field("vector")
+                .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList())
+                .k(embeddingSearchRequest.maxResults())
+                .numCandidates(embeddingSearchRequest.maxResults());
 
-        log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, query);
+        if (embeddingSearchRequest.filter() != null) {
+            krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
+        }
+        KnnQuery knn = krb.build();
+
+        log.trace("Searching for embeddings in index [{}] with query [{}].", indexName, knn);
 
         return client.search(sr -> sr
                         .index(indexName)
                         .size(embeddingSearchRequest.maxResults())
-                        .query(query)
-                        .knn(kr -> kr
-                                .field("vector")
-                                .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList())
-                                .k(embeddingSearchRequest.maxResults())
-                                .numCandidates(embeddingSearchRequest.maxResults())
-                        )
+                        .query(q -> q.knn(knn))
                         .minScore(embeddingSearchRequest.minScore() + 1)
                 , Document.class);
     }

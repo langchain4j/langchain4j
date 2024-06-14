@@ -9,7 +9,7 @@
         <Logger name="dev.langchain4j" level="warn" additivity="false">
             <AppenderRef ref="CONSOLE"/>
         </Logger>
-        <Logger name="dev.langchain4j.store.embedding.elasticsearch" level="info" additivity="false">
+        <Logger name="dev.langchain4j.store.embedding.elasticsearch" level="trace" additivity="false">
             <AppenderRef ref="CONSOLE"/>
         </Logger>
         <Root level="error">
