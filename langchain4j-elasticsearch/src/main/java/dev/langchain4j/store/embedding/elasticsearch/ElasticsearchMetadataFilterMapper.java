@@ -2,6 +2,7 @@ package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch._types.FieldValue;
 import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.json.JsonData;
 import dev.langchain4j.store.embedding.filter.Filter;
@@ -19,7 +20,7 @@ class ElasticsearchMetadataFilterMapper {
 
     static Query map(Filter filter) {
         if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
+            return mapMatch((IsEqualTo) filter);
         } else if (filter instanceof IsNotEqualTo) {
             return mapNotEqual((IsNotEqualTo) filter);
         } else if (filter instanceof IsGreaterThan) {
@@ -50,6 +51,10 @@ class ElasticsearchMetadataFilterMapper {
                 t.field(formatKey(isEqualTo.key(), isEqualTo.comparisonValue()))
                         .value(v -> v.anyValue(JsonData.of(isEqualTo.comparisonValue())))
         ))).build();
+    }
+
+    private static Query mapMatch(IsEqualTo isEqualTo) {
+        return new Query.Builder().match(MatchQuery.of(m -> m.query(isEqualTo.comparisonValue().toString()).field(isEqualTo.key()).boost(0.9F))).build();
     }
 
     private static Query mapNotEqual(IsNotEqualTo isNotEqualTo) {

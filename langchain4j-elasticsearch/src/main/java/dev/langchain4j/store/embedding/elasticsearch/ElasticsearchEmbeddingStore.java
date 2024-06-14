@@ -43,11 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -75,6 +71,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private final boolean ann;
 
+    private final float annBoost;
+
     /**
      * Creates an instance of ElasticsearchEmbeddingStore.
      *
@@ -93,7 +91,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                                        String password,
                                        String indexName,
                                        Integer dimension,
-                                       boolean ann) {
+                                       boolean ann,
+                                       float annBoost) {
 
         RestClientBuilder restClientBuilder = RestClient
                 .builder(HttpHost.create(ensureNotNull(serverUrl, "serverUrl")));
@@ -116,11 +115,12 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
         this.ann = ann;
+        this.annBoost = annBoost;
 
         createIndexIfNotExist(indexName, dimension);
     }
 
-    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName, Integer dimension, boolean ann) {
+    public ElasticsearchEmbeddingStore(RestClient restClient, String indexName, Integer dimension, boolean ann, float annBoost) {
         JsonpMapper mapper = new JacksonJsonpMapper();
         ElasticsearchTransport transport = new RestClientTransport(restClient, mapper);
 
@@ -128,7 +128,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         this.indexName = ensureNotNull(indexName, "indexName");
         this.objectMapper = new ObjectMapper();
         this.ann = ann;
-
+        this.annBoost = annBoost;
         createIndexIfNotExist(indexName, dimension);
     }
 
@@ -146,6 +146,8 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String indexName = "default";
         private Integer dimension;
         private boolean ann;
+
+        private float annBoost;
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -221,11 +223,16 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return this;
         }
 
+        public Builder annBoost(float annBoost) {
+            this.annBoost = annBoost;
+            return this;
+        }
+
         public ElasticsearchEmbeddingStore build() {
             if (restClient != null) {
-                return new ElasticsearchEmbeddingStore(restClient, indexName, dimension, ann);
+                return new ElasticsearchEmbeddingStore(restClient, indexName, dimension, ann, annBoost);
             } else {
-                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName, dimension, ann);
+                return new ElasticsearchEmbeddingStore(serverUrl, apiKey, userName, password, indexName, dimension, ann, annBoost);
             }
         }
     }
@@ -315,7 +322,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     private List<EmbeddingMatch<TextSegment>> ann(EmbeddingSearchRequest embeddingSearchRequest) {
         try {
             int maxResults = embeddingSearchRequest.maxResults();
+            String text = embeddingSearchRequest.getText();
             float[] vector = embeddingSearchRequest.queryEmbedding().vector();
+            double minScore = embeddingSearchRequest.minScore();
             List<Float> vectorList = new ArrayList<>(vector.length);
             for (float value : vector) {
                 vectorList.add(value);
@@ -323,9 +332,16 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             // The score of each hit is the sum of the knn and query scores.
             // You can specify a boost value to give a weight to each score in the sum.
             // score = match_boost * match_score + knn_boost * knn_score
-            Query query = buildQuery(embeddingSearchRequest.filter());
-            KnnQuery knnQuery = KnnQuery.of(build -> build.field("vector").queryVector(vectorList).k(maxResults).numCandidates(10L * maxResults).boost(1f));
-            SearchRequest searchRequest = SearchRequest.of(s -> s.index(indexName).knn(knnQuery).query(query).minScore(embeddingSearchRequest.minScore()));
+            Filter filter = embeddingSearchRequest.filter();
+            Query query;
+            if (Objects.isNull(filter)) {
+                query = Query.of(q -> q.match(m -> m.query(text).field("text").boost(0.9F)));
+            } else {
+                query = buildQuery(embeddingSearchRequest.filter());
+            }
+            KnnQuery knnQuery = KnnQuery.of(build -> build.field("vector").queryVector(vectorList).k(maxResults).numCandidates(10L * maxResults).boost(annBoost).similarity(((float) minScore + 1) / 2));
+            SearchRequest searchRequest = SearchRequest.of(s -> s.index(indexName).knn(knnQuery).query(query));
+            log.debug("searchRequest query: {}", searchRequest.query().toString());
             SearchResponse<Document> searchResponse = client.search(searchRequest, Document.class);
             return toMatches(searchResponse);
         } catch (IOException e) {
@@ -350,13 +366,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
     }
 
     private Query buildQuery(Filter filter) {
-        Query query;
-        if (filter == null) {
-            query = Query.of(q -> q.matchAll(m -> m.boost(0f)));
-        } else {
-            query = ElasticsearchMetadataFilterMapper.map(filter);
-        }
-        return query;
+        return ElasticsearchMetadataFilterMapper.map(filter);
     }
 
     private <T> JsonData toJsonData(T rawData) {

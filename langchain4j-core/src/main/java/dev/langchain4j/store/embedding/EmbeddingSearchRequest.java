@@ -10,7 +10,9 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureBetween;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents a request to search in an {@link EmbeddingStore}.
@@ -24,6 +26,8 @@ public class EmbeddingSearchRequest {
     private final int maxResults;
     private final double minScore;
     private final Filter filter;
+
+    private String text;
 
     /**
      * Creates an instance of an EmbeddingSearchRequest.
@@ -64,8 +68,18 @@ public class EmbeddingSearchRequest {
         return minScore;
     }
 
+    public EmbeddingSearchRequest setText(String text) {
+        this.text = text;
+        return this;
+    }
+
     @Experimental
     public Filter filter() {
         return filter;
     }
+
+    public String getText() {
+        return text;
+    }
+
 }

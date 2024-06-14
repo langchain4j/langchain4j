@@ -18,9 +18,9 @@
         <module>langchain4j-core</module>
         <module>langchain4j</module>
 
-        <module>langchain4j-easy-rag</module>
+<!--        <module>langchain4j-easy-rag</module>-->
 
-        <!-- model providers -->
+<!--        &lt;!&ndash; model providers &ndash;&gt;
         <module>langchain4j-anthropic</module>
         <module>langchain4j-azure-open-ai</module>
         <module>langchain4j-bedrock</module>
@@ -36,43 +36,41 @@
         <module>langchain4j-open-ai</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
-        <module>langchain4j-zhipu-ai</module>
+        <module>langchain4j-zhipu-ai</module>-->
 
         <!-- embedding stores -->
-        <module>langchain4j-azure-ai-search</module>
-        <module>langchain4j-cassandra</module>
-        <module>langchain4j-chroma</module>
+<!--        <module>langchain4j-azure-ai-search</module>-->
+<!--        <module>langchain4j-chroma</module>-->
         <module>langchain4j-elasticsearch</module>
-        <module>langchain4j-infinispan</module>
-        <module>langchain4j-milvus</module>
-        <module>langchain4j-mongodb-atlas</module>
-        <module>langchain4j-neo4j</module>
-        <module>langchain4j-opensearch</module>
-        <module>langchain4j-pgvector</module>
-        <module>langchain4j-pinecone</module>
-        <module>langchain4j-qdrant</module>
-        <module>langchain4j-redis</module>
-        <module>langchain4j-vearch</module>
-        <module>langchain4j-vespa</module>
-        <module>langchain4j-weaviate</module>
-        <module>langchain4j-azure-cosmos-mongo-vcore</module>
+<!--        <module>langchain4j-milvus</module>-->
+<!--        <module>langchain4j-mongodb-atlas</module>-->
+<!--        <module>langchain4j-neo4j</module>-->
+<!--        <module>langchain4j-opensearch</module>-->
+<!--        <module>langchain4j-pgvector</module>-->
+<!--        <module>langchain4j-pinecone</module>-->
+<!--        <module>langchain4j-qdrant</module>-->
+<!--        <module>langchain4j-redis</module>-->
+<!--        <module>langchain4j-vearch</module>-->
+<!--        <module>langchain4j-vespa</module>-->
+<!--        <module>langchain4j-weaviate</module>-->
+<!--        <module>langchain4j-azure-cosmos-mongo-vcore</module>-->
 
         <!-- document loaders -->
-        <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
-        <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>
-        <module>document-loaders/langchain4j-document-loader-github</module>
-        <module>document-loaders/langchain4j-document-loader-tencent-cos</module>
+<!--        <module>document-loaders/langchain4j-document-loader-amazon-s3</module>-->
+        <!--        <module>document-loaders/langchain4j-document-loader-azure-storage-blob</module>-->
+        <!--        <module>document-loaders/langchain4j-document-loader-github</module>-->
+        <!--        <module>document-loaders/langchain4j-document-loader-tencent-cos</module>-->
 
-        <!-- document parsers -->
-        <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>
-        <module>document-parsers/langchain4j-document-parser-apache-poi</module>
-        <module>document-parsers/langchain4j-document-parser-apache-tika</module>
+        <!--        &lt;!&ndash; document parsers &ndash;&gt;-->
+        <!--        <module>document-parsers/langchain4j-document-parser-apache-pdfbox</module>-->
+        <!--        <module>document-parsers/langchain4j-document-parser-apache-poi</module>-->
+        <!--        <module>document-parsers/langchain4j-document-parser-apache-tika</module>-->
 
-        <!-- code execution engines -->
-        <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>
+        <!--        &lt;!&ndash; code execution engines &ndash;&gt;-->
+        <!--        <module>code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot</module>-->
 
-        <!-- embedding store filter parsers -->
-        <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>
+        <!--        &lt;!&ndash; embedding store filter parsers &ndash;&gt;-->
+        <!--        <module>embedding-store-filter-parsers/langchain4j-embedding-store-filter-parser-sql</module>-->
 
     </modules>
 
