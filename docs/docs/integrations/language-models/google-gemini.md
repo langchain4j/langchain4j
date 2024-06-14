@@ -1,4 +1,5 @@
 ---
+id: gemini-language-model
 sidebar_position: 6
 ---
 

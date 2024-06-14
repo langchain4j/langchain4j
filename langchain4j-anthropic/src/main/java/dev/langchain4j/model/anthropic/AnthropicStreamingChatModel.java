@@ -3,6 +3,8 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import lombok.Builder;
 
@@ -13,8 +15,9 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicMessages;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicMessages;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.toAnthropicSystemPrompt;
+import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -30,6 +33,11 @@ import static dev.langchain4j.model.anthropic.AnthropicMapper.toAnthropicSystemP
  * <br>
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
  * If there are multiple {@link SystemMessage}s, they are concatenated with a double newline (\n\n).
+ * <br>
+ * <br>
+ * Sanitization is performed on the {@link ChatMessage}s provided to ensure conformity with Anthropic API requirements.
+ * This includes ensuring the first message is a {@link UserMessage} and that there are no consecutive {@link UserMessage}s.
+ * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  * <br>
  * <br>
  * Does not support tools.
@@ -114,13 +122,14 @@ public class AnthropicStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
-        ensureNotEmpty(messages, "messages");
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        String systemPrompt = toAnthropicSystemPrompt(messages);
         ensureNotNull(handler, "handler");
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(messages))
-                .system(toAnthropicSystemPrompt(messages))
+                .messages(toAnthropicMessages(sanitizedMessages))
+                .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
                 .stream(true)

@@ -13,15 +13,16 @@ import java.util.List;
  * The underlying data source can be virtually anything:
  * <pre>
  * - Embedding (vector) store (see {@link EmbeddingStoreContentRetriever})
- * - Full-text search engine (e.g., Apache Lucene, Elasticsearch, Vespa)
- * - Hybrid of keyword and vector search
- * - The Web (e.g., Google, Bing)
- * - Knowledge graph
- * - Relational database
+ * - Full-text search engine (see {@code AzureAiSearchContentRetriever} in {@code langchain4j-azure-ai-search} module)
+ * - Hybrid of vector and full-text search (see {@code AzureAiSearchContentRetriever} in {@code langchain4j-azure-ai-search} module)
+ * - Web Search Engine (see {@link WebSearchContentRetriever})
+ * - Knowledge graph (see {@code Neo4jContentRetriever} in {@code langchain4j-neo4j} module)
+ * - SQL database (see {@code SqlDatabaseContentRetriever} in {@code langchain4j-experimental-sql} module)
  * - etc.
  * </pre>
  *
  * @see EmbeddingStoreContentRetriever
+ * @see WebSearchContentRetriever
  */
 public interface ContentRetriever {
 
