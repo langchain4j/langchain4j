@@ -1,11 +1,18 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
+import com.fasterxml.jackson.annotation.JsonValue;
+
+import java.util.Locale;
 
 public enum Role {
-    @SerializedName("system") SYSTEM,
-    @SerializedName("user") USER,
-    @SerializedName("assistant") ASSISTANT,
-    @SerializedName("function") FUNCTION,
-    @SerializedName("tool") TOOL
+    SYSTEM,
+    USER,
+    ASSISTANT,
+    FUNCTION,
+    TOOL;
+
+    @JsonValue
+    public String serialize() {
+        return name().toLowerCase(Locale.ROOT);
+    }
 }

@@ -1,23 +1,27 @@
 package dev.langchain4j.model.zhipu;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.SneakyThrows;
 
-import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
-import static dev.langchain4j.model.zhipu.AssistantMessageTypeAdapter.ASSISTANT_MESSAGE_TYPE_ADAPTER_FACTORY;
+import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 
 class Json {
-    public static final Gson GSON = new GsonBuilder()
-            .setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES)
-            .registerTypeAdapterFactory(ASSISTANT_MESSAGE_TYPE_ADAPTER_FACTORY)
-            .setPrettyPrinting()
-            .create();
+    static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+            .enable(INDENT_OUTPUT);
 
+    @SneakyThrows
     static String toJson(Object o) {
-        return GSON.toJson(o);
+        return OBJECT_MAPPER.writeValueAsString(o);
     }
 
+    @SneakyThrows
     static <T> T fromJson(String json, Class<T> type) {
-        return GSON.fromJson(json, type);
+        return OBJECT_MAPPER.readValue(json, type);
+    }
+
+    @SneakyThrows
+    static <T> T fromJson(String json, TypeReference<T> type) {
+        return OBJECT_MAPPER.readValue(json, type);
     }
 }
