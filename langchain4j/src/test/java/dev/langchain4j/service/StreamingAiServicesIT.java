@@ -11,8 +11,8 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.mistralai.MistralAiStreamingChatModel;
-import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ public class StreamingAiServicesIT {
 
     static Stream<StreamingChatLanguageModel> models() {
         return Stream.of(
-                OpenAiStreamingChatModel.builder()
+                OpenAiChatModel.builder()
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -238,7 +238,7 @@ public class StreamingAiServicesIT {
     void should_execute_multiple_tools_sequentially_then_answer() throws Exception {
 
         // TODO test more models
-        StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+        StreamingChatLanguageModel streamingChatModel = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
@@ -337,7 +337,7 @@ public class StreamingAiServicesIT {
         Calculator calculator = spy(new Calculator());
 
         // TODO test more models
-        StreamingChatLanguageModel streamingChatModel = OpenAiStreamingChatModel.builder()
+        StreamingChatLanguageModel streamingChatModel = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))

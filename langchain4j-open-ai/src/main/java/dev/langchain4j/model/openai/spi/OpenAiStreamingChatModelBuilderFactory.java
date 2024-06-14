@@ -7,5 +7,6 @@ import java.util.function.Supplier;
 /**
  * A factory for building {@link OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder} instances.
  */
+@Deprecated
 public interface OpenAiStreamingChatModelBuilderFactory extends Supplier<OpenAiStreamingChatModel.OpenAiStreamingChatModelBuilder> {
 }
