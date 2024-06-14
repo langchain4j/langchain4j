@@ -222,14 +222,14 @@ class ToolSpecificationsTest implements WithAssertions {
                         .containsEntry("arg25", mapOf("type", "array", "items", mapOf("type", "object")))
                         .containsEntry("arg26", mapOf("type", "array", "items", mapOf("type", "object")))
                         .containsEntry("arg27", mapOf("type", "array", "items", mapOf("type", "object")))
-                        .containsEntry("arg29", mapOf("type", "object", "schema", mapOf(
+                        .containsEntry("arg29", mapOf("type", "object", "properties", mapOf(
                                 "name" , mapOf("description", "Name of the person", "type", "string"),
                                 "active", mapOf( "type","boolean" ),
                                 "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                                "currentAddress", mapOf("type", "object", "schema", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
+                                "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
                                 "parent", mapOf("type", "object"),
                                 "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","schema", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
+                                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
 
 
 
@@ -340,13 +340,13 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(ToolSpecifications.toJsonSchemaProperties(ps[29]))
                 .containsExactly(JsonSchemaProperty.OBJECT, JsonSchemaProperty.from(
-                        "schema", mapOf("name" , mapOf("description", "Name of the person", "type", "string"),
+                        "properties", mapOf("name" , mapOf("description", "Name of the person", "type", "string"),
                 "active", mapOf( "type","boolean" ),
                 "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                "currentAddress", mapOf("type", "object", "schema", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
+                "currentAddress", mapOf("type", "object", "properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string"))),
                 "parent", mapOf("type", "object"),
                 "aliases", mapOf("type", "array", "items", mapOf("type", "string")),
-                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","schema", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
+                "previousAddresses", mapOf("type", "array", "items", mapOf("type", "object","properties", mapOf("city", mapOf("type", "string"), "street", mapOf("type", "string")) )))));
 
     }
 }
