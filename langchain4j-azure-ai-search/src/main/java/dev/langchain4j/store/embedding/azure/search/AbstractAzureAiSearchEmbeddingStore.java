@@ -14,16 +14,14 @@ import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMapper;
+import dev.langchain4j.store.embedding.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
@@ -256,29 +254,34 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Float> vector = referenceEmbedding.vectorAsList();
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
+        List<Float> vector = request.queryEmbedding().vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighborsCount(request.maxResults());
 
         SearchPagedIterable searchResults =
                 searchClient.search(null,
                         new SearchOptions()
+                                .setFilter(AzureAiSearchFilterMapper.map(request.filter()))
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
             Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
-            if (score < minScore) {
+            if (score < request.minScore()) {
                 continue;
             }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
             String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
             List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
-            float[] embeddingArray = doublesListToFloatArray(embeddingList);
-            Embedding embedding = Embedding.from(embeddingArray);
+            Embedding embedding = null;
+            if (embeddingList != null) {
+                float[] embeddingArray = doublesListToFloatArray(embeddingList);
+                embedding = Embedding.from(embeddingArray);
+            }
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
@@ -299,7 +302,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             }
             result.add(embeddingMatch);
         }
-        return result;
+        return new EmbeddingSearchResult<>(result);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {

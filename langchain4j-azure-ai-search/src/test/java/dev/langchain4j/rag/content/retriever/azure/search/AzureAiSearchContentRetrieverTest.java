@@ -28,7 +28,7 @@ public class AzureAiSearchContentRetrieverTest {
 
         // Test empty endpoint
         try {
-            new AzureAiSearchContentRetriever(null, keyCredential, tokenCredential, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR);
+            new AzureAiSearchContentRetriever(null, keyCredential, tokenCredential, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("endpoint cannot be null", e.getMessage());
@@ -36,7 +36,7 @@ public class AzureAiSearchContentRetrieverTest {
 
         // Test no credentials
         try {
-            new AzureAiSearchContentRetriever(endpoint, null, null, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR);
+            new AzureAiSearchContentRetriever(endpoint, null, null, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("either keyCredential or tokenCredential must be set", e.getMessage());
@@ -44,7 +44,7 @@ public class AzureAiSearchContentRetrieverTest {
 
         // Test both credentials
         try {
-            new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR);
+            new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, true, dimensions, index, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("either keyCredential or tokenCredential must be set", e.getMessage());
@@ -52,7 +52,7 @@ public class AzureAiSearchContentRetrieverTest {
 
         // Test no dimensions and no index, for a vector search
         try {
-            new AzureAiSearchContentRetriever(endpoint, null, tokenCredential, true, 0, null, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR);
+            new AzureAiSearchContentRetriever(endpoint, null, tokenCredential, true, 0, null, null, embeddingModel, 3, 0, AzureAiSearchQueryType.VECTOR, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("dimensions must be set to a positive, non-zero integer between 2 and 3072", e.getMessage());
@@ -60,7 +60,7 @@ public class AzureAiSearchContentRetrieverTest {
 
         // Test dimensions > 0, for a full text search
         try {
-            new AzureAiSearchContentRetriever(endpoint, keyCredential, null, true, dimensions, null, null, embeddingModel, 3, 0, AzureAiSearchQueryType.FULL_TEXT);
+            new AzureAiSearchContentRetriever(endpoint, keyCredential, null, true, dimensions, null, null, embeddingModel, 3, 0, AzureAiSearchQueryType.FULL_TEXT, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("for full-text search, dimensions must be 0", e.getMessage());
@@ -68,7 +68,7 @@ public class AzureAiSearchContentRetrieverTest {
 
         // Test no embedding model, for a vector search
         try {
-            new AzureAiSearchContentRetriever(endpoint, keyCredential, null, true, 0, null, null, null, 3, 0, AzureAiSearchQueryType.VECTOR);
+            new AzureAiSearchContentRetriever(endpoint, keyCredential, null, true, 0, null, null, null, 3, 0, AzureAiSearchQueryType.VECTOR, null);
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
             assertEquals("embeddingModel cannot be null", e.getMessage());
