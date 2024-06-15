@@ -1,10 +1,10 @@
 ---
+id: quarkus-integration
 sidebar_position: 24
 ---
 
 # Quarkus Integration
 
-- [Quarkus-LangChain4j extension repo](https://github.com/quarkiverse/quarkus-langchain4j)
-- [Quarkus-LangChain4j extension documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/index.html)
+[Quarkus](https://quarkus.io/) provides a superb [extension for LangChain4j](https://github.com/quarkiverse/quarkus-langchain4j).
 
-More info coming soon
+You can find all the necessary documentation [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/index.html).

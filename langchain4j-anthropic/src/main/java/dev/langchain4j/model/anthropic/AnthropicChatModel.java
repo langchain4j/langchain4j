@@ -3,6 +3,9 @@ package dev.langchain4j.model.anthropic;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageResponse;
+import dev.langchain4j.model.anthropic.internal.client.AnthropicClient;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -12,9 +15,9 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_3_HAIKU_20240307;
-import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.*;
+import static dev.langchain4j.model.anthropic.internal.sanitizer.MessageSanitizer.sanitizeMessages;
 
 /**
  * Represents an Anthropic language model with a Messages (chat) API.
@@ -31,6 +34,11 @@ import static dev.langchain4j.model.anthropic.AnthropicMapper.*;
  * <br>
  * The content of {@link SystemMessage}s is sent using the "system" parameter.
  * If there are multiple {@link SystemMessage}s, they are concatenated with a double newline (\n\n).
+ * <br>
+ * <br>
+ * Sanitization is performed on the {@link ChatMessage}s provided to conform to Anthropic API requirements. This process
+ * includes verifying that the first message is a {@link UserMessage} and removing any consecutive {@link UserMessage}s.
+ * Any messages removed during sanitization are logged as warnings and not submitted to the API.
  */
 public class AnthropicChatModel implements ChatLanguageModel {
 
@@ -124,12 +132,13 @@ public class AnthropicChatModel implements ChatLanguageModel {
 
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages, List<ToolSpecification> toolSpecifications) {
-        ensureNotEmpty(messages, "messages");
+        List<ChatMessage> sanitizedMessages = sanitizeMessages(messages);
+        String systemPrompt = toAnthropicSystemPrompt(messages);
 
         AnthropicCreateMessageRequest request = AnthropicCreateMessageRequest.builder()
                 .model(modelName)
-                .messages(toAnthropicMessages(messages))
-                .system(toAnthropicSystemPrompt(messages))
+                .messages(toAnthropicMessages(sanitizedMessages))
+                .system(systemPrompt)
                 .maxTokens(maxTokens)
                 .stopSequences(stopSequences)
                 .stream(false)

@@ -76,8 +76,11 @@ public class Document {
      *
      * @param key the key to look up.
      * @return the metadata value for the given key, or null if the key is not present.
+     * @deprecated as of 0.31.0, use {@link #metadata()} and then {@link Metadata#getString(String)},
+     * {@link Metadata#getInteger(String)}, {@link Metadata#getLong(String)}, {@link Metadata#getFloat(String)},
+     * {@link Metadata#getDouble(String)} instead.
      */
-    // TODO deprecate once the new experimental API is settled
+    @Deprecated
     public String metadata(String key) {
         return metadata.get(key);
     }
@@ -88,7 +91,7 @@ public class Document {
      * @return a TextSegment.
      */
     public TextSegment toTextSegment() {
-        return TextSegment.from(text, metadata.copy().add("index", "0"));
+        return TextSegment.from(text, metadata.copy().put("index", "0"));
     }
 
     @Override

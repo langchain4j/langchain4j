@@ -15,7 +15,6 @@ import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.TokenCountEstimator;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +24,7 @@ import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
@@ -120,7 +120,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -147,7 +147,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -174,7 +174,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 boolean logRequestsAndResponses) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
     }
 
     private AzureOpenAiChatModel(String deploymentName,
@@ -245,11 +245,12 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                 .setSeed(seed)
                 .setResponseFormat(responseFormat);
 
-        if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
-            options.setFunctions(toFunctions(toolSpecifications));
-        }
         if (toolThatMustBeExecuted != null) {
-            options.setFunctionCall(new FunctionCallConfig(toolThatMustBeExecuted.name()));
+            options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
+            options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
+        }
+        if (!isNullOrEmpty(toolSpecifications)) {
+            options.setTools(toToolDefinitions(toolSpecifications));
         }
 
         try {

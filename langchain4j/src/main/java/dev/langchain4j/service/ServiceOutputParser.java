@@ -118,7 +118,7 @@ public class ServiceOutputParser {
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
     }
 
-    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
+    public static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
 
         jsonSchema.append("{\n");
@@ -130,7 +130,11 @@ public class ServiceOutputParser {
             }
             jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
         }
-        jsonSchema.delete(jsonSchema.lastIndexOf(","), jsonSchema.lastIndexOf(",")+1);
+
+        int trailingCommaIndex = jsonSchema.lastIndexOf(",");
+        if (trailingCommaIndex > 0) {
+            jsonSchema.delete(trailingCommaIndex, trailingCommaIndex +1);
+        }
         jsonSchema.append("}");
         return jsonSchema.toString();
     }

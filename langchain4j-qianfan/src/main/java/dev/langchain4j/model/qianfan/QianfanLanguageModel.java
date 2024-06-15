@@ -1,7 +1,6 @@
 package dev.langchain4j.model.qianfan;
 
 
-
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
@@ -10,9 +9,13 @@ import dev.langchain4j.model.qianfan.client.completion.CompletionRequest;
 import dev.langchain4j.model.qianfan.client.completion.CompletionResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanLanguageModelBuilderFactory;
 import lombok.Builder;
+
+import java.net.Proxy;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.finishReasonFrom;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 
@@ -51,7 +54,8 @@ public class QianfanLanguageModel implements LanguageModel {
                                 String endpoint,
                                 Double penaltyScore,
                                 Boolean logRequests,
-                                Boolean logResponses
+                                Boolean logResponses,
+                                Proxy proxy
                              ) {
         if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
@@ -72,6 +76,7 @@ public class QianfanLanguageModel implements LanguageModel {
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .proxy(proxy)
                 .build();
         this.temperature = getOrDefault(temperature, 0.7);
         this.maxRetries = getOrDefault(maxRetries, 3);

@@ -49,7 +49,22 @@ class CohereClient {
         this.authorizationHeader = "Bearer " + ensureNotBlank(apiKey, "apiKey");
     }
 
-    public RerankResponse rerank(RerankRequest request) {
+    EmbedResponse embed(EmbedRequest request) {
+        try {
+            retrofit2.Response<EmbedResponse> retrofitResponse
+                    = cohereApi.embed(request, authorizationHeader).execute();
+
+            if (retrofitResponse.isSuccessful()) {
+                return retrofitResponse.body();
+            } else {
+                throw toException(retrofitResponse);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    RerankResponse rerank(RerankRequest request) {
         try {
             retrofit2.Response<RerankResponse> retrofitResponse
                     = cohereApi.rerank(request, authorizationHeader).execute();

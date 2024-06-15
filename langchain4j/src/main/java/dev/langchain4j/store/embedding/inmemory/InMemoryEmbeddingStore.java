@@ -16,8 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
@@ -93,6 +92,33 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return newEntries.stream()
                 .map(entry -> entry.id)
                 .collect(toList());
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+
+        entries.removeIf(entry -> ids.contains(entry.id));
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+
+        entries.removeIf(entry -> {
+            if (entry.embedded instanceof TextSegment) {
+                return filter.test(((TextSegment) entry.embedded).metadata());
+            } else if (entry.embedded == null) {
+                return false;
+            } else {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+        });
+    }
+
+    @Override
+    public void removeAll() {
+        entries.clear();
     }
 
     @Override
