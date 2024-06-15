@@ -1,13 +1,10 @@
 package dev.langchain4j.store.embedding.elasticsearch;
 
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
-import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
-import co.elastic.clients.elasticsearch._types.ErrorCause;
 import co.elastic.clients.elasticsearch._types.InlineScript;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch._types.query_dsl.ScriptScoreQuery;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
-import co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.json.JsonData;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -79,25 +76,6 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
                         .size(embeddingSearchRequest.maxResults())),
                 Document.class
         );
-    }
-
-    @Override
-    public void removeAll(Collection<String> ids) {
-        ensureNotEmpty(ids, "ids");
-        removeByIds(ids);
-    }
-
-    @Override
-    public void removeAll(Filter filter) {
-        ensureNotNull(filter, "filter");
-        Query query = ElasticsearchMetadataFilterMapper.map(filter);
-        removeByQuery(query);
-    }
-
-    @Override
-    public void removeAll() {
-        Query query = Query.of(q -> q.matchAll(m -> m));
-        removeByQuery(query);
     }
 
     private ScriptScoreQuery buildDefaultScriptScoreQuery(float[] vector, float minScore,

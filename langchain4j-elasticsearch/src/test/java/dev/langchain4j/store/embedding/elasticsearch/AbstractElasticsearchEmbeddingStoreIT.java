@@ -49,7 +49,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
     private static final Logger log = LoggerFactory.getLogger(AbstractElasticsearchEmbeddingStoreIT.class);
 
     // TODO Read that value from the maven properties
-    private static final String VERSION = "8.12.1";
+    private static final String VERSION = "8.14.1";
 
     static RestClient restClient;
     private static ElasticsearchContainer elasticsearch;

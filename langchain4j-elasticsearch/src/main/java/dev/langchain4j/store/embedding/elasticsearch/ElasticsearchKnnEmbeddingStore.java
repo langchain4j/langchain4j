@@ -58,7 +58,6 @@ public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddi
         KnnQuery.Builder krb = new KnnQuery.Builder()
                 .field("vector")
                 .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList())
-                .k(embeddingSearchRequest.maxResults())
                 .numCandidates(embeddingSearchRequest.maxResults());
 
         if (embeddingSearchRequest.filter() != null) {

@@ -39,7 +39,6 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
             .serverUrl(elasticsearch.getHttpHostAddress())
             .indexName(randomUUID())
-            .dimension(384)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
