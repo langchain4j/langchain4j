@@ -81,7 +81,7 @@ class OpenAiEmbeddingModelIT {
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("text-embedding-3-small")
-                .dimension(dimension)
+                .dimensions(dimension)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
