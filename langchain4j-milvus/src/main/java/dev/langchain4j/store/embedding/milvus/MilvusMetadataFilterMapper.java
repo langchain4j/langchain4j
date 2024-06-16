@@ -99,7 +99,7 @@ class MilvusMetadataFilterMapper {
         }
     }
 
-    private static List<String> formatValues(Collection<?> values) {
+    protected static List<String> formatValues(Collection<?> values) {
         return values.stream().map(MilvusMetadataFilterMapper::formatValue).collect(toList());
     }
 }
