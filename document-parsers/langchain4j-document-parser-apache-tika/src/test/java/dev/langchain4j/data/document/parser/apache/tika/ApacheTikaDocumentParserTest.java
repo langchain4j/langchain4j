@@ -31,7 +31,7 @@ class ApacheTikaDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().asMap()).isEmpty();
+        assertThat(document.metadata().toMap()).isEmpty();
     }
 
     @ParameterizedTest
@@ -48,7 +48,7 @@ class ApacheTikaDocumentParserTest {
 
         assertThat(document.text())
                 .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
-        assertThat(document.metadata().asMap()).isEmpty();
+        assertThat(document.metadata().toMap()).isEmpty();
     }
 
     @Test
@@ -65,8 +65,8 @@ class ApacheTikaDocumentParserTest {
                 .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
         assertThat(document2.text())
                 .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
-        assertThat(document1.metadata().asMap()).isEmpty();
-        assertThat(document2.metadata().asMap()).isEmpty();
+        assertThat(document1.metadata().toMap()).isEmpty();
+        assertThat(document2.metadata().toMap()).isEmpty();
     }
 
     @ParameterizedTest

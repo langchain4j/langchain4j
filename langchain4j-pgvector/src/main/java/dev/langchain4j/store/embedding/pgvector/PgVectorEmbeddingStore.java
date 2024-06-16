@@ -240,19 +240,6 @@ public class PgVectorEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     @Override
-    public void remove(String id) {
-        ensureNotBlank(id, "id");
-        String sql = String.format("DELETE FROM %s WHERE embedding_id = ?", table);
-        try (Connection connection = getConnection();
-             PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setObject(1, UUID.fromString(id));
-            statement.executeUpdate();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
         String sql = String.format("DELETE FROM %s WHERE embedding_id = ANY (?)", table);

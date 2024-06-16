@@ -67,11 +67,11 @@ class MilvusMetadataFilterMapper {
         return format("%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
-    public static String mapIn(IsIn isIn) {
+    private static String mapIn(IsIn isIn) {
         return format("%s in %s", formatKey(isIn.key()), formatValues(isIn.comparisonValues()));
     }
 
-    public static String mapNotIn(IsNotIn isNotIn) {
+    private static String mapNotIn(IsNotIn isNotIn) {
         return format("%s not in %s", formatKey(isNotIn.key()), formatValues(isNotIn.comparisonValues()));
     }
 
