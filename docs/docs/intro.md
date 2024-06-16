@@ -1,4 +1,5 @@
 ---
+id: introduction
 sidebar_position: 1
 title: Introduction
 ---
@@ -47,7 +48,7 @@ For easier integration, LangChain4j also includes integration with
 - Integration with [15+ LLM providers](/integrations/language-models)
 - Integration with [15+ embedding (vector) stores](/integrations/embedding-stores)
 - Integration with [10+ embedding models](/category/embedding-models)
-- Integration with [3 cloud and local image generation models](/category/image-models)
+- Integration with [4 cloud and local image generation models](/category/image-models)
 - Integration with [2 scoring (re-ranking) models](/category/scoring-reranking-models)
 - Integration with one moderation model: OpenAI
 - Support for texts and images as inputs (multimodality)

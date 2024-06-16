@@ -37,6 +37,7 @@
         <module>langchain4j-qianfan</module>
         <module>langchain4j-vertex-ai</module>
         <module>langchain4j-vertex-ai-gemini</module>
+        <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
 
         <!-- embedding stores -->

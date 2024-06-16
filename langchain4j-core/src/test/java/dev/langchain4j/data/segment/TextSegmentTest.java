@@ -25,12 +25,12 @@ class TextSegmentTest implements WithAssertions {
         TextSegment ts2 = TextSegment.from("text");
 
         Metadata m1 = new Metadata();
-        m1.add("abc", "123");
+        m1.put("abc", "123");
         Metadata m2 = new Metadata();
-        m2.add("abc", "123");
+        m2.put("abc", "123");
 
         Metadata m3 = new Metadata();
-        m3.add("abc", "xyz");
+        m3.put("abc", "xyz");
 
         TextSegment ts3 = TextSegment.from("text", m1);
         TextSegment ts4 = TextSegment.from("text", m1);
@@ -56,7 +56,7 @@ class TextSegmentTest implements WithAssertions {
     @Test
     public void test_accessors() {
         Metadata metadata = new Metadata();
-        metadata.add("abc", "123");
+        metadata.put("abc", "123");
         TextSegment ts = TextSegment.from("text", metadata);
 
         assertThat(ts.text()).isEqualTo("text");
@@ -76,7 +76,7 @@ class TextSegmentTest implements WithAssertions {
                 .isEqualTo(TextSegment.textSegment("abc", new Metadata()));
 
         Metadata metadata = new Metadata();
-        metadata.add("abc", "123");
+        metadata.put("abc", "123");
 
         assertThat(new TextSegment("abc", metadata))
                 .isEqualTo(TextSegment.from("abc", metadata))

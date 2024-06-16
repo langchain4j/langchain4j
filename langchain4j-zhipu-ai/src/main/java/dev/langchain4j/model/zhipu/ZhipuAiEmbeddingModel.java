@@ -13,12 +13,13 @@ import lombok.Builder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
+import static dev.langchain4j.model.zhipu.embedding.EmbeddingModel.EMBEDDING_2;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Represents an ZhipuAI embedding model, such as embedding-2.
@@ -40,7 +41,7 @@ public class ZhipuAiEmbeddingModel extends AbstractEmbeddingModel {
             Boolean logResponses
     ) {
         this.baseUrl = getOrDefault(baseUrl, "https://open.bigmodel.cn/");
-        this.model = getOrDefault(model, dev.langchain4j.model.zhipu.embedding.EmbeddingModel.EMBEDDING_2.toString());
+        this.model = getOrDefault(model, EMBEDDING_2.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.client = ZhipuAiClient.builder()
                 .baseUrl(this.baseUrl)
@@ -67,7 +68,7 @@ public class ZhipuAiEmbeddingModel extends AbstractEmbeddingModel {
                         .build()
                 )
                 .map(request -> withRetry(() -> client.embedAll(request), maxRetries))
-                .collect(Collectors.toList());
+                .collect(toList());
 
         Usage usage = getEmbeddingUsage(embeddingRequests);
 

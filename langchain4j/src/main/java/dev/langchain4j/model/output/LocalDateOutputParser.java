@@ -8,7 +8,7 @@ public class LocalDateOutputParser implements OutputParser<LocalDate> {
 
     @Override
     public LocalDate parse(String string) {
-        return LocalDate.parse(string, ISO_LOCAL_DATE);
+        return LocalDate.parse(string.trim(), ISO_LOCAL_DATE);
     }
 
     @Override

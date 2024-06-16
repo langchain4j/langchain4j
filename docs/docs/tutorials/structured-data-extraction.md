@@ -1,10 +1,11 @@
 ---
+id: structured-data-extraction
 sidebar_position: 11
 ---
 
 # Structured Data Extraction
 
-More info coming soon
+Documentation on structured data extraction can be found [here](/tutorials/ai-services#output-parsing-aka-structured-outputs).
 
 ## Examples
 

@@ -28,7 +28,7 @@ public class QwenEmbeddingModel extends AbstractEmbeddingModel {
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
     public static final String TYPE_DOCUMENT = "document";
-    private static final int MAX_BATCH_SIZE = 25;
+    private static final int BATCH_SIZE = 25;
 
     private final String apiKey;
     private final String modelName;
@@ -61,21 +61,17 @@ public class QwenEmbeddingModel extends AbstractEmbeddingModel {
     private Response<List<Embedding>> embedTexts(List<TextSegment> textSegments,
                                                  TextEmbeddingParam.TextType textType) {
         int size = textSegments.size();
-        if (size < MAX_BATCH_SIZE) {
+        if (size < BATCH_SIZE) {
             return batchEmbedTexts(textSegments, textType);
         }
 
         List<Embedding> allEmbeddings = new ArrayList<>(size);
         TokenUsage allUsage = null;
-        int fromIndex = 0;
-        int toIndex = MAX_BATCH_SIZE;
-        while (fromIndex < size) {
-            List<TextSegment> batchTextSegments = textSegments.subList(fromIndex, toIndex);
+        for (int i = 0; i < size; i += BATCH_SIZE) {
+            List<TextSegment> batchTextSegments = textSegments.subList(i, Math.min(size, i + BATCH_SIZE));
             Response<List<Embedding>> batchResponse = batchEmbedTexts(batchTextSegments, textType);
             allEmbeddings.addAll(batchResponse.content());
             allUsage = TokenUsage.sum(allUsage, batchResponse.tokenUsage());
-            fromIndex = toIndex;
-            toIndex = Math.min(size, fromIndex + MAX_BATCH_SIZE);
         }
 
         return Response.from(allEmbeddings, allUsage);
