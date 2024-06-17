@@ -110,7 +110,7 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         ),
                         asList(
                                 new Metadata().put("key", UUID.randomUUID()),
-                                new Metadata().put("key", UUID.randomUUID())
+                                new Metadata().put("key2", TEST_UUID)
                         )
                 ))
                 .add(Arguments.of(
@@ -511,7 +511,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         ),
                         asList(
                                 new Metadata().put("name", UUID.randomUUID()),
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         )
                 ))
@@ -522,7 +521,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("name", TEST_UUID).put("age", 42)
                         ),
                         asList(
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         )
@@ -537,7 +535,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         ),
                         asList(
                                 new Metadata().put("name", UUID.randomUUID()),
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         )
                 ))
@@ -550,7 +547,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("name", TEST_UUID2).put("age", 42)
                         ),
                         asList(
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         )
@@ -1299,7 +1295,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         metadataKey("key").isNotEqualTo(TEST_UUID),
                         asList(
                                 new Metadata().put("key", UUID.randomUUID()),
-                                new Metadata().put("key", UUID.randomUUID()),
                                 new Metadata().put("key2", TEST_UUID)
                         ),
                         asList(
@@ -1426,7 +1421,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         metadataKey("name").isNotIn(TEST_UUID),
                         asList(
                                 new Metadata().put("name", UUID.randomUUID()),
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         ),
                         asList(
@@ -1450,7 +1444,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         metadataKey("name").isNotIn(TEST_UUID, TEST_UUID2),
                         asList(
                                 new Metadata().put("name", UUID.randomUUID()),
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         ),
                         asList(
@@ -1463,7 +1456,6 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                 .add(Arguments.of(
                         metadataKey("name").isNotIn(asList(TEST_UUID, TEST_UUID2)),
                         asList(
-                                new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name", UUID.randomUUID()),
                                 new Metadata().put("name2", TEST_UUID)
                         ),

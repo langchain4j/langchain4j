@@ -5,21 +5,21 @@ import java.util.UUID;
 
 class UUIDComparator {
 
-    static boolean containsAsUUID(Object actualNumber, Collection<?> comparisonUUIDs) {
-        UUID actualUUID = toUUID(actualNumber);
+    static boolean containsAsUUID(Object actualUUID, Collection<?> comparisonUUIDs) {
+        UUID uuid = toUUID(actualUUID);
         return comparisonUUIDs.stream()
                 .map(UUIDComparator::toUUID)
                 .anyMatch(comparisonUUID ->
-                        comparisonUUID.compareTo(actualUUID) == 0);
+                        comparisonUUID.compareTo(uuid) == 0);
     }
 
-    private static UUID toUUID(Object actualNumber) {
-        if (actualNumber instanceof String) {
-            return UUID.fromString(actualNumber.toString());
-        } else if (actualNumber instanceof UUID) {
-            return (UUID)actualNumber;
+    private static UUID toUUID(Object actualUUID) {
+        if (actualUUID instanceof String) {
+            return UUID.fromString(actualUUID.toString());
+        } else if (actualUUID instanceof UUID) {
+            return (UUID)actualUUID;
         }
 
-        throw new IllegalArgumentException("Unsupported type: " + actualNumber.getClass().getName());
+        throw new IllegalArgumentException("Unsupported type: " + actualUUID.getClass().getName());
     }
 }
