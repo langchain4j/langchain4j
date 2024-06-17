@@ -83,13 +83,13 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
         SearchIndex providedIndex = new SearchIndex(providedIndexName).setFields(fields);
         AzureAiSearchEmbeddingStore store =
                 new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null);
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, null, null);
 
         assertEquals(providedIndexName, store.searchClient.getIndexName());
 
         try {
             new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME");
+                        new AzureKeyCredential(AZURE_SEARCH_KEY), true, providedIndex, "ANOTHER_INDEX_NAME", null);
 
             fail("Expected IllegalArgumentException to be thrown");
         } catch (IllegalArgumentException e) {
@@ -103,7 +103,7 @@ public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
     @Test
     public void when_an_index_is_not_provided_the_default_name_is_used() {
         AzureAiSearchEmbeddingStore store =new AzureAiSearchEmbeddingStore(AZURE_SEARCH_ENDPOINT,
-            new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null);
+            new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null, null);
 
         assertEquals(DEFAULT_INDEX_NAME, store.searchClient.getIndexName());
     }

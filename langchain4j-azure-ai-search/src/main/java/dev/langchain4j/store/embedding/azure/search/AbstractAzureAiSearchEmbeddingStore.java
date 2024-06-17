@@ -15,6 +15,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMapper;
+import dev.langchain4j.rag.content.retriever.azure.search.DefaultAzureAiSearchFilterMapper;
 import dev.langchain4j.store.embedding.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,8 +60,16 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     private String indexName;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName) {
+    protected AzureAiSearchFilterMapper filterMapper;
+
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper) {
         ensureNotNull(endpoint, "endpoint");
+
+        if (filterMapper == null) {
+            this.filterMapper = new DefaultAzureAiSearchFilterMapper();
+        } else {
+            this.filterMapper = filterMapper;
+        }
         if (index != null && isNotNullOrBlank(indexName)) {
             // if an index is provided, it has its own name already configured
             // if the indexName is provided, it will be used when creating the default index
@@ -264,7 +273,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         SearchPagedIterable searchResults =
                 searchClient.search(null,
                         new SearchOptions()
-                                .setFilter(AzureAiSearchFilterMapper.map(request.filter()))
+                                .setFilter(filterMapper.map(request.filter()))
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 

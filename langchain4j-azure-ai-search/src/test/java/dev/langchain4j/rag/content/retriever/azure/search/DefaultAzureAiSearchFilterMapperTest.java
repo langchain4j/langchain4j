@@ -11,53 +11,55 @@ import java.util.Arrays;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class AzureAiSearchFilterMapperTest {
+class DefaultAzureAiSearchFilterMapperTest {
 
+    private final AzureAiSearchFilterMapper mapper = new DefaultAzureAiSearchFilterMapper();
+    
     @Test
     void map_nullFilter() {
-        String result = AzureAiSearchFilterMapper.map(null);
+        String result = mapper.map(null);
         assertEquals("", result);
     }
 
     @Test
     void map_handlesIsGreaterThan() {
         IsGreaterThan isGreaterThanFilter = new IsGreaterThan("key1", "value1");
-        String result = AzureAiSearchFilterMapper.map(isGreaterThanFilter);
+        String result = mapper.map(isGreaterThanFilter);
         assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value gt 'value1')", result);
     }
 
     @Test
     void map_handlesIsGreaterThanOrEqualTo() {
         IsGreaterThanOrEqualTo isGreaterThanOrEqualToFilter = new IsGreaterThanOrEqualTo("key1", "value1");
-        String result = AzureAiSearchFilterMapper.map(isGreaterThanOrEqualToFilter);
+        String result = mapper.map(isGreaterThanOrEqualToFilter);
         assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value ge 'value1')", result);
     }
 
     @Test
     void map_handlesIsLessThan() {
         IsLessThan isLessThanFilter = new IsLessThan("key1", "value1");
-        String result = AzureAiSearchFilterMapper.map(isLessThanFilter);
+        String result = mapper.map(isLessThanFilter);
         assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value lt 'value1')", result);
     }
 
     @Test
     void map_handlesIsLessThanOrEqualTo() {
         IsLessThanOrEqualTo isLessThanOrEqualToFilter = new IsLessThanOrEqualTo("key1", "value1");
-        String result = AzureAiSearchFilterMapper.map(isLessThanOrEqualToFilter);
+        String result = mapper.map(isLessThanOrEqualToFilter);
         assertEquals("metadata/attributes/any(k: k/key eq 'key1' and k/value le 'value1')", result);
     }
 
     @Test
     void map_handlesIsIn() {
         IsIn isInFilter = new IsIn("key1", Arrays.asList("value1", "value2"));
-        String result = AzureAiSearchFilterMapper.map(isInFilter);
+        String result = mapper.map(isInFilter);
         assertEquals("metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2')))", result);
     }
 
     @Test
     void map_handlesIsNotIn() {
         IsNotIn isNotInFilter = new IsNotIn("key1", Arrays.asList("value1", "value2"));
-        String result = AzureAiSearchFilterMapper.map(isNotInFilter);
+        String result = mapper.map(isNotInFilter);
         assertEquals("metadata/attributes/any(k: k/key eq 'key1' and not search.in(k/value, ('value1, value2')))", result);
     }
 
@@ -69,7 +71,7 @@ class AzureAiSearchFilterMapperTest {
                         new IsNotIn("key2", Arrays.asList("value2", "value3")),
                         new IsGreaterThan("key3", "100"))
         );
-        String result = AzureAiSearchFilterMapper.map(filter);
+        String result = mapper.map(filter);
         assertEquals("(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and (metadata/attributes/any(k: k/key eq 'key2' and not search.in(k/value, ('value2, value3'))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))", result);
     }
 
@@ -81,6 +83,6 @@ class AzureAiSearchFilterMapperTest {
                 return false;
             }
         };
-        assertThrows(IllegalArgumentException.class, () -> AzureAiSearchFilterMapper.map(unsupportedFilter));
+        assertThrows(IllegalArgumentException.class, () -> mapper.map(unsupportedFilter));
     }
 }

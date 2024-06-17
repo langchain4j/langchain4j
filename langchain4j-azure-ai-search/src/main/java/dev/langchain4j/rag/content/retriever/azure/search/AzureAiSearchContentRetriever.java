@@ -76,6 +76,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                          int maxResults,
                                          double minScore,
                                          AzureAiSearchQueryType azureAiSearchQueryType,
+                                         AzureAiSearchFilterMapper filterMapper,
                                          Filter filter) {
         ensureNotNull(endpoint, "endpoint");
         ensureTrue((keyCredential != null && tokenCredential == null) || (keyCredential == null && tokenCredential != null), "either keyCredential or tokenCredential must be set");
@@ -93,15 +94,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
             } else {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName, filterMapper);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
             } else {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName, filterMapper);
             }
         }
         this.embeddingModel = embeddingModel;
@@ -196,7 +197,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                 searchClient.search(content,
                         new SearchOptions()
                                 .setTop(maxResults)
-                                .setFilter(AzureAiSearchFilterMapper.map(filter)),
+                                .setFilter(filterMapper.map(filter)),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
@@ -214,7 +215,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                         new SearchOptions()
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
                                 .setTop(maxResults)
-                                .setFilter(AzureAiSearchFilterMapper.map(filter)),
+                                .setFilter(filterMapper.map(filter)),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID, minScore);
@@ -234,7 +235,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                 .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
                                 .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
                                 .setTop(maxResults)
-                                .setFilter(AzureAiSearchFilterMapper.map(filter)),
+                                .setFilter(filterMapper.map(filter)),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
@@ -314,6 +315,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         private AzureAiSearchQueryType azureAiSearchQueryType;
 
         private Filter filter;
+
+        private AzureAiSearchFilterMapper filterMapper;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -450,9 +453,20 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             return this;
         }
 
+        /**
+         * Sets the filter mapper to be used to map {@link Filter} objects to Azure AI Search filter strings.
+         *
+         * @param filterMapper The filter mapper to be used to map {@link Filter} objects to Azure AI Search filter strings.
+         * @return builder
+         */
+        public Builder filterMapper(AzureAiSearchFilterMapper filterMapper) {
+            this.filterMapper = filterMapper;
+            return this;
+        }
+
         public AzureAiSearchContentRetriever build() {
             return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, createOrUpdateIndex, dimensions, index,
-                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType, filter);
+                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType, filterMapper, filter);
         }
     }
 }
