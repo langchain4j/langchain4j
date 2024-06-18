@@ -165,7 +165,7 @@ class AzureOpenAiStreamingChatModelIT {
 
     @ParameterizedTest(name = "Deployment name {0}")
     @ValueSource(strings = {"gpt-4o"})
-    void should_use_json_format(String deploymentName) throws InterruptedException {
+    void should_use_json_format(String deploymentName) {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
