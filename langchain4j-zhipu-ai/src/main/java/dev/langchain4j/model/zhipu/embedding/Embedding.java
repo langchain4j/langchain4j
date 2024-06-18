@@ -1,60 +1,22 @@
 package dev.langchain4j.model.zhipu.embedding;
 
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
 
 import java.util.List;
 
-import static java.util.Collections.unmodifiableList;
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
-@Getter
-@ToString
-@EqualsAndHashCode
+@Data
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class Embedding {
 
-    private final List<Float> embedding;
-    private final String object;
-    private final Integer index;
-
-    private Embedding(Builder builder) {
-        this.embedding = builder.embedding;
-        this.object = builder.object;
-        this.index = builder.index;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static final class Builder {
-
-        private List<Float> embedding;
-        private String object;
-        private Integer index;
-
-        private Builder() {
-        }
-
-        public Builder embedding(List<Float> embedding) {
-            if (embedding != null) {
-                this.embedding = unmodifiableList(embedding);
-            }
-            return this;
-        }
-
-        public Builder object(String object) {
-            this.object = object;
-            return this;
-        }
-
-        public Builder index(Integer index) {
-            this.index = index;
-            return this;
-        }
-
-        public Embedding build() {
-            return new Embedding(this);
-        }
-    }
+    private List<Float> embedding;
+    private String object;
+    private Integer index;
 }

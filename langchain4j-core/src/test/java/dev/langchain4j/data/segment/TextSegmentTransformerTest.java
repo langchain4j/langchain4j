@@ -22,7 +22,7 @@ class TextSegmentTransformerTest implements WithAssertions {
     public void test_transformAll() {
         TextSegmentTransformer transformer = new LowercaseFnordTransformer();
         TextSegment ts1 = TextSegment.from("Text");
-        ts1.metadata().add("abc", "123"); // metadata is copied over (not transformed
+        ts1.metadata().put("abc", "123"); // metadata is copied over (not transformed
 
         TextSegment ts2 = TextSegment.from("Segment");
         TextSegment ts3 = TextSegment.from("Fnord will be filtered out");
