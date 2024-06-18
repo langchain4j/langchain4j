@@ -61,8 +61,6 @@ class AzureOpenAiStreamingChatModelIT {
                 .logRequestsAndResponses(true)
                 .build();
 
-        Thread.sleep(60_000);
-
         model.generate("What is the capital of France?", new StreamingResponseHandler<AiMessage>() {
 
             private final StringBuilder answerBuilder = new StringBuilder();
@@ -127,9 +125,6 @@ class AzureOpenAiStreamingChatModelIT {
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
                 .build();
-
-        Thread.sleep(60_000);
-
         model.generate("What is the capital of France?", new StreamingResponseHandler<AiMessage>() {
 
             private final StringBuilder answerBuilder = new StringBuilder();
@@ -187,9 +182,6 @@ class AzureOpenAiStreamingChatModelIT {
         String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
 
         TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
-
-        Thread.sleep(60_000);
-
         model.generate(userMessage, handler);
         Response<AiMessage> response = handler.get();
 
@@ -223,8 +215,6 @@ class AzureOpenAiStreamingChatModelIT {
                 .addParameter("second", INTEGER)
                 .build();
 
-        Thread.sleep(60_000);
-        
         model.generate(singletonList(userMessage), toolSpecification, new StreamingResponseHandler<AiMessage>() {
 
             @Override
@@ -267,8 +257,6 @@ class AzureOpenAiStreamingChatModelIT {
         List<ChatMessage> messages = asList(userMessage, aiMessage, toolExecutionResultMessage);
 
         CompletableFuture<Response<AiMessage>> futureResponse2 = new CompletableFuture<>();
-
-        Thread.sleep(60_000);
 
         model.generate(messages, new StreamingResponseHandler<AiMessage>() {
 
@@ -341,8 +329,6 @@ class AzureOpenAiStreamingChatModelIT {
                         .addParameter("number", INTEGER)
                         .build()
         );
-
-        Thread.sleep(60_000);
 
         model.generate(singletonList(userMessage), toolSpecifications, new StreamingResponseHandler<AiMessage>() {
 
