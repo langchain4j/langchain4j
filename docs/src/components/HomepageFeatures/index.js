@@ -22,11 +22,11 @@ const FeatureList = [
         ),
     },
     {
-        title: 'AI Services, RAG, Tools, Chains',
+        title: 'AI Services, RAG, Tools',
         Svg: require('@site/static/img/functionality-logos.svg').default,
         description: (
             <>
-                Our extensive toolbox provides a wide range of tools for common LLM operations, from low-level prompt templating, memory management, and output parsing, to high-level patterns like Agents and RAG.
+                Our extensive toolbox provides a wide range of tools for common LLM operations, from low-level prompt templating, chat memory management, and output parsing, to high-level patterns like AI Services and RAG.
             </>
         ),
     }

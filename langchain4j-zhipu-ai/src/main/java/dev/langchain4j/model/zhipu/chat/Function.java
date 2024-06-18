@@ -1,19 +1,26 @@
 package dev.langchain4j.model.zhipu.chat;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import lombok.Data;
 
 import java.util.HashMap;
 import java.util.Map;
 
-@ToString
-@EqualsAndHashCode
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
+@Data
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class Function {
 
-    private final String name;
-    private final String description;
-    private final Parameters parameters;
+    private String name;
+    private String description;
+    private Parameters parameters;
 
     private Function(Builder builder) {
         this.name = builder.name;
@@ -62,7 +69,7 @@ public final class Function {
 
         public Builder addParameter(String name, JsonSchemaProperty... jsonSchemaProperties) {
             this.addOptionalParameter(name, jsonSchemaProperties);
-            this.parameters.required().add(name);
+            this.parameters.getRequired().add(name);
             return this;
         }
 
@@ -77,7 +84,7 @@ public final class Function {
                 jsonSchemaPropertiesMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
             }
 
-            this.parameters.properties().put(name, jsonSchemaPropertiesMap);
+            this.parameters.getProperties().put(name, jsonSchemaPropertiesMap);
             return this;
         }
 

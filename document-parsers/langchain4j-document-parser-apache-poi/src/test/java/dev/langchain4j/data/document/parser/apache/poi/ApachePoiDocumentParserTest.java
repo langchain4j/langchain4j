@@ -28,7 +28,7 @@ public class ApachePoiDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().asMap()).isEmpty();
+        assertThat(document.metadata().toMap()).isEmpty();
     }
 
     @ParameterizedTest
@@ -45,7 +45,7 @@ public class ApachePoiDocumentParserTest {
 
         assertThat(document.text())
                 .isEqualToIgnoringWhitespace("Sheet1\ntest content\nSheet2\ntest content");
-        assertThat(document.metadata().asMap()).isEmpty();
+        assertThat(document.metadata().toMap()).isEmpty();
     }
 
     @ParameterizedTest
