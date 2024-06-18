@@ -63,18 +63,20 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
 
     private String getComparisonFormat(Filter filter) {
         if (filter instanceof IsEqualTo) return "k/value eq '%s'";
-        if (filter instanceof IsNotEqualTo) return "k/value ne '%s'";
+// not use, it raplace by Not ( isEqualTo )
+//        if (filter instanceof IsNotEqualTo) return "k/value ne '%s'";
         if (filter instanceof IsGreaterThan) return "k/value gt '%s'";
         if (filter instanceof IsGreaterThanOrEqualTo) return "k/value ge '%s'";
         if (filter instanceof IsLessThan) return "k/value lt '%s'";
         if (filter instanceof IsLessThanOrEqualTo) return "k/value le '%s'";
         if (filter instanceof IsIn) return "search.in(k/value, ('%s'))";
-        if (filter instanceof IsNotIn) return "not search.in(k/value, ('%s'))";
+// not use, it raplace by Not ( IsIn )
+//        if (filter instanceof IsNotIn) return "not search.in(k/value, ('%s'))";
         throw new IllegalArgumentException("Unsupported filter: " + filter);
     }
 
     private String mapIsNotIn(IsNotIn filter) {
-        return formatComparisonFilter(filter.key(), mapSearchInValues(filter.comparisonValues()), getComparisonFormat(filter));
+        return map(Filter.not(new IsIn(filter.key(), filter.comparisonValues())));
     }
 
     private String mapIsIn(IsIn filter) {
@@ -102,7 +104,7 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String mapIsNotEqualTo(IsNotEqualTo filter) {
-        return formatComparisonFilter(filter.key(), filter.comparisonValue().toString(), getComparisonFormat(filter));
+        return map(Filter.not(new IsEqualTo(filter.key(), filter.comparisonValue())));
     }
 
     private String mapSearchInValues(Collection<?> comparisonValues) {
