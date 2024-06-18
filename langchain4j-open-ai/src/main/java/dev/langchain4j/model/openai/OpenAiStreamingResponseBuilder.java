@@ -9,9 +9,9 @@ import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.finishReasonFrom;
 import static java.util.Collections.singletonList;
@@ -29,7 +29,7 @@ public class OpenAiStreamingResponseBuilder {
     private final StringBuffer toolNameBuilder = new StringBuffer();
     private final StringBuffer toolArgumentsBuilder = new StringBuffer();
 
-    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new ConcurrentHashMap<>();
+    private final Map<Integer, ToolExecutionRequestBuilder> indexToToolExecutionRequestBuilder = new HashMap<>();
 
     private volatile String finishReason;
 
