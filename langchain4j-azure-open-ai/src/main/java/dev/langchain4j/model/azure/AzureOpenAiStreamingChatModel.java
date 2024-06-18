@@ -132,13 +132,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Integer maxRetries,
                                          ProxyOptions proxyOptions,
                                          boolean logRequestsAndResponses,
-                                         boolean useAsyncClient) {
+                                         boolean useAsyncClient,
+                                         String appendUserAgent) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
         if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
         else
-            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);    }
+            this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);  }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -162,13 +163,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Integer maxRetries,
                                          ProxyOptions proxyOptions,
                                          boolean logRequestsAndResponses,
-                                         boolean useAsyncClient) {
+                                         boolean useAsyncClient,
+                                         String appendUserAgent) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
         if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
         else
-            this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);    }
+            this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);    }
 
     public AzureOpenAiStreamingChatModel(String endpoint,
                                          String serviceVersion,
@@ -192,13 +194,14 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                          Integer maxRetries,
                                          ProxyOptions proxyOptions,
                                          boolean logRequestsAndResponses,
-                                         boolean useAsyncClient) {
+                                         boolean useAsyncClient,
+                                         String appendUserAgent) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
         if(useAsyncClient)
-            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+            this.asyncClient = setupAsyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
         else
-            this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);    }
+            this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);    }
 
 
     private AzureOpenAiStreamingChatModel(String deploymentName,
@@ -394,6 +397,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
         private OpenAIClient openAIClient;
         private OpenAIAsyncClient openAIAsyncClient;
         private boolean useAsyncClient = true;
+        private String appendUserAgent;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -588,6 +592,11 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
             return this;
         }
 
+        public Builder appendUserAgent(String appendUserAgent) {
+            this.appendUserAgent = appendUserAgent;
+            return this;
+        }
+
         public AzureOpenAiStreamingChatModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -614,7 +623,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            useAsyncClient
+                            useAsyncClient,
+                            appendUserAgent
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiStreamingChatModel(
@@ -640,7 +650,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            useAsyncClient
+                            useAsyncClient,
+                            appendUserAgent
                     );
                 }
                 return new AzureOpenAiStreamingChatModel(
@@ -666,7 +677,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        useAsyncClient
+                        useAsyncClient,
+                        appendUserAgent
                 );
             } else {
                 return new AzureOpenAiStreamingChatModel(

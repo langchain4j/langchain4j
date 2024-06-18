@@ -74,10 +74,11 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
-                                     boolean logRequestsAndResponses) {
+                                     boolean logRequestsAndResponses,
+                                     String appendUserAgent) {
 
         this(deploymentName, tokenizer);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
     }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
@@ -88,10 +89,11 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
-                                     boolean logRequestsAndResponses) {
+                                     boolean logRequestsAndResponses,
+                                     String appendUserAgent) {
 
         this(deploymentName, tokenizer);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
     }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
@@ -102,10 +104,11 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
-                                     boolean logRequestsAndResponses) {
+                                     boolean logRequestsAndResponses,
+                                     String appendUserAgent) {
 
         this(deploymentName, tokenizer);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
@@ -184,6 +187,7 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
+        private String appendUserAgent;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -288,6 +292,11 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
             return this;
         }
 
+        public Builder appendUserAgent(String appendUserAgent) {
+            this.appendUserAgent = appendUserAgent;
+            return this;
+        }
+
         public AzureOpenAiEmbeddingModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -300,7 +309,8 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            appendUserAgent
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiEmbeddingModel(
@@ -312,7 +322,8 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            appendUserAgent
                     );
                 }
                 return new AzureOpenAiEmbeddingModel(
@@ -324,7 +335,8 @@ public class AzureOpenAiEmbeddingModel implements EmbeddingModel, TokenCountEsti
                         timeout,
                         maxRetries,
                         proxyOptions,
-                        logRequestsAndResponses
+                        logRequestsAndResponses,
+                        appendUserAgent
                 );
             } else {
                 return new AzureOpenAiEmbeddingModel(

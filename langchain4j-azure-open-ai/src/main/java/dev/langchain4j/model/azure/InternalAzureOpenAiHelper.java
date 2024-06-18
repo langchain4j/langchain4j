@@ -47,17 +47,17 @@ class InternalAzureOpenAiHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
-    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String appendUserAgent) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
         return openAIClientBuilder.buildClient();
     }
 
-    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String appendUserAgent) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
         return openAIClientBuilder.buildAsyncClient();
     }
 
-    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String appendUserAgent) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -66,7 +66,11 @@ class InternalAzureOpenAiHelper {
         clientOptions.setWriteTimeout(timeout);
         clientOptions.setProxyOptions(proxyOptions);
 
-        Header header = new Header("User-Agent", DEFAULT_USER_AGENT);
+        String userAgent = DEFAULT_USER_AGENT;
+        if (appendUserAgent!=null && !appendUserAgent.isEmpty()) {
+            userAgent = DEFAULT_USER_AGENT + "-" + appendUserAgent;
+        }
+        Header header = new Header("User-Agent", userAgent);
         clientOptions.setHeaders(Collections.singletonList(header));
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
@@ -116,14 +120,14 @@ class InternalAzureOpenAiHelper {
         return OpenAIServiceVersion.getLatest();
     }
 
-    public static List<com.azure.ai.openai.models.ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
+    public static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
                 .map(InternalAzureOpenAiHelper::toOpenAiMessage)
                 .collect(toList());
     }
 
-    public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
+    public static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
@@ -256,7 +260,7 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static AiMessage aiMessageFrom(com.azure.ai.openai.models.ChatResponseMessage chatResponseMessage) {
+    public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
         if (chatResponseMessage.getContent() != null) {
             return aiMessage(chatResponseMessage.getContent());
         } else {
@@ -276,7 +280,7 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static Image imageFrom(com.azure.ai.openai.models.ImageGenerationData imageGenerationData) {
+    public static Image imageFrom(ImageGenerationData imageGenerationData) {
         Image.Builder imageBuilder = Image.builder()
                 .revisedPrompt(imageGenerationData.getRevisedPrompt());
 

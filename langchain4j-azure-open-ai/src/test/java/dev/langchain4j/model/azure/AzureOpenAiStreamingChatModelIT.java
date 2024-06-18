@@ -111,9 +111,9 @@ class AzureOpenAiStreamingChatModelIT {
         OpenAIAsyncClient asyncClient = null;
         OpenAIClient client = null;
         if(useCustomAsyncClient) {
-            asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true);
+            asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true, null);
         } else {
-            client = InternalAzureOpenAiHelper.setupSyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true);
+            client = InternalAzureOpenAiHelper.setupSyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true, null);
         }
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
