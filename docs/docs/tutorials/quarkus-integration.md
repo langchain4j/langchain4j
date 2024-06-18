@@ -1,4 +1,5 @@
 ---
+id: quarkus-integration
 sidebar_position: 24
 ---
 

@@ -1,4 +1,5 @@
 ---
+id: logging
 sidebar_position: 30
 ---
 

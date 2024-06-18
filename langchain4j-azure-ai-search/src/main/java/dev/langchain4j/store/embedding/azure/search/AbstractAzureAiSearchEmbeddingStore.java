@@ -68,8 +68,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             // if the indexName is provided, it will be used when creating the default index
             throw new IllegalArgumentException("index and indexName cannot be both defined");
         }
+        if (createOrUpdateIndex && index != null) {
+            this.indexName = index.getName();
+        } else {
+            this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
+        }
         this.createOrUpdateIndex = createOrUpdateIndex;
-        this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
         if (keyCredential != null) {
             if (createOrUpdateIndex) {
                 searchIndexClient = new SearchIndexClientBuilder()
@@ -324,10 +328,10 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
                 List<Document.Metadata.Attribute> attributes = new ArrayList<>();
-                for (Map.Entry<String, String> entry : embedded.get(i).metadata().asMap().entrySet()) {
+                for (Map.Entry<String, Object> entry : embedded.get(i).metadata().toMap().entrySet()) {
                     Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
                     attribute.setKey(entry.getKey());
-                    attribute.setValue(entry.getValue());
+                    attribute.setValue(String.valueOf(entry.getValue()));
                     attributes.add(attribute);
                 }
                 metadata.setAttributes(attributes);

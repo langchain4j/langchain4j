@@ -1,63 +1,27 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter
-@ToString
-@EqualsAndHashCode
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class ChatCompletionChoice {
 
-    private final Integer index;
-    private final AssistantMessage message;
-    private final Delta delta;
-    @SerializedName("finish_reason")
-    private final String finishReason;
-
-    private ChatCompletionChoice(Builder builder) {
-        this.index = builder.index;
-        this.message = builder.message;
-        this.delta = builder.delta;
-        this.finishReason = builder.finishReason;
-    }
-
-    public static Builder builder() {
-        return new Builder();
-    }
-
-    public static final class Builder {
-        private Integer index;
-        private AssistantMessage message;
-        private Delta delta;
-        private String finishReason;
-
-        private Builder() {
-        }
-
-        public Builder index(Integer index) {
-            this.index = index;
-            return this;
-        }
-
-        public Builder message(AssistantMessage message) {
-            this.message = message;
-            return this;
-        }
-
-        public Builder delta(Delta delta) {
-            this.delta = delta;
-            return this;
-        }
-
-        public Builder finishReason(String finishReason) {
-            this.finishReason = finishReason;
-            return this;
-        }
-
-        public ChatCompletionChoice build() {
-            return new ChatCompletionChoice(this);
-        }
-    }
+    private Integer index;
+    private AssistantMessage message;
+    private Delta delta;
+    private String finishReason;
 }

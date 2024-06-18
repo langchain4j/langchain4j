@@ -1,4 +1,5 @@
 ---
+id: introduction
 sidebar_position: 1
 title: Introduction
 ---
@@ -17,8 +18,8 @@ Here's how:
    LangChain4j currently supports [15+ popular LLM providers](/integrations/language-models/)
    and [15+ embedding stores](/integrations/embedding-stores/).
 2. **Comprehensive Toolbox:**
-   During the past year, the community has been building numerous LLM-powered applications,
-   identifying common abstractions, patterns, and techniques. LangChain4j has refined these into practical code.
+   Over the past year, the community has been building numerous LLM-powered applications,
+   identifying common abstractions, patterns, and techniques. LangChain4j has refined these into a ready to use package.
    Our toolbox includes tools ranging from low-level prompt templating, chat memory management, and output parsing
    to high-level patterns like AI Services and RAG.
    For each abstraction, we provide an interface along with multiple ready-to-use implementations based on common techniques.
@@ -47,7 +48,7 @@ For easier integration, LangChain4j also includes integration with
 - Integration with [15+ LLM providers](/integrations/language-models)
 - Integration with [15+ embedding (vector) stores](/integrations/embedding-stores)
 - Integration with [10+ embedding models](/category/embedding-models)
-- Integration with [3 cloud and local image generation models](/category/image-models)
+- Integration with [4 cloud and local image generation models](/category/image-models)
 - Integration with [2 scoring (re-ranking) models](/category/scoring-reranking-models)
 - Integration with one moderation model: OpenAI
 - Support for texts and images as inputs (multimodality)
@@ -107,7 +108,7 @@ LangChain4j features a modular design, comprising:
 
 ## Use Cases
 You might ask why would I need all of this?
-Here are a couple of examples:
+Here are some examples:
 
 - You want to implement a custom AI-powered chatbot that has access to your data and behaves the way you want it:
   - Customer support chatbot that can:

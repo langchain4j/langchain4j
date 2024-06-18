@@ -13,6 +13,7 @@ public class EnumOutputParser implements OutputParser<Enum> {
 
     @Override
     public Enum parse(String string) {
+        string = string.trim();
         for (Enum enumConstant : enumClass.getEnumConstants()) {
             if (enumConstant.name().equalsIgnoreCase(string)) {
                 return enumConstant;
