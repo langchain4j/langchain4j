@@ -12,6 +12,8 @@ import io.weaviate.client.base.Result;
 import io.weaviate.client.base.WeaviateErrorMessage;
 import io.weaviate.client.v1.auth.exception.AuthException;
 import io.weaviate.client.v1.data.model.WeaviateObject;
+import io.weaviate.client.v1.filters.Operator;
+import io.weaviate.client.v1.filters.WhereFilter;
 import io.weaviate.client.v1.graphql.model.GraphQLError;
 import io.weaviate.client.v1.graphql.model.GraphQLResponse;
 import io.weaviate.client.v1.graphql.query.argument.NearVectorArgument;
@@ -23,6 +25,7 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static io.weaviate.client.v1.data.replication.model.ConsistencyLevel.QUORUM;
 import static java.util.Arrays.stream;
 import static java.util.Collections.emptyList;
@@ -146,6 +149,26 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
         return addAll(null, embeddings, embedded);
     }
 
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+        client.batch().objectsBatchDeleter()
+                .withClassName(objectClass)
+                .withWhere(WhereFilter.builder()
+                        .path("id")
+                        .operator(Operator.ContainsAny)
+                        .valueText(ids.toArray(new String[0]))
+                        .build())
+                .run();
+    }
+
+    @Override
+    public void removeAll() {
+        client.batch().objectsBatchDeleter()
+                .withClassName(objectClass)
+                .run();
+    }
+
     /**
      * {@inheritDoc}
      * The score inside {@link EmbeddingMatch} is Weaviate's certainty.
@@ -256,6 +279,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
             props.put(METADATA_TEXT_SEGMENT, "");
             props.put(METADATA, metadata);
         }
+        props.put("indexFilterable", true);
+        props.put("indexSearchable", true);
         return WeaviateObject
                 .builder()
                 .className(objectClass)

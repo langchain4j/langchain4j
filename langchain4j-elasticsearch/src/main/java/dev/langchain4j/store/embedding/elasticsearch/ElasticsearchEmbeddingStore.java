@@ -44,11 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
@@ -269,12 +265,6 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         } catch (IOException e) {
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
-    }
-
-    @Override
-    public void remove(String id) {
-        ensureNotBlank(id, "id");
-        removeByIds(singletonList(id));
     }
 
     @Override

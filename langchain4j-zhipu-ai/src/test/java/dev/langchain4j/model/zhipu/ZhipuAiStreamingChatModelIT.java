@@ -17,8 +17,7 @@ import java.util.List;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.from;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class ZhipuAiStreamingChatModelIT {
     private static final String apiKey = System.getenv("ZHIPU_API_KEY");
 
-    private ZhipuAiStreamingChatModel model = ZhipuAiStreamingChatModel.builder()
+    private final ZhipuAiStreamingChatModel model = ZhipuAiStreamingChatModel.builder()
             .apiKey(apiKey)
             .logRequests(true)
             .logResponses(true)
@@ -56,6 +55,19 @@ public class ZhipuAiStreamingChatModelIT {
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
         assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @Test
+    void should_sensitive_words_stream_answer() {
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+
+        model.generate("fuck you", handler);
+
+        Response<AiMessage> response = handler.get();
+
+        assertThat(response.content().text()).isBlank();
+
+        assertThat(response.finishReason()).isEqualTo(CONTENT_FILTER);
     }
 
     @Test
