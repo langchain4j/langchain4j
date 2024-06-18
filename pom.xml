@@ -39,6 +39,7 @@
         <module>langchain4j-vertex-ai-gemini</module>
         <module>langchain4j-workers-ai</module>
         <module>langchain4j-zhipu-ai</module>
+        <module>langchain4j-ark</module>
 
         <!-- embedding stores -->
         <module>langchain4j-azure-ai-search</module>
