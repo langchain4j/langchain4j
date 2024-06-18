@@ -71,15 +71,4 @@ public interface StreamingChatLanguageModel {
     default void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
         throw new IllegalArgumentException("Tools are currently not supported by this model");
     }
-
-    /**
-     * TODO
-     *
-     * @param chatModelRequest
-     * @param handler
-     */
-    default void generate(ChatModelRequest chatModelRequest, StreamingResponseHandler<AiMessage> handler) {
-        // TODO default impl
-        // TODO StreamingResponseHandler.onComplete() Response -> ChatModelResult ?
-    }
 }

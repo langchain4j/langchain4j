@@ -88,8 +88,8 @@ public interface ChatLanguageModel {
      * @param request
      * @return
      */
-    default ChatModelResult generate(ChatModelRequest request) { // TODO names
-        if (request.parameters() != null) {
+    default ChatResult generate(ChatRequest request) { // TODO names
+        if (request.modelParameters() != null) {
             throw new UnsupportedOperationException(""); // TODO
         }
 
@@ -100,7 +100,7 @@ public interface ChatLanguageModel {
             response = generate(request.messages(), request.toolSpecifications());
         }
 
-        return ChatModelResult.builder()
+        return ChatResult.builder()
                 .aiMessage(response.content())
                 .tokenUsage(response.tokenUsage())
                 .finishReason(response.finishReason())
