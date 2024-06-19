@@ -114,10 +114,10 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                         Integer maxRetries,
                         ProxyOptions proxyOptions,
                         boolean logRequestsAndResponses,
-                        String appendUserAgent) {
+                        String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
         }
 
         public AzureOpenAiLanguageModel(String endpoint,
@@ -141,10 +141,10 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                         Integer maxRetries,
                         ProxyOptions proxyOptions,
                         boolean logRequestsAndResponses,
-                        String appendUserAgent) {
+                        String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiLanguageModel(String endpoint,
@@ -168,10 +168,10 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Integer maxRetries,
                                     ProxyOptions proxyOptions,
                                     boolean logRequestsAndResponses,
-                                    String appendUserAgent) {
+                                    String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiLanguageModel(String deploymentName,
@@ -279,7 +279,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
-        private String appendUserAgent;
+        private String userAgentSuffix;
 
      /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -444,8 +444,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder appendUserAgent(String appendUserAgent) {
-            this.appendUserAgent = appendUserAgent;
+        public Builder userAgentSuffix(String userAgentSuffix) {
+            this.userAgentSuffix = userAgentSuffix;
             return this;
         }
 
@@ -474,7 +474,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            appendUserAgent
+                            userAgentSuffix
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiLanguageModel(
@@ -499,7 +499,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            appendUserAgent
+                            userAgentSuffix
                     );
                 }
                 return new AzureOpenAiLanguageModel(
@@ -524,7 +524,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        appendUserAgent
+                        userAgentSuffix
                 );
             } else {
                 return new AzureOpenAiLanguageModel(

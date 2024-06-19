@@ -85,10 +85,10 @@ public class AzureOpenAiImageModel implements ImageModel {
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
-                                String appendUserAgent) {
+                                String userAgentSuffix) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -104,10 +104,10 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  Integer maxRetries,
                                  ProxyOptions proxyOptions,
                                  boolean logRequestsAndResponses,
-                                 String appendUserAgent) {
+                                 String userAgentSuffix) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiImageModel(String endpoint,
@@ -123,10 +123,10 @@ public class AzureOpenAiImageModel implements ImageModel {
                                  Integer maxRetries,
                                  ProxyOptions proxyOptions,
                                  boolean logRequestsAndResponses,
-                                 String appendUserAgent) {
+                                 String userAgentSuffix) {
 
         this(deploymentName, quality, size, user, style, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiImageModel(String deploymentName, String quality, String size, String user, String style, String responseFormat) {
@@ -199,7 +199,7 @@ public class AzureOpenAiImageModel implements ImageModel {
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
-        private String appendUserAgent;
+        private String userAgentSuffix;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -392,8 +392,8 @@ public class AzureOpenAiImageModel implements ImageModel {
             return this;
         }
 
-        public Builder appendUserAgent(String appendUserAgent) {
-            this.appendUserAgent = appendUserAgent;
+        public Builder userAgentSuffix(String userAgentSuffix) {
+            this.userAgentSuffix = userAgentSuffix;
             return this;
         }
 
@@ -414,7 +414,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            appendUserAgent
+                            userAgentSuffix
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiImageModel(
@@ -431,7 +431,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            appendUserAgent
+                            userAgentSuffix
                     );
                 }
                 return new AzureOpenAiImageModel(
@@ -448,7 +448,7 @@ public class AzureOpenAiImageModel implements ImageModel {
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        appendUserAgent
+                        userAgentSuffix
                 );
             }
             return new AzureOpenAiImageModel(

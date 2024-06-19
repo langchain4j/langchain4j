@@ -47,17 +47,17 @@ class InternalAzureOpenAiHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
-    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String appendUserAgent) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
         return openAIClientBuilder.buildClient();
     }
 
-    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String appendUserAgent) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
         return openAIClientBuilder.buildAsyncClient();
     }
 
-    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String appendUserAgent) {
+    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -67,8 +67,8 @@ class InternalAzureOpenAiHelper {
         clientOptions.setProxyOptions(proxyOptions);
 
         String userAgent = DEFAULT_USER_AGENT;
-        if (appendUserAgent!=null && !appendUserAgent.isEmpty()) {
-            userAgent = DEFAULT_USER_AGENT + "-" + appendUserAgent;
+        if (userAgentSuffix!=null && !userAgentSuffix.isEmpty()) {
+            userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
         }
         Header header = new Header("User-Agent", userAgent);
         clientOptions.setHeaders(Collections.singletonList(header));

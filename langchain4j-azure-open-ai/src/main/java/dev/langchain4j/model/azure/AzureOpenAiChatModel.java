@@ -118,10 +118,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
-                                String appendUserAgent) {
+                                String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -146,10 +146,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
-                                String appendUserAgent) {
+                                String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiChatModel(String endpoint,
@@ -174,10 +174,10 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                 Integer maxRetries,
                                 ProxyOptions proxyOptions,
                                 boolean logRequestsAndResponses,
-                                String appendUserAgent) {
+                                String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, stop, presencePenalty, frequencyPenalty, dataSources, enhancements, seed, responseFormat);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, appendUserAgent);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiChatModel(String deploymentName,
@@ -313,7 +313,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
-        private String appendUserAgent;
+        private String userAgentSuffix;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -473,8 +473,8 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return this;
         }
 
-        public Builder appendUserAgent(String appendUserAgent) {
-            this.appendUserAgent = appendUserAgent;
+        public Builder userAgentSuffix(String userAgentSuffix) {
+            this.userAgentSuffix = userAgentSuffix;
             return this;
         }
 
@@ -515,7 +515,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            appendUserAgent
+                            userAgentSuffix
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiChatModel(
@@ -541,7 +541,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                             maxRetries,
                             proxyOptions,
                             logRequestsAndResponses,
-                            appendUserAgent
+                            userAgentSuffix
                     );
                 }
                 return new AzureOpenAiChatModel(
@@ -567,7 +567,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                         maxRetries,
                         proxyOptions,
                         logRequestsAndResponses,
-                        appendUserAgent
+                        userAgentSuffix
                 );
             } else {
                 return new AzureOpenAiChatModel(
