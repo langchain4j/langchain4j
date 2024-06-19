@@ -73,15 +73,6 @@ public class ToolSpecifications {
         return builder.build();
     }
 
-    public static ToolSpecification toolSpecificationFrom(ToolSomething tool) {
-
-        return ToolSpecification.builder()
-                .name(tool.name())
-                .description(tool.description())
-                .parameters(tool)
-                .build();
-    }
-
     /**
      * Convert a {@link Parameter} to a {@link JsonSchemaProperty}.
      *

@@ -1,6 +1,9 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.agent.tool.P;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -11,9 +14,7 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -21,7 +22,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -108,61 +108,6 @@ class AiServicesWithToolsIT {
             }
         }
     }
-
-    static class UserDetails {
-
-        @Description("")
-        String name;
-
-        @Description("")
-        String surname;
-
-        @Description("")
-        String bookingNumber;
-    }
-
-    static class BookingChecker implements Function<UserDetails, String> {
-
-        @Override
-        public String apply(UserDetails userDetails) {
-            if (userDetails.bookingNumber.equals("123-456")) {
-                return "Booking found. Booking period: 1 July 2024 - 10 July 2024";
-            } else {
-                return "Booking not found";
-            }
-        }
-    }
-
-
-
-    @Test
-    void test() {
-
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        ToolSomething.from(
-                "get_booking_details",
-                "Get booking details",
-                UserDetails.class, // single param / multiple params. types? Map? How to describe params?
-                new BookingChecker()
-        );
-
-        // TODO how to register them in Spring boot app? Return a list of those as a bean?
-
-        AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .tools()
-                .build();
-
-    }
-
 
     @ParameterizedTest
     @MethodSource("models")
