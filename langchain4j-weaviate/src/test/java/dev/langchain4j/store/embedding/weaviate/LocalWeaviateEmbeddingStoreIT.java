@@ -10,6 +10,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
@@ -22,35 +23,38 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
             .withEnv("DEFAULT_VECTORIZER_MODULE", "none")
             .withEnv("CLUSTER_HOSTNAME", "node1");
 
+    static final List<String> METADATA_KEYS = Arrays.asList(
+            "string_empty",
+            "string_space",
+            "string_abc",
+            "uuid",
+            "integer_min",
+            "integer_minus_1",
+            "integer_0",
+            "integer_1",
+            "integer_max",
+            "long_min",
+            "long_minus_1",
+            "long_0",
+            "long_1",
+            "long_max",
+            "float_min",
+            "float_minus_1",
+            "float_0",
+            "float_1",
+            "float_123",
+            "float_max",
+            "double_minus_1",
+            "double_0",
+            "double_1",
+            "double_123");
+
     private final EmbeddingStore<TextSegment> embeddingStore = WeaviateEmbeddingStore.builder()
             .scheme("http")
             .host(weaviate.getHost())
             .port(weaviate.getFirstMappedPort())
             .objectClass("Test" + randomUUID().replace("-", ""))
-            .metadataKeys(Arrays.asList(
-                    "string_empty",
-                    "string_space",
-                    "string_abc",
-                    "integer_min",
-                    "integer_minus_1",
-                    "integer_0",
-                    "integer_1",
-                    "integer_max",
-                    "long_min",
-                    "long_minus_1",
-                    "long_0",
-                    "long_1",
-                    "long_max",
-                    "float_min",
-                    "float_minus_1",
-                    "float_0",
-                    "float_1",
-                    "float_123",
-                    "float_max",
-                    "double_minus_1",
-                    "double_0",
-                    "double_1",
-                    "double_123"))
+            .metadataKeys(METADATA_KEYS)
             .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
