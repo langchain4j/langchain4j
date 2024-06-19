@@ -10,6 +10,7 @@ on:
 
 jobs:
   snapshot_release:
+    if: github.repository == 'langchain4j/langchain4j'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

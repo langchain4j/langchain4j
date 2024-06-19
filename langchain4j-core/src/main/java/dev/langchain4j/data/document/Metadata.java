@@ -20,7 +20,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * segment-specific information, such as the page number, the position of the segment within the document, chapter, etc.
  * <br>
  * The metadata is stored as a key-value map, where the key is a {@link String} and the value can be one of:
- * {@link String}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}.
+ * {@link String}, {@link UUID}, {@link Integer}, {@link Long}, {@link Float}, {@link Double}.
  * If you require additional types, please <a href="https://github.com/langchain4j/langchain4j/issues/new/choose">open an issue</a>.
  * <br>
  * {@code null} values are not permitted.
@@ -31,6 +31,8 @@ public class Metadata {
 
     static {
         SUPPORTED_VALUE_TYPES.add(String.class);
+
+        SUPPORTED_VALUE_TYPES.add(UUID.class);
 
         SUPPORTED_VALUE_TYPES.add(int.class);
         SUPPORTED_VALUE_TYPES.add(Integer.class);
@@ -115,6 +117,30 @@ public class Metadata {
 
         throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
                 "It cannot be returned as a String.", key, value, value.getClass().getName());
+    }
+
+    /**
+     * Returns the {@code UUID} value associated with the given key.
+     *
+     * @param key the key
+     * @return the {@code UUID} value associated with the given key, or {@code null} if the key is not present.
+     * @throws RuntimeException if the value is not of type String
+     */
+    public UUID getUUID(String key) {
+        if (!containsKey(key)) {
+            return null;
+        }
+
+        Object value = metadata.get(key);
+        if (value instanceof UUID) {
+            return (UUID) value;
+        }
+        if (value instanceof String) {
+            return UUID.fromString((String)value);
+        }
+
+        throw runtime("Metadata entry with the key '%s' has a value of '%s' and type '%s'. " +
+                "It cannot be returned as a UUID.", key, value, value.getClass().getName());
     }
 
     /**
@@ -293,6 +319,19 @@ public class Metadata {
      * @return {@code this}
      */
     public Metadata put(String key, String value) {
+        validate(key, value);
+        this.metadata.put(key, value);
+        return this;
+    }
+
+    /**
+     * Adds a key-value pair to the metadata.
+     *
+     * @param key   the key
+     * @param value the value
+     * @return {@code this}
+     */
+    public Metadata put(String key, UUID value) {
         validate(key, value);
         this.metadata.put(key, value);
         return this;
