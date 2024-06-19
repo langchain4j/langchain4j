@@ -60,7 +60,7 @@ class DefaultAzureAiSearchFilterMapperTest {
     void map_handlesIsNotIn() {
         IsNotIn isNotInFilter = new IsNotIn("key1", Arrays.asList("value1", "value2"));
         String result = mapper.map(isNotInFilter);
-        assertEquals("metadata/attributes/any(k: k/key eq 'key1' and not search.in(k/value, ('value1, value2')))", result);
+        assertEquals("(not metadata/attributes/any(k: k/key eq 'key1' and search.in(k/value, ('value1, value2'))))", result);
     }
 
     @Test
@@ -72,7 +72,7 @@ class DefaultAzureAiSearchFilterMapperTest {
                         new IsGreaterThan("key3", "100"))
         );
         String result = mapper.map(filter);
-        assertEquals("(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and (metadata/attributes/any(k: k/key eq 'key2' and not search.in(k/value, ('value2, value3'))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))", result);
+        assertEquals("(metadata/attributes/any(k: k/key eq 'key1' and k/value eq 'value1') and ((not metadata/attributes/any(k: k/key eq 'key2' and search.in(k/value, ('value2, value3')))) or metadata/attributes/any(k: k/key eq 'key3' and k/value gt '100')))", result);
     }
 
     @Test
