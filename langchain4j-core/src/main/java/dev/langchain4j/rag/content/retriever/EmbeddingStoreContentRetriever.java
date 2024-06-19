@@ -31,6 +31,8 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * Configurable parameters (optional):
  * <br>
+ * - {@code displayName}: Display name for logging purposes, e.g. when multiple instances are used.
+ * <br>
  * - {@code maxResults}: The maximum number of {@link Content}s to retrieve.
  * <br>
  * - {@code dynamicMaxResults}: It is a {@link Function} that accepts a {@link Query} and returns a {@code maxResults} value.
@@ -57,6 +59,8 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     public static final Function<Query, Double> DEFAULT_MIN_SCORE = (query) -> 0.0;
     public static final Function<Query, Filter> DEFAULT_FILTER = (query) -> null;
 
+    public static final String DEFAULT_DISPLAY_NAME = "Default";
+
     private final EmbeddingStore<TextSegment> embeddingStore;
     private final EmbeddingModel embeddingModel;
 
@@ -64,9 +68,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     private final Function<Query, Double> minScoreProvider;
     private final Function<Query, Filter> filterProvider;
 
+    private final String displayName;
+
     public EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
                                           EmbeddingModel embeddingModel) {
         this(
+                DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
                 DEFAULT_MAX_RESULTS,
@@ -79,6 +86,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                           EmbeddingModel embeddingModel,
                                           int maxResults) {
         this(
+                DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
                 (query) -> maxResults,
@@ -92,6 +100,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                                           Integer maxResults,
                                           Double minScore) {
         this(
+                DEFAULT_DISPLAY_NAME,
                 embeddingStore,
                 embeddingModel,
                 (query) -> maxResults,
@@ -101,11 +110,13 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
     }
 
     @Builder
-    private EmbeddingStoreContentRetriever(EmbeddingStore<TextSegment> embeddingStore,
+    private EmbeddingStoreContentRetriever(String displayName,
+                                           EmbeddingStore<TextSegment> embeddingStore,
                                            EmbeddingModel embeddingModel,
                                            Function<Query, Integer> dynamicMaxResults,
                                            Function<Query, Double> dynamicMinScore,
                                            Function<Query, Filter> dynamicFilter) {
+        this.displayName = getOrDefault(displayName, DEFAULT_DISPLAY_NAME);
         this.embeddingStore = ensureNotNull(embeddingStore, "embeddingStore");
         this.embeddingModel = ensureNotNull(
                 getOrDefault(embeddingModel, EmbeddingStoreContentRetriever::loadEmbeddingModel),
@@ -180,5 +191,12 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                 .map(EmbeddingMatch::embedded)
                 .map(Content::from)
                 .collect(toList());
+    }
+
+    @Override
+    public String toString() {
+        return "EmbeddingStoreContentRetriever{" +
+                "displayName='" + displayName + '\'' +
+                '}';
     }
 }
