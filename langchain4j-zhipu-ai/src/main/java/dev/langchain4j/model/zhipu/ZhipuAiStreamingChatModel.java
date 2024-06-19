@@ -6,13 +6,11 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
 import dev.langchain4j.model.zhipu.chat.ToolChoiceMode;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiStreamingChatModelBuilderFactory;
 import lombok.Builder;
 
-import java.util.Collections;
 import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -20,7 +18,9 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toTools;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.toZhipuAiMessages;
+import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Collections.singletonList;
 
 public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
 
@@ -45,7 +45,7 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
         this.baseUrl = getOrDefault(baseUrl, "https://open.bigmodel.cn/");
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
-        this.model = getOrDefault(model, ChatCompletionModel.GLM_4.toString());
+        this.model = getOrDefault(model, GLM_4.toString());
         this.maxToken = getOrDefault(maxToken, 512);
         this.client = ZhipuAiClient.builder()
                 .baseUrl(this.baseUrl)
@@ -64,7 +64,7 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(String userMessage, StreamingResponseHandler<AiMessage> handler) {
-        this.generate(Collections.singletonList(UserMessage.from(userMessage)), handler);
+        this.generate(singletonList(UserMessage.from(userMessage)), handler);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
 
     @Override
     public void generate(List<ChatMessage> messages, ToolSpecification toolSpecification, StreamingResponseHandler<AiMessage> handler) {
-        this.generate(messages, toolSpecification == null ? null : Collections.singletonList(toolSpecification), handler);
+        this.generate(messages, toolSpecification == null ? null : singletonList(toolSpecification), handler);
     }
 
     public static class ZhipuAiStreamingChatModelBuilder {

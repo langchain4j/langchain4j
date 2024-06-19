@@ -88,8 +88,8 @@ abstract class CassandraEmbeddingStoreIT extends EmbeddingStoreIT {
         String sourceSentence         = "In GOD we trust, everything else we test!";
         Embedding sourceEmbedding     = embeddingModel().embed(sourceSentence).content();
         TextSegment sourceTextSegment = TextSegment.from(sourceSentence, new Metadata()
-                .add("user", "GOD")
-                .add("test", "false"));
+                .put("user", "GOD")
+                .put("test", "false"));
         String id =  embeddingStore().add(sourceEmbedding, sourceTextSegment);
         assertThat(id != null && !id.isEmpty()).isTrue();
 

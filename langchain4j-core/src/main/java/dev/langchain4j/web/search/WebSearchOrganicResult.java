@@ -184,7 +184,7 @@ public class WebSearchOrganicResult {
         docMetadata.add("url", url);
         if (metadata != null) {
             for (Map.Entry<String, String> entry : metadata.entrySet()) {
-                docMetadata.add(entry.getKey(), entry.getValue());
+                docMetadata.put(entry.getKey(), entry.getValue());
             }
         }
         return docMetadata;

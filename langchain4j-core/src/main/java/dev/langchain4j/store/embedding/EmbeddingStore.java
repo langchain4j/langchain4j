@@ -9,6 +9,9 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import java.util.Collection;
 import java.util.List;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
+
 /**
  * Represents a store for embeddings, also known as a vector database.
  *
@@ -65,7 +68,8 @@ public interface EmbeddingStore<Embedded> {
      */
     @Experimental
     default void remove(String id) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        ensureNotBlank(id, "id");
+        this.removeAll(singletonList(id));
     }
 
     /**
