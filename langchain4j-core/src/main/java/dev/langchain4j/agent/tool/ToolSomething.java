@@ -14,6 +14,7 @@ public class ToolSomething {
 
     private final String name;
     private final String description;
+    // TODO names/types/descriptions of arguments should probably also be dynamic?
     private final Class<?> argumentClass; // TODO needed? can get from function?
     private final Function<?, ?> function;
 
