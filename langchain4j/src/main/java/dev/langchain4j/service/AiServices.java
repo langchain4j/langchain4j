@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.DefaultToolExecutor;
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolSomething;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -37,6 +38,7 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
+import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
 /**
@@ -303,7 +305,7 @@ public abstract class AiServices<T> {
      * @see Tool
      */
     public AiServices<T> tools(Object... objectsWithTools) {
-        return tools(Arrays.asList(objectsWithTools));
+        return tools(asList(objectsWithTools));
     }
 
     /**
@@ -318,8 +320,13 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> tools(List<Object> objectsWithTools) { // TODO Collection?
         // TODO validate uniqueness of tool names
-        context.toolSpecifications = new ArrayList<>();
-        context.toolExecutors = new HashMap<>();
+
+        if (context.toolSpecifications == null) {
+            context.toolSpecifications = new ArrayList<>();
+        }
+        if (context.toolExecutors == null) {
+            context.toolExecutors = new HashMap<>();
+        }
 
         for (Object objectWithTool : objectsWithTools) {
             if (objectWithTool instanceof Class) {
@@ -333,6 +340,41 @@ public abstract class AiServices<T> {
                     context.toolExecutors.put(toolSpecification.name(), new DefaultToolExecutor(objectWithTool, method));
                 }
             }
+        }
+
+        return this;
+    }
+
+    /**
+     * TODO
+     *
+     * @param tools
+     * @return
+     */
+    public AiServices<T> tools(ToolSomething... tools) {
+        return tools((Collection<ToolSomething>) asList(tools));
+    }
+
+    /**
+     * TODO
+     *
+     * @param tools
+     * @return
+     */
+    public AiServices<T> tools(Collection<ToolSomething> tools) {
+
+        // TODO validate uniqueness of tool names
+
+        if (context.toolSpecifications == null) {
+            context.toolSpecifications = new ArrayList<>();
+        }
+        if (context.toolExecutors == null) {
+            context.toolExecutors = new HashMap<>();
+        }
+
+        for (ToolSomething tool : tools) {
+
+            context.toolSpecifications.add(toolSpecification);
         }
 
         return this;
