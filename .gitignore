@@ -37,3 +37,4 @@ build/
 
 ### .env files contain local environment variables ###
 .env
+langchain4j-core/target_test-classes/

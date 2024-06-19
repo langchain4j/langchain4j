@@ -27,7 +27,7 @@
 <!-- Before adding documentation and example(s) (below), please wait until the PR is reviewed and approved. -->
 - [ ] I have added/updated the [documentation](https://github.com/langchain4j/langchain4j/tree/main/docs/docs)
 - [ ] I have added an example in the [examples repo](https://github.com/langchain4j/langchain4j-examples) (only for "big" features)
-
+- [ ] I have added/updated [Spring Boot starter(s)](https://github.com/langchain4j/langchain4j-spring) (if applicable)
 
 ## Checklist for adding new model integration
 <!-- Please double-check the following points and mark them like this: [X] -->

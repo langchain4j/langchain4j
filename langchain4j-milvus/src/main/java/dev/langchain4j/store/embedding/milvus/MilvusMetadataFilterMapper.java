@@ -66,11 +66,11 @@ class MilvusMetadataFilterMapper {
         return format("%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
-    public static String mapIn(IsIn isIn) {
+    private static String mapIn(IsIn isIn) {
         return format("%s in %s", formatKey(isIn.key()), formatValues(isIn.comparisonValues()));
     }
 
-    public static String mapNotIn(IsNotIn isNotIn) {
+    private static String mapNotIn(IsNotIn isNotIn) {
         return format("%s not in %s", formatKey(isNotIn.key()), formatValues(isNotIn.comparisonValues()));
     }
 
@@ -90,7 +90,7 @@ class MilvusMetadataFilterMapper {
         return "metadata[\"" + key + "\"]";
     }
 
-    private static String formatValue(Object value) {
+    static String formatValue(Object value) {
         if (value instanceof String) {
             return "\"" + value + "\"";
         } else {
@@ -98,7 +98,7 @@ class MilvusMetadataFilterMapper {
         }
     }
 
-    private static List<String> formatValues(Collection<?> values) {
+    static List<String> formatValues(Collection<?> values) {
         return values.stream().map(value -> {
             if (value instanceof String) {
                 return "\"" + value + "\"";

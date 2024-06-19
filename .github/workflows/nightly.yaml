@@ -7,6 +7,7 @@ on:
 
 jobs:
   java_build:
+    if: github.repository == 'langchain4j/langchain4j'
     strategy:
       matrix:
         java_version: [ 8, 11, 17, 21 ]

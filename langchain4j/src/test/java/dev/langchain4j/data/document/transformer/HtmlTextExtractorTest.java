@@ -20,6 +20,12 @@ class HtmlTextExtractorTest {
             "</body>" +
             "</html>";
 
+    private static final String SAMPLE_HTML_WITH_RELATIVE_LINKS = "<html>" +
+            "<body>" +
+            "<p>Follow the link <a href=\"/menu1\">here</a>.</p>" +
+            "</body>" +
+            "</html>";
+
     @Test
     void should_extract_all_text_from_html() {
 
@@ -52,7 +58,7 @@ class HtmlTextExtractorTest {
         Document transformedDocument = transformer.transform(htmlDocument);
 
         assertThat(transformedDocument.text()).isEqualTo("Paragraph 1\nSomething");
-        assertThat(transformedDocument.metadata().asMap()).isEmpty();
+        assertThat(transformedDocument.metadata().toMap()).isEmpty();
     }
 
     @Test
@@ -68,8 +74,8 @@ class HtmlTextExtractorTest {
 
         assertThat(transformedDocument.text()).isEqualTo("Paragraph 1\nSomething");
 
-        assertThat(transformedDocument.metadata().asMap()).hasSize(1);
-        assertThat(transformedDocument.metadata("title")).isEqualTo("Title");
+        assertThat(transformedDocument.metadata().toMap()).hasSize(1);
+        assertThat(transformedDocument.metadata().getString("title")).isEqualTo("Title");
     }
 
     @Test
@@ -93,6 +99,48 @@ class HtmlTextExtractorTest {
                         " * Item one\n" +
                         " * Item two"
         );
-        assertThat(transformedDocument.metadata().asMap()).isEmpty();
+        assertThat(transformedDocument.metadata().toMap()).isEmpty();
+    }
+
+    @Test
+    void should_extract_text_with_absolute_links_from_html_with_relative_links_and_url_metadata() {
+        HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
+        Document htmlDocument = Document.from(SAMPLE_HTML_WITH_RELATIVE_LINKS);
+        htmlDocument.metadata().put(Document.URL, "https://example.org/page.html");
+
+        Document transformedDocument = transformer.transform(htmlDocument);
+
+        assertThat(transformedDocument.text()).isEqualTo(
+                "Follow the link here <https://example.org/menu1>."
+        );
+        assertThat(transformedDocument.metadata().asMap())
+            .containsEntry(Document.URL, "https://example.org/page.html")
+            .hasSize(1);
+    }
+
+    @Test
+    void should_extract_text_with_absolute_links_from_html_with_absolute_links_and_url_metadata() {
+        HtmlTextExtractor transformer = new HtmlTextExtractor(null, null, true);
+        Document htmlDocument = Document.from(SAMPLE_HTML);
+        htmlDocument.metadata().put(Document.URL, "https://other.example.org/page.html");
+
+        Document transformedDocument = transformer.transform(htmlDocument);
+
+        assertThat(transformedDocument.text()).isEqualTo(
+            "Title\n" +
+                "\n" +
+                "Paragraph 1\n" +
+                "Something\n" +
+                "\n" +
+                "Paragraph 2\n" +
+                "\n" +
+                "More details here <http://example.org>.\n" +
+                "List:\n" +
+                " * Item one\n" +
+                " * Item two"
+        );
+        assertThat(transformedDocument.metadata().asMap())
+            .containsEntry(Document.URL, "https://other.example.org/page.html")
+            .hasSize(1);
     }
 }

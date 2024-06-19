@@ -11,9 +11,13 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
+import dev.langchain4j.model.zhipu.shared.ErrorResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
+import okhttp3.ResponseBody;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -161,6 +165,38 @@ class DefaultZhipuAiHelper {
         );
     }
 
+    public static ChatCompletionResponse toChatErrorResponse(retrofit2.Response<?> retrofitResponse) throws IOException {
+        try (ResponseBody errorBody = retrofitResponse.errorBody()) {
+            return ChatCompletionResponse.builder()
+                    .choices(Collections.singletonList(toChatErrorChoice(errorBody)))
+                    .usage(Usage.builder().build())
+                    .build();
+        }
+    }
+
+    /**
+     * error code see <a href="https://open.bigmodel.cn/dev/api#error-code-v3">error codes document</a>
+     */
+    private static ChatCompletionChoice toChatErrorChoice(ResponseBody errorBody) throws IOException {
+        if (errorBody == null) {
+            return ChatCompletionChoice.builder()
+                    .finishReason("other")
+                    .build();
+        }
+        ErrorResponse errorResponse = Json.fromJson(errorBody.string(), ErrorResponse.class);
+        // 1301: 系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合
+        if ("1301".equals(errorResponse.getError().get("code"))) {
+            return ChatCompletionChoice.builder()
+                    .message(AssistantMessage.builder().content(errorResponse.getError().get("message")).build())
+                    .finishReason("sensitive")
+                    .build();
+        }
+        return ChatCompletionChoice.builder()
+                .message(AssistantMessage.builder().content(errorResponse.getError().get("message")).build())
+                .finishReason("other")
+                .build();
+    }
+
     public static FinishReason finishReasonFrom(String finishReason) {
         if (finishReason == null) {
             return null;
@@ -172,6 +208,8 @@ class DefaultZhipuAiHelper {
                 return LENGTH;
             case "tool_calls":
                 return TOOL_EXECUTION;
+            case "sensitive":
+                return CONTENT_FILTER;
             default:
                 return OTHER;
         }

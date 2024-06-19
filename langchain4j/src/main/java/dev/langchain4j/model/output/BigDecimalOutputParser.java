@@ -6,7 +6,7 @@ public class BigDecimalOutputParser implements OutputParser<BigDecimal> {
 
     @Override
     public BigDecimal parse(String string) {
-        return new BigDecimal(string);
+        return new BigDecimal(string.trim());
     }
 
     @Override

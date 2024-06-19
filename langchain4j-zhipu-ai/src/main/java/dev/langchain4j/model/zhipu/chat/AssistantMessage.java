@@ -1,28 +1,32 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.model.zhipu.chat.Role.ASSISTANT;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
-@ToString
-@EqualsAndHashCode
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class AssistantMessage implements Message {
 
     private final Role role = ASSISTANT;
-    @Getter
-    private final String content;
-    @Getter
-    private final String name;
-    @Getter
-    @SerializedName("tool_calls")
-    private final List<ToolCall> toolCalls;
+    private String content;
+    private String name;
+    private List<ToolCall> toolCalls;
 
     private AssistantMessage(Builder builder) {
         this.content = builder.content;

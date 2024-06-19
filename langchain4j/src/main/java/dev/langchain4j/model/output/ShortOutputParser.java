@@ -4,7 +4,7 @@ public class ShortOutputParser implements OutputParser<Short> {
 
     @Override
     public Short parse(String string) {
-        return Short.parseShort(string);
+        return Short.parseShort(string.trim());
     }
 
     @Override
