@@ -1,21 +1,25 @@
 package dev.langchain4j.agent.tool;
 
-import java.util.function.Function;
+import dev.langchain4j.internal.Json;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-public class DefaultFunctionToolExecutor implements ToolExecutor {
+public class DefaultFunctionToolExecutor<T> implements ToolExecutor {
+    // TODO name
 
-    private final Function<?, ?> function;
+    private final Class<T> argumentClass;
+    private final ToolCallback<T> callback;
 
-    public DefaultFunctionToolExecutor(Function<?, ?> function) {
-        this.function = ensureNotNull(function, "function");
+    public DefaultFunctionToolExecutor(Class<T> argumentClass, ToolCallback<T> callback) {
+        this.argumentClass = argumentClass; // TODO
+        this.callback = ensureNotNull(callback, "callback");
     }
 
     @Override
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
-        // TODO how to propagate memoryId into the function?
-
-        return function.apply(null).toString(); // TODO
+        T argument = Json.fromJson(toolExecutionRequest.arguments(), argumentClass);
+        ToolRequest<T> request = new ToolRequest<>(argument);
+        ToolResult result = callback.execute(request);
+        return result.result();
     }
 }

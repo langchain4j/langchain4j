@@ -348,8 +348,8 @@ public abstract class AiServices<T> {
      * @param tools
      * @return
      */
-    public AiServices<T> tools(ToolSomething... tools) {
-        return tools((Collection<ToolSomething>) asList(tools));
+    public AiServices<T> tools(ToolThingy... tools) {
+        return tools((Collection<ToolThingy>) asList(tools));
     }
 
     /**
@@ -358,7 +358,7 @@ public abstract class AiServices<T> {
      * @param tools
      * @return
      */
-    public AiServices<T> tools(Collection<ToolSomething> tools) {
+    public AiServices<T> tools(Collection<ToolThingy> tools) {
 
         // TODO validate uniqueness of tool names
 
@@ -369,9 +369,10 @@ public abstract class AiServices<T> {
             context.toolExecutors = new HashMap<>();
         }
 
-        for (ToolSomething toolSomething : tools) {
-            context.toolSpecifications.add(ToolSpecifications.toolSpecificationFrom(toolSomething));
-            context.toolExecutors.put(toolSomething.name(), new DefaultFunctionToolExecutor(toolSomething.function()));
+        for (ToolThingy toolThingy : tools) {
+            context.toolSpecifications.add(toolThingy.toToolSpecification());
+            DefaultFunctionToolExecutor<?> executor = new DefaultFunctionToolExecutor<>(toolThingy.argumentClass(), toolThingy.callback());
+            context.toolExecutors.put(toolThingy.name(), executor);
         }
 
         return this;

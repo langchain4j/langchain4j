@@ -16,7 +16,6 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.output.structured.Description;
 import lombok.Data;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -119,6 +118,58 @@ class AiServicesWithToolsIT {
         }
     }
 
+
+    static class BookingRequest {
+
+        // @Description("Number of the booking in the 123-456 format") TODO
+        String bookingNumber;
+    }
+
+    static class BookingTool implements Function<BookingRequest, String> {
+
+        @Override
+        public String apply(BookingRequest bookingRequest) {
+            if (bookingRequest.bookingNumber.equals("123-456")) {
+                return "Booking found. Booking period: 1 July 2027 - 10 July 2027";
+            } else {
+                return "Booking not found";
+            }
+        }
+    }
+
+    @Test
+    void should_use_tool_specified_programmatically_as_function() {
+
+        // given
+        OpenAiChatModel model = OpenAiChatModel.builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ToolThingy<BookingRequest> toolThingy = ToolThingy.from(
+                "get_booking_details",
+                "Returns booking details for a pro",
+                BookingRequest.class,
+                new BookingTool()
+        );
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(model)
+                .tools(toolThingy)
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+
+        // then
+        assertThat(response.content().text()).contains("2027");
+    }
+
+
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -133,37 +184,13 @@ class AiServicesWithToolsIT {
         private String description;
     }
 
-    static class UserDetails {
-
-        @Description("") // or dynamically
-        String name;
-
-        @Description("")
-        String surname;
-
-        @Description("")
-        String bookingNumber;
-    }
-
-    static class BookingChecker implements Function<UserDetails, String> {
-
-        @Override
-        public String apply(UserDetails userDetails) {
-            if (userDetails.bookingNumber.equals("123-456")) {
-                return "Booking found. Booking period: 1 July 2027 - 10 July 2027";
-            } else {
-                return "Booking not found";
-            }
-        }
-    }
-
     String getRequest(String url) {
         assertThat(url).isEqualTo("https://url2.com/accounts");
         return "Account ids: 77, 13, 45";
     }
 
     @Test
-    void test() throws IOException { // TODO name
+    void should_use_tool_specified_programmatically_as_supplier() throws IOException {
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -180,21 +207,15 @@ class AiServicesWithToolsIT {
 
         AtomicInteger atomicInteger = new AtomicInteger(1);
 
-        List<ToolSomething> tools = apiTools.stream()
-                .filter(apiTool -> "GET".equals(apiTool.method))
-                .map(apiTool -> ToolSomething.from(
+        // TODO generics
+        List<ToolThingy<?>> tools = apiTools.stream()
+                .filter(apiTool -> "GET".equals(apiTool.method)) // TODO register POST as well
+                .map(apiTool -> ToolThingy.from(
                         "tool_" + atomicInteger.getAndIncrement(),
                         apiTool.description,
                         () -> getRequest(apiTool.url)
                 ))
                 .collect(Collectors.toList());
-
-//        ToolSomething toolSomething = ToolSomething.from(
-//                "get_booking_details",
-//                "Get booking details",
-//                UserDetails.class, // single param / multiple params. types? Map? How to describe params?
-//                new BookingChecker()
-//        );
 
         // TODO how to register them in Spring boot app? Return a list of those as a bean?
 
@@ -207,6 +228,7 @@ class AiServicesWithToolsIT {
 
         assertThat(response.content().text()).contains("77", "13", "45");
     }
+
 
     @ParameterizedTest
     @MethodSource("models")

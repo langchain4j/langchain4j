@@ -1,9 +1,6 @@
 package dev.langchain4j.agent.tool;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
@@ -73,19 +70,6 @@ public class ToolSpecifications {
         return builder.build();
     }
 
-    public static ToolSpecification toolSpecificationFrom(ToolSomething tool) {
-
-        ToolSpecification.Builder builder = ToolSpecification.builder()
-                .name(tool.name())
-                .description(tool.description());
-
-        if (tool.argumentClass() == null) {
-            builder.parameters(ToolParameters.builder().build()); // TODO needed?
-        }
-
-        return builder.build();
-    }
-
     /**
      * Convert a {@link Parameter} to a {@link JsonSchemaProperty}.
      *
@@ -124,6 +108,44 @@ public class ToolSpecifications {
 
         if (type.isEnum()) {
             return removeNulls(STRING, enums((Class<?>) type), description);
+        }
+
+        return removeNulls(OBJECT, description); // TODO provide internals
+    }
+
+    // TODO reduce duplication
+    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field) {
+
+        Class<?> type = field.getType();
+
+        P annotation = field.getAnnotation(P.class);
+        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
+
+        if (type == String.class) {
+            return removeNulls(STRING, description);
+        }
+
+        if (isBoolean(type)) {
+            return removeNulls(BOOLEAN, description);
+        }
+
+        if (isInteger(type)) {
+            return removeNulls(INTEGER, description);
+        }
+
+        if (isNumber(type)) {
+            return removeNulls(NUMBER, description);
+        }
+
+        if (type.isArray()) {
+            return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
+        }
+        if (Collection.class.isAssignableFrom(type)) {
+            return removeNulls(ARRAY, arrayTypeFrom(field.getGenericType()), description); // TODO test
+        }
+
+        if (type.isEnum()) {
+            return removeNulls(STRING, enums(type), description);
         }
 
         return removeNulls(OBJECT, description); // TODO provide internals
