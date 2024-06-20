@@ -19,7 +19,6 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import static dev.langchain4j.data.embedding.Embedding.from;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -173,9 +172,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
     }
 
     @Override
-    protected Integer getKnownDimension() {
-        Map<String, Integer> knownMap = AzureOpenAiEmbeddingModelName.embeddingModelDimensionMap();
-        return knownMap.get(deploymentName);
+    protected Integer knownDimension() {
+        return AzureOpenAiEmbeddingModelName.knownDimension(deploymentName);
     }
 
     public static class Builder {

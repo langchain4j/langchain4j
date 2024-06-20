@@ -203,6 +203,11 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
     }
 
+    @Override
+    protected Integer knownDimension() {
+        return VertexAiEmbeddingModelName.knownDimension(endpointName.getModel());
+    }
+
     private List<Integer> groupByBatches(List<Integer> tokensCounts) {
         // create a list of sublists of tokens counts
         // where the maximum number of text segments per sublist is 250

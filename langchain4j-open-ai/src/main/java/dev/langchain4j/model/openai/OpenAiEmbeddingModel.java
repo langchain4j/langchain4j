@@ -81,13 +81,12 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
     }
 
     @Override
-    protected Integer getKnownDimension() {
+    protected Integer knownDimension() {
         if (dimensions != null) {
             return dimensions;
         }
 
-        Map<String, Integer> knownMap = OpenAiEmbeddingModelName.embeddingModelDimensionMap();
-        return knownMap.get(modelName());
+        return OpenAiEmbeddingModelName.knownDimension(modelName());
     }
 
     public String modelName() {

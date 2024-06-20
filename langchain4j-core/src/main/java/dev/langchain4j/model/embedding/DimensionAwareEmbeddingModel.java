@@ -15,11 +15,11 @@ public abstract class DimensionAwareEmbeddingModel implements EmbeddingModel {
     protected Integer dimension;
 
     /**
-     * Returns the dimension of known {@link Embedding} produced by this embedding model. if it's unknown, return null
+     * When known (e.g., can be derived from the model name), returns the dimension of the {@link Embedding} produced by this embedding model. Otherwise, it returns {@code null}.
      *
-     * @return the dimension of known {@link Embedding}, null if unknown.
+     * @return the known dimension of the {@link Embedding}, or {@code null} if unknown.
      */
-    protected Integer getKnownDimension() {
+    protected Integer knownDimension() {
         return null;
     }
 
@@ -29,7 +29,7 @@ public abstract class DimensionAwareEmbeddingModel implements EmbeddingModel {
             return dimension;
         }
 
-        Integer knownDimension = getKnownDimension();
+        Integer knownDimension = knownDimension();
         this.dimension = Optional.ofNullable(knownDimension).orElseGet(() -> embed("test").content().dimension());
         return this.dimension;
     }

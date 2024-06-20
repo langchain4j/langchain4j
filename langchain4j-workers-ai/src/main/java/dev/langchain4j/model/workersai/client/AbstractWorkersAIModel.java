@@ -34,7 +34,7 @@ public abstract class AbstractWorkersAIModel {
      * @param modelName model name.
      * @param apiToken  api apiToken from .
      */
-    protected AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
+    public AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
         if (accountId == null || accountId.isEmpty()) {
             throw new IllegalArgumentException("Account identifier should not be null or empty");
         }
