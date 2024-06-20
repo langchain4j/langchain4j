@@ -36,8 +36,7 @@ import java.util.List;
 import java.util.Map;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.emptyList;
@@ -397,7 +396,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         responseBuilder.append(chatCompletions);
                         handle(chatCompletions, handler);
 
-                        responseId.set(chatCompletions.getId());
+                        if (!isNotNullOrBlank(chatCompletions.getId())) {
+                            responseId.set(chatCompletions.getId());
+                        }
                     });
             Response<AiMessage> response = responseBuilder.build(tokenizer, toolThatMustBeExecuted != null);
             ChatModelResponse modelListenerResponse = createModelListenerResponse(

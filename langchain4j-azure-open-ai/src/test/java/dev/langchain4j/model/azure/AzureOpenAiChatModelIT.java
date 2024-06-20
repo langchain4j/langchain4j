@@ -335,11 +335,11 @@ public class AzureOpenAiChatModelIT {
         assertThat(response.content().text()).isNotBlank();
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @ParameterizedTest(name = "Deployment name {0}")
     @CsvSource({
-        "gpt-4o,        gpt-4o"
+            "gpt-4o"
     })
-    void should_listen_request_and_response(String deploymentName, String gptVersion) {
+    void should_listen_request_and_response(String deploymentName) {
 
         // given
         AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
@@ -366,7 +366,6 @@ public class AzureOpenAiChatModelIT {
             }
         };
 
-        AzureOpenAiChatModelName modelName = GPT_4_O;
         double temperature = 0.7;
         double topP = 1.0;
         int maxTokens = 7;
@@ -375,7 +374,6 @@ public class AzureOpenAiChatModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName(deploymentName)
-            .tokenizer(new AzureOpenAiTokenizer(gptVersion))
             .topP(topP)
             .temperature(temperature)
             .maxTokens(maxTokens)
@@ -396,7 +394,7 @@ public class AzureOpenAiChatModelIT {
 
         // then
         ChatModelRequest request = requestReference.get();
-        assertThat(request.model()).isEqualTo(modelName.toString());
+        assertThat(request.model()).isEqualTo(deploymentName);
         assertThat(request.temperature()).isEqualTo(temperature);
         assertThat(request.topP()).isEqualTo(topP);
         assertThat(request.maxTokens()).isEqualTo(maxTokens);
@@ -413,11 +411,8 @@ public class AzureOpenAiChatModelIT {
         assertThat(response.aiMessage()).isEqualTo(aiMessage);
     }
 
-    @ParameterizedTest(name = "Deployment name {0} using {1}")
-    @CsvSource({
-        "gpt-4o,        gpt-4o"
-    })
-    void should_listen_error(String deploymentName, String gptVersion) {
+    @Test
+    void should_listen_error() {
 
         // given
         String wrongApiKey = "banana";
