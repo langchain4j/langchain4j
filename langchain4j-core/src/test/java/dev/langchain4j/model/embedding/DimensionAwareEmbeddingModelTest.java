@@ -17,8 +17,6 @@ class DimensionAwareEmbeddingModelTest implements WithAssertions {
 
     public static class DimensionAwareEmbeddingModelImpl extends DimensionAwareEmbeddingModel {
 
-        Map<String, Integer> dimensionMap;
-
         DimensionAwareEmbeddingModelImpl() {
 
         }
