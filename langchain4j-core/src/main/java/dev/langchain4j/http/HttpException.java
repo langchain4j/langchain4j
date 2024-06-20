@@ -1,11 +1,13 @@
-package dev.langchain4j.model.anthropic.internal.client;
+package dev.langchain4j.http;
 
-// TODO remove in favour of HttpException?
-public class AnthropicHttpException extends RuntimeException {
+import dev.langchain4j.Experimental;
+
+@Experimental
+public class HttpException extends RuntimeException {
 
     private final Integer statusCode;
 
-    public AnthropicHttpException(Integer statusCode, String message) {
+    public HttpException(Integer statusCode, String message) {
         super(message);
         this.statusCode = statusCode;
     }
