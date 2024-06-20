@@ -150,11 +150,6 @@ public class QwenEmbeddingModel extends DimensionAwareEmbeddingModel {
         return new QwenEmbeddingModelBuilder();
     }
 
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
-
     public static class QwenEmbeddingModelBuilder {
         public QwenEmbeddingModelBuilder() {
             // This is public so it can be extended

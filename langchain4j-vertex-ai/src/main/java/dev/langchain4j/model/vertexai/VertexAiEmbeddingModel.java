@@ -12,7 +12,6 @@ import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
@@ -65,11 +64,6 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final TaskType taskType;
     private final String titleMetadataKey;
 
-    @Override
-    protected String modelName() {
-        return endpointName.getModel();
-    }
-
     public enum TaskType {
         RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY, CLASSIFICATION, CLUSTERING
     }
@@ -113,11 +107,6 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         this.taskType = taskType;
         this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
-        this.dimensionMap = new HashMap<String, Integer>() {{
-            put("textembedding-gecko@001", 768);
-            put("textembedding-gecko@002", 768);
-            put("textembedding-gecko@003", 768);
-        }};
     }
 
     @Override

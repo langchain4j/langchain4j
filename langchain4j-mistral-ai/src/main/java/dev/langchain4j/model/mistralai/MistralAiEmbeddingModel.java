@@ -106,11 +106,6 @@ public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return new MistralAiEmbeddingModelBuilder();
     }
 
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
-
     public static class MistralAiEmbeddingModelBuilder {
 
         public MistralAiEmbeddingModelBuilder() {

@@ -84,9 +84,4 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
         }
         return null;
     }
-
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
 }

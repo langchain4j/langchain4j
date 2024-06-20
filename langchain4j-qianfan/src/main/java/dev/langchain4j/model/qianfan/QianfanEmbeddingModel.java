@@ -107,11 +107,6 @@ public class QianfanEmbeddingModel extends DimensionAwareEmbeddingModel {
         return new QianfanEmbeddingModelBuilder();
     }
 
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
-
     public static class QianfanEmbeddingModelBuilder {
         public QianfanEmbeddingModelBuilder() {
             // This is public so it can be extended

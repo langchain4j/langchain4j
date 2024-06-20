@@ -78,21 +78,20 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implement
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
-        this.dimensionMap = OpenAiEmbeddingModelName.embeddingModelDimensionMap();
     }
 
     @Override
+    protected Integer getKnownDimension() {
+        if (dimensions != null) {
+            return dimensions;
+        }
+
+        Map<String, Integer> knownMap = OpenAiEmbeddingModelName.embeddingModelDimensionMap();
+        return knownMap.get(modelName());
+    }
+
     public String modelName() {
         return modelName;
-    }
-
-    @Override
-    public int dimension() {
-        if (dimensions != null) {
-            // If dimensions parameter is not null, dimension() should return the specified value
-            dimensionMap.put(modelName(), dimensions);
-        }
-        return super.dimension();
     }
 
     @Override

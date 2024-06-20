@@ -173,13 +173,9 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
     }
 
     @Override
-    protected Map<String, Integer> dimensionMap() {
-        return AzureOpenAiEmbeddingModelName.embeddingModelDimensionMap();
-    }
-
-    @Override
-    protected String modelName() {
-        return this.deploymentName;
+    protected Integer getKnownDimension() {
+        Map<String, Integer> knownMap = AzureOpenAiEmbeddingModelName.embeddingModelDimensionMap();
+        return knownMap.get(deploymentName);
     }
 
     public static class Builder {

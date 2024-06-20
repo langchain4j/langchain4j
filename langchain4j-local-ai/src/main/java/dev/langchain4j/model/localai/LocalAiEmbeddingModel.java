@@ -81,11 +81,6 @@ public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         return new LocalAiEmbeddingModelBuilder();
     }
 
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
-
     public static class LocalAiEmbeddingModelBuilder {
         public LocalAiEmbeddingModelBuilder() {
             // This is public so it can be extended

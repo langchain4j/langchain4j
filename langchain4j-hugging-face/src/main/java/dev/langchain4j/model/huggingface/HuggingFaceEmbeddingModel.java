@@ -84,11 +84,6 @@ public class HuggingFaceEmbeddingModel extends DimensionAwareEmbeddingModel {
         return new HuggingFaceEmbeddingModelBuilder();
     }
 
-    @Override
-    protected String modelName() {
-        return modelId;
-    }
-
     public static class HuggingFaceEmbeddingModelBuilder {
         public HuggingFaceEmbeddingModelBuilder() {
             // This is public so it can be extended

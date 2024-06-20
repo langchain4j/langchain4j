@@ -76,11 +76,6 @@ public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         );
     }
 
-    @Override
-    protected String modelName() {
-        return model;
-    }
-
     public static class ZhipuAiEmbeddingModelBuilder {
         public ZhipuAiEmbeddingModelBuilder() {
         }

@@ -17,26 +17,16 @@ class DimensionAwareEmbeddingModelTest implements WithAssertions {
 
     public static class DimensionAwareEmbeddingModelImpl extends DimensionAwareEmbeddingModel {
 
-        DimensionAwareEmbeddingModelImpl() {
+        final String modelName;
 
+        DimensionAwareEmbeddingModelImpl(String modelName) {
+            this.modelName = modelName;
         }
 
-        DimensionAwareEmbeddingModelImpl(Integer dimension) {
+        DimensionAwareEmbeddingModelImpl(String modelName,
+                                         Integer dimension) {
+            this.modelName = modelName;
             this.dimension = dimension;
-        }
-
-        DimensionAwareEmbeddingModelImpl(Map<String, Integer> dimensionMap) {
-            this.dimensionMap = dimensionMap;
-        }
-
-        @Override
-        protected Map<String, Integer> dimensionMap() {
-            return dimensionMap == null ? new HashMap<>() : dimensionMap;
-        }
-
-        @Override
-        protected String modelName() {
-            return "test-model";
         }
 
         @Override
@@ -53,7 +43,7 @@ class DimensionAwareEmbeddingModelTest implements WithAssertions {
 
     @Test
     void should_return_correct_dimension_and_cached() {
-        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl();
+        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl("test-model");
         assertThat(model.dimension()).isEqualTo(2);
 
         // twice call model.dimension() should use cache result
@@ -63,16 +53,7 @@ class DimensionAwareEmbeddingModelTest implements WithAssertions {
     @Test
     void should_return_init_dimension() {
         // init class with dimension
-        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl(5);
+        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl("test-model", 5);
         assertThat(model.dimension()).isEqualTo(5);
-    }
-
-    @Test
-    void should_return_dimension_from_cached_map() {
-        Map<String, Integer> dimensionMap = new HashMap<>();
-        dimensionMap.put("test-model", 6);
-
-        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl(dimensionMap);
-        assertThat(model.dimension()).isEqualTo(6);
     }
 }

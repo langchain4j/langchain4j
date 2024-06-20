@@ -71,11 +71,6 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
         return new OllamaEmbeddingModelBuilder();
     }
 
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
-
     public static class OllamaEmbeddingModelBuilder {
         public OllamaEmbeddingModelBuilder() {
             // This is public so it can be extended

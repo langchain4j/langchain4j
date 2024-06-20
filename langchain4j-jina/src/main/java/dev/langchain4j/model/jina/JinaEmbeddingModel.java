@@ -76,9 +76,4 @@ public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
         );
         return Response.from(embeddings, tokenUsage);
     }
-
-    @Override
-    protected String modelName() {
-        return modelName;
-    }
 }
