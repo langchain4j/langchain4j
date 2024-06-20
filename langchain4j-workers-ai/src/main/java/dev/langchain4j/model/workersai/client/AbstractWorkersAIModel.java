@@ -30,14 +30,11 @@ public abstract class AbstractWorkersAIModel {
     /**
      * Simple constructor.
      *
-     * @param accountId
-     *      account identifier.
-     * @param modelName
-     *      model name.
-     * @param apiToken
-     *      api apiToken from .
+     * @param accountId account identifier.
+     * @param modelName model name.
+     * @param apiToken  api apiToken from .
      */
-    public AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
+    protected AbstractWorkersAIModel(String accountId, String modelName, String apiToken) {
         if (accountId == null || accountId.isEmpty()) {
             throw new IllegalArgumentException("Account identifier should not be null or empty");
         }
@@ -45,7 +42,7 @@ public abstract class AbstractWorkersAIModel {
         if (modelName == null || modelName.isEmpty()) {
             throw new IllegalArgumentException("Model name should not be null or empty");
         }
-        this.modelName  = modelName;
+        this.modelName = modelName;
         if (apiToken == null || apiToken.isEmpty()) {
             throw new IllegalArgumentException("Token should not be null or empty");
         }
@@ -54,15 +51,13 @@ public abstract class AbstractWorkersAIModel {
 
     /**
      * Process errors from the API.
-     * @param res
-     *      response
-     * @param errors
-     *      errors body from retrofit
-     * @throws IOException
-     *      error occurred during invocation
+     *
+     * @param res    response
+     * @param errors errors body from retrofit
+     * @throws IOException error occurred during invocation
      */
     protected void processErrors(ApiResponse<?> res, ResponseBody errors)
-    throws IOException {
+            throws IOException {
         if (res == null || !res.isSuccess()) {
             StringBuilder errorMessage = new StringBuilder("Failed to generate chat message:");
             if (res == null) {
@@ -77,7 +72,6 @@ public abstract class AbstractWorkersAIModel {
             throw new RuntimeException(errorMessage.toString());
         }
     }
-
 
 
 }

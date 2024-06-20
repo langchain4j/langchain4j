@@ -13,21 +13,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-class AbstractEmbeddingModelTest implements WithAssertions {
+class DimensionAwareEmbeddingModelTest implements WithAssertions {
 
-    public static class EmbeddingModelImpl extends AbstractEmbeddingModel {
+    public static class DimensionAwareEmbeddingModelImpl extends DimensionAwareEmbeddingModel {
 
         Map<String, Integer> dimensionMap;
 
-        EmbeddingModelImpl() {
+        DimensionAwareEmbeddingModelImpl() {
 
         }
 
-        EmbeddingModelImpl(Integer dimension) {
+        DimensionAwareEmbeddingModelImpl(Integer dimension) {
             this.dimension = dimension;
         }
 
-        EmbeddingModelImpl(Map<String, Integer> dimensionMap) {
+        DimensionAwareEmbeddingModelImpl(Map<String, Integer> dimensionMap) {
             this.dimensionMap = dimensionMap;
         }
 
@@ -55,7 +55,7 @@ class AbstractEmbeddingModelTest implements WithAssertions {
 
     @Test
     void should_return_correct_dimension_and_cached() {
-        EmbeddingModel model = new EmbeddingModelImpl();
+        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl();
         assertThat(model.dimension()).isEqualTo(2);
 
         // twice call model.dimension() should use cache result
@@ -65,7 +65,7 @@ class AbstractEmbeddingModelTest implements WithAssertions {
     @Test
     void should_return_init_dimension() {
         // init class with dimension
-        EmbeddingModel model = new EmbeddingModelImpl(5);
+        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl(5);
         assertThat(model.dimension()).isEqualTo(5);
     }
 
@@ -74,7 +74,7 @@ class AbstractEmbeddingModelTest implements WithAssertions {
         Map<String, Integer> dimensionMap = new HashMap<>();
         dimensionMap.put("test-model", 6);
 
-        EmbeddingModel model = new EmbeddingModelImpl(dimensionMap);
+        EmbeddingModel model = new DimensionAwareEmbeddingModelImpl(dimensionMap);
         assertThat(model.dimension()).isEqualTo(6);
     }
 }

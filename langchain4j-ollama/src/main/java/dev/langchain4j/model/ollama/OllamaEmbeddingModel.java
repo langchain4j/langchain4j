@@ -2,13 +2,15 @@ package dev.langchain4j.model.ollama;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.ollama.spi.OllamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -19,7 +21,7 @@ import static java.time.Duration.ofSeconds;
 /**
  * <a href="https://github.com/jmorganca/ollama/blob/main/docs/api.md">Ollama API reference</a>
  */
-public class OllamaEmbeddingModel extends AbstractEmbeddingModel {
+public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OllamaClient client;
     private final String modelName;
@@ -67,11 +69,6 @@ public class OllamaEmbeddingModel extends AbstractEmbeddingModel {
             return factory.get();
         }
         return new OllamaEmbeddingModelBuilder();
-    }
-
-    @Override
-    protected Map<String, Integer> dimensionMap() {
-        return new HashMap<>();
     }
 
     @Override

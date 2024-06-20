@@ -6,7 +6,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.Tokenizer;
-import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
@@ -28,7 +28,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents an OpenAI embedding model, such as text-embedding-ada-002.
  */
-public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements TokenCountEstimator {
+public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel implements TokenCountEstimator {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -78,16 +78,21 @@ public class OpenAiEmbeddingModel extends AbstractEmbeddingModel implements Toke
         this.user = user;
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.tokenizer = getOrDefault(tokenizer, OpenAiTokenizer::new);
-    }
-
-    @Override
-    protected Map<String, Integer> dimensionMap() {
-        return OpenAiEmbeddingModelName.embeddingModelDimensionMap();
+        this.dimensionMap = OpenAiEmbeddingModelName.embeddingModelDimensionMap();
     }
 
     @Override
     public String modelName() {
         return modelName;
+    }
+
+    @Override
+    public int dimension() {
+        if (dimensions != null) {
+            // If dimensions parameter is not null, dimension() should return the specified value
+            dimensionMap.put(modelName(), dimensions);
+        }
+        return super.dimension();
     }
 
     @Override

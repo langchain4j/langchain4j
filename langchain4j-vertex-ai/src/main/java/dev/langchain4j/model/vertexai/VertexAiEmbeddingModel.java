@@ -5,7 +5,7 @@ import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.spi.VertexAiEmbeddingModelBuilderFactory;
@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.google.cloud.aiplatform.util.ValueConverter.EMPTY_VALUE;
 import static dev.langchain4j.internal.Json.toJson;
@@ -52,7 +51,7 @@ import static java.util.stream.Collectors.toList;
  * <br>
  * 3. <a href="https://github.com/googleapis/java-aiplatform?tab=readme-ov-file#prerequisites">Prerequisites</a>
  */
-public class VertexAiEmbeddingModel extends AbstractEmbeddingModel {
+public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final int COMPUTE_TOKENS_MAX_INPUTS_PER_REQUEST = 2048;
     private static final int DEFAULT_MAX_SEGMENTS_PER_BATCH = 250;
@@ -65,15 +64,6 @@ public class VertexAiEmbeddingModel extends AbstractEmbeddingModel {
     private final Integer maxTokensPerBatch;
     private final TaskType taskType;
     private final String titleMetadataKey;
-
-    @Override
-    protected Map<String, Integer> dimensionMap() {
-        return new HashMap<String, Integer>() {{
-            put("textembedding-gecko@001", 768);
-            put("textembedding-gecko@002", 768);
-            put("textembedding-gecko@003", 768);
-        }};
-    }
 
     @Override
     protected String modelName() {
@@ -123,6 +113,11 @@ public class VertexAiEmbeddingModel extends AbstractEmbeddingModel {
 
         this.taskType = taskType;
         this.titleMetadataKey = getOrDefault(titleMetadataKey, "title");
+        this.dimensionMap = new HashMap<String, Integer>() {{
+            put("textembedding-gecko@001", 768);
+            put("textembedding-gecko@002", 768);
+            put("textembedding-gecko@003", 768);
+        }};
     }
 
     @Override

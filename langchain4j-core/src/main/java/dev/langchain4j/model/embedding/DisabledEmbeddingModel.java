@@ -14,7 +14,7 @@ import java.util.Map;
  * This could be used in tests, or in libraries that extend this one to conditionally enable or disable functionality.
  * </p>
  */
-public class DisabledEmbeddingModel extends AbstractEmbeddingModel {
+public class DisabledEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     public Response<Embedding> embed(String text) {

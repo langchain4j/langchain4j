@@ -2,7 +2,7 @@ package dev.langchain4j.model.mistralai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingRequest;
 import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingResponse;
 import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
@@ -11,9 +11,7 @@ import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -25,7 +23,7 @@ import static java.util.stream.Collectors.toList;
  * Represents a Mistral AI embedding model, such as mistral-embed.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createEmbedding">here</a>.
  */
-public class MistralAiEmbeddingModel extends AbstractEmbeddingModel {
+public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final String EMBEDDINGS_ENCODING_FORMAT = "float";
     private final MistralAiClient client;
@@ -106,11 +104,6 @@ public class MistralAiEmbeddingModel extends AbstractEmbeddingModel {
             return factory.get();
         }
         return new MistralAiEmbeddingModelBuilder();
-    }
-
-    @Override
-    protected Map<String, Integer> dimensionMap() {
-        return new HashMap<>();
     }
 
     @Override

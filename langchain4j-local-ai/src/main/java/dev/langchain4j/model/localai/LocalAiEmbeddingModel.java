@@ -5,15 +5,13 @@ import dev.ai4j.openai4j.embedding.EmbeddingRequest;
 import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.localai.spi.LocalAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -24,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * See <a href="https://localai.io/features/embeddings/">LocalAI documentation</a> for more details.
  */
-public class LocalAiEmbeddingModel extends AbstractEmbeddingModel {
+public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAiClient client;
     private final String modelName;
@@ -81,11 +79,6 @@ public class LocalAiEmbeddingModel extends AbstractEmbeddingModel {
             return factory.get();
         }
         return new LocalAiEmbeddingModelBuilder();
-    }
-
-    @Override
-    protected Map<String, Integer> dimensionMap() {
-        return new HashMap<>();
     }
 
     @Override

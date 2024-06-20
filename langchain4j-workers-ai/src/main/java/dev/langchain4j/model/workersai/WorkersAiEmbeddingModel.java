@@ -12,9 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.*;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -25,8 +23,6 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  */
 @Slf4j
 public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements EmbeddingModel {
-
-    private Integer dimension;
 
     /**
      * Constructor with Builder.
@@ -169,7 +165,6 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         return embed(textSegment.text());
     }
 
-
     /**
      * {@inheritDoc}
      */
@@ -202,27 +197,6 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
                 executor.shutdownNow();
             }
         }
-    }
-
-    @Override
-    public int dimension() {
-        // perform like AbstractEmbeddingModel because the inheritance of AbstractWorkersAIModel
-        if (dimension != null) {
-            return dimension;
-        }
-
-        // get known model's dimension first, otherwise embed "test" to get dimension
-        if (dimensionMap().containsKey(modelName)) {
-            this.dimension = dimensionMap().get(modelName);
-        } else {
-            this.dimension = embed("test").content().dimension();
-        }
-
-        return this.dimension;
-    }
-
-    private Map<String, Integer> dimensionMap() {
-        return new HashMap<>();
     }
 
     /**

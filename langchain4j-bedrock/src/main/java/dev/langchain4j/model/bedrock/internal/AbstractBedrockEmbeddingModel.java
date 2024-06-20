@@ -3,10 +3,12 @@ package dev.langchain4j.model.bedrock.internal;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.model.embedding.AbstractEmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.experimental.SuperBuilder;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -23,27 +25,22 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
-import static dev.langchain4j.internal.Utils.getOrDefault;
 
 /**
  * Abstract bedrock embedding model
  */
+@SuperBuilder
 @Getter
-public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> extends AbstractEmbeddingModel {
+public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingResponse> implements EmbeddingModel {
 
-    private final Region region;
-    private final AwsCredentialsProvider credentialsProvider;
+    @Builder.Default
+    private final Region region = Region.US_EAST_1;
+    @Builder.Default
+    private final AwsCredentialsProvider credentialsProvider = DefaultCredentialsProvider.builder().build();
     @Getter(lazy = true)
     private final BedrockRuntimeClient client = initClient();
-    private final Integer maxRetries;
-
-    protected AbstractBedrockEmbeddingModel(Region region,
-                                            AwsCredentialsProvider credentialsProvider,
-                                            Integer maxRetries) {
-        this.region = getOrDefault(region, Region.US_EAST_1);
-        this.credentialsProvider = getOrDefault(credentialsProvider, DefaultCredentialsProvider.builder().build());
-        this.maxRetries = getOrDefault(maxRetries, 5);
-    }
+    @Builder.Default
+    private final Integer maxRetries = 5;
 
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
@@ -129,31 +126,5 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
                 .region(region)
                 .credentialsProvider(credentialsProvider)
                 .build();
-    }
-
-    protected abstract static class AbstractBedrockEmbeddingModelBuilder<C extends AbstractBedrockEmbeddingModel<?>, B extends AbstractBedrockEmbeddingModelBuilder<C, B>> {
-
-        protected Region region;
-        protected AwsCredentialsProvider credentialsProvider;
-        protected Integer maxRetries;
-
-        public B region(Region region) {
-            this.region = region;
-            return self();
-        }
-
-        public B credentialsProvider(AwsCredentialsProvider credentialsProvider) {
-            this.credentialsProvider = credentialsProvider;
-            return self();
-        }
-
-        public B maxRetries(Integer maxRetries) {
-            this.maxRetries = maxRetries;
-            return self();
-        }
-
-        protected abstract B self();
-
-        public abstract C build();
     }
 }
