@@ -24,7 +24,10 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -348,5 +351,34 @@ class InternalAzureOpenAiHelper {
             }
         }
         return exceptionFinishReason;
+    }
+
+    static ChatModelRequest createModelListenerRequest(ChatCompletionsOptions options,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+            .model(options.getModel())
+            .temperature(options.getTemperature())
+            .topP(options.getTopP())
+            .maxTokens(options.getMaxTokens())
+            .messages(messages)
+            .toolSpecifications(toolSpecifications)
+            .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+            .id(responseId)
+            .model(responseModel)
+            .tokenUsage(response.tokenUsage())
+            .finishReason(response.finishReason())
+            .aiMessage(response.content())
+            .build();
     }
 }

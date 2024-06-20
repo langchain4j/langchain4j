@@ -7,6 +7,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
@@ -14,6 +15,9 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.output.structured.Description;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,6 +33,7 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.service.AiServicesWithToolsIT.Operator.EQUALS;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelvin;
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
@@ -565,4 +570,80 @@ class AiServicesWithToolsIT {
     }
 
     // TODO test Lists, Sets, Arrays of different types (including enums).
+
+
+    static class QueryService {
+
+        @Tool("Execute the query and return the result")
+        String executeQuery(@P("query to execute") Query query) {
+            assertThat(query).isNotNull();
+            System.out.println("query to execute: " + Json.toJson(query));
+
+            assertThat(query.select).containsExactly("name");
+            assertThat(query.where).containsExactly(new Condition("country", EQUALS, "India"));
+            assertThat(query.limit).isEqualTo(3);
+
+            return "Amar, Akbar, Antony";
+        }
+    }
+
+    @Data
+    static class Query {
+
+        @Description("List of fields to fetch records")
+        List<String> select;
+
+        @Description("List of conditions to filter on. Pass null if no condition")
+        List<Condition> where;
+
+        @Description("limit on number of records")
+        Integer limit;
+
+        @Description("offset for fetching records")
+        Integer offset;
+    }
+
+    @Data
+    @AllArgsConstructor
+    static class Condition {
+
+        @Description("Field to filter on")
+        String field;
+
+        @Description("Operator to apply")
+        Operator operator;
+
+        @Description("Value to compare with")
+        Object value;
+    }
+
+    enum Operator {
+
+        EQUALS,
+        NOT_EQUALS,
+        IS_NULL,
+        IS_NOT_NULL
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_tool_with_pojo(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        QueryService queryService = spy(new QueryService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(queryService)
+                .build();
+
+        Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
+
+        assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
+    }
 }
