@@ -344,7 +344,9 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                     responseBuilder.append(chatCompletion);
                     handle(chatCompletion, handler);
 
-                    responseId.set(chatCompletion.getId());
+                    if (isNotNullOrBlank(chatCompletion.getId())) {
+                        responseId.set(chatCompletion.getId());
+                    }
                 },
                 throwable -> {
                     ChatModelErrorContext errorContext = new ChatModelErrorContext(
@@ -396,7 +398,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                         responseBuilder.append(chatCompletions);
                         handle(chatCompletions, handler);
 
-                        if (!isNotNullOrBlank(chatCompletions.getId())) {
+                        if (isNotNullOrBlank(chatCompletions.getId())) {
                             responseId.set(chatCompletions.getId());
                         }
                     });
