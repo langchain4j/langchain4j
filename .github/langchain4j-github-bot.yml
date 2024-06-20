@@ -1,0 +1,13 @@
+---
+# The format of this file is documented here:
+# https://github.com/langchain4j/langchain4j-github-bot
+features: [TRIAGE_ISSUES_AND_PULL_REQUESTS]
+triage:
+  rules:
+    - id: azure
+      labels: [Azure]
+      title: "azure"
+      notify: [jdubois, agoncal]
+      notifyInPullRequest: true
+      files:
+        - '*-azure-*/**'
