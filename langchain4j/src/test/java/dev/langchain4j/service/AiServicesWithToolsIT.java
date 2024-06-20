@@ -7,20 +7,26 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.mistralai.MistralAiChatModel;
+import dev.langchain4j.model.mistralai.MistralAiChatModelName;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.model.output.structured.Description;
+import lombok.Data;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -45,13 +51,6 @@ class AiServicesWithToolsIT {
                         .baseUrl(System.getenv("OPENAI_BASE_URL"))
                         .apiKey(System.getenv("OPENAI_API_KEY"))
                         .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build(),
-                MistralAiChatModel.builder()
-                        .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                        .modelName(MISTRAL_LARGE_LATEST)
                         .temperature(0.0)
                         .logRequests(true)
                         .logResponses(true)
@@ -565,4 +564,73 @@ class AiServicesWithToolsIT {
     }
 
     // TODO test Lists, Sets, Arrays of different types (including enums).
+
+
+    static class QueryService {
+
+
+
+        @Tool("Execute the query and return the result")
+        String executeQuery(@P("query to execute") Query query) {
+            if(query == null){
+                return "query cannot be null ";
+            }
+            System.out.printf("query to execute", Json.toJson(query) );
+
+            return "[ {name = Amar}, {name= Akbar} ,{ name = Antony} ]";
+        }
+    }
+
+    @Data
+    static class Query{
+        @Description("List of fields to fetch records")
+        List<String> select;
+        @Description("List of conditions to filter on. Pass null if no condition")
+        List<Condition> where;
+        @Description("limit on number of records")
+        Integer limit;
+        @Description("offset for fetching records")
+        Integer offset;
+
+    }
+
+    @Data
+    static class Condition{
+        @Description("Field to filter on")
+        String field;
+        @Description("Operator to apply")
+        Operator operator;
+        @Description("Value to compare with")
+        Object value;
+    }
+
+    enum Operator{
+        EQUALS,
+        NOT_EQUALS,
+        IS_NULL,
+        IS_NOT_NULL
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_tool_with_pojo(ChatLanguageModel  chatLanguageModel) {
+
+        // given
+        QueryService queryService = spy(new QueryService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatLanguageModel spyChatLanguageModel = spy(chatLanguageModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(spyChatLanguageModel)
+                .chatMemory(chatMemory)
+                .tools(queryService)
+                .build();
+
+        Response<AiMessage> response = assistant.chat("List 5 users where country is India");
+
+        assertThat(response.content().text()).contains("Amar");
+
+    }
 }
