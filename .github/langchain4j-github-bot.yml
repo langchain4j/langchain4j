@@ -11,3 +11,10 @@ triage:
       notifyInPullRequest: true
       files:
         - '*-azure-*/**'
+    - id: gemini
+      labels: [Gemini]
+      title: "gemini|vertex"
+      notify: [glaforge]
+      notifyInPullRequest: true
+      files:
+        - '*-vertex-*/**'
