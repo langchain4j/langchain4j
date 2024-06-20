@@ -1,9 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.DefaultToolExecutor;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolSomething;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -372,9 +369,9 @@ public abstract class AiServices<T> {
             context.toolExecutors = new HashMap<>();
         }
 
-        for (ToolSomething tool : tools) {
-
-            context.toolSpecifications.add(toolSpecification);
+        for (ToolSomething toolSomething : tools) {
+            context.toolSpecifications.add(ToolSpecifications.toolSpecificationFrom(toolSomething));
+            context.toolExecutors.put(toolSomething.name(), new DefaultFunctionToolExecutor(toolSomething.function()));
         }
 
         return this;

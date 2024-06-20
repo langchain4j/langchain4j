@@ -3,6 +3,7 @@ package dev.langchain4j.agent.tool;
 import lombok.AllArgsConstructor;
 
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * TODO
@@ -40,5 +41,11 @@ public class ToolSomething {
                                          Class<T> argumentClass,
                                          Function<T, ?> function) {
         return new ToolSomething(name, description, argumentClass, function);
+    }
+
+    public static <T> ToolSomething from(String name,
+                                         String description,
+                                         Supplier<?> supplier) {
+        return new ToolSomething(name, description, null, (ignored) -> supplier.get());
     }
 }

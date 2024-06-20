@@ -1,5 +1,10 @@
 package dev.langchain4j.service;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -12,6 +17,7 @@ import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
+import lombok.Data;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,9 +25,13 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -109,9 +119,23 @@ class AiServicesWithToolsIT {
         }
     }
 
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    static class ApiTool {
+
+        private String action;
+        private String url;
+        private String method;
+        private String headers;
+        private String examplePayload;
+        private List<String> query;
+        private String description;
+    }
+
     static class UserDetails {
 
-        @Description("")
+        @Description("") // or dynamically
         String name;
 
         @Description("")
@@ -126,17 +150,20 @@ class AiServicesWithToolsIT {
         @Override
         public String apply(UserDetails userDetails) {
             if (userDetails.bookingNumber.equals("123-456")) {
-                return "Booking found. Booking period: 1 July 2024 - 10 July 2024";
+                return "Booking found. Booking period: 1 July 2027 - 10 July 2027";
             } else {
                 return "Booking not found";
             }
         }
     }
 
-
+    String getRequest(String url) {
+        assertThat(url).isEqualTo("https://url2.com/accounts");
+        return "Account ids: 77, 13, 45";
+    }
 
     @Test
-    void test() {
+    void test() throws IOException { // TODO name
 
         OpenAiChatModel model = OpenAiChatModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
@@ -147,22 +174,39 @@ class AiServicesWithToolsIT {
                 .logResponses(true)
                 .build();
 
-        ToolSomething.from(
-                "get_booking_details",
-                "Get booking details",
-                UserDetails.class, // single param / multiple params. types? Map? How to describe params?
-                new BookingChecker()
-        );
+        File jsonFile = new File(getClass().getClassLoader().getResource("tools.json").getFile());
+        List<ApiTool> apiTools = new ObjectMapper().readValue(jsonFile, new TypeReference<List<ApiTool>>() {
+        });
+
+        AtomicInteger atomicInteger = new AtomicInteger(1);
+
+        List<ToolSomething> tools = apiTools.stream()
+                .filter(apiTool -> "GET".equals(apiTool.method))
+                .map(apiTool -> ToolSomething.from(
+                        "tool_" + atomicInteger.getAndIncrement(),
+                        apiTool.description,
+                        () -> getRequest(apiTool.url)
+                ))
+                .collect(Collectors.toList());
+
+//        ToolSomething toolSomething = ToolSomething.from(
+//                "get_booking_details",
+//                "Get booking details",
+//                UserDetails.class, // single param / multiple params. types? Map? How to describe params?
+//                new BookingChecker()
+//        );
 
         // TODO how to register them in Spring boot app? Return a list of those as a bean?
 
-        AiServices.builder(Assistant.class)
+        Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(model)
-                .tools()
+                .tools(tools)
                 .build();
 
-    }
+        Response<AiMessage> response = assistant.chat("Show me all CRM accounts");
 
+        assertThat(response.content().text()).contains("77", "13", "45");
+    }
 
     @ParameterizedTest
     @MethodSource("models")

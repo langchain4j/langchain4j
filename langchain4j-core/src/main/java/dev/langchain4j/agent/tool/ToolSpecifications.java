@@ -75,11 +75,15 @@ public class ToolSpecifications {
 
     public static ToolSpecification toolSpecificationFrom(ToolSomething tool) {
 
-        return ToolSpecification.builder()
+        ToolSpecification.Builder builder = ToolSpecification.builder()
                 .name(tool.name())
-                .description(tool.description())
-                .parameters(tool)
-                .build();
+                .description(tool.description());
+
+        if (tool.argumentClass() == null) {
+            builder.parameters(ToolParameters.builder().build()); // TODO needed?
+        }
+
+        return builder.build();
     }
 
     /**
