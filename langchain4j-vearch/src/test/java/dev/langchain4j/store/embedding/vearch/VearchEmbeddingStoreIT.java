@@ -5,17 +5,16 @@ import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,12 +23,14 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @TestMethodOrder(DeleteSpaceLastOrderer.class)
-public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
+@Testcontainers
+class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    static String configPath = VearchEmbeddingStoreIT.class.getClassLoader().getResource("config.toml").getPath();
-    static GenericContainer<?> vearch = new GenericContainer<>(DockerImageName.parse("vearch/vearch:latest"))
+    @Container
+    static GenericContainer<?> vearch = new GenericContainer<>(DockerImageName.parse("vearch/vearch:3.4.1"))
+            .withExposedPorts(9001, 8817)
             .withCommand("all")
-            .withFileSystemBind(configPath, "/vearch/config.toml", BindMode.READ_ONLY)
+            .withCopyFileToContainer(MountableFile.forClasspathResource("config.toml"), "/vearch/config.toml")
             .waitingFor(Wait.forLogMessage(".*INFO : server pid:1.*\\n", 1));
 
     VearchEmbeddingStore embeddingStore;
@@ -99,17 +100,6 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .baseUrl(baseUrl)
                 .timeout(Duration.ofSeconds(60))
                 .build();
-    }
-
-    @BeforeAll
-    static void beforeAll() {
-        vearch.setPortBindings(Arrays.asList("9001:9001", "8817:8817"));
-        vearch.start();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        vearch.stop();
     }
 
     @Override
