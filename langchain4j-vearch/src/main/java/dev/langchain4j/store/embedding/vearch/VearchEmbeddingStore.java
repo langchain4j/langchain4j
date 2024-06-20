@@ -14,6 +14,7 @@ import java.util.*;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static java.time.Duration.ofSeconds;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
 
@@ -134,7 +135,9 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
         double minSimilarity = CosineSimilarity.fromRelevanceScore(minScore);
         List<String> fields = new ArrayList<>(Arrays.asList(vearchConfig.getTextFieldName(), vearchConfig.getEmbeddingFieldName()));
-        fields.addAll(vearchConfig.getMetadataFieldNames());
+        if (!isNullOrEmpty(vearchConfig.getMetadataFieldNames())) {
+            fields.addAll(vearchConfig.getMetadataFieldNames());
+        }
         SearchRequest request = SearchRequest.builder()
                 .query(SearchRequest.QueryParam.builder()
                         .sum(singletonList(SearchRequest.VectorParam.builder()
@@ -166,6 +169,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
 
         List<Map<String, Object>> documents = new ArrayList<>(ids.size());
+        List<String> metadataFieldNames = vearchConfig.getMetadataFieldNames();
         for (int i = 0; i < ids.size(); i++) {
             Map<String, Object> document = new HashMap<>(4);
             document.put("_id", ids.get(i));
@@ -178,17 +182,19 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             document.put(vearchConfig.getEmbeddingFieldName(), embeddingValue);
             if (embedded != null) {
                 document.put(vearchConfig.getTextFieldName(), embedded.get(i).text());
-                Map<String, String> metadata = embedded.get(i).metadata().asMap();
-                for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
-                    metadata.putIfAbsent(metadataFieldName, "");
+                if (!isNullOrEmpty(metadataFieldNames)) {
+                    Map<String, Object> metadata = embedded.get(i).metadata().toMap();
+                    for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
+                        metadata.putIfAbsent(metadataFieldName, getDefaultValue(metadataFieldName));
+                    }
+                    document.putAll(metadata);
                 }
-                document.putAll(metadata);
             } else {
                 // vearch do not allow nullable value
                 document.put(vearchConfig.getTextFieldName(), "");
-                if (!isNullOrEmpty(vearchConfig.getMetadataFieldNames())) {
+                if (!isNullOrEmpty(metadataFieldNames)) {
                     for (String metadataFieldName : vearchConfig.getMetadataFieldNames()) {
-                        document.put(metadataFieldName, "");
+                        document.put(metadataFieldName, getDefaultValue(metadataFieldName));
                     }
                 }
             }
@@ -243,7 +249,7 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
             TextSegment textSegment = null;
             String text = source.get(vearchConfig.getTextFieldName()) == null ? null : String.valueOf(source.get(vearchConfig.getTextFieldName()));
             if (!isNullOrBlank(text)) {
-                Map<String, String> metadataMap = convertMetadataMap(source);
+                Map<String, Object> metadataMap = convertMetadataMap(source);
                 textSegment = TextSegment.from(text, Metadata.from(metadataMap));
             }
 
@@ -251,20 +257,31 @@ public class VearchEmbeddingStore implements EmbeddingStore<TextSegment> {
         }).collect(toList());
     }
 
-    private Map<String, String> convertMetadataMap(Map<String, Object> source) {
-        // Whether there are potential risk in removing fields directly
-        source.remove(vearchConfig.getTextFieldName());
-        source.remove(vearchConfig.getEmbeddingFieldName());
-        if (source.isEmpty()) {
-            return new HashMap<>();
-        }
-        Map<String, String> metadataMap = new HashMap<>(source.size());
-        source.forEach((key, value) -> {
-            if (!isNullOrBlank(String.valueOf(value))) {
-                metadataMap.put(key, String.valueOf(value));
-            }
-        });
-
+    private Map<String, Object> convertMetadataMap(Map<String, Object> source) {
+        Map<String, Object> metadataMap = new HashMap<>(source);
+        // remove embedded text and embedding
+        metadataMap.remove(vearchConfig.getTextFieldName());
+        metadataMap.remove(vearchConfig.getEmbeddingFieldName());
         return metadataMap;
+    }
+
+    private Object getDefaultValue(String fieldName) {
+        SpacePropertyParam param = vearchConfig.getProperties().get(fieldName);
+        if (param == null) {
+            throw new RuntimeException("Missing metadata " + fieldName);
+        }
+
+        switch (param.type) {
+            case STRING:
+                return "";
+            case FLOAT:
+                return 0.0;
+            case INTEGER:
+                return 0;
+            case VECTOR:
+                return emptyList();
+            default:
+                throw new RuntimeException("Unsupported SpacePropertyParam type " + param.type);
+        }
     }
 }
