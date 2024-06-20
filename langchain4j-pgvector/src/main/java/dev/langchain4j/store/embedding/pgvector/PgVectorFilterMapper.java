@@ -8,6 +8,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -22,6 +23,7 @@ abstract class PgVectorFilterMapper {
                     new SimpleEntry<>(Float.class, "float"),
                     new SimpleEntry<>(Double.class, "float8"),
                     new SimpleEntry<>(String.class, "text"),
+                    new SimpleEntry<>(UUID.class, "uuid"),
                     new SimpleEntry<>(Boolean.class, "boolean"),
                     // Default
                     new SimpleEntry<>(Object.class, "text"))
@@ -113,7 +115,7 @@ abstract class PgVectorFilterMapper {
     abstract String formatKeyAsString(String key);
 
     String formatValue(Object value) {
-        if (value instanceof String) {
+        if (value instanceof String || value instanceof UUID) {
             return "'" + value + "'";
         } else {
             return value.toString();
