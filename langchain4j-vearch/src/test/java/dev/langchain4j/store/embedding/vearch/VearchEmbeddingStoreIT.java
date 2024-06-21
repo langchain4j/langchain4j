@@ -1,36 +1,38 @@
 package dev.langchain4j.store.embedding.vearch;
 
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.testcontainers.containers.BindMode;
+import dev.langchain4j.store.embedding.*;
+import org.junit.jupiter.api.*;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.utility.MountableFile;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Percentage.withPercentage;
 
-@TestMethodOrder(DeleteSpaceLastOrderer.class)
-public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
+@Testcontainers
+class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
-    static String configPath = VearchEmbeddingStoreIT.class.getClassLoader().getResource("config.toml").getPath();
-    static GenericContainer<?> vearch = new GenericContainer<>(DockerImageName.parse("vearch/vearch:latest"))
+    @Container
+    static GenericContainer<?> vearch = new GenericContainer<>(DockerImageName.parse("vearch/vearch:3.4.1"))
+            .withExposedPorts(9001, 8817)
             .withCommand("all")
-            .withFileSystemBind(configPath, "/vearch/config.toml", BindMode.READ_ONLY)
+            .withCopyFileToContainer(MountableFile.forClasspathResource("config.toml"), "/vearch/config.toml")
             .waitingFor(Wait.forLogMessage(".*INFO : server pid:1.*\\n", 1));
+
+    static final UUID TEST_UUID = UUID.randomUUID();
 
     VearchEmbeddingStore embeddingStore;
 
@@ -45,15 +47,52 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
 
     String spaceName;
 
-    VearchConfig vearchConfig;
+    String baseUrl;
 
     public VearchEmbeddingStoreIT() {
+        databaseName = "embedding_db";
+        spaceName = "embedding_space";
+        baseUrl = "http://" + vearch.getHost() + ":" + vearch.getMappedPort(9001);
+        vearchClient = VearchClient.builder()
+                .baseUrl(baseUrl)
+                .timeout(Duration.ofSeconds(60))
+                .build();
+    }
+
+    @BeforeEach
+    void beforeEach(TestInfo testInfo) {
+        if (isMethodFromClass(testInfo, EmbeddingStoreIT.class)) {
+            buildEmbeddingStoreWithMetadata();
+        } else if (isMethodFromClass(testInfo, EmbeddingStoreWithoutMetadataIT.class) || isMethodFromClass(testInfo, VearchEmbeddingStoreIT.class)) {
+            buildEmbeddingStoreWithoutMetadata();
+        }
+    }
+
+    private boolean isMethodFromClass(TestInfo testInfo, Class<?> clazz) {
+        try {
+            Optional<Method> method = testInfo.getTestMethod();
+            if (method.isPresent()) {
+                String methodName = method.get().getName();
+                return clazz.getDeclaredMethod(methodName) != null;
+            }
+            return false;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
+    }
+
+    private void buildEmbeddingStoreWithMetadata() {
+        buildEmbeddingStore(true);
+    }
+
+    private void buildEmbeddingStoreWithoutMetadata() {
+        buildEmbeddingStore(false);
+    }
+
+    private void buildEmbeddingStore(boolean withMetadata) {
         String embeddingFieldName = "text_embedding";
         String textFieldName = "text";
-        String metadataFieldName = "test-key";
-
-        this.databaseName = "embedding_db";
-        this.spaceName = "embedding_space";
+        Map<String, Object> metadata = createMetadata().toMap();
 
         // init properties
         Map<String, SpacePropertyParam> properties = new HashMap<>(4);
@@ -63,11 +102,26 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
                 .dimension(384)
                 .build());
         properties.put(textFieldName, SpacePropertyParam.StringParam.builder().build());
-        // metadata
-        properties.put(metadataFieldName, SpacePropertyParam.StringParam.builder().build());
+        if (withMetadata) {
+            // metadata
+            // This for-loop requires EmbeddingStoreIT#createMetadata() follow naming pattern like below:
+            // if a metadata is string or uuid, the key must start with "string"
+            // if a metadata is integer, the key must start with "integer"
+            // if a metadata is float, the key must start with "float"
+            for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+                String key = entry.getKey();
+                if (key.startsWith("string") || key.startsWith("uuid")) {
+                    properties.put(key, SpacePropertyParam.StringParam.builder().build());
+                } else if (key.startsWith("integer")) {
+                    properties.put(key, SpacePropertyParam.IntegerParam.builder().build());
+                } else if (key.startsWith("float")) {
+                    properties.put(key, SpacePropertyParam.FloatParam.builder().build());
+                }
+            }
+        }
 
         // init vearch config
-        this.vearchConfig = VearchConfig.builder()
+        VearchConfig vearchConfig = VearchConfig.builder()
                 .spaceEngine(SpaceEngine.builder()
                         .name("gamma")
                         .indexSize(1L)
@@ -85,31 +139,16 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
                         .fields(singletonList("string"))
                         .out("feature")
                         .build()))
-                .metadataFieldNames(singletonList(metadataFieldName))
                 .build();
+        if (withMetadata) {
+            vearchConfig.setMetadataFieldNames(new ArrayList<>(metadata.keySet()));
+        }
 
-        // init embedding store and vearch client
-        String baseUrl = "http://" + vearch.getHost() + ":" + vearch.getMappedPort(9001);
+        // init embedding store
         embeddingStore = VearchEmbeddingStore.builder()
-                .vearchConfig(this.vearchConfig)
+                .vearchConfig(vearchConfig)
                 .baseUrl(baseUrl)
                 .build();
-
-        vearchClient = VearchClient.builder()
-                .baseUrl(baseUrl)
-                .timeout(Duration.ofSeconds(60))
-                .build();
-    }
-
-    @BeforeAll
-    static void beforeAll() {
-        vearch.setPortBindings(Arrays.asList("9001:9001", "8817:8817"));
-        vearch.start();
-    }
-
-    @AfterAll
-    static void afterAll() {
-        vearch.stop();
     }
 
     @Override
@@ -122,18 +161,13 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
         return embeddingModel;
     }
 
-    @Override
     protected void clearStore() {
         vearchClient.deleteSpace(databaseName, spaceName);
+    }
 
-        vearchClient.createSpace(databaseName, CreateSpaceRequest.builder()
-                .name(spaceName)
-                .engine(vearchConfig.getSpaceEngine())
-                .replicaNum(1)
-                .partitionNum(1)
-                .properties(vearchConfig.getProperties())
-                .models(vearchConfig.getModelParams())
-                .build());
+    protected void ensureStoreIsEmpty() {
+        // This method should be blocked because the @BeforeEach method of the parent class is called before the beforeEach method of the child class
+        // This test manually create Space at @BeforeEach, so it's guaranteed that the EmbeddingStore is empty
     }
 
     @Test
@@ -141,6 +175,88 @@ public class VearchEmbeddingStoreIT extends EmbeddingStoreIT {
         embeddingStore.deleteSpace();
         List<ListSpaceResponse> actual = vearchClient.listSpace(databaseName);
         assertThat(actual.stream().map(ListSpaceResponse::getName)).doesNotContain(spaceName);
+    }
+
+    @Test
+    void should_add_embedding_with_segment_with_metadata() {
+
+        Metadata metadata = createMetadata();
+
+        TextSegment segment = TextSegment.from("hello", metadata);
+        Embedding embedding = embeddingModel().embed(segment.text()).content();
+
+        String id = embeddingStore().add(embedding, segment);
+        assertThat(id).isNotBlank();
+
+        {
+            // Not returned.
+            TextSegment altSegment = TextSegment.from("hello?");
+            Embedding altEmbedding = embeddingModel().embed(altSegment.text()).content();
+            embeddingStore().add(altEmbedding, altSegment);
+        }
+
+        awaitUntilPersisted();
+
+        List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 1);
+        assertThat(relevant).hasSize(1);
+
+        EmbeddingMatch<TextSegment> match = relevant.get(0);
+        assertThat(match.score()).isCloseTo(1, withPercentage(1));
+        assertThat(match.embeddingId()).isEqualTo(id);
+        assertThat(match.embedding()).isEqualTo(embedding);
+
+        assertThat(match.embedded().text()).isEqualTo(segment.text());
+
+        assertThat(match.embedded().metadata().getString("string_empty")).isEqualTo("");
+        assertThat(match.embedded().metadata().getString("string_space")).isEqualTo(" ");
+        assertThat(match.embedded().metadata().getString("string_abc")).isEqualTo("abc");
+
+        assertThat(match.embedded().metadata().getUUID("uuid")).isEqualTo(TEST_UUID);
+
+        assertThat(match.embedded().metadata().getInteger("integer_min")).isEqualTo(Integer.MIN_VALUE);
+        assertThat(match.embedded().metadata().getInteger("integer_minus_1")).isEqualTo(-1);
+        assertThat(match.embedded().metadata().getInteger("integer_0")).isEqualTo(0);
+        assertThat(match.embedded().metadata().getInteger("integer_1")).isEqualTo(1);
+        assertThat(match.embedded().metadata().getInteger("integer_max")).isEqualTo(Integer.MAX_VALUE);
+
+        assertThat(match.embedded().metadata().getFloat("float_min")).isEqualTo(-Float.MAX_VALUE);
+        assertThat(match.embedded().metadata().getFloat("float_minus_1")).isEqualTo(-1f);
+        assertThat(match.embedded().metadata().getFloat("float_0")).isEqualTo(Float.MIN_VALUE);
+        assertThat(match.embedded().metadata().getFloat("float_1")).isEqualTo(1f);
+        assertThat(match.embedded().metadata().getFloat("float_123")).isEqualTo(1.23456789f);
+        assertThat(match.embedded().metadata().getFloat("float_max")).isEqualTo(Float.MAX_VALUE);
+
+        // new API
+        assertThat(embeddingStore().search(EmbeddingSearchRequest.builder()
+                .queryEmbedding(embedding)
+                .maxResults(1)
+                .build()).matches()).isEqualTo(relevant);
+    }
+
+    protected Metadata createMetadata() {
+        // Vearch do not support long and double
+        Metadata metadata = new Metadata();
+
+        metadata.put("string_empty", "");
+        metadata.put("string_space", " ");
+        metadata.put("string_abc", "abc");
+
+        metadata.put("uuid", TEST_UUID);
+
+        metadata.put("integer_min", Integer.MIN_VALUE);
+        metadata.put("integer_minus_1", -1);
+        metadata.put("integer_0", 0);
+        metadata.put("integer_1", 1);
+        metadata.put("integer_max", Integer.MAX_VALUE);
+
+        metadata.put("float_min", -Float.MAX_VALUE);
+        metadata.put("float_minus_1", -1f);
+        metadata.put("float_0", Float.MIN_VALUE);
+        metadata.put("float_1", 1f);
+        metadata.put("float_123", 1.23456789f);
+        metadata.put("float_max", Float.MAX_VALUE);
+
+        return metadata;
     }
 
 }
