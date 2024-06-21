@@ -75,10 +75,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
-                                     boolean logRequestsAndResponses) {
+                                     boolean logRequestsAndResponses,
+                                     String userAgentSuffix) {
 
         this(deploymentName, tokenizer);
-        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
@@ -89,10 +90,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
-                                     boolean logRequestsAndResponses) {
+                                     boolean logRequestsAndResponses,
+                                     String userAgentSuffix) {
 
         this(deploymentName, tokenizer);
-        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiEmbeddingModel(String endpoint,
@@ -103,10 +105,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                      Duration timeout,
                                      Integer maxRetries,
                                      ProxyOptions proxyOptions,
-                                     boolean logRequestsAndResponses) {
+                                     boolean logRequestsAndResponses,
+                                     String userAgentSuffix) {
 
         this(deploymentName, tokenizer);
-        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiEmbeddingModel(String deploymentName,
@@ -190,6 +193,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
+        private String userAgentSuffix;
 
         /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
@@ -295,6 +299,11 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
             return this;
         }
 
+        public Builder userAgentSuffix(String userAgentSuffix) {
+            this.userAgentSuffix = userAgentSuffix;
+            return this;
+        }
+
         public AzureOpenAiEmbeddingModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -307,7 +316,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            userAgentSuffix
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiEmbeddingModel(
@@ -319,7 +329,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            userAgentSuffix
                     );
                 }
                 return new AzureOpenAiEmbeddingModel(
@@ -331,7 +342,8 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                         timeout,
                         maxRetries,
                         proxyOptions,
-                        logRequestsAndResponses
+                        logRequestsAndResponses,
+                        userAgentSuffix
                 );
             } else {
                 return new AzureOpenAiEmbeddingModel(
