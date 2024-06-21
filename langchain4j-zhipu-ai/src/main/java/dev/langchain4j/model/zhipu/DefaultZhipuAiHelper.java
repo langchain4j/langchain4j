@@ -7,7 +7,10 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
@@ -194,6 +197,35 @@ class DefaultZhipuAiHelper {
         return ChatCompletionChoice.builder()
                 .message(AssistantMessage.builder().content(errorResponse.getError().get("message")).build())
                 .finishReason("other")
+                .build();
+    }
+
+    static ChatModelRequest createModelListenerRequest(ChatCompletionRequest options,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+                .model(options.getModel())
+                .temperature(options.getTemperature())
+                .topP(options.getTopP())
+                .maxTokens(options.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
                 .build();
     }
 
