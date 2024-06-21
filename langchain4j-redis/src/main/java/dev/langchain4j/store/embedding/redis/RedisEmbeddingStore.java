@@ -271,7 +271,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         
         /**
          * @param name The name of the store (optional). Used for prefix and index name generation. 
-         * Default value: "embedding:".
+         * Default value: "embedding".
          * @return builder
          */
         public Builder name(String name) {
