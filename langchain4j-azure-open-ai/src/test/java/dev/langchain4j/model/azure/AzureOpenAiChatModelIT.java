@@ -84,7 +84,8 @@ public class AzureOpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .endpoint(System.getenv("AZURE_OPENAI" +
+                        "_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
