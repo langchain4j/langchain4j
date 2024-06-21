@@ -4,7 +4,10 @@ import com.datastax.astra.client.Collection;
 import com.datastax.astra.client.model.DataAPIKeywords;
 import com.datastax.astra.client.model.Document;
 import com.datastax.astra.client.model.Filter;
+import com.datastax.astra.client.model.FindOneAndReplaceOptions;
+import com.datastax.astra.client.model.FindOptions;
 import com.datastax.astra.client.model.InsertManyOptions;
+import com.datastax.astra.client.model.Projections;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -24,8 +27,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.datastax.astra.client.model.Filters.eq;
-import static com.datastax.astra.client.model.FindOneAndReplaceOptions.Builder.upsert;
-import static com.datastax.astra.client.model.FindOptions.Builder.sort;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -68,7 +69,7 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param client
      *      astra db collection client
      */
-    public AstraDBEmbeddingStore(@NonNull Collection<Document>  client) {
+    public AstraDBEmbeddingStore(@NonNull Collection<Document> client) {
         this(client, 20, 8);
     }
 
@@ -119,7 +120,8 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void add(String id, Embedding embedding) {
         astraDBCollection.findOneAndReplace(eq(id),
-                new Document(id).vector(embedding.vector()), upsert(true));
+                new Document(id).vector(embedding.vector()),
+                new FindOneAndReplaceOptions().upsert(true));
     }
 
     /** {@inheritDoc}  */
@@ -134,7 +136,7 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .collect(Collectors.toList());
 
         // Ids are Generated
-        InsertManyOptions options = InsertManyOptions.Builder
+        InsertManyOptions options = new InsertManyOptions()
                 .chunkSize(itemsPerChunk)
                 .concurrency(concurrentThreads)
                 .ordered(false);
@@ -155,17 +157,17 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return list of new row if (same order as the input)
      */
     public List<String> addAll(List<Embedding> embeddingList, List<TextSegment> textSegmentList) {
-        if (embeddingList == null || textSegmentList == null || embeddingList.size() != textSegmentList.size()) {
-            throw new IllegalArgumentException("embeddingList and textSegmentList must not be null and have the same size");
+        if (textSegmentList == null) {
+            throw new IllegalArgumentException("textSegmentList must not be null");
         }
 
         // Map Documents list
-        List<Document> recordList = IntStream.range(0, embeddingList.size())
-                .mapToObj(i -> fromEmbeddingToDocument(embeddingList.get(i), textSegmentList.get(i)))
+        List<Document> recordList = IntStream.range(0, textSegmentList.size())
+                .mapToObj(i -> fromEmbeddingToDocument((embeddingList == null) ? null : embeddingList.get(i), textSegmentList.get(i)))
                 .collect(Collectors.toList());
 
         // Set options for distributed treatment
-        InsertManyOptions options = InsertManyOptions.Builder
+        InsertManyOptions options = new InsertManyOptions()
                 .chunkSize(itemsPerChunk)
                 .concurrency(concurrentThreads)
                 .ordered(false);
@@ -190,11 +192,15 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @return
      *      search with metadata filtering
      */
-    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequestAstra request) {
         // Mapping of the filter to internal representation
         Filter astraFilter = null;
         if (request.filter() != null) {
             astraFilter = AstraDBFilterMapper.map(request.filter());
+        }
+        if (request.vectorize() != null) {
+            return new EmbeddingSearchResult<>(findRelevant(request.vectorize(),
+                    astraFilter, request.maxResults(), request.minScore()));
         }
         // Call the search
         List<EmbeddingMatch<TextSegment>> matches = findRelevant(
@@ -221,8 +227,37 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, Filter metaDatafilter, int maxResults, double minScore) {
         return astraDBCollection
-                .find(metaDatafilter, sort(referenceEmbedding.vector())
+                .find(metaDatafilter, new FindOptions()
+                        .sort(referenceEmbedding.vector())
                         .limit(maxResults)
+                        .projection(Projections.include("*"))
+                        .includeSimilarity())
+                .all().stream()
+                .filter(r -> r.getSimilarity().isPresent() &&  r.getSimilarity().get()>= minScore)
+                .map(this::fromDocumentToEmbeddingMatch)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Semantic search with metadata filtering.
+     *
+     * @param vectorize
+     *      string that will be encoded on site in the DB
+     * @param metaDatafilter
+     *      fileter for metadata
+     * @param maxResults
+     *      limit
+     * @param minScore
+     *      threshold
+     * @return
+     *      records
+     */
+    protected List<EmbeddingMatch<TextSegment>> findRelevant(String vectorize, Filter metaDatafilter, int maxResults, double minScore) {
+        return astraDBCollection
+                .find(metaDatafilter, new FindOptions()
+                        .sort(vectorize)
+                        .limit(maxResults)
+                        .projection(Projections.include("*"))
                         .includeSimilarity())
                 .all().stream()
                 .filter(r -> r.getSimilarity().isPresent() &&  r.getSimilarity().get()>= minScore)
@@ -241,7 +276,10 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
     private EmbeddingMatch<TextSegment> fromDocumentToEmbeddingMatch(Document doc) {
         Double score        = doc.getSimilarity().orElse(0d);
         String embeddingId  = doc.getId(String.class);
-        Embedding embedding = Embedding.from(doc.getVector().orElse(null));
+        Embedding embedding = null;
+        if (doc.getVector().isPresent()) {
+            embedding = Embedding.from(doc.getVector().get());
+        }
         TextSegment embedded = null;
         Object body = doc.get(KEY_ATTRIBUTES_BLOB);
         if (body != null) {
@@ -270,10 +308,15 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      *      a json document
      */
     private Document fromEmbeddingToDocument(Embedding embedding, TextSegment textSegment) {
-        Document record = new Document().vector(embedding.vector());
+        Document record = new Document();
+        if (embedding!=null) {
+            record.vector(embedding.vector());
+        } else {
+            record.vectorize(textSegment.text());
+        }
         if (textSegment != null) {
             record.append(KEY_ATTRIBUTES_BLOB, textSegment.text())
-                  .putAll(textSegment.metadata().asMap());
+                  .putAll(textSegment.metadata().toMap());
         }
         return record;
     }

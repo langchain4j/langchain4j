@@ -11,8 +11,8 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.util.UUID;
 
@@ -21,9 +21,9 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Disabled("AstraDB is not available in the CI")
 @Slf4j
-public class AstraDbChatMemoryIT {
+@EnabledIfEnvironmentVariable(named = "ASTRA_DB_APPLICATION_TOKEN", matches = "Astra.*")
+class AstraDbChatMemoryIT {
 
     static final String TEST_DB = "test_langchain4j";
     static UUID dbId;

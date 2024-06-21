@@ -104,7 +104,7 @@ public class AstraDBChatMemoryStore implements ChatMemoryStore {
      *      list of messages
      */
     public List<AstraDBChatMessage> getConversation(@NonNull Object conversationId) {
-        return chatMemoryCollection.find(eq(AstraDBChatMessage.PROP_CHAT_ID, conversationId), FindOptions.Builder
+        return chatMemoryCollection.find(eq(AstraDBChatMessage.PROP_CHAT_ID, conversationId), new FindOptions()
                 .sort(Sorts.descending(AstraDBChatMessage.PROP_MESSAGE_TIME)))
                 .all();
     }
