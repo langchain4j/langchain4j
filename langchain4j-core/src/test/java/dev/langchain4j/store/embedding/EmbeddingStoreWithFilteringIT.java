@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.store.embedding.filter.Filter.*;
@@ -99,6 +100,17 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("key", "aa"),
                                 new Metadata().put("key", "a a"),
                                 new Metadata().put("key2", "a")
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("key").isEqualTo(TEST_UUID),
+                        asList(
+                                new Metadata().put("key", TEST_UUID),
+                                new Metadata().put("key", TEST_UUID).put("key2", "b")
+                        ),
+                        asList(
+                                new Metadata().put("key", UUID.randomUUID()),
+                                new Metadata().put("key2", TEST_UUID)
                         )
                 ))
                 .add(Arguments.of(
@@ -487,6 +499,56 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("name", "Klaus Heisler"),
                                 new Metadata().put("name", "Zoe"),
                                 new Metadata().put("name2", "Klaus")
+                        )
+                ))
+
+                // In: UUID
+                .add(Arguments.of(
+                        metadataKey("name").isIn(TEST_UUID),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("name").isIn(singletonList(TEST_UUID)),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("name").isIn(TEST_UUID, TEST_UUID2),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42),
+                                new Metadata().put("name", TEST_UUID2),
+                                new Metadata().put("name", TEST_UUID2).put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("name").isIn(asList(TEST_UUID, TEST_UUID2)),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42),
+                                new Metadata().put("name", TEST_UUID2),
+                                new Metadata().put("name", TEST_UUID2).put("age", 42)
+                        ),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
                         )
                 ))
 
@@ -1230,6 +1292,17 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                         )
                 ))
                 .add(Arguments.of(
+                        metadataKey("key").isNotEqualTo(TEST_UUID),
+                        asList(
+                                new Metadata().put("key", UUID.randomUUID()),
+                                new Metadata().put("key2", TEST_UUID)
+                        ),
+                        asList(
+                                new Metadata().put("key", TEST_UUID),
+                                new Metadata().put("key", TEST_UUID).put("key2", UUID.randomUUID())
+                        )
+                ))
+                .add(Arguments.of(
                         metadataKey("key").isNotEqualTo(1),
                         asList(
                                 new Metadata().put("key", -1),
@@ -1340,6 +1413,57 @@ public abstract class EmbeddingStoreWithFilteringIT extends EmbeddingStoreIT {
                                 new Metadata().put("name", "Klaus").put("age", 42),
                                 new Metadata().put("name", "Alice"),
                                 new Metadata().put("name", "Alice").put("age", 42)
+                        )
+                ))
+
+                // NotIn: UUID
+                .add(Arguments.of(
+                        metadataKey("name").isNotIn(TEST_UUID),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
+                        ),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("name").isNotIn(singletonList(TEST_UUID)),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name", TEST_UUID2),
+                                new Metadata().put("name2", TEST_UUID)
+                        ),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("name").isNotIn(TEST_UUID, TEST_UUID2),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
+                        ),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42),
+                                new Metadata().put("name", TEST_UUID2),
+                                new Metadata().put("name", TEST_UUID2).put("age", 42)
+                        )
+                ))
+                .add(Arguments.of(
+                        metadataKey("name").isNotIn(asList(TEST_UUID, TEST_UUID2)),
+                        asList(
+                                new Metadata().put("name", UUID.randomUUID()),
+                                new Metadata().put("name2", TEST_UUID)
+                        ),
+                        asList(
+                                new Metadata().put("name", TEST_UUID),
+                                new Metadata().put("name", TEST_UUID).put("age", 42),
+                                new Metadata().put("name", TEST_UUID2),
+                                new Metadata().put("name", TEST_UUID2).put("age", 42)
                         )
                 ))
 
