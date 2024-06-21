@@ -63,7 +63,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
                 .prefix(toPrefix(getOrDefault(name, "embedding")))
-                .indexName(toIndex(getOrDefault(name, "embedding-index")))
+                .indexName(toIndexName(getOrDefault(name, "embedding-index")))
                 .dimension(dimension)
                 .metadataKeys(metadataKeys)
                 .build();
@@ -77,7 +77,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         return name + ":";
     }
 
-    private static String toIndex(String name) {
+    private static String toIndexName(String name) {
         return name + "-index";
     }
 
