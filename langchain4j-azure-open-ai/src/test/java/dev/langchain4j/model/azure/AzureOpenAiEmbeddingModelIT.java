@@ -17,7 +17,7 @@ import java.util.List;
 import static dev.langchain4j.model.azure.AzureOpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class AzureOpenAiEmbeddingModelIT {
+class AzureOpenAiEmbeddingModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiEmbeddingModelIT.class);
 
@@ -90,5 +90,10 @@ public class AzureOpenAiEmbeddingModelIT {
 
         // then
         assertThat(response.content().vector()).isNotEmpty();
+    }
+
+    @Test
+    void should_return_correct_dimension() {
+        assertThat(model.dimension()).isEqualTo(1536);
     }
 }
