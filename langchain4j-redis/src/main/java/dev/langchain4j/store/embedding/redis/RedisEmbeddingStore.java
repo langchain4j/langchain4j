@@ -45,7 +45,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param port         Redis Stack Server port
      * @param user         Redis Stack username (optional)
      * @param password     Redis Stack password (optional)
-     * @param indexName    The name of the index (optional). Default value: "embedding-index".
+     * @param name         The name of the store (optional). Used for prefix and index name generation.
      * @param dimension    Embedding vector dimension
      * @param metadataKeys Metadata keys that should be persisted (optional)
      */
@@ -53,7 +53,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
                                Integer port,
                                String user,
                                String password,
-                               String indexName,
+                               String name,
                                Integer dimension,
                                Collection<String> metadataKeys) {
         ensureNotBlank(host, "host");
@@ -62,7 +62,8 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         this.client = user == null ? new JedisPooled(host, port) : new JedisPooled(host, port, user, password);
         this.schema = RedisSchema.builder()
-                .indexName(getOrDefault(indexName, "embedding-index"))
+                .prefix(toPrefix(getOrDefault(name, "embedding")))
+                .indexName(toIndex(getOrDefault(name, "embedding-index")))
                 .dimension(dimension)
                 .metadataKeys(metadataKeys)
                 .build();
@@ -70,6 +71,14 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         if (!isIndexExist(schema.indexName())) {
             createIndex(schema.indexName());
         }
+    }
+    
+    private static String toPrefix(String name) {
+        return name + ":";
+    }
+
+    private static String toIndex(String name) {
+        return name + "-index";
     }
 
     @Override
@@ -223,7 +232,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         private Integer port;
         private String user;
         private String password;
-        private String indexName;
+        private String name;
         private Integer dimension;
         private Collection<String> metadataKeys = new ArrayList<>();
 
@@ -259,14 +268,16 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        
         /**
-         * @param indexName The name of the index (optional). Default value: "embedding-index".
+         * @param name The name of the store (optional). Used for prefix and index name generation. 
+         * Default value: "embedding:".
          * @return builder
          */
-        public Builder indexName(String indexName) {
-            this.indexName = indexName;
+        public Builder name(String name) {
+            this.name = name;
             return this;
-        }
+        }        
 
         /**
          * @param dimension embedding vector dimension
@@ -296,7 +307,7 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public RedisEmbeddingStore build() {
-            return new RedisEmbeddingStore(host, port, user, password, indexName, dimension, metadataKeys);
+            return new RedisEmbeddingStore(host, port, user, password, name, dimension, metadataKeys);
         }
     }
 }
