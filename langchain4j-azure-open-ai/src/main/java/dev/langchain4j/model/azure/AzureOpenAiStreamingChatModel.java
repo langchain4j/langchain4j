@@ -734,8 +734,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                             proxyOptions,
                             logRequestsAndResponses,
                             useAsyncClient,
-                            userAgentSuffix,
-                            listeners
+                            listeners,
+                            userAgentSuffix
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiStreamingChatModel(
