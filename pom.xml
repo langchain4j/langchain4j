@@ -59,7 +59,6 @@
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
-        <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-clickhouse</module>
 
         <!-- document loaders -->
