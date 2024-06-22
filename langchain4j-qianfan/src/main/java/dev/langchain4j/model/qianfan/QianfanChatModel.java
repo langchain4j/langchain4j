@@ -41,23 +41,32 @@ public class QianfanChatModel implements ChatLanguageModel {
 
     private final String responseFormat;
 
+    private final String userId;
+    private final List<String> stop;
+    private final Integer maxOutputTokens;
+    private final String system;
 
     @Builder
     public QianfanChatModel(String baseUrl,
-                            String apiKey,
-                            String secretKey,
-                            Double temperature,
-                            Integer maxRetries,
-                            Double topP,
-                            String modelName,
-                            String endpoint,
-                            String responseFormat,
-                            Double penaltyScore,
-                            Boolean logRequests,
-                            Boolean logResponses
-                             ) {
-        if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
-            throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
+            String apiKey,
+            String secretKey,
+            Double temperature,
+            Integer maxRetries,
+            Double topP,
+            String modelName,
+            String endpoint,
+            String responseFormat,
+            Double penaltyScore,
+            Boolean logRequests,
+            Boolean logResponses,
+            String userId,
+            List<String> stop,
+            Integer maxOutputTokens,
+            String system
+    ) {
+        if (Utils.isNullOrBlank(apiKey) || Utils.isNullOrBlank(secretKey)) {
+            throw new IllegalArgumentException(
+                    " api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
         }
      
         this.modelName=modelName;
@@ -81,6 +90,10 @@ public class QianfanChatModel implements ChatLanguageModel {
         this.topP = topP;
         this.penaltyScore = penaltyScore;
         this.responseFormat = responseFormat;
+        this.maxOutputTokens = maxOutputTokens;
+        this.stop = stop;
+        this.userId = userId;
+        this.system = system;
     }
 
 
@@ -108,14 +121,18 @@ public class QianfanChatModel implements ChatLanguageModel {
     ) {
 
         ChatCompletionRequest.Builder builder = ChatCompletionRequest.builder()
-                    .messages(toOpenAiMessages(messages))
-                    .temperature(temperature)
-                    .topP(topP)
-                    .penaltyScore(penaltyScore)
-                    .system(getSystemMessage(messages))
-                    .responseFormat(responseFormat)
-                    ;
-
+                .messages(toOpenAiMessages(messages))
+                .temperature(temperature)
+                .topP(topP)
+                .maxOutputTokens(maxOutputTokens)
+                .stop(stop)
+                .system(system)
+                .userId(userId)
+                .penaltyScore(penaltyScore)
+                .responseFormat(responseFormat);
+        if (system == null || system.length() == 0) {
+            builder.system(getSystemMessage(messages));
+        }
 
             if (toolSpecifications != null && !toolSpecifications.isEmpty()) {
                 builder.functions(toFunctions(toolSpecifications));

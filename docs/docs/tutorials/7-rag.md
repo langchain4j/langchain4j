@@ -10,6 +10,7 @@ If you want to make an LLM aware of domain-specific knowledge or proprietary dat
 - Fine-tune the LLM with your data
 - [Combine both RAG and fine-tuning](https://gorilla.cs.berkeley.edu/blogs/9_raft.html)
 
+
 ## What is RAG?
 Simply put, RAG is the way to find and inject relevant pieces of information from your data
 into the prompt before sending it to the LLM.
@@ -28,12 +29,49 @@ Text documents are converted into vectors of numbers using embedding models.
 It then finds and ranks documents based on the cosine similarity
 or other similarity/distance measures between the query vector and document vectors,
 thus capturing deeper semantic meanings.
-- Hybrid. Combining multiple methods usually improves the effectiveness of the search.
+- Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
-This page will focus solely on vector search.
+Currently, this page focuses mostly on vector search.
 Full-text and hybrid search are currently supported only by Azure AI Search integration,
 see `AzureAiSearchContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
+
+
+## RAG Stages
+THe RAG process is divided into 2 distinct stages: indexing and retrieval.
+LangChain4j provides tools for both stages.
+
+### Indexing
+
+During the indexing stage, documents are pre-processed in a way that enables efficient search during the retrieval stage.
+
+This process can vary depending on the information retrieval method used.
+For vector search, this typically involves cleaning the documents, enriching them with additional data and metadata,
+splitting them into smaller segments (aka chunking), embedding these segments, and finally storing them in an embedding store (aka vector database).
+
+The indexing stage usually occurs offline, meaning it does not require end users to wait for its completion.
+This can be achieved through, for example, a cron job that re-indexes internal company documentation once a week during the weekend.
+The code responsible for indexing can also be a separate application that only handles indexing tasks.
+
+However, in some scenarios, end users may want to upload their custom documents to make them accessible to the LLM.
+In this case, indexing should be performed online and be a part of the main application.
+
+Here is a simplified diagram of the indexing stage:
+[![](/img/rag-ingestion.png)](/tutorials/rag)
+
+
+### Retrieval
+
+The retrieval stage usually occurs online, when a user submits a question that should be answered using the indexed documents.
+
+This process can vary depending on the information retrieval method used.
+For vector search, this typically involves embedding the user's query (question)
+and performing a similarity search in the embedding store.
+Relevant segments (pieces of the original documents) are then injected into the prompt and sent to the LLM.
+
+Here is a simplified diagram of the retrieval stage:
+[![](/img/rag-retrieval.png)](/tutorials/rag)
+
 
 ## Easy RAG
 LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get started with RAG.
@@ -58,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.30.0</version>
+    <version>0.31.0</version>
 </dependency>
 ```
 
@@ -153,15 +191,41 @@ and retrieve relevant content from an `EmbeddingStore` that contains our documen
 String answer = assistant.chat("How to do Easy RAG with LangChain4j?");
 ```
 
+## Accessing Sources
+If you wish to access the sources (retrieved `Content`s used to augment the message),
+you can easily do so by wrapping the return type in the `Result` class:
+```java
+interface Assistant {
+
+    Result<String> chat(String userMessage);
+}
+
+Result<String> result = assistant.chat("How to do Easy RAG with LangChain4j?");
+
+String answer = result.content();
+List<Content> sources = result.sources();
+```
+
 ## RAG APIs
 LangChain4j offers a rich set of APIs to make it easy for you to build custom RAG pipelines,
 ranging from simple ones to advanced ones.
 In this section, we will cover the main domain classes and APIs.
 
+
 ### Document
 A `Document` class represents an entire document, such as a single PDF file or a web page.
 At the moment, the `Document` can only represent textual information,
 but future updates will enable it to support images and tables as well.
+
+<details>
+<summary>Useful methods</summary>
+
+- `Document.text()` returns the text of the `Document`
+- `Document.metadata()` returns the `Metadata` of the `Document` (see below)
+- `Document.toTextSegment()` converts the `Document` into a `TextSegment` (see below)
+- `Document.from(String, Metadata)` creates a `Document` from text and `Metadata`
+- `Document.from(String)` creates a `Document` from text with empty `Metadata`
+</details>
 
 ### Metadata
 Each `Document` contains `Metadata`.
@@ -183,6 +247,18 @@ belonging to a specific owner.
 one can easily locate the corresponding `Document` by its metadata entry (for example, "id", "source", etc.)
 and update it in the `EmbeddingStore` as well to keep it in sync.
 
+<details>
+<summary>Useful methods</summary>
+
+- `Metadata.from(Map)` creates `Metadata` from a `Map`
+- `Metadata.put(String key, String value)` / `put(String, int)` / etc., adds an entry to the `Metadata`
+- `Metadata.getString(String key)` / `getInteger(String key)` / etc., returns a value of the `Metadata` entry, casting it to the required type
+- `Metadata.containsKey(String key)` checks whether `Metadata` contains an entry with the specified key
+- `Metadata.remove(String key)` removes an entry from the `Metadata` by key
+- `Metadata.copy()` returns a copy of the `Metadata`
+- `Metadata.toMap()` converts `Metadata` into a `Map`
+</details>
+
 ### Document Loader
 You can create a `Document` from a `String`, but a simpler method is to use one of our document loaders included in the library:
 - `FileSystemDocumentLoader` from the `langchain4j` module
@@ -191,6 +267,7 @@ You can create a `Document` from a `String`, but a simpler method is to use one 
 - `AzureBlobStorageDocumentLoader` from the `langchain4j-document-loader-azure-storage-blob` module
 - `GitHubDocumentLoader` from the `langchain4j-document-loader-github` module
 - `TencentCosDocumentLoader` from the `langchain4j-document-loader-tencent-cos` module
+
 
 ### Document Parser
 `Document`s can represent files in various formats, such as PDF, DOC, TXT, etc.
@@ -241,6 +318,7 @@ which can extract desired text content and metadata entries from the raw HTML.
 Since there is no one-size-fits-all solution, we recommend implementing your own `DocumentTransformer`,
 tailored to your unique data.
 
+
 ### Text Segment
 Once your `Document`s are loaded, it is time to split (chunk) them into smaller segments (pieces).
 LangChain4j's domain model includes a `TextSegment` class that represents a segment of a `Document`.
@@ -288,6 +366,15 @@ providing the LLM with additional information before and after the retrieved seg
 
 </details>
 
+<details>
+<summary>Useful methods</summary>
+
+- `TextSegment.text()` returns the text of the `TextSegment`
+- `TextSegment.metadata()` returns the `Metadata` of the `TextSegment`
+- `TextSegment.from(String, Metadata)` creates a `TextSegment` from text and `Metadata`
+- `TextSegment.from(String)` creates a `TextSegment` from text with empty `Metadata`
+</details>
+
 ### Document Splitter
 LangChain4j has a `DocumentSplitter` interface with several out-of-the-box implementations:
 - `DocumentByParagraphSplitter`
@@ -313,45 +400,185 @@ If some of the units are still too large to fit into a `TextSegment`, it calls a
 This is another `DocumentSplitter` capable of splitting units that do not fit into more granular units.
 All `Metadata` entries are copied from the `Document` to each `TextSegment`.
 A unique metadata entry "index" is added to each text segment.
-The first `TextSegment` will contain index=0, the second index=1, and so on.
+The first `TextSegment` will contain `index=0`, the second `index=1`, and so on.
+
 
 ### Text Segment Transformer
-More details are coming soon.
+`TextSegmentTransformer` is similar to `DocumentTransformer` (described above), but it transforms `TextSegment`s.
+
+As with the `DocumentTransformer`, there is no one-size-fits-all solution,
+so we recommend implementing your own `TextSegmentTransformer`, tailored to your unique data.
+
+One technique that works quite well for improving retrieval is to include the `Document` title or a short summary
+in each `TextSegment`.
+
 
 ### Embedding
-More details are coming soon.
+The `Embedding` class encapsulates a numerical vector that represents the "semantic meaning"
+of the content that has been embedded (usually text, such as a `TextSegment`).
+
+Read more about vector embeddings here:
+- https://www.elastic.co/what-is/vector-embedding
+- https://www.pinecone.io/learn/vector-embeddings/
+- https://cloud.google.com/blog/topics/developers-practitioners/meet-ais-multitool-vector-embeddings
+
+<details>
+<summary>Useful methods</summary>
+
+- `Embedding.dimension()` returns the dimension of the embedding vector (its length)
+- `CosineSimilarity.between(Embedding, Embedding)` calculates the cosine similarity between 2 `Embedding`s
+- `Embedding.normalize()` normalizes the embedding vector (in place)
+</details>
+
 
 ### Embedding Model
-More details are coming soon.
+The `EmbeddingModel` interface represents a special type of model that converts text into an `Embedding`.
 
 Currently supported embedding models can be found [here](/category/embedding-models).
 
+<details>
+<summary>Useful methods</summary>
+
+- `EmbeddingModel.embed(String)` embeds the given text
+- `EmbeddingModel.embed(TextSegment)` embeds the given `TextSegment`
+- `EmbeddingModel.embedAll(List<TextSegment>)` embeds all the given `TextSegment`
+</details>
+
+
 ### Embedding Store
-More details are coming soon.
+The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.
+It allows for the storage and efficient search of similar (close in the embedding space) `Embedding`s.
 
 Currently supported embedding stores can be found [here](/category/embedding-stores).
 
-### Filter
-More details are coming soon.
+`EmbeddingStore` can store `Embedding`s alone or together with the corresponding `TextSegment`:
+- It can store only `Embedding`, by ID. Original embedded data can be stored elsewhere and correlated using the ID.
+- It can store both `Embedding` and the original data that has been embedded (usually `TextSegment`).
+
+<details>
+<summary>Useful methods</summary>
+
+- `EmbeddingStore.add(Embedding)` adds a given `Embedding` to the store and returns a random ID
+- `EmbeddingStore.add(String id, Embedding)` adds a given `Embedding` with a specified ID to the store
+- `EmbeddingStore.add(Embedding, TextSegment)` adds a given `Embedding` with an associated `TextSegment` to the store and returns a random ID
+- `EmbeddingStore.addAll(List<Embedding>)` adds a list of given `Embedding`s to the store and returns a list of random IDs
+- `EmbeddingStore.addAll(List<Embedding>, List<TextSegment>)` adds a list of given `Embedding`s with associated `TextSegment`s to the store and returns a list of random IDs
+- `EmbeddingStore.search(EmbeddingSearchRequest)` searches for the most similar `Embedding`s
+- `EmbeddingStore.remove(String id)` removes a single `Embedding` from the store by ID
+- `EmbeddingStore.removeAll(Collection<String> ids)` removes multiple `Embedding`s from the store by ID
+- `EmbeddingStore.removeAll(Filter)` removes all `Embedding`s that match the specified `Filter` from the store
+- `EmbeddingStore.removeAll()` removes all `Embedding`s from the store
+</details>
+
+
+####  EmbeddingSearchRequest
+The `EmbeddingSearchRequest` represents a request to search in an `EmbeddingStore`.
+It has the following attributes:
+- `Embedding queryEmbedding`: The embedding used as a reference.
+- `int maxResults`: The maximum number of results to return. This is an optional parameter. Default: 3.
+- `double minScore`: The minimum score, ranging from 0 to 1 (inclusive). Only embeddings with a score >= `minScore` will be returned. This is an optional parameter. Default: 0.
+- `Filter filter`: The filter to be applied to the `Metadata` during search. Only `TextSegment`s whose `Metadata` matches the `Filter` will be returned.
+
+#### Filter
+More details about `Filter` can be found [here](https://github.com/langchain4j/langchain4j/pull/610).
+
+
+#### EmbeddingSearchResult
+The EmbeddingSearchResult represents a result of a search in an `EmbeddingStore`.
+It contains the list of `EmbeddingMatch`es.
+
+
+#### Embedding Match
+The `EmbeddingMatch` represents a matched `Embedding` along with its relevance score, ID, and original embedded data (usually `TextSegment`).
+
 
 ### Embedding Store Ingestor
-More details are coming soon.
+The `EmbeddingStoreIngestor` represents an ingestion pipeline and is responsible for 
+ingesting `Document`s into an `EmbeddingStore`.
 
-## RAG Stages
+In the simplest configuration, `EmbeddingStoreIngestor` embeds provided `Document`s
+using a specified `EmbeddingModel` and stores them, along with their `Embedding`s in a specified `EmbeddingStore`:
 
-### Ingestion 
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+        .embeddingModel(embeddingModel)
+        .embeddingStore(embeddingStore)
+        .build();
 
-[![](/img/rag-ingestion.png)](/tutorials/rag)
+ingestor.ingest(document1);
+ingestor.ingest(document2, document3);
+ingestor.ingest(List.of(document4, document5, document6));
+```
 
-### Retrieval
+Optionally, the `EmbeddingStoreIngestor` can transform `Document`s using a specified `DocumentTransformer`.
+This can be useful if you want to clean, enrich, or format `Document`s before embedding them.
 
-[![](/img/rag-retrieval.png)](/tutorials/rag)
+Optionally, the `EmbeddingStoreIngestor` can split `Document`s into `TextSegment`s using a specified `DocumentSplitter`.
+This can be useful if `Document`s are big, and you want to split them into smaller `TextSegment`s to improve the quality
+of similarity searches and reduce the size and cost of a prompt sent to the LLM.
+
+Optionally, the `EmbeddingStoreIngestor` can transform `TextSegment`s using a specified `TextSegmentTransformer`.
+This can be useful if you want to clean, enrich, or format `TextSegment`s before embedding them.
+
+An example:
+```java
+EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
+
+    // adding userId metadata entry to each Document to be able to filter by it later
+    .documentTransformer(document -> {
+        document.metadata().put("userId", "12345");
+        return document;
+    })
+
+    // splitting each Document into TextSegments of 1000 tokens each, with a 200-token overlap
+    .documentSplitter(DocumentSplitters.recursive(1000, 200, new OpenAiTokenizer()))
+
+    // adding a name of the Document to each TextSegment to improve the quality of search
+    .textSegmentTransformer(textSegment -> TextSegment.from(
+            textSegment.metadata("file_name") + "\n" + textSegment.text(),
+            textSegment.metadata()
+    ))
+
+    .embeddingModel(embeddingModel)
+    .embeddingStore(embeddingStore)
+    .build();
+```
+
 
 ## Advanced RAG
 More details are coming soon.
 In the meantime, please read [this](https://github.com/langchain4j/langchain4j/pull/538).
 
 [![](/img/advanced-rag.png)](/tutorials/rag)
+
+
+### Retrieval Augmentor
+More details are coming soon.
+
+
+### Default Retrieval Augmentor
+More details are coming soon.
+
+
+### Query Transformer
+More details are coming soon.
+
+
+### Query Router
+More details are coming soon.
+
+
+### Content Retriever
+More details are coming soon.
+
+
+### Content Aggregator
+More details are coming soon.
+
+
+### Content Injector
+More details are coming soon.
+
 
 ## Examples
 
@@ -361,6 +588,7 @@ In the meantime, please read [this](https://github.com/langchain4j/langchain4j/p
 - [Advanced RAG with Query Routing](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_02_Advanced_RAG_with_Query_Routing_Example.java)
 - [Advanced RAG with Re-Ranking](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_03_Advanced_RAG_with_ReRanking_Example.java)
 - [Advanced RAG with Including Metadata](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_04_Advanced_RAG_with_Metadata_Example.java)
+- [Advanced RAG with multiple Retrievers](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_07_Advanced_RAG_Multiple_Retrievers_Example.java)
 - [Skipping Retrieval](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_06_Advanced_RAG_Skip_Retrieval_Example.java)
 - [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentApplicationTest.java)
 - [Loading Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)

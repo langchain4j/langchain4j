@@ -55,7 +55,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
              Statement stmt = conn.createStatement()) {
             stmt.execute(buildCreateTableSql());
         } catch (SQLException e) {
-            String errMsg = "encounter exception when creating table";
+            String errMsg = String.format("encounter exception when creating table %s", e.getLocalizedMessage());
             log.error(errMsg, e);
             throw new ClickhouseOperationException(errMsg);
         }
@@ -202,7 +202,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
                     .filter(relevant -> relevant.score() >= minScore)
                     .collect(toList());
         } catch (SQLException e) {
-            String errMsg = "encounter exception when query data";
+            String errMsg = String.format("encounter exception when query data %s", e.getLocalizedMessage());
             log.error(errMsg, e);
             throw new ClickhouseOperationException(errMsg);
         }
@@ -240,7 +240,7 @@ public class ClickHouseEmbeddingStore implements EmbeddingStore<TextSegment> {
             }
             preparedStmt.executeBatch();
         } catch (SQLException e) {
-            String errMsg = "encounter exception when inserting data";
+            String errMsg = String.format("encounter exception when inserting data %s", e.getLocalizedMessage());
             log.error(errMsg, e);
             throw new ClickhouseOperationException(errMsg);
         }

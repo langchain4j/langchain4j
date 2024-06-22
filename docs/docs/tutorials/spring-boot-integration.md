@@ -14,7 +14,7 @@ To use one of the Spring Boot starters, first import the corresponding dependenc
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.30.0</version>
+    <version>0.31.0</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.30.0</version>
+    <version>0.31.0</version>
 </dependency>
 ```
 
@@ -85,9 +85,9 @@ class AssistantController {
 More details [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
 
-## Supported Spring Boot Versions
+## Supported versions
 
-Spring Boot 2 and 3 are supported.
+LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatLanguageModelController.java) using [ChatLanguageModel API](/tutorials/chat-and-language-models)

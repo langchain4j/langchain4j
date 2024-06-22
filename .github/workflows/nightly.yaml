@@ -1,0 +1,78 @@
+name: Nightly Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  java_build:
+    if: github.repository == 'langchain4j/langchain4j'
+    strategy:
+      matrix:
+        java_version: [ 8, 11, 17, 21 ]
+        include:
+          - java_version: '8'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-cassandra,!langchain4j-infinispan,!langchain4j-neo4j,!langchain4j-opensearch,!langchain4j-azure-ai-search'
+          - java_version: '11'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot,!langchain4j-infinispan,!langchain4j-neo4j'
+          - java_version: '17'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus,!code-execution-engines/langchain4j-code-execution-engine-graalvm-polyglot'
+          - java_version: '21'
+            included_modules: '-pl !langchain4j-local-ai,!langchain4j-milvus'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java_version }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ matrix.java_version }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Authenticate to Google Cloud
+        # Needed for langchain4j-vertex-ai and langchain4j-vertex-ai-gemini modules
+        uses: 'google-github-actions/auth@v2'
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_CREDENTIALS_JSON }}
+
+      - name: Setup Testcontainers Cloud Client
+        # Needed for langchain4j-ollama and other modules using testcontainers
+        uses: atomicjar/testcontainers-cloud-setup-action@v1
+        with:
+          token: ${{ secrets.TC_CLOUD_TOKEN }}
+
+      - name: Build with JDK ${{ matrix.java_version }}
+        run: mvn -B -U --fail-at-end ${{ matrix.included_modules }} verify
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_KEY: ${{ secrets.AZURE_OPENAI_KEY }}
+          AZURE_SEARCH_ENDPOINT: ${{ secrets.AZURE_SEARCH_ENDPOINT }}
+          AZURE_SEARCH_KEY: ${{ secrets.AZURE_SEARCH_KEY }}
+          COHERE_API_KEY: ${{ secrets.COHERE_API_KEY }}
+          ELASTICSEARCH_CLOUD_API_KEY: ${{ secrets.ELASTICSEARCH_CLOUD_API_KEY }}
+          ELASTICSEARCH_CLOUD_URL: ${{ secrets.ELASTICSEARCH_CLOUD_URL }}
+          GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
+          GCP_LOCATION: ${{ secrets.GCP_LOCATION }}
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          GCP_VERTEXAI_ENDPOINT: ${{ secrets.GCP_VERTEXAI_ENDPOINT }}
+          HF_API_KEY: ${{ secrets.HF_API_KEY }}
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+          MILVUS_API_KEY: ${{ secrets.MILVUS_API_KEY }}
+          MILVUS_URI: ${{ secrets.MILVUS_URI }}
+          MISTRAL_AI_API_KEY: ${{ secrets.MISTRAL_AI_API_KEY }}
+          MONGODB_ATLAS_USERNAME: ${{ secrets.MONGODB_ATLAS_USERNAME }}
+          MONGODB_ATLAS_PASSWORD: ${{ secrets.MONGODB_ATLAS_PASSWORD }}
+          MONGODB_ATLAS_HOST: ${{ secrets.MONGODB_ATLAS_HOST }}
+          NOMIC_API_KEY: ${{ secrets.NOMIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ secrets.OPENAI_BASE_URL }}
+          PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          WEAVIATE_API_KEY: ${{ secrets.WEAVIATE_API_KEY }}
+          WEAVIATE_HOST: ${{ secrets.WEAVIATE_HOST }}

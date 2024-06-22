@@ -19,6 +19,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("floating point number");
 
         assertThat(parser.parse("3.14")).isEqualTo(new BigDecimal("3.14"));
+        assertThat(parser.parse(" 3.14 ")).isEqualTo(new BigDecimal("3.14"));
 
         assertThatExceptionOfType(NumberFormatException.class)
                 .isThrownBy(() -> parser.parse("3.14.15"));
@@ -31,6 +32,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("integer number");
 
         assertThat(parser.parse("42")).isEqualTo(42);
+        assertThat(parser.parse(" 42 ")).isEqualTo(42);
 
         assertThatExceptionOfType(NumberFormatException.class)
                 .isThrownBy(() -> parser.parse("42.0"));
@@ -43,6 +45,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("one of [true, false]");
 
         assertThat(parser.parse("true"))
+                .isEqualTo(parser.parse(" true "))
                 .isEqualTo(parser.parse("TRUE"))
                 .isEqualTo(true);
         assertThat(parser.parse("false"))
@@ -59,6 +62,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("integer number in range [-128, 127]");
 
         assertThat(parser.parse("42")).isEqualTo((byte) 42);
+        assertThat(parser.parse(" 42 ")).isEqualTo((byte) 42);
         assertThat(parser.parse("-42")).isEqualTo((byte) -42);
 
         assertThatExceptionOfType(NumberFormatException.class)
@@ -74,6 +78,7 @@ class OutputParserTest implements WithAssertions {
 
         assertThat(parser.parse("2020-01-12"))
                 .isEqualTo(parser.parse("2020-01-12"))
+                .isEqualTo(parser.parse(" 2020-01-12 "))
                 .isEqualTo(new Date(120, Calendar.JANUARY, 12));
 
         assertThatExceptionOfType(RuntimeException.class)
@@ -88,6 +93,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("floating point number");
 
         assertThat(parser.parse("3.14")).isEqualTo(3.14);
+        assertThat(parser.parse(" 3.14 ")).isEqualTo(3.14);
 
         assertThatExceptionOfType(NumberFormatException.class)
                 .isThrownBy(() -> parser.parse("3.14.15"));
@@ -105,6 +111,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("one of [A, B, C]");
 
         assertThat(parser.parse("A"))
+                .isEqualTo(parser.parse(" A "))
                 .isEqualTo(parser.parse("a"))
                 .isEqualTo(Enum.A);
         assertThat(parser.parse("B"))
@@ -126,6 +133,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("floating point number");
 
         assertThat(parser.parse("3.14")).isEqualTo(3.14f);
+        assertThat(parser.parse(" 3.14 ")).isEqualTo(3.14f);
 
         assertThatExceptionOfType(NumberFormatException.class)
                 .isThrownBy(() -> parser.parse("3.14.15"));
@@ -138,6 +146,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("integer number");
 
         assertThat(parser.parse("42")).isEqualTo(42);
+        assertThat(parser.parse(" 42 ")).isEqualTo(42);
 
         assertThatExceptionOfType(NumberFormatException.class)
                 .isThrownBy(() -> parser.parse("42.0"));
@@ -150,7 +159,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("yyyy-MM-dd");
 
         assertThat(parser.parse("2020-01-12"))
-                .isEqualTo(parser.parse("2020-01-12"))
+                .isEqualTo(parser.parse(" 2020-01-12 "))
                 .isEqualTo(LocalDate.of(2020, 1, 12));
 
         assertThatExceptionOfType(RuntimeException.class)
@@ -167,7 +176,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("yyyy-MM-ddTHH:mm:ss");
 
         assertThat(parser.parse("2020-01-12T12:34:56"))
-                .isEqualTo(parser.parse("2020-01-12T12:34:56"))
+                .isEqualTo(parser.parse(" 2020-01-12T12:34:56 "))
                 .isEqualTo(LocalDateTime.of(2020, 1, 12, 12, 34, 56));
 
         assertThatExceptionOfType(RuntimeException.class)
@@ -184,7 +193,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("HH:mm:ss");
 
         assertThat(parser.parse("12:34:56"))
-                .isEqualTo(parser.parse("12:34:56"))
+                .isEqualTo(parser.parse(" 12:34:56 "))
                 .isEqualTo(LocalTime.of(12, 34, 56));
 
         assertThat(parser.parse("12:34:56.789"))
@@ -201,6 +210,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("integer number");
 
         assertThat(parser.parse("42")).isEqualTo(42L);
+        assertThat(parser.parse(" 42 ")).isEqualTo(42L);
 
         assertThatExceptionOfType(NumberFormatException.class)
                 .isThrownBy(() -> parser.parse("42.0"));
@@ -213,6 +223,7 @@ class OutputParserTest implements WithAssertions {
                 .isEqualTo("integer number in range [-32768, 32767]");
 
         assertThat(parser.parse("42")).isEqualTo((short) 42);
+        assertThat(parser.parse(" 42 ")).isEqualTo((short) 42);
         assertThat(parser.parse("-42")).isEqualTo((short) -42);
 
         assertThatExceptionOfType(NumberFormatException.class)

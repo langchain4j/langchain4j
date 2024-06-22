@@ -22,13 +22,14 @@ class ClickHouseEmbeddingStoreIT extends EmbeddingStoreIT {
             .withUsername("test-username")
             .withPassword("test-password");
 
+    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+
     EmbeddingStore<TextSegment> embeddingStore = ClickHouseEmbeddingStore.builder()
             .url(clickhouse.getJdbcUrl())
             .username("test-username")
             .password("test-password")
-            .dimension(384)
+            .dimension(embeddingModel.dimension())
             .build();
-    EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
     @BeforeAll
     static void beforeAll() {
