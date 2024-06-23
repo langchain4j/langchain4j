@@ -84,7 +84,7 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      *      concurrent threads
      */
     public AstraDBEmbeddingStore(@NonNull Collection<Document> client, int itemsPerChunk, int concurrentThreads) {
-        if (itemsPerChunk>20 || itemsPerChunk<1) {
+        if (itemsPerChunk>100 || itemsPerChunk<1) {
             throw new IllegalArgumentException("'itemsPerChunk' should be in between 1 and 20");
         }
         if (concurrentThreads<1) {
