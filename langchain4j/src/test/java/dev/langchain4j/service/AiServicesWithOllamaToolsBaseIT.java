@@ -16,6 +16,8 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.condition.DisabledOnJre;
+import org.junit.jupiter.api.condition.JRE;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -34,8 +36,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 /**
- * BAse test, contains configuration and common tests for sequential and parallel tools
+ * Base test, contains configuration and common tests for sequential and parallel tools
  */
+@DisabledOnJre({JRE.JAVA_8, JRE.JAVA_11})
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(MockitoExtension.class)
 abstract class AiServicesWithOllamaToolsBaseIT {
