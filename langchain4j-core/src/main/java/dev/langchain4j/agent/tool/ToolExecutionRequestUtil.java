@@ -1,6 +1,8 @@
 package dev.langchain4j.agent.tool;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -14,7 +16,7 @@ public class ToolExecutionRequestUtil {
     /**
      * Gson instance.
      */
-    public static final Gson GSON = new Gson();
+    public static final Gson GSON = new GsonBuilder().setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE).create();
 
     /**
      * Utility {@link TypeToken} describing {@code Map<String, Object>}.

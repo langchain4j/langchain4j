@@ -142,7 +142,10 @@ class AiServicesWithChatMemoryIT {
         ));
         verify(chatMemory).add(aiMessage(fourthAiMessage));
 
-        verify(chatMemory, times(12)).messages();
+        // TODO langchain4J: What's the point counting the messages() invocation ?
+        // after the clean up I use more calls to messages(), I do not use anymore un intermediary List.
+        // Should I change ?
+        verify(chatMemory, times(16)).messages();
     }
 
     @Test
@@ -177,7 +180,10 @@ class AiServicesWithChatMemoryIT {
         verify(chatMemory).add(aiMessage(firstAiMessage));
         verify(chatMemory).add(userMessage(secondUserMessage));
         verify(chatMemory).add(aiMessage(secondAiMessage));
-        verify(chatMemory, times(8)).messages();
+        // TODO langchain4J: What's the point counting the messages() invocation ?
+        // after the clean up I use more calls to messages, I d not use anymore un intermediary List.
+        // Should I change ?
+        verify(chatMemory, times(10)).messages();
     }
 
     @Test
@@ -214,7 +220,10 @@ class AiServicesWithChatMemoryIT {
         verify(chatMemory).add(aiMessage(secondAiMessage));
         verify(chatMemory).add(systemMessage(ANOTHER_SYSTEM_MESSAGE));
         verify(chatMemory).add(userMessage(secondUserMessage));
-        verify(chatMemory, times(8)).messages();
+        // TODO langchain4J: What's the point counting the messages() invocation ?
+        // after the clean up I use more calls to messages, I d not use anymore un intermediary List.
+        // Should I change ?
+        verify(chatMemory, times(10)).messages();
     }
 
 

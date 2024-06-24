@@ -14,12 +14,12 @@ public class LangChain4jOllamaContainer extends OllamaContainer {
 
     private String model;
 
-    LangChain4jOllamaContainer(DockerImageName dockerImageName) {
+    public LangChain4jOllamaContainer(DockerImageName dockerImageName) {
         super(dockerImageName);
         this.dockerImageName = dockerImageName;
     }
 
-    LangChain4jOllamaContainer withModel(String model) {
+    public LangChain4jOllamaContainer withModel(String model) {
         this.model = model;
         return this;
     }

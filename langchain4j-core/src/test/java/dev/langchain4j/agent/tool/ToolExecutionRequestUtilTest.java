@@ -12,13 +12,14 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
                 .arguments("{\"foo\":\"bar\", \"qux\": 12}")
                 .build();
 
+        // TODO: Langchain4j: is ok to have now either long or double ? It fixes other issues.
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                        .containsEntry("qux", 12.0);
+                        .containsEntry("qux", 12L);
 
         assertThat((String) ToolExecutionRequestUtil.argument(request, "foo"))
                 .isEqualTo("bar");
         assertThat((Number) ToolExecutionRequestUtil.argument(request, "qux"))
-                .isEqualTo(12.0);
+                .isEqualTo(12L);
     }
 }

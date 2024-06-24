@@ -2,10 +2,12 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.agent.tool.ToolsResultMemory;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.EphemeralChatMemory;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -91,15 +93,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                         validateParameters(method);
 
                         Object memoryId = findMemoryId(method, args).orElse(DEFAULT);
+                        ChatMemory chatMemory = context.hasChatMemory() ?
+                                context.chatMemory(memoryId) : new EphemeralChatMemory();
 
                         Optional<SystemMessage> systemMessage = prepareSystemMessage(memoryId, method, args);
                         UserMessage userMessage = prepareUserMessage(method, args);
                         AugmentationResult augmentationResult = null;
                         if (context.retrievalAugmentor != null) {
-                            List<ChatMessage> chatMemory = context.hasChatMemory()
-                                    ? context.chatMemory(memoryId).messages()
-                                    : null;
-                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory);
+                            Metadata metadata = Metadata.from(userMessage, memoryId, chatMemory.messages());
                             AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
                             augmentationResult = context.retrievalAugmentor.augment(augmentationRequest);
                             userMessage = (UserMessage) augmentationResult.chatMessage();
@@ -125,27 +126,17 @@ class DefaultAiServices<T> extends AiServices<T> {
                             userMessage = UserMessage.from(text);
                         }
 
-                        if (context.hasChatMemory()) {
-                            ChatMemory chatMemory = context.chatMemory(memoryId);
-                            systemMessage.ifPresent(chatMemory::add);
-                            chatMemory.add(userMessage);
-                        }
+                        systemMessage.ifPresent(chatMemory::add);
+                        chatMemory.add(userMessage);
 
-                        List<ChatMessage> messages;
-                        if (context.hasChatMemory()) {
-                            messages = context.chatMemory(memoryId).messages();
-                        } else {
-                            messages = new ArrayList<>();
-                            systemMessage.ifPresent(messages::add);
-                            messages.add(userMessage);
-                        }
-
-                        Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, messages);
+                        Future<Moderation> moderationFuture = triggerModerationIfNeeded(method, chatMemory.messages());
 
                         if (returnType == TokenStream.class) {
-                            return new AiServiceTokenStream(messages, context, memoryId); // TODO moderation
+                            return new AiServiceTokenStream(chatMemory.messages(), context, memoryId); // TODO moderation
                         }
 
+                        // TODO Langchain4J, needed to avoid issue with Mockito verify.
+                        List<ChatMessage> messages = new ArrayList<>(chatMemory.messages());
                         Response<AiMessage> response = context.toolSpecifications == null
                                 ? context.chatModel.generate(messages)
                                 : context.chatModel.generate(messages, context.toolSpecifications);
@@ -163,36 +154,30 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                             AiMessage aiMessage = response.content();
 
-                            if (context.hasChatMemory()) {
-                                context.chatMemory(memoryId).add(aiMessage);
-                            } else {
-                                messages = new ArrayList<>(messages);
-                                messages.add(aiMessage);
-                            }
-
                             if (!aiMessage.hasToolExecutionRequests()) {
+                                chatMemory.add(aiMessage);
                                 break;
                             }
 
+                            ToolsResultMemory toolsResultMemory = new ToolsResultMemory();
+                            List<ToolExecutionResultMessage> toolExecutionResultMessages =
+                                    new ArrayList<>(aiMessage.toolExecutionRequests().size());
                             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
                                 ToolExecutor toolExecutor = context.toolExecutors.get(toolExecutionRequest.name());
+                                toolExecutionRequest = toolsResultMemory.substituteArguments(toolExecutionRequest);
                                 String toolExecutionResult = toolExecutor.execute(toolExecutionRequest, memoryId);
+                                toolsResultMemory.addVariable(toolExecutionRequest.id(), toolExecutionResult);
                                 ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.from(
                                         toolExecutionRequest,
                                         toolExecutionResult
                                 );
-                                if (context.hasChatMemory()) {
-                                    context.chatMemory(memoryId).add(toolExecutionResultMessage);
-                                } else {
-                                    messages.add(toolExecutionResultMessage);
-                                }
+                                toolExecutionResultMessages.add(toolExecutionResultMessage);
                             }
+                            aiMessage = toolsResultMemory.substituteAssistantArguments(aiMessage);
+                            chatMemory.add(aiMessage);
+                            toolExecutionResultMessages.forEach(chatMemory::add);
 
-                            if (context.hasChatMemory()) {
-                                messages = context.chatMemory(memoryId).messages();
-                            }
-
-                            response = context.chatModel.generate(messages, context.toolSpecifications);
+                            response = context.chatModel.generate(chatMemory.messages(), context.toolSpecifications);
                             tokenUsageAccumulator = TokenUsage.sum(tokenUsageAccumulator, response.tokenUsage());
                         }
 
@@ -264,10 +249,10 @@ class DefaultAiServices<T> extends AiServices<T> {
     private static String getValueOfVariableIt(Parameter[] parameters, Object[] args) {
         if (parameters.length == 1) {
             Parameter parameter = parameters[0];
-            if (!parameter.isAnnotationPresent(dev.langchain4j.service.MemoryId.class)
+            if (!parameter.isAnnotationPresent(MemoryId.class)
                     && !parameter.isAnnotationPresent(dev.langchain4j.service.UserMessage.class)
-                    && !parameter.isAnnotationPresent(dev.langchain4j.service.UserName.class)
-                    && (!parameter.isAnnotationPresent(dev.langchain4j.service.V.class) || isAnnotatedWithIt(parameter))) {
+                    && !parameter.isAnnotationPresent(UserName.class)
+                    && (!parameter.isAnnotationPresent(V.class) || isAnnotatedWithIt(parameter))) {
                 return toString(args[0]);
             }
         }

@@ -4,5 +4,6 @@ enum Role {
 
     SYSTEM,
     USER,
-    ASSISTANT;
+    ASSISTANT,
+    TOOL_EXECUTION_RESULT
 }
