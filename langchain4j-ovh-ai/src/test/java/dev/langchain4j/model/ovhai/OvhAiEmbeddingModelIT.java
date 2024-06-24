@@ -1,13 +1,11 @@
-package langchain4j.model.ovhai;
+package dev.langchain4j.model.ovhai;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
+import org.junit.jupiter.api.Test;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.output.Response;
-import dev.langchain4j.model.ovhai.OvhAiEmbeddingModel;
-import org.junit.jupiter.api.Test;
 
 public class OvhAiEmbeddingModelIT {
 
