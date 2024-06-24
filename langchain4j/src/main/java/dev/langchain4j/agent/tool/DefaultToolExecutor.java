@@ -179,7 +179,8 @@ public class DefaultToolExecutor implements ToolExecutor {
         // throw new IllegalArgumentException(String.format(
         //         "Unsupported parameter type: %s :: <%s>", parameterType, argument));
 
-        return argument;
+        String result  = Json.toJson(argument);
+        return Json.fromJson(result, parameterType);
     }
 
     private static double getDoubleValue(
