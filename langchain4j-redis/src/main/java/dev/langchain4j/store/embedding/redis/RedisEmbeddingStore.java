@@ -268,6 +268,15 @@ public class RedisEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * @param indexName The name of the index (optional). Default value: "embedding-index".
+         * @deprecated use {@link #name(String)} instead. Method does not modify the Redis index name.
+         * Default value is used for the name of the index.
+         */
+        @Deprecated
+        public Builder indexName(String name) {
+            return this;
+        }
         
         /**
          * @param name The name of the store (optional). Used for prefix and index name generation. 
