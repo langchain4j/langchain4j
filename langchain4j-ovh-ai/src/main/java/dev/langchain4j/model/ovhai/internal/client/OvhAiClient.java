@@ -1,10 +1,9 @@
 package dev.langchain4j.model.ovhai.internal.client;
 
-import java.time.Duration;
 import dev.langchain4j.spi.ServiceHelper;
+import java.time.Duration;
 
 public abstract class OvhAiClient {
-
 
     @SuppressWarnings("rawtypes")
     public static OvhAiClient.Builder builder() {
@@ -35,8 +34,10 @@ public abstract class OvhAiClient {
 
         public B apiKey(String apiKey) {
             if (apiKey == null || apiKey.trim().isEmpty()) {
-                throw new IllegalArgumentException("Anthropic API key must be defined. " +
-                        "It can be generated here: https://console.anthropic.com/settings/keys");
+                throw new IllegalArgumentException(
+                    "OVHcloud API key must be defined. " +
+                    "It can be generated here: https://endpoints.ai.cloud.ovh.net/"
+                );
             }
             this.apiKey = apiKey;
             return (B) this;

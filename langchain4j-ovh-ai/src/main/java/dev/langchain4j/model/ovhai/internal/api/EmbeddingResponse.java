@@ -12,5 +12,4 @@ import lombok.NoArgsConstructor;
 @Builder
 public class EmbeddingResponse {
   private List<float[]> embeddings;
-  //private Usage usage;
 }
