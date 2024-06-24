@@ -43,6 +43,8 @@ class ExperimentalSequentialToolsDelegate implements ChatLanguageModel {
                 - "name": <required selected tool name>
                 - "inputs": <required selected tool properties, matching the tool's JSON schema.
                     Do not use tool definition in inputs. Ex: { "arg0": 5} >
+            
+            If the user request does not imply a response, respond with what have been done.
             """);
 
     /**

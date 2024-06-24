@@ -15,6 +15,9 @@ import dev.langchain4j.model.ollama.OllamaImage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledOnJre;
@@ -432,6 +435,44 @@ abstract class AiServicesWithOllamaToolsBaseIT {
             Mockito.verify(calculator).sqrt(10);
             // TODO Not true for ollama :
             // verifyNoMoreInteractions(calculator);
+        }
+
+        public interface PoemService {
+            @SystemMessage("You are a professional poet")
+            @UserMessage("""
+                Write a poem about {{topic}}. The poem should be {{lines}} lines long. Then send this poem by email.
+                """)
+            String writeAPoem(@V("topic") String topic, @V("lines") int lines);
+        }
+
+        static class EmailService {
+            @Tool("send the given content by email")
+            @SuppressWarnings("unused")
+            public void sendAnEmail(@P("Content to send") String content) {
+                System.out.printf("""
+                    ***
+                    ***   Tool sendAnEmail has been executed successfully!
+                    ***   Content: %s
+                    """, content);
+            }
+        }
+
+        @Test
+        void should_send_a_poem() {
+            // given
+            EmailService emailService = Mockito.spy(new EmailService());
+            ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+            ChatLanguageModel spyChatLanguageModel = Mockito.spy(model());
+            PoemService poemService = AiServices.builder(PoemService.class)
+                    .chatLanguageModel(spyChatLanguageModel)
+                    .chatMemory(chatMemory)
+                    .tools(emailService)
+                    .build();
+            // when
+            String response = poemService.writeAPoem("Condominium Rives de marne", 4);
+            // Then
+            Mockito.verify(emailService, Mockito.times(1)).sendAnEmail(Mockito.anyString());
+            assertThat(response).contains(new String[]{"sent", "mail"});
         }
     }
 }

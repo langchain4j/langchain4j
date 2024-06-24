@@ -51,11 +51,11 @@ class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
 
                     Guidelines:
                         - If you have enough information, answer to it directly.
-                        - Break complex request down into full sequential list of tools from the provided list above,
-                            and only from that list, to be able to answer precisely in the response field.
+                        - Break complex request down into full sequential list of tools to be able to answer precisely in the response field.
                         - You cannot use tools that are not listed in the provided list.
-                        - Inputs and response can reference previous results using $(xxx),
-                            where xxx is a previous unique result_id, Ex: "inputs" = { "arg0": $(id1) }.
+                        - You should always provide a response field.
+                        - Prefer using previous result.
+                        - Inputs and response can reference previous results using $(xxx), where xxx is a previous unique result_id, Ex: "inputs" = { "arg0": $(id1) }.
                     """);
 
     record ToolResponses(List<ToolResponse> tools, String response) {
