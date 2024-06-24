@@ -1,11 +1,11 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.model.output.structured.Description;
+
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -83,6 +83,69 @@ public class ToolSpecifications {
         P annotation = parameter.getAnnotation(P.class);
         JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
 
+        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
+
+        if (simpleType != null) {
+            return simpleType;
+        }
+
+        if (Collection.class.isAssignableFrom(type)) {
+            return removeNulls(ARRAY, arrayTypeFrom(parameter.getParameterizedType()), description);
+        }
+
+
+        return removeNulls(OBJECT, schema(type), description);
+    }
+
+    static JsonSchemaProperty schema(Class<?> structured){
+        return schema(structured, new HashSet<>());
+    }
+
+    private static JsonSchemaProperty schema(Class<?> structured, Set<Class<?>> visited) {
+        if (visited.contains(structured)) {
+            return null;
+        }
+
+        visited.add(structured);
+        Map<String,Object> properties = new HashMap<>();
+        for (Field field : structured.getDeclaredFields()) {
+            String name = field.getName();
+            if ( name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                // Skip inner class reference.
+                continue;
+            }
+            Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
+            Map<Object,Object> objectMap = new HashMap<>();
+            for(JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
+                objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
+            }
+            properties.put(name, objectMap);
+        }
+        return from( "properties", properties );
+    }
+
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {
+
+        Class<?> type = field.getType();
+
+        Description annotation = field.getAnnotation(Description.class);
+        JsonSchemaProperty description = annotation == null ? null : description(String.join(" ", annotation.value()));
+
+        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
+
+        if (simpleType != null) {
+            return simpleType;
+        }
+
+        if (Collection.class.isAssignableFrom(type)) {
+            return removeNulls(ARRAY, arrayTypeFrom((Class<?>) ((ParameterizedType) field.getGenericType()).getActualTypeArguments()[0]), description);
+        }
+
+        return removeNulls(OBJECT, schema(type, visited), description);
+    }
+
+    private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Class<?> type, JsonSchemaProperty description) {
+
         if (type == String.class) {
             return removeNulls(STRING, description);
         }
@@ -101,55 +164,15 @@ public class ToolSpecifications {
 
         if (type.isArray()) {
             return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
-        }
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom(parameter.getParameterizedType()), description);
         }
 
         if (type.isEnum()) {
             return removeNulls(STRING, enums((Class<?>) type), description);
         }
 
-        return removeNulls(OBJECT, description); // TODO provide internals
+        return null;
     }
 
-    // TODO reduce duplication
-    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field) {
-
-        Class<?> type = field.getType();
-
-        P annotation = field.getAnnotation(P.class);
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
-
-        if (type == String.class) {
-            return removeNulls(STRING, description);
-        }
-
-        if (isBoolean(type)) {
-            return removeNulls(BOOLEAN, description);
-        }
-
-        if (isInteger(type)) {
-            return removeNulls(INTEGER, description);
-        }
-
-        if (isNumber(type)) {
-            return removeNulls(NUMBER, description);
-        }
-
-        if (type.isArray()) {
-            return removeNulls(ARRAY, arrayTypeFrom(type.getComponentType()), description);
-        }
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom(field.getGenericType()), description); // TODO test
-        }
-
-        if (type.isEnum()) {
-            return removeNulls(STRING, enums(type), description);
-        }
-
-        return removeNulls(OBJECT, description); // TODO provide internals
-    }
 
     private static JsonSchemaProperty arrayTypeFrom(Type type) {
         if (type instanceof ParameterizedType) {
@@ -194,7 +217,7 @@ public class ToolSpecifications {
         if (isNumber(clazz)) {
             return items(JsonSchemaProperty.NUMBER);
         }
-        return items(JsonSchemaProperty.OBJECT);
+        return objectItems(schema(clazz));
     }
 
     /**

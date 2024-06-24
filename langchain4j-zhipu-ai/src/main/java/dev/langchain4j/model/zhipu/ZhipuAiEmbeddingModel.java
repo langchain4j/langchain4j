@@ -2,7 +2,7 @@ package dev.langchain4j.model.zhipu;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingRequest;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * Represents an ZhipuAI embedding model, such as embedding-2.
  */
-public class ZhipuAiEmbeddingModel implements EmbeddingModel {
+public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final String baseUrl;
     private final Integer maxRetries;

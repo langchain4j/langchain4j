@@ -5,6 +5,8 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
+import java.util.UUID;
+
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.compareAsBigDecimals;
@@ -46,6 +48,10 @@ public class IsNotEqualTo implements Filter {
 
         if (actualValue instanceof Number) {
             return compareAsBigDecimals(actualValue, comparisonValue) != 0;
+        }
+
+        if (comparisonValue instanceof UUID && actualValue instanceof String) {
+            return !actualValue.equals(comparisonValue.toString());
         }
 
         return !actualValue.equals(comparisonValue);

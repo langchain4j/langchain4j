@@ -44,4 +44,13 @@ public interface EmbeddingModel {
      * @return the embeddings.
      */
     Response<List<Embedding>> embedAll(List<TextSegment> textSegments);
+
+    /**
+     * Returns the dimension of the {@link Embedding} produced by this embedding model.
+     *
+     * @return dimension of the embedding
+     */
+    default int dimension() {
+        return embed("test").content().dimension();
+    }
 }

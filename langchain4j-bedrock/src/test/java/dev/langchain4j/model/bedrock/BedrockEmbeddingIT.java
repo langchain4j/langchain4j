@@ -45,5 +45,7 @@ class BedrockEmbeddingIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(1);
 
         assertThat(response.finishReason()).isNull();
+
+        assertThat(embeddingModel.dimension()).isEqualTo(1536);
     }
 }
