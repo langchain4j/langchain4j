@@ -9,7 +9,7 @@
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
-    <artifactId>langchain4j-ovhai</artifactId>
+    <artifactId>langchain4j-ovh-ai</artifactId>
     <name>LangChain4j :: Integration :: OVHcloud AI</name>
 
     <properties>
