@@ -17,7 +17,6 @@ import dev.langchain4j.model.mistralai.MistralAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import lombok.Data;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.AllArgsConstructor;
 import lombok.Data;

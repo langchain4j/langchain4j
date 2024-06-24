@@ -97,7 +97,33 @@ public class ToolSpecifications {
         return removeNulls(OBJECT, schema(type), description);
     }
 
-    static JsonSchemaProperty schema(Class<?> structured){
+    /**
+     * Convert a {@link Field} to a {@link JsonSchemaProperty}.
+     *
+     * @param field the field.
+     * @return the {@link JsonSchemaProperty}.
+     */
+    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field) {
+
+        Class<?> type = field.getType();
+
+        P annotation = field.getAnnotation(P.class);
+        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
+
+        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
+
+        if (simpleType != null) {
+            return simpleType;
+        }
+
+        if (Collection.class.isAssignableFrom(type)) {
+            return removeNulls(ARRAY, arrayTypeFrom(field.getGenericType()), description); // TODO test
+        }
+
+        return removeNulls(OBJECT, schema(type), description);
+    }
+
+    static JsonSchemaProperty schema(Class<?> structured) {
         return schema(structured, new HashSet<>());
     }
 
@@ -107,21 +133,21 @@ public class ToolSpecifications {
         }
 
         visited.add(structured);
-        Map<String,Object> properties = new HashMap<>();
+        Map<String, Object> properties = new HashMap<>();
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if ( name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+            if (name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip inner class reference.
                 continue;
             }
             Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
-            Map<Object,Object> objectMap = new HashMap<>();
-            for(JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
+            Map<Object, Object> objectMap = new HashMap<>();
+            for (JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
                 objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
             }
             properties.put(name, objectMap);
         }
-        return from( "properties", properties );
+        return from("properties", properties);
     }
 
     private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {

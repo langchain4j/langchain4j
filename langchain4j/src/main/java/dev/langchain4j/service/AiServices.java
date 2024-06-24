@@ -348,8 +348,8 @@ public abstract class AiServices<T> {
      * @param tools
      * @return
      */
-    public AiServices<T> tools(ToolThingy... tools) {
-        return tools((Collection<ToolThingy>) asList(tools));
+    public AiServices<T> tools(ToolThingy<?>... tools) {
+        return tools((Collection<ToolThingy<?>>) asList(tools));
     }
 
     /**
@@ -358,7 +358,7 @@ public abstract class AiServices<T> {
      * @param tools
      * @return
      */
-    public AiServices<T> tools(Collection<ToolThingy> tools) {
+    public AiServices<T> tools(Collection<ToolThingy<?>> tools) {
 
         // TODO validate uniqueness of tool names
 
