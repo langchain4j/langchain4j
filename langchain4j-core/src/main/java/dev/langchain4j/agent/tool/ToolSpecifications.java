@@ -103,11 +103,12 @@ public class ToolSpecifications {
      * @param field the field.
      * @return the {@link JsonSchemaProperty}.
      */
+    // TODO reduce duplication
     static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field) {
 
         Class<?> type = field.getType();
 
-        P annotation = field.getAnnotation(P.class);
+        P annotation = field.getAnnotation(P.class); // TODO and/or @Description ?
         JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
 
         Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);

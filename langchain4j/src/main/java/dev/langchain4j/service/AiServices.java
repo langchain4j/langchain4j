@@ -379,6 +379,29 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * TODO
+     *
+     * @param tools
+     * @return
+     */
+    public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
+
+        if (context.toolSpecifications == null) {
+            context.toolSpecifications = new ArrayList<>();
+        }
+        if (context.toolExecutors == null) {
+            context.toolExecutors = new HashMap<>();
+        }
+
+        tools.forEach((toolSpecification, toolExecutor) -> { // TODO test
+            context.toolSpecifications.add(toolSpecification);
+            context.toolExecutors.put(toolSpecification.name(), toolExecutor);
+        });
+
+        return this;
+    }
+
+    /**
      * Deprecated. Use {@link #contentRetriever(ContentRetriever)}
      * (e.g. {@link EmbeddingStoreContentRetriever}) instead.
      * <br>

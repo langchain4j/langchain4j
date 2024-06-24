@@ -18,7 +18,7 @@ public class DefaultFunctionToolExecutor<T> implements ToolExecutor {
     @Override
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
         T argument = Json.fromJson(toolExecutionRequest.arguments(), argumentClass);
-        ToolRequest<T> request = new ToolRequest<>(argument);
+        ToolRequest<T> request = new ToolRequest<>(argument, memoryId);
         ToolResult result = callback.execute(request);
         return result.result();
     }

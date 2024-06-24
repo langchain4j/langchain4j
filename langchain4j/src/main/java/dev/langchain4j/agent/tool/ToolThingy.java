@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import dev.langchain4j.Experimental;
 import lombok.AllArgsConstructor;
 
 import java.lang.reflect.Field;
@@ -12,6 +13,7 @@ import static dev.langchain4j.agent.tool.ToolSpecifications.toJsonSchemaProperti
 /**
  * TODO
  */
+@Experimental
 @AllArgsConstructor // TODO
 public class ToolThingy<T> {
     // TODO name
