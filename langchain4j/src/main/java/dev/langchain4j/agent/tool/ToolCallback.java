@@ -6,7 +6,7 @@ package dev.langchain4j.agent.tool;
  * @param <T>
  */
 public interface ToolCallback<T> {
-    // TODO name
+    // TODO name ToolCallbackExecutor? ToolRequestHandler?
     // TODO location
 
     /**

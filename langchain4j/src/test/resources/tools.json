@@ -63,6 +63,12 @@
     "url": "https://url5.com",
     "method": "POST",
     "headers": "",
+    "parameters": {
+      "salesOrder": {
+        "type": "string",
+        "description": ""
+      }
+    },
     "example-payload": "{\n \"salesOrder\": \"paramValue\"}",
     "query": [
       "Get additional details for order 300",

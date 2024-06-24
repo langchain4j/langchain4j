@@ -30,7 +30,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -47,6 +49,7 @@ import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.E
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -183,14 +186,33 @@ class AiServicesWithToolsIT {
         private String url;
         private String method;
         private String headers;
+        private Map<String, ?> parameters;
         private String examplePayload;
         private List<String> query;
         private String description;
     }
 
     String getRequest(String url) {
+        // simulating GET request
         assertThat(url).isEqualTo("https://url2.com/accounts");
         return "Account ids: 77, 13, 45";
+    }
+
+    static class PostApiToolCallback implements ToolCallback<Map> {
+
+        private final String url;
+
+        PostApiToolCallback(String url) {
+            this.url = url;
+        }
+
+        @Override
+        public ToolResult execute(ToolRequest<Map> request) {
+            // simulating POST request
+            Map map = request.argument();
+            assertThat(map).containsExactly(entry("salesOrder", "301"));
+            return ToolResult.from("Order 301 details:\nCustomer name: John Doe\nTotal amount: 638 Euro");
+        }
     }
 
     @Test
@@ -213,12 +235,23 @@ class AiServicesWithToolsIT {
 
         // TODO generics
         List<ToolThingy<?>> tools = apiTools.stream()
-                .filter(apiTool -> "GET".equals(apiTool.method)) // TODO register POST as well
-                .map(apiTool -> ToolThingy.from(
-                        "tool_" + atomicInteger.getAndIncrement(),
-                        apiTool.description,
-                        () -> getRequest(apiTool.url)
-                ))
+                .map(apiTool -> {
+                    if (apiTool.method.equals("GET")) {
+                        return ToolThingy.from(
+                                "tool_" + atomicInteger.getAndIncrement(),
+                                apiTool.description,
+                                () -> getRequest(apiTool.url)
+                        );
+                    } else {
+                        return ToolThingy.from(
+                                "tool_" + atomicInteger.getAndIncrement(),
+                                apiTool.description,
+                                convert(apiTool.parameters),
+                                Map.class,
+                                new PostApiToolCallback(apiTool.url)
+                        );
+                    }
+                })
                 .collect(Collectors.toList());
 
         // TODO how to register them in Spring boot app? Return a list of those as a bean?
@@ -228,10 +261,27 @@ class AiServicesWithToolsIT {
                 .tools(tools)
                 .build();
 
-        Response<AiMessage> response = assistant.chat("Show me all CRM accounts");
+        assertThat(assistant.chat("Show me all CRM accounts").content().text()).contains("77", "13", "45");
 
-        assertThat(response.content().text()).contains("77", "13", "45");
+        assertThat(assistant.chat("What is the total amount for the order 301?").content().text())
+                .contains("638");
     }
+
+    private static Map<String, ToolParameterThingy> convert(Map<String, ?> parameters) {
+
+        Map<String, ToolParameterThingy> parameterThingyMap = new HashMap<>();
+        parameters.forEach((parameterName, something) -> {
+            Map<String, String> map = (Map<String, String>) something;
+            ToolParameterThingy toolParameterThingy = ToolParameterThingy.builder()
+                    .type(map.get("type"))
+                    .description(map.get("description"))
+                    .build();
+            parameterThingyMap.put(parameterName, toolParameterThingy);
+        });
+        return parameterThingyMap;
+    }
+
+    // TODO where to put examples of queries?
 
 
     @ParameterizedTest

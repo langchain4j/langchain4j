@@ -17,4 +17,8 @@ public class ToolResult {
     public String result() { // TODO name
         return result;
     }
+
+    public static ToolResult from(String result) {
+        return new ToolResult(result);
+    }
 }
