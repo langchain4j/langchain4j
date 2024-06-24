@@ -1,4 +1,4 @@
-package dev.langchain4j.service;
+package dev.langchain4j.model.ollama.service;
 
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -14,6 +14,7 @@ import dev.langchain4j.model.ollama.LangChain4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaImage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.condition.DisabledOnJre;
@@ -28,12 +29,11 @@ import java.util.List;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.*;
 import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.service.AiServicesWithOllamaToolsBaseIT.BaseTests.TemperatureUnit.Kelvin;
-import static dev.langchain4j.service.AiServicesWithOllamaToolsBaseIT.TransactionService.EXPECTED_SPECIFICATION;
+import static dev.langchain4j.model.ollama.service.AiServicesWithOllamaToolsBaseIT.BaseTests.TemperatureUnit.Kelvin;
+import static dev.langchain4j.model.ollama.service.AiServicesWithOllamaToolsBaseIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 /**
  * Base test, contains configuration and common tests for sequential and parallel tools
@@ -171,7 +171,7 @@ abstract class AiServicesWithOllamaToolsBaseIT {
 
 
             Mockito.verify(transactionService).getTransactionAmount("T001");
-            verifyNoMoreInteractions(transactionService);
+            Mockito.verifyNoMoreInteractions(transactionService);
 
 
             List<ChatMessage> messages = chatMemory.messages();
@@ -231,7 +231,7 @@ abstract class AiServicesWithOllamaToolsBaseIT {
 
             // then
             Mockito.verify(stringListProcessor).processStrings(asList("cat", "dog"));
-            verifyNoMoreInteractions(stringListProcessor);
+            Mockito.verifyNoMoreInteractions(stringListProcessor);
 
             List<ChatMessage> messages = chatMemory.messages();
             Mockito.verify(spyChatLanguageModel).generate(
@@ -333,7 +333,7 @@ abstract class AiServicesWithOllamaToolsBaseIT {
 
             // then
             Mockito.verify(stringArrayProcessor).processStrings(new String[]{"cat", "dog"});
-            verifyNoMoreInteractions(stringArrayProcessor);
+            Mockito.verifyNoMoreInteractions(stringArrayProcessor);
 
             List<ChatMessage> messages = chatMemory.messages();
             Mockito.verify(spyChatLanguageModel).generate(
@@ -391,11 +391,11 @@ abstract class AiServicesWithOllamaToolsBaseIT {
             // then
             assertThat(response.content().text()).contains("42");
 
-            verify(weatherService).currentTemperature("Munich", Kelvin);
-            verifyNoMoreInteractions(weatherService);
+            Mockito.verify(weatherService).currentTemperature("Munich", Kelvin);
+            Mockito.verifyNoMoreInteractions(weatherService);
 
             List<ChatMessage> messages = chatMemory.messages();
-            verify(spyChatLanguageModel).generate(
+            Mockito.verify(spyChatLanguageModel).generate(
                     singletonList(messages.get(0)),
                     singletonList(WeatherService.EXPECTED_SPECIFICATION)
             );

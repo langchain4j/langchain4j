@@ -1,4 +1,4 @@
-package dev.langchain4j.service;
+package dev.langchain4j.model.ollama.service;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -9,6 +9,7 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.AiServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,11 +19,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.service.AiServicesWithOllamaToolsBaseIT.TransactionService.EXPECTED_SPECIFICATION;
+import static dev.langchain4j.model.ollama.service.AiServicesWithOllamaToolsBaseIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(MockitoExtension.class)
@@ -61,7 +61,7 @@ abstract class AiServicesWithOllamaToolsParallelIT extends AiServicesWithOllamaT
 
         Mockito.verify(transactionService).getTransactionAmount("T001");
         Mockito.verify(transactionService).getTransactionAmount("T002");
-        verifyNoMoreInteractions(transactionService);
+        Mockito.verifyNoMoreInteractions(transactionService);
 
 
         List<ChatMessage> messages = chatMemory.messages();
