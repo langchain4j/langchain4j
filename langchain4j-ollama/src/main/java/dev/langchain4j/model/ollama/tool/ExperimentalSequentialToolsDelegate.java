@@ -1,4 +1,4 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.tool;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -9,6 +9,7 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.ollama.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -23,7 +24,7 @@ import java.util.stream.Collectors;
  * It requests tools sequentially and use the history to give the final answer.
  */
 @Experimental
-class ExperimentalSequentialToolsDelegate implements ChatLanguageModel {
+public class ExperimentalSequentialToolsDelegate implements ChatLanguageModel {
 
     static final PromptTemplate DEFAULT_SYSTEM_TEMPLATE = PromptTemplate.from("""
             You are a helpful AI assistant responding to user requests.
@@ -70,7 +71,7 @@ class ExperimentalSequentialToolsDelegate implements ChatLanguageModel {
     private final String modelName;
     private final Options options;
 
-    ExperimentalSequentialToolsDelegate(OllamaClient client, String modelName, Options options) {
+    public ExperimentalSequentialToolsDelegate(OllamaClient client, String modelName, Options options) {
         this.client = client;
         this.modelName = modelName;
         this.options = options;
@@ -92,7 +93,7 @@ class ExperimentalSequentialToolsDelegate implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages,
                                         List<ToolSpecification> toolSpecifications) {
-        ChatRequest.ChatRequestBuilder builder = ChatRequest.builder()
+        ChatRequest.Builder builder = ChatRequest.builder()
                 .model(modelName)
                 .options(options)
                 .format("json")

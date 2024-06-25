@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 
-class OllamaMessagesUtils {
+public class OllamaMessagesUtils {
 
     private final static Predicate<ChatMessage> isUserMessage =
             chatMessage -> chatMessage instanceof UserMessage;
@@ -18,7 +18,7 @@ class OllamaMessagesUtils {
             userMessage -> userMessage.contents().stream()
                     .anyMatch(content -> IMAGE.equals(content.type()));
 
-    static List<Message> toOllamaMessages(List<ChatMessage> messages) {
+    public static List<Message> toOllamaMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message) ?
                         messagesWithImageSupport((UserMessage) message)
@@ -55,15 +55,11 @@ class OllamaMessagesUtils {
     }
 
     private static Role toOllamaRole(ChatMessageType chatMessageType) {
-        switch (chatMessageType) {
-            case SYSTEM:
-                return Role.SYSTEM;
-            case USER:
-                return Role.USER;
-            case AI:
-                return Role.ASSISTANT;
-            default:
-                throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
-        }
+        return switch (chatMessageType) {
+            case SYSTEM -> Role.SYSTEM;
+            case USER -> Role.USER;
+            case AI -> Role.ASSISTANT;
+            default -> throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
+        };
     }
 }

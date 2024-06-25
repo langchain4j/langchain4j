@@ -1,4 +1,4 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.tool;
 
 public enum ExperimentalTools {
     NONE,

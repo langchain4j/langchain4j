@@ -21,7 +21,7 @@ import static java.time.Duration.ofSeconds;
  */
 public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
 
-    private final OllamaClient client;
+    private final DefaultOllamaClient client;
     private final String modelName;
     private final Options options;
     private final String format;
@@ -43,7 +43,7 @@ public class OllamaStreamingLanguageModel implements StreamingLanguageModel {
                                         Boolean logResponses,
                                         Map<String, String> customHeaders
                                         ) {
-        this.client = OllamaClient.builder()
+        this.client = DefaultOllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)

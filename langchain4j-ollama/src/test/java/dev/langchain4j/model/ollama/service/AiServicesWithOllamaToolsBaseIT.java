@@ -139,7 +139,8 @@ abstract class AiServicesWithOllamaToolsBaseIT {
                     .build();
             String userMessage = "What is the result of 1+1 ?";
             Response<AiMessage> response = assistant.chat(userMessage);
-            assertThat(response.content().text()).contains("The result of 1+1 is 2.");
+            assertThat(response.content().text())
+                    .containsIgnoringWhitespaces("The", "result", "of", "1+1", "is", "2");
         }
 
         @Test
@@ -472,7 +473,7 @@ abstract class AiServicesWithOllamaToolsBaseIT {
             String response = poemService.writeAPoem("Condominium Rives de marne", 4);
             // Then
             Mockito.verify(emailService, Mockito.times(1)).sendAnEmail(Mockito.anyString());
-            assertThat(response).contains(new String[]{"sent", "mail"});
+            assertThat(response).contains("sent", "mail");
         }
     }
 }

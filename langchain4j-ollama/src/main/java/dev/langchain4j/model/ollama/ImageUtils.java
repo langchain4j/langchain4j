@@ -13,11 +13,11 @@ import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class ImageUtils {
+public class ImageUtils {
 
     private static final List<String> SUPPORTED_URL_SCHEMES = Arrays.asList("http", "https", "file");
 
-    static List<String> base64EncodeImageList(List<ImageContent> contentList) {
+    public static List<String> base64EncodeImageList(List<ImageContent> contentList) {
         return contentList.stream()
                 .map(ImageContent::image)
                 .map(ImageUtils::base64Image)

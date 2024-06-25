@@ -1,8 +1,11 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.tool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.model.ollama.ExperimentalParallelToolsDelegate.AiStatsMessage;
+import dev.langchain4j.model.ollama.ImageUtils;
+import dev.langchain4j.model.ollama.Message;
+import dev.langchain4j.model.ollama.Role;
+import dev.langchain4j.model.ollama.tool.ExperimentalParallelToolsDelegate.AiStatsMessage;
 
 import java.util.ArrayList;
 import java.util.List;

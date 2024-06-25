@@ -1,4 +1,4 @@
-package dev.langchain4j.model.ollama;
+package dev.langchain4j.model.ollama.tool;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -10,6 +10,7 @@ import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
+import dev.langchain4j.model.ollama.*;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -20,7 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static dev.langchain4j.model.ollama.ExperimentalMessagesUtils.*;
+import static dev.langchain4j.model.ollama.tool.ExperimentalMessagesUtils.*;
 
 /**
  * This class simulates tools function on ollama server.
@@ -30,7 +31,7 @@ import static dev.langchain4j.model.ollama.ExperimentalMessagesUtils.*;
  * Tools inputs and the response can reference tools results. So in one call to LLM we provide the answer.
  */
 @Experimental
-class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
+public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
     static final PromptTemplate DEFAULT_SYSTEM_TEMPLATE = PromptTemplate
             .from("""
                     --- Context ---
@@ -68,7 +69,7 @@ class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
     private final String modelName;
     private final Options options;
 
-    ExperimentalParallelToolsDelegate(OllamaClient client, String modelName, Options options) {
+    public ExperimentalParallelToolsDelegate(OllamaClient client, String modelName, Options options) {
         this.client = client;
         this.modelName = modelName;
         this.options = options;
@@ -90,7 +91,7 @@ class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
     @Override
     public Response<AiMessage> generate(List<ChatMessage> messages,
                                         List<ToolSpecification> toolSpecifications) {
-        ChatRequest.ChatRequestBuilder builder = ChatRequest.builder()
+        ChatRequest.Builder builder = ChatRequest.builder()
                 .model(modelName)
                 .options(options)
                 .format("json")
@@ -101,7 +102,7 @@ class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
         if (hasAiStatsMessage(messages)) {
             AiStatsMessage aiStatsMessage = toAiStatsMessage(messages);
             if (aiStatsMessage.text() == null ) {
-                throw new RuntimeException("Response cannot be null or empty!");
+                throw new RuntimeException("finalAnswer cannot be null or empty!");
             }
             return Response.from(withoutRequests(aiStatsMessage), aiStatsMessage.getTokenUsage(), FinishReason.STOP);
         }

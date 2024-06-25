@@ -35,7 +35,7 @@ public class OllamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                                 Boolean logRequests,
                                 Boolean logResponses,
                                 Map<String, String> customHeaders) {
-        this.client = OllamaClient.builder()
+        this.client = DefaultOllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .logRequests(logRequests)

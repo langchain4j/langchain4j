@@ -5,6 +5,10 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.ollama.spi.OllamaChatModelBuilderFactory;
+import dev.langchain4j.model.ollama.tool.ExperimentalParallelToolsDelegate;
+import dev.langchain4j.model.ollama.tool.ExperimentalSequentialToolsDelegate;
+import dev.langchain4j.model.ollama.tool.ExperimentalTools;
+import dev.langchain4j.model.ollama.tool.NoToolsDelegate;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
@@ -51,7 +55,7 @@ public class OllamaChatModel implements ChatLanguageModel {
                            Boolean logRequests,
                            Boolean logResponses,
                            ExperimentalTools experimentalTools) {
-        this.client = OllamaClient.builder()
+        this.client = DefaultOllamaClient.builder()
                 .baseUrl(baseUrl)
                 .timeout(getOrDefault(timeout, ofSeconds(60)))
                 .customHeaders(customHeaders)
