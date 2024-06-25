@@ -58,7 +58,7 @@ public abstract class AbstractBedrockEmbeddingModel<T extends BedrockEmbeddingRe
             embeddings.add(response.toEmbedding());
             totalInputToken += response.getInputTextTokenCount();
         }
-        
+
         return Response.from(
                 embeddings,
                 new TokenUsage(totalInputToken));

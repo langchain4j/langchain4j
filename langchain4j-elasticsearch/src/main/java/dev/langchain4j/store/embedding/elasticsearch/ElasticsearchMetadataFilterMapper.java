@@ -12,6 +12,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 import static java.util.stream.Collectors.toList;
 
@@ -135,7 +136,7 @@ class ElasticsearchMetadataFilterMapper {
     }
 
     private static String formatKey(String key, Object comparisonValue) {
-        if (comparisonValue instanceof String) {
+        if (comparisonValue instanceof String || comparisonValue instanceof UUID) {
             return "metadata." + key + ".keyword";
         } else {
             return "metadata." + key;
@@ -143,11 +144,7 @@ class ElasticsearchMetadataFilterMapper {
     }
 
     private static String formatKey(String key, Collection<?> comparisonValues) {
-        if (comparisonValues.iterator().next() instanceof String) {
-            return "metadata." + key + ".keyword";
-        } else {
-            return "metadata." + key;
-        }
+        return formatKey(key, comparisonValues.iterator().next());
     }
 }
 

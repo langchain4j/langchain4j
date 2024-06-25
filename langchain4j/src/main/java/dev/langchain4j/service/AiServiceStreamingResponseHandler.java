@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
@@ -10,6 +11,8 @@ import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -29,6 +32,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     private final Consumer<Response<AiMessage>> completionHandler;
     private final Consumer<Throwable> errorHandler;
 
+    private final List<ChatMessage> temporaryMemory;
     private final TokenUsage tokenUsage;
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
@@ -36,6 +40,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                                       Consumer<String> tokenHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
+                                      List<ChatMessage> temporaryMemory,
                                       TokenUsage tokenUsage) {
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
@@ -44,6 +49,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
         this.completionHandler = completionHandler;
         this.errorHandler = errorHandler;
 
+        this.temporaryMemory = new ArrayList<>(temporaryMemory);
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
     }
 
@@ -56,10 +62,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     public void onComplete(Response<AiMessage> response) {
 
         AiMessage aiMessage = response.content();
-
-        if (context.hasChatMemory()) {
-            context.chatMemory(memoryId).add(aiMessage);
-        }
+        addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
@@ -69,11 +72,11 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                         toolExecutionRequest,
                         toolExecutionResult
                 );
-                context.chatMemory(memoryId).add(toolExecutionResultMessage);
+                addToMemory(toolExecutionResultMessage);
             }
 
             context.streamingChatModel.generate(
-                    context.chatMemory(memoryId).messages(),
+                    messagesToSend(memoryId),
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(
                             context,
@@ -81,6 +84,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                             tokenHandler,
                             completionHandler,
                             errorHandler,
+                            temporaryMemory,
                             TokenUsage.sum(tokenUsage, response.tokenUsage())
                     )
             );
@@ -93,6 +97,20 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                 );
             }
         }
+    }
+
+    private void addToMemory(ChatMessage chatMessage) {
+        if (context.hasChatMemory()) {
+            context.chatMemory(memoryId).add(chatMessage);
+        } else {
+            temporaryMemory.add(chatMessage);
+        }
+    }
+
+    private List<ChatMessage> messagesToSend(Object memoryId) {
+        return context.hasChatMemory()
+                ? context.chatMemory(memoryId).messages()
+                : temporaryMemory;
     }
 
     @Override

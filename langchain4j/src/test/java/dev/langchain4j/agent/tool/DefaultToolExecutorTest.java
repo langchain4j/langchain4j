@@ -1,5 +1,7 @@
 package dev.langchain4j.agent.tool;
 
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +23,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.5)).isFalse();
     }
 
-    public enum ExampleEnum { A, B, C }
+    public enum ExampleEnum {A, B, C}
 
     @SuppressWarnings("unused")
     public void example(
@@ -41,7 +43,8 @@ class DefaultToolExecutorTest implements WithAssertions {
             ExampleEnum enumP,
             boolean booleanP,
             Boolean BooleanP
-    ) {}
+    ) {
+    }
 
     @Test
     public void test_prepareArguments() throws Exception {
@@ -65,7 +68,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 ExampleEnum.class,
                 boolean.class,
                 Boolean.class
-                );
+        );
 
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("arg1", 1.0);
@@ -116,11 +119,21 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
     }
 
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    static class Person {
+
+        String name;
+        int age;
+    }
+
     @Test
     public void test_coerceArgument() {
-        // Pass-through unhandled types.
-        Object sentinel = new Object();
-        assertThat(coerceArgument(sentinel, "arg", Object.class)).isSameAs(sentinel);
+
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("name", "Klaus");
+        personMap.put("age", 42);
+        assertThat(coerceArgument(personMap, "arg", Person.class)).isEqualTo(new Person("Klaus", 42));
 
         assertThat(coerceArgument("abc", "arg", String.class)).isEqualTo("abc");
 

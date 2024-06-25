@@ -13,11 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -31,8 +27,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
     /**
      * Constructor with Builder.
      *
-     * @param builder
-     *      builder.
+     * @param builder builder.
      */
     public WorkersAiEmbeddingModel(Builder builder) {
         this(builder.accountId, builder.modelName, builder.apiToken);
@@ -41,12 +36,9 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
     /**
      * Constructor with Builder.
      *
-     * @param accountId
-     *      account identifier
-     * @param modelName
-     *      model name
-     * @param apiToken
-     *     api token
+     * @param accountId account identifier
+     * @param modelName model name
+     * @param apiToken  api token
      */
     public WorkersAiEmbeddingModel(String accountId, String modelName, String apiToken) {
         super(accountId, modelName, apiToken);
@@ -55,8 +47,7 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
     /**
      * Builder access.
      *
-     * @return
-     *      builder instance
+     * @return builder instance
      */
     public static Builder builder() {
         for (WorkersAiEmbeddingModelBuilderFactory factory : loadFactories(WorkersAiEmbeddingModelBuilderFactory.class)) {
@@ -92,10 +83,8 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         /**
          * Simple constructor.
          *
-         * @param accountId
-         *      account identifier.
-         * @return
-         *      self reference
+         * @param accountId account identifier.
+         * @return self reference
          */
         public Builder accountId(String accountId) {
             this.accountId = accountId;
@@ -134,7 +123,9 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Response<Embedding> embed(String text) {
         try {
@@ -165,15 +156,18 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Response<Embedding> embed(TextSegment textSegment) {
         // no metadata in worker ai
         return embed(textSegment.text());
     }
 
-
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<Future<List<Embedding>>> futures = new ArrayList<>();
@@ -208,19 +202,14 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
     /**
      * Process chunk of text segments.
      *
-     * @param chunk
-     *      chunk of text segments.
-     * @param accountIdentifier
-     *      account identifier.
-     * @param modelName
-     *      model name.
-     * @return
-     *      list of embeddings.
-     * @throws IOException
-     *      error occurred during invocation.
+     * @param chunk             chunk of text segments.
+     * @param accountIdentifier account identifier.
+     * @param modelName         model name.
+     * @return list of embeddings.
+     * @throws IOException error occurred during invocation.
      */
     private List<Embedding> processChunk(List<TextSegment> chunk, String accountIdentifier, String modelName)
-    throws IOException {
+            throws IOException {
         dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
         for (TextSegment textSegment : chunk) {
             req.getText().add(textSegment.text());
