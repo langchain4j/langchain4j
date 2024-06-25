@@ -6,7 +6,6 @@ import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.Builder;
 import redis.clients.jedis.JedisPooled;
-import redis.clients.jedis.json.DefaultGsonObjectMapper;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +27,6 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
             String finalUser = ensureNotBlank(user, "user");
             String finalPassword = ensureNotBlank(password, "password");
             this.client = new JedisPooled(finalHost, finalPort, finalUser, finalPassword);
-            client.setJsonObjectMapper(new DefaultGsonObjectMapper());
         } else {
             this.client = new JedisPooled(finalHost, finalPort);
         }
