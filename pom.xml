@@ -26,6 +26,7 @@
         <module>langchain4j-bedrock</module>
         <module>langchain4j-chatglm</module>
         <module>langchain4j-cohere</module>
+        <module>langchain4j-couchbase</module>
         <module>langchain4j-dashscope</module>
         <module>langchain4j-hugging-face</module>
         <module>langchain4j-jina</module>
