@@ -51,10 +51,10 @@ class AstraDBFilterMapper {
             return ne(f.key(), f.comparisonValue());
         } else if (filter instanceof IsIn) {
             IsIn f = (IsIn) filter;
-            return in(f.key(), f.comparisonValues());
+            return in(f.key(), f.comparisonValues().toArray());
         } else if (filter instanceof IsNotIn) {
             IsNotIn f = (IsNotIn) filter;
-            return nin(f.key(), f.comparisonValues());
+            return nin(f.key(), f.comparisonValues().toArray());
         } else if (filter instanceof And) {
             And and = (And) filter;
             return and(map(and.left()), map(and.right()));

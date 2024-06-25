@@ -11,7 +11,6 @@ import dev.langchain4j.data.document.loader.FileSystemDocumentLoader;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,7 +24,9 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -55,10 +56,8 @@ public class GettingStartedGuideVectorizedTestIT {
         //  .getDatabase();
 
         // Access the ASTRA database
-        astraDatabase = new DataAPIClient(ASTRA_TOKEN, DataAPIOptions
-                .builder()
-                .logRequests().build())
-                .getDatabase(ASTRA_ENDPOINT);
+        astraDatabase = new DataAPIClient(ASTRA_TOKEN, DataAPIOptions.builder()
+                .logRequests().build()).getDatabase(ASTRA_ENDPOINT);
 
         /*
          * An embedding store that compute the embedding for you on the fly without
@@ -70,6 +69,7 @@ public class GettingStartedGuideVectorizedTestIT {
                         .vector(1024, SimilarityMetric.COSINE)
                         .vectorize("nvidia", "NV-Embed-QA")
                         .build()));
+        embeddingStoreVectorizeNVidia.clear();
     }
 
     @Test
@@ -80,24 +80,20 @@ public class GettingStartedGuideVectorizedTestIT {
         Path path = new File(Objects.requireNonNull(getClass().getResource("/johnny.txt")).getFile()).toPath();
         Document document = FileSystemDocumentLoader.loadDocument(path, new TextDocumentParser());
         DocumentSplitter splitter = DocumentSplitters.recursive(300, 0);
-        List<TextSegment> segments = splitter.split(document);
+        List<TextSegment> segmentsBefore = splitter.split(document);
 
+        List<TextSegment> segmentsWithMetadata = segmentsBefore.stream().map(seg -> {
+            seg.metadata().put("documentId", "f47ac10b-58cc-4372-a567-0e02b2c3d479");
+            // more metadata
+            return seg;
+        }).collect(Collectors.toUnmodifiableList());
         // Save the chunks with no embedding = computed on the fly
-        embeddingStoreVectorizeNVidia.addAll(null, segments);
+        embeddingStoreVectorizeNVidia.addAll(null, segmentsWithMetadata);
     }
 
     @Test
     @Order(2)
     public void should_search_results() {
-        PromptTemplate promptTemplate = PromptTemplate.from(
-                "Answer the following question to the best of your ability:\n"
-                        + "\n"
-                        + "Question:\n"
-                        + "{{question}}\n"
-                        + "\n"
-                        + "Base your answer on the following information:\n"
-                        + "{{rag-context}}");
-
         String question = "Who is Johnny?";
 
         /* RAG
@@ -107,10 +103,19 @@ public class GettingStartedGuideVectorizedTestIT {
          * "Vectorize" (nvidia nemo) will not work with content retriever.
          * For advanced RAG. I suggest to keep EmbeddingModel End embedding Store separated.
          */
+
         EmbeddingSearchRequestAstra searchQuery = new EmbeddingSearchRequestAstra(null,
-                question, 10, 0.5, null /* metadataKey("document_format").isEqualTo("text")*/);
+                question, 10, 0.5, metadataKey("documentId")
+                .isIn("f47ac10b-58cc-4372-a567-0e02b2c3d479"));
         List<EmbeddingMatch<TextSegment>> relevantEmbeddings = embeddingStoreVectorizeNVidia.search(searchQuery).matches();
         assertThat(relevantEmbeddings).isNotEmpty();
+        assertThat(relevantEmbeddings).isNotEmpty();
 
+        relevantEmbeddings.forEach(match -> log.info("Match: {}", match.embedded()));
+
+        String ragContext = relevantEmbeddings.stream()
+                .map(match -> match.embedded().text())
+                .collect(Collectors.joining("\n\n"));
+        System.out.println(ragContext);
     }
 }
