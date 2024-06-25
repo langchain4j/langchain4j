@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.redis;
+package dev.langchain4j.store.memory.chat.redis;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageDeserializer;
@@ -43,7 +43,7 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
         String json = ChatMessageSerializer.messagesToJson(ensureNotEmpty(messages, "messages"));
         String res = client.set(toMemoryIdString(memoryId), json);
         if (!"OK".equals(res)) {
-            throw new RedisRequestFailedException("Set memory error, msg=" + res);
+            throw new RedisChatMemoryStoreException("Set memory error, msg=" + res);
         }
     }
 
