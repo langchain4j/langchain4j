@@ -97,33 +97,6 @@ public class ToolSpecifications {
         return removeNulls(OBJECT, schema(type), description);
     }
 
-    /**
-     * Convert a {@link Field} to a {@link JsonSchemaProperty}.
-     *
-     * @param field the field.
-     * @return the {@link JsonSchemaProperty}.
-     */
-    // TODO reduce duplication
-    static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field) {
-
-        Class<?> type = field.getType();
-
-        P annotation = field.getAnnotation(P.class); // TODO and/or @Description ?
-        JsonSchemaProperty description = annotation == null ? null : description(annotation.value());
-
-        Iterable<JsonSchemaProperty> simpleType = toJsonSchemaProperties(type, description);
-
-        if (simpleType != null) {
-            return simpleType;
-        }
-
-        if (Collection.class.isAssignableFrom(type)) {
-            return removeNulls(ARRAY, arrayTypeFrom(field.getGenericType()), description); // TODO test
-        }
-
-        return removeNulls(OBJECT, schema(type), description);
-    }
-
     static JsonSchemaProperty schema(Class<?> structured) {
         return schema(structured, new HashSet<>());
     }
