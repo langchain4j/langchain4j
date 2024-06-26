@@ -121,7 +121,7 @@ public class ToolSpecifications {
             }
             properties.put(name, objectMap);
         }
-        return from( "properties", properties);
+        return from( "properties", properties );
     }
 
     private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {
