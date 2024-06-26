@@ -423,8 +423,8 @@ class VertexAiGeminiChatModelIT {
 
         // then
         String text = messageResponse.content().text();
-        assertThat(text.split(" ")).containsAll(
-            Arrays.stream("ABC123 more XYZ789".split(" ")).collect(Collectors.toList()));
+        List<String> sequence = Arrays.asList("ABC123", "more", "XYZ789");
+        assertThat(text.split(" ")).containsAll(sequence);
     }
 
     static class Calculator {

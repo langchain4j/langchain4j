@@ -69,10 +69,10 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     public VertexAiGeminiChatModel(String project,
                                    String location,
                                    String modelName,
-                                   Float temperature,
+                                   Double temperature,
                                    Integer maxOutputTokens,
                                    Integer topK,
-                                   Float topP,
+                                   Double topP,
                                    Integer maxRetries,
                                    String responseMimeType,
                                    Map<HarmCategory, SafetyThreshold> safetySettings,
@@ -82,7 +82,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                                    Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
-            generationConfigBuilder.setTemperature(temperature);
+            generationConfigBuilder.setTemperature(temperature.floatValue());
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
@@ -91,7 +91,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             generationConfigBuilder.setTopK(topK);
         }
         if (topP != null) {
-            generationConfigBuilder.setTopP(topP);
+            generationConfigBuilder.setTopP(topP.floatValue());
         }
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
@@ -99,7 +99,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         this.generationConfig = generationConfigBuilder.build();
 
         if (safetySettings != null) {
-            this.safetySettings = safetySettings;
+            this.safetySettings = new HashMap<>(safetySettings);
         } else {
             this.safetySettings = new HashMap<>();
         }
@@ -194,7 +194,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
         }
 
         if (this.logRequests && logger.isDebugEnabled()) {
-            logger.debug("GEMINI ({}) tools: {} request: {}", modelName, tools, instructionAndContent);
+            logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
         }
 
         GenerativeModel finalModel = model;

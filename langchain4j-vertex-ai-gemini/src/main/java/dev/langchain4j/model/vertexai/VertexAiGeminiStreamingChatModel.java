@@ -52,10 +52,10 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     public VertexAiGeminiStreamingChatModel(String project,
                                             String location,
                                             String modelName,
-                                            Float temperature,
+                                            Double temperature,
                                             Integer maxOutputTokens,
                                             Integer topK,
-                                            Float topP,
+                                            Double topP,
                                             String responseMimeType,
                                             Map<HarmCategory, SafetyThreshold> safetySettings,
                                             Boolean useGoogleSearch,
@@ -64,7 +64,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
-            generationConfigBuilder.setTemperature(temperature);
+            generationConfigBuilder.setTemperature(temperature.floatValue());
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
@@ -73,7 +73,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             generationConfigBuilder.setTopK(topK);
         }
         if (topP != null) {
-            generationConfigBuilder.setTopP(topP);
+            generationConfigBuilder.setTopP(topP.floatValue());
         }
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
@@ -166,7 +166,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         }
 
         if (this.logRequests && logger.isDebugEnabled()) {
-            logger.debug("GEMINI ({}) tools: {}\nrequest: {}", modelName, tools, instructionAndContent);
+            logger.debug("GEMINI ({}) request: {} tools: {}", modelName, instructionAndContent, tools);
         }
 
         StreamingChatResponseBuilder responseBuilder = new StreamingChatResponseBuilder();
