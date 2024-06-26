@@ -116,7 +116,7 @@ public class AzureOpenAiEmbeddingModel extends DimensionAwareEmbeddingModel impl
                                       Tokenizer tokenizer) {
 
         this.deploymentName = getOrDefault(deploymentName, TEXT_EMBEDDING_ADA_002.modelName());
-        this.tokenizer = tokenizer;
+        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
     }
 
     /**

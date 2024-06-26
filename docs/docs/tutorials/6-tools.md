@@ -176,7 +176,7 @@ List<ToolSpecification> toolSpecifications = ToolSpecifications.toolSpecificatio
 Once you have a `List<ToolSpecification>`, you can call the model:
 ```java
 UserMessage userMessage = UserMessage.from("What will the weather be like in London tomorrow?");
-Response<AiMessage> response = model.generate(singletoneList(userMessage), toolSpecifications);
+Response<AiMessage> response = model.generate(singletonList(userMessage), toolSpecifications);
 AiMessage aiMessage = response.content();
 ```
 
