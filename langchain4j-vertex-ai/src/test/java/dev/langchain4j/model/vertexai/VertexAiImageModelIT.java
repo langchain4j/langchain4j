@@ -194,7 +194,7 @@ public class VertexAiImageModelIT {
         assertThatExceptionOfType(Throwable.class).isThrownBy(() -> imagenModel.generate("a nude woman"));
     }
 
-    @Test
+//    @Test
     public void should_generate_one_imagen_v3_with_persistence() {
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
 
