@@ -1,5 +1,8 @@
 package dev.langchain4j.model.azure;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * You can get the latest model names from the Azure OpenAI documentation or by executing the Azure CLI command:
  * az cognitiveservices account list-models --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE" -o table

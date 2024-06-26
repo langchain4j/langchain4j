@@ -271,13 +271,11 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                         metadata.put(property, segment.metadata().get(property));
                     }
                 }
-            } else {
-                props.put(METADATA, metadata);
             }
-            props.put(METADATA, metadata);
+            setMetadata(props, metadata);
         } else {
             props.put(METADATA_TEXT_SEGMENT, "");
-            props.put(METADATA, metadata);
+            setMetadata(props, metadata);
         }
         props.put("indexFilterable", true);
         props.put("indexSearchable", true);
@@ -288,6 +286,12 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .vector(embedding.vectorAsList().toArray(ArrayUtils.EMPTY_FLOAT_OBJECT_ARRAY))
                 .properties(props)
                 .build();
+    }
+    
+    private void setMetadata(Map<String, Object> props, Map<String, Object> metadata) {
+        if (metadata != null && !metadata.isEmpty()) {
+            props.put(METADATA, metadata);
+        }
     }
 
     private Map<String, Object> prefillMetadata() {

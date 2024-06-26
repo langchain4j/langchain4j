@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -46,13 +47,7 @@ class EmbeddingStoreContentRetrieverTest {
         EMBEDDING_MODEL = mock(EmbeddingModel.class);
         when(EMBEDDING_MODEL.embed(anyString())).thenReturn(Response.from(EMBEDDING));
     }
-
-    @AfterEach
-    void afterEach() {
-        verify(EMBEDDING_MODEL).embed(QUERY.text());
-        verifyNoMoreInteractions(EMBEDDING_MODEL);
-    }
-
+    
     @Test
     void should_retrieve() {
 
@@ -69,6 +64,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(DEFAULT_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -90,6 +87,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(DEFAULT_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -112,6 +111,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(DEFAULT_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -134,6 +135,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(DEFAULT_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -156,6 +159,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(DEFAULT_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -179,6 +184,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(CUSTOM_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -201,6 +208,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(CUSTOM_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -223,6 +232,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .minScore(CUSTOM_MIN_SCORE)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -248,6 +259,8 @@ class EmbeddingStoreContentRetrieverTest {
                 .filter(metadataFilter)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
     }
 
     @Test
@@ -273,5 +286,51 @@ class EmbeddingStoreContentRetrieverTest {
                 .filter(metadataFilter)
                 .build());
         verifyNoMoreInteractions(EMBEDDING_STORE);
+        verify(EMBEDDING_MODEL).embed(QUERY.text());
+        verifyNoMoreInteractions(EMBEDDING_MODEL);
+    }
+
+    @Test
+    void should_include_explicit_display_name_in_to_string() {
+
+        // given
+        double minScore = 0.7;
+        String displayName = "MyName";
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .displayName(displayName)
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .minScore(minScore)
+                .build();
+
+        // when
+        String result = contentRetriever.toString();
+
+        // then
+        assertThat(result).contains(displayName);
+    }
+
+    @Test
+    void should_include_implicit_display_name_in_to_string() {
+
+        // given
+        double minScore = 0.7;
+        EmbeddingStore<TextSegment> embeddingStore = mock(EmbeddingStore.class);
+        EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(embeddingStore)
+                .embeddingModel(embeddingModel)
+                .minScore(minScore)
+                .build();
+
+        // when
+        String result = contentRetriever.toString();
+
+        // then
+        assertThat(result).contains(EmbeddingStoreContentRetriever.DEFAULT_DISPLAY_NAME);
     }
 }
