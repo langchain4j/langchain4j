@@ -1,6 +1,9 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.*;
+import dev.langchain4j.agent.tool.DefaultToolExecutor;
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -293,7 +296,6 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the tools that the LLM can use.
-     * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
      *
      * @param objectsWithTools One or more objects whose methods are annotated with {@link Tool}.
      *                         All these tools (methods annotated with {@link Tool}) will be accessible to the LLM.
@@ -307,7 +309,6 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the tools that the LLM can use.
-     * A {@link ChatMemory} that can hold at least 3 messages is required for the tools to work properly.
      *
      * @param objectsWithTools A list of objects whose methods are annotated with {@link Tool}.
      *                         All these tools (methods annotated with {@link Tool}) are accessible to the LLM.
@@ -343,10 +344,13 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * TODO
+     * Configures the tools that the LLM can use.
      *
-     * @param tools
-     * @return
+     * @param tools A map of {@link ToolSpecification} to {@link ToolExecutor} entries.
+     *              This method of configuring tools is useful when tools must be configured programmatically.
+     *              Otherwise, it is recommended to use the {@link Tool}-annotated java methods
+     *              and configure tools with the {@link #tools(Object...)} and {@link #tools(List)} methods.
+     * @return builder
      */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
 
@@ -357,7 +361,7 @@ public abstract class AiServices<T> {
             context.toolExecutors = new HashMap<>();
         }
 
-        tools.forEach((toolSpecification, toolExecutor) -> { // TODO test
+        tools.forEach((toolSpecification, toolExecutor) -> {
             context.toolSpecifications.add(toolSpecification);
             context.toolExecutors.put(toolSpecification.name(), toolExecutor);
         });
