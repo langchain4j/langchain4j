@@ -6,6 +6,7 @@ import okhttp3.Interceptor;
 import okhttp3.Request;
 import okhttp3.Response;
 import okio.Buffer;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -22,6 +23,7 @@ class OllamaRequestLoggingInterceptor implements Interceptor {
     private static final Set<String> COMMON_SECRET_HEADERS =
             new HashSet<>(asList("authorization", "x-api-key", "x-auth-token"));
 
+    @NotNull
     @Override
     public Response intercept(Chain chain) throws IOException {
         Request request = chain.request();
@@ -45,7 +47,7 @@ class OllamaRequestLoggingInterceptor implements Interceptor {
                 return "";
             }
             request.body().writeTo(buffer);
-            return buffer.readUtf8();
+            return OllamaMessagesUtils.toPrettyString(buffer.readUtf8());
         } catch (Exception e) {
             log.warn("Exception while getting body", e);
             return "Exception while getting body: " + e.getMessage();

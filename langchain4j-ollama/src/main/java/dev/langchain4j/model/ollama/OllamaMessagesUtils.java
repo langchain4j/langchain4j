@@ -1,5 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import dev.langchain4j.data.message.*;
 
 import java.util.List;
@@ -61,5 +65,11 @@ public class OllamaMessagesUtils {
             case AI -> Role.ASSISTANT;
             default -> throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
         };
+    }
+
+    static String toPrettyString(String originalString) {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonElement jsonElement = JsonParser.parseString(originalString);
+        return gson.toJson(jsonElement);
     }
 }
