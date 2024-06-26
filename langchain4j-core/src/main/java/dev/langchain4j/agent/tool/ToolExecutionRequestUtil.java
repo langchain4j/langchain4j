@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Utility class for {@link ToolExecutionRequest}.
@@ -42,6 +44,20 @@ public class ToolExecutionRequestUtil {
      * @return map
      */
     public static Map<String, Object> argumentsAsMap(String arguments) {
-        return GSON.fromJson(arguments, MAP_TYPE);
+        return GSON.fromJson(removeTrailingComma(arguments), MAP_TYPE);
+    }
+
+    /**
+     * Removes trailing commas before closing braces or brackets in JSON strings.
+     * @param json the JSON string
+     * @return the corrected JSON string
+     */
+    private static String removeTrailingComma(String json) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+        Pattern pattern = Pattern.compile(",(\\s*[}\\]])");
+        Matcher matcher = pattern.matcher(json);
+        return matcher.replaceAll("$1");
     }
 }
