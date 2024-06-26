@@ -416,7 +416,7 @@ class VertexAiGeminiStreamingChatModelIT {
             .modelName("gemini-1.5-flash-001")
             .logRequests(true)
             .logResponses(true)
-            .temperature(0f)
+            .temperature(0.0)
             .topK(1)
             .build();
 
