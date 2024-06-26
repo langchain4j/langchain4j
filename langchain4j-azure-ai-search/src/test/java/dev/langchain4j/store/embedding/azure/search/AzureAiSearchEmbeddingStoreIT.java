@@ -13,6 +13,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -30,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreIT {
+public class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchEmbeddingStoreIT.class);
 
