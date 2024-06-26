@@ -1,12 +1,18 @@
 package dev.langchain4j.agent.tool;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.google.gson.internal.LinkedTreeMap;
-import java.util.ArrayList;
-import java.util.List;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
     @Test
@@ -68,5 +74,80 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
             assertThat(((LinkedTreeMap<?, ?>) key).get("foo")).isEqualTo("bar");
             assertThat(((LinkedTreeMap<?, ?>) key).get("qux")).isEqualTo(12.0);
         });
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_remove_trailing_comma(String inputJson, String expectedOutputJson) {
+        String outputJson = ToolExecutionRequestUtil.removeTrailingComma(inputJson);
+        assertEquals(expectedOutputJson, outputJson);
+    }
+
+    private static Stream<Arguments> should_remove_trailing_comma() {
+        return Stream.of(
+                Arguments.of(
+                        "{\"name\":\"John\",\"age\":30}",
+                        "{\"name\":\"John\",\"age\":30}"
+                ),
+                Arguments.of(
+                        "{\"name\":\"John\",\"age\":30,}",
+                        "{\"name\":\"John\",\"age\":30}"
+                ),
+                Arguments.of(
+                        "[\"apple\",\"banana\"]",
+                        "[\"apple\",\"banana\"]"
+                ),
+                Arguments.of(
+                        "[\"apple\",\"banana\",]",
+                        "[\"apple\",\"banana\"]"
+                ),
+                Arguments.of(
+                        "{\"person\":{\"name\":\"John\",\"age\":30},\"city\":\"New York\"}",
+                        "{\"person\":{\"name\":\"John\",\"age\":30},\"city\":\"New York\"}"
+                ),
+                Arguments.of(
+                        "{\"person\":{\"name\":\"John\",\"age\":30,},\"city\":\"New York\",}",
+                        "{\"person\":{\"name\":\"John\",\"age\":30},\"city\":\"New York\"}"
+                ),
+                Arguments.of(
+                        "[{\"name\":\"John\",\"hobbies\":[\"reading\",\"swimming\"]}]",
+                        "[{\"name\":\"John\",\"hobbies\":[\"reading\",\"swimming\"]}]"
+                ),
+                Arguments.of(
+                        "[{\"name\":\"John\",\"hobbies\":[\"reading\",\"swimming\",],},]",
+                        "[{\"name\":\"John\",\"hobbies\":[\"reading\",\"swimming\"]}]"
+                ),
+                Arguments.of(
+                        "{,}",
+                        "{}"
+                ),
+                Arguments.of(
+                        "[,]",
+                        "[]"
+                ),
+                Arguments.of(
+                        "{\"name\":\"John\"}",
+                        "{\"name\":\"John\"}"
+                ),                Arguments.of(
+                        "{\"name\":\"John\",}",
+                        "{\"name\":\"John\"}"
+                ),
+                Arguments.of(
+                        "{\"a\":[{\"b\":{\"c\":[],},\"d\":{},},],\"e\":\"value\",}",
+                        "{\"a\":[{\"b\":{\"c\":[]},\"d\":{}}],\"e\":\"value\"}"
+                ),
+                Arguments.of(
+                        "{\"a\":\"value1\", /*comment*/ \"b\":\"value2\",}",
+                        "{\"a\":\"value1\", /*comment*/ \"b\":\"value2\"}"
+                ),
+                Arguments.of(
+                        "{ \"name\" : \"John\" , \"age\" : 30 , }",
+                        "{ \"name\" : \"John\" , \"age\" : 30  }"
+                ),
+                Arguments.of(
+                        "{\n  \"name\": \"John\",\n  \"age\": 30,\n}",
+                        "{\n  \"name\": \"John\",\n  \"age\": 30\n}"
+                )
+        );
     }
 }

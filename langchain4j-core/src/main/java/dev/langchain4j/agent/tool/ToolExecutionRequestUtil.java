@@ -11,6 +11,9 @@ import java.util.regex.Pattern;
  * Utility class for {@link ToolExecutionRequest}.
  */
 public class ToolExecutionRequestUtil {
+
+    private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
+
     private ToolExecutionRequestUtil() {}
 
     /**
@@ -52,12 +55,11 @@ public class ToolExecutionRequestUtil {
      * @param json the JSON string
      * @return the corrected JSON string
      */
-    private static String removeTrailingComma(String json) {
+    static String removeTrailingComma(String json) {
         if (json == null || json.isEmpty()) {
             return json;
         }
-        Pattern pattern = Pattern.compile(",(\\s*[}\\]])");
-        Matcher matcher = pattern.matcher(json);
+        Matcher matcher = TRAILING_COMMA_PATTERN.matcher(json);
         return matcher.replaceAll("$1");
     }
 }
