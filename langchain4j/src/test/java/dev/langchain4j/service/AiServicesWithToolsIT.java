@@ -1,11 +1,8 @@
 package dev.langchain4j.service;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -22,19 +19,14 @@ import dev.langchain4j.model.output.structured.Description;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -124,148 +116,6 @@ class AiServicesWithToolsIT {
             }
         }
     }
-
-    @Test
-    void should_use_tool_specified_programmatically_as_function() { // TODO name
-
-        // given
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        ToolSpecification toolSpecification = ToolSpecification.builder()
-                .name("get_booking_details")
-                .description("Returns booking details")
-                .addParameter("bookingNumber", type("string"))
-                .build();
-
-        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
-
-            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
-            Object bookingNumber = arguments.get("bookingNumber");
-
-            if ("123-456".equals(bookingNumber)) {
-                return "Booking found. Booking period: 1 July 2027 - 10 July 2027";
-            } else {
-                return "Booking not found";
-            }
-        };
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .tools(singletonMap(toolSpecification, toolExecutor))
-                .build();
-
-        // when
-        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
-
-        // then
-        assertThat(response.content().text()).contains("2027");
-    }
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    static class ApiTool {
-
-        private String action;
-        private String url;
-        private String method;
-        private String headers;
-        private Map<String, ?> parameters;
-        private String examplePayload;
-        private List<String> query;
-        private String description;
-    }
-
-    String getRequest(String url) {
-        // simulating GET request
-        assertThat(url).isEqualTo("https://url2.com/accounts");
-        return "Account ids: 77, 13, 45";
-    }
-
-    @Test
-    void should_use_tool_specified_programmatically_as_supplier() throws IOException {
-
-        OpenAiChatModel model = OpenAiChatModel.builder()
-                .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                .apiKey(System.getenv("OPENAI_API_KEY"))
-                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .temperature(0.0)
-                .logRequests(true)
-                .logResponses(true)
-                .build();
-
-        File jsonFile = new File(getClass().getClassLoader().getResource("tools.json").getFile());
-        List<ApiTool> apiTools = new ObjectMapper().readValue(jsonFile, new TypeReference<List<ApiTool>>() {
-        });
-
-        AtomicInteger atomicInteger = new AtomicInteger(1);
-
-        Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
-
-        for (ApiTool apiTool : apiTools) {
-            if (apiTool.method.equals("GET")) {
-
-                ToolSpecification toolSpecification = ToolSpecification.builder()
-                        .name("tool_" + atomicInteger.getAndIncrement())
-                        .description(apiTool.description)
-                        .build();
-
-                ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> getRequest(apiTool.url);
-
-                tools.put(toolSpecification, toolExecutor);
-            } else {
-
-                ToolSpecification.Builder toolSpecBuilder = ToolSpecification.builder()
-                        .name("tool_" + atomicInteger.getAndIncrement())
-                        .description(apiTool.description);
-
-                apiTool.parameters.forEach((parameterName, something) -> {
-                    Map<String, String> map = (Map<String, String>) something;
-                    toolSpecBuilder.addParameter(parameterName, type(map.get("type")), description(map.get("description")));
-                });
-
-                ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
-                    Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
-                    assertThat(arguments).containsExactly(entry("salesOrder", "301"));
-                    return "Order 301 details:\nCustomer name: John Doe\nTotal amount: 638 Euro";
-                };
-
-                tools.put(toolSpecBuilder.build(), toolExecutor);
-            }
-        }
-
-        // TODO generics
-        // TODO how to register them in Spring boot app? Return a list of those as a bean?
-
-        Assistant assistant = AiServices.builder(Assistant.class)
-                .chatLanguageModel(model)
-                .tools(tools)
-                .build();
-
-        assertThat(assistant.chat("Show me all CRM accounts").content().text()).contains("77", "13", "45");
-
-        assertThat(assistant.chat("What is the total amount for the order 301?").content().text())
-                .contains("638");
-    }
-
-    private static Map<String, Object> toMap(String arguments) {
-        try {
-            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {
-            });
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    // TODO where to put examples of queries?
-
 
     @ParameterizedTest
     @MethodSource("models")
@@ -798,5 +648,43 @@ class AiServicesWithToolsIT {
         Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_programmatically_configured_tools(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("get_booking_details")
+                .description("Returns booking details")
+                .addParameter("bookingNumber", type("string"))
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
+            return "Booking period: from 1 July 2027 to 10 July 2027";
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(singletonMap(toolSpecification, toolExecutor))
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+
+        // then
+        assertThat(response.content().text()).contains("2027");
+    }
+
+    private static Map<String, Object> toMap(String arguments) {
+        try {
+            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
