@@ -97,7 +97,7 @@ public class ToolSpecifications {
         return removeNulls(OBJECT, schema(type), description);
     }
 
-    static JsonSchemaProperty schema(Class<?> structured) {
+    static JsonSchemaProperty schema(Class<?> structured){
         return schema(structured, new HashSet<>());
     }
 
@@ -107,21 +107,21 @@ public class ToolSpecifications {
         }
 
         visited.add(structured);
-        Map<String, Object> properties = new HashMap<>();
+        Map<String,Object> properties = new HashMap<>();
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
-            if (name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+            if ( name.equals("this$0") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
                 // Skip inner class reference.
                 continue;
             }
             Iterable<JsonSchemaProperty> schemaProperties = toJsonSchemaProperties(field, visited);
-            Map<Object, Object> objectMap = new HashMap<>();
-            for (JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
+            Map<Object,Object> objectMap = new HashMap<>();
+            for(JsonSchemaProperty jsonSchemaProperty : schemaProperties) {
                 objectMap.put(jsonSchemaProperty.key(), jsonSchemaProperty.value());
             }
             properties.put(name, objectMap);
         }
-        return from("properties", properties);
+        return from( "properties", properties);
     }
 
     private static Iterable<JsonSchemaProperty> toJsonSchemaProperties(Field field, Set<Class<?>> visited) {
