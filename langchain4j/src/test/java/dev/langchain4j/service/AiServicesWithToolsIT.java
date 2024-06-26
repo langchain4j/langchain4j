@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -34,8 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -48,6 +47,7 @@ import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelv
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.Mockito.*;
@@ -125,27 +125,8 @@ class AiServicesWithToolsIT {
         }
     }
 
-
-    static class BookingRequest {
-
-        // @Description("Number of the booking in the 123-456 format") TODO
-        String bookingNumber;
-    }
-
-    static class BookingTool implements Function<BookingRequest, String> {
-
-        @Override
-        public String apply(BookingRequest bookingRequest) {
-            if (bookingRequest.bookingNumber.equals("123-456")) {
-                return "Booking found. Booking period: 1 July 2027 - 10 July 2027";
-            } else {
-                return "Booking not found";
-            }
-        }
-    }
-
     @Test
-    void should_use_tool_specified_programmatically_as_function() {
+    void should_use_tool_specified_programmatically_as_function() { // TODO name
 
         // given
         OpenAiChatModel model = OpenAiChatModel.builder()
@@ -157,16 +138,27 @@ class AiServicesWithToolsIT {
                 .logResponses(true)
                 .build();
 
-        ToolThingy<BookingRequest> toolThingy = ToolThingy.from(
-                "get_booking_details",
-                "Returns booking details for a pro",
-                BookingRequest.class,
-                new BookingTool()
-        );
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("get_booking_details")
+                .description("Returns booking details")
+                .addParameter("bookingNumber", type("string"))
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            Object bookingNumber = arguments.get("bookingNumber");
+
+            if ("123-456".equals(bookingNumber)) {
+                return "Booking found. Booking period: 1 July 2027 - 10 July 2027";
+            } else {
+                return "Booking not found";
+            }
+        };
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(model)
-                .tools(toolThingy)
+                .tools(singletonMap(toolSpecification, toolExecutor))
                 .build();
 
         // when
@@ -175,7 +167,6 @@ class AiServicesWithToolsIT {
         // then
         assertThat(response.content().text()).contains("2027");
     }
-
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -198,23 +189,6 @@ class AiServicesWithToolsIT {
         return "Account ids: 77, 13, 45";
     }
 
-    static class PostApiToolCallback implements ToolCallback<Map> {
-
-        private final String url;
-
-        PostApiToolCallback(String url) {
-            this.url = url;
-        }
-
-        @Override
-        public ToolResult execute(ToolRequest<Map> request) {
-            // simulating POST request
-            Map map = request.argument();
-            assertThat(map).containsExactly(entry("salesOrder", "301"));
-            return ToolResult.from("Order 301 details:\nCustomer name: John Doe\nTotal amount: 638 Euro");
-        }
-    }
-
     @Test
     void should_use_tool_specified_programmatically_as_supplier() throws IOException {
 
@@ -233,27 +207,41 @@ class AiServicesWithToolsIT {
 
         AtomicInteger atomicInteger = new AtomicInteger(1);
 
-        // TODO generics
-        List<ToolThingy<?>> tools = apiTools.stream()
-                .map(apiTool -> {
-                    if (apiTool.method.equals("GET")) {
-                        return ToolThingy.from(
-                                "tool_" + atomicInteger.getAndIncrement(),
-                                apiTool.description,
-                                () -> getRequest(apiTool.url)
-                        );
-                    } else {
-                        return ToolThingy.from(
-                                "tool_" + atomicInteger.getAndIncrement(),
-                                apiTool.description,
-                                convert(apiTool.parameters),
-                                Map.class,
-                                new PostApiToolCallback(apiTool.url)
-                        );
-                    }
-                })
-                .collect(Collectors.toList());
+        Map<ToolSpecification, ToolExecutor> tools = new HashMap<>();
 
+        for (ApiTool apiTool : apiTools) {
+            if (apiTool.method.equals("GET")) {
+
+                ToolSpecification toolSpecification = ToolSpecification.builder()
+                        .name("tool_" + atomicInteger.getAndIncrement())
+                        .description(apiTool.description)
+                        .build();
+
+                ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> getRequest(apiTool.url);
+
+                tools.put(toolSpecification, toolExecutor);
+            } else {
+
+                ToolSpecification.Builder toolSpecBuilder = ToolSpecification.builder()
+                        .name("tool_" + atomicInteger.getAndIncrement())
+                        .description(apiTool.description);
+
+                apiTool.parameters.forEach((parameterName, something) -> {
+                    Map<String, String> map = (Map<String, String>) something;
+                    toolSpecBuilder.addParameter(parameterName, type(map.get("type")), description(map.get("description")));
+                });
+
+                ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+                    Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+                    assertThat(arguments).containsExactly(entry("salesOrder", "301"));
+                    return "Order 301 details:\nCustomer name: John Doe\nTotal amount: 638 Euro";
+                };
+
+                tools.put(toolSpecBuilder.build(), toolExecutor);
+            }
+        }
+
+        // TODO generics
         // TODO how to register them in Spring boot app? Return a list of those as a bean?
 
         Assistant assistant = AiServices.builder(Assistant.class)
@@ -267,18 +255,13 @@ class AiServicesWithToolsIT {
                 .contains("638");
     }
 
-    private static Map<String, ToolParameterThingy> convert(Map<String, ?> parameters) {
-
-        Map<String, ToolParameterThingy> parameterThingyMap = new HashMap<>();
-        parameters.forEach((parameterName, something) -> {
-            Map<String, String> map = (Map<String, String>) something;
-            ToolParameterThingy toolParameterThingy = ToolParameterThingy.builder()
-                    .type(map.get("type"))
-                    .description(map.get("description"))
-                    .build();
-            parameterThingyMap.put(parameterName, toolParameterThingy);
-        });
-        return parameterThingyMap;
+    private static Map<String, Object> toMap(String arguments) {
+        try {
+            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     // TODO where to put examples of queries?

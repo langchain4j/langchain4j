@@ -348,42 +348,6 @@ public abstract class AiServices<T> {
      * @param tools
      * @return
      */
-    public AiServices<T> tools(ToolThingy<?>... tools) {
-        return tools((Collection<ToolThingy<?>>) asList(tools));
-    }
-
-    /**
-     * TODO
-     *
-     * @param tools
-     * @return
-     */
-    public AiServices<T> tools(Collection<ToolThingy<?>> tools) {
-
-        // TODO validate uniqueness of tool names
-
-        if (context.toolSpecifications == null) {
-            context.toolSpecifications = new ArrayList<>();
-        }
-        if (context.toolExecutors == null) {
-            context.toolExecutors = new HashMap<>();
-        }
-
-        for (ToolThingy toolThingy : tools) {
-            context.toolSpecifications.add(toolThingy.toToolSpecification());
-            DefaultFunctionToolExecutor<?> executor = new DefaultFunctionToolExecutor<>(toolThingy.argumentClass(), toolThingy.callback());
-            context.toolExecutors.put(toolThingy.name(), executor);
-        }
-
-        return this;
-    }
-
-    /**
-     * TODO
-     *
-     * @param tools
-     * @return
-     */
     public AiServices<T> tools(Map<ToolSpecification, ToolExecutor> tools) {
 
         if (context.toolSpecifications == null) {
