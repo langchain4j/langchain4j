@@ -594,6 +594,6 @@ class AzureOpenAiStreamingChatModelIT {
         Response<AiMessage> response = handler.get();
 
         assertThat(response.content().hasToolExecutionRequests()).isTrue();
-        assertThat(response.tokenUsage()).isNull();
+        assertThat(response.tokenUsage()).isNotNull();
     }
 }

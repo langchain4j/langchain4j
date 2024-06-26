@@ -289,20 +289,16 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .setSeed(seed)
                 .setResponseFormat(responseFormat);
 
-        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
+        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
             options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
-            }
+             inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         }
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
-            if (tokenizer != null) {
-                inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
-            }
+            inputTokenCount += tokenizer.estimateTokenCountInToolSpecifications(toolSpecifications);
         }
 
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(inputTokenCount);
