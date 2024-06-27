@@ -18,4 +18,10 @@ public @interface P {
      * @return the description of a parameter
      */
     String value();
+
+    /**
+     * Whether the parameter is optional
+     * @return true if the parameter is optional, false otherwise
+     */
+    boolean optional() default false;
 }
