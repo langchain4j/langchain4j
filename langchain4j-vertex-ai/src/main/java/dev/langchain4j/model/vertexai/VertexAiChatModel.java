@@ -69,12 +69,20 @@ public class VertexAiChatModel implements ChatLanguageModel {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
+        if (publisher == null) {
+            this.endpointName = EndpointName.ofProjectLocationEndpointName(
+                ensureNotBlank(project, "project"),
+                ensureNotBlank(location, "location"),
+                ensureNotBlank(modelName, "modelName")
+            );
+        } else {
+            this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
                 ensureNotBlank(project, "project"),
                 ensureNotBlank(location, "location"),
                 ensureNotBlank(publisher, "publisher"),
                 ensureNotBlank(modelName, "modelName")
-        );
+            );
+        }
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
         this.maxRetries = maxRetries == null ? 3 : maxRetries;
     }
@@ -124,7 +132,8 @@ public class VertexAiChatModel implements ChatLanguageModel {
     }
 
     static int extractTokenCount(PredictResponse predictResponse, String fieldName) {
-        return (int) predictResponse.getMetadata()
+        if (predictResponse.hasMetadata()) {
+            return (int) predictResponse.getMetadata()
                 .getStructValue()
                 .getFieldsMap()
                 .get("tokenMetadata")
@@ -135,6 +144,9 @@ public class VertexAiChatModel implements ChatLanguageModel {
                 .getFieldsMap()
                 .get("totalTokens")
                 .getNumberValue();
+        } else {
+            return 0;
+        }
     }
 
     private static List<VertexAiChatInstance.Message> toVertexMessages(List<ChatMessage> messages) {
