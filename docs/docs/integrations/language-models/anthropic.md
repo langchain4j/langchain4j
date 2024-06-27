@@ -81,7 +81,7 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 
 ## Quarkus
 
-TODO
+See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
 
 ## Spring Boot
 
