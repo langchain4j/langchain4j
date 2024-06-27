@@ -52,10 +52,10 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     public VertexAiGeminiStreamingChatModel(String project,
                                             String location,
                                             String modelName,
-                                            Double temperature,
+                                            Float temperature,
                                             Integer maxOutputTokens,
                                             Integer topK,
-                                            Double topP,
+                                            Float topP,
                                             String responseMimeType,
                                             Map<HarmCategory, SafetyThreshold> safetySettings,
                                             Boolean useGoogleSearch,
@@ -64,7 +64,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
-            generationConfigBuilder.setTemperature(temperature.floatValue());
+            generationConfigBuilder.setTemperature(temperature);
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
@@ -73,7 +73,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             generationConfigBuilder.setTopK(topK);
         }
         if (topP != null) {
-            generationConfigBuilder.setTopP(topP.floatValue());
+            generationConfigBuilder.setTopP(topP);
         }
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);

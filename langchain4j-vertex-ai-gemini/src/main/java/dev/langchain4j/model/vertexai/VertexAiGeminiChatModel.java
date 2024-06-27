@@ -69,10 +69,10 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
     public VertexAiGeminiChatModel(String project,
                                    String location,
                                    String modelName,
-                                   Double temperature,
+                                   Float temperature,
                                    Integer maxOutputTokens,
                                    Integer topK,
-                                   Double topP,
+                                   Float topP,
                                    Integer maxRetries,
                                    String responseMimeType,
                                    Map<HarmCategory, SafetyThreshold> safetySettings,
@@ -82,7 +82,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
                                    Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
         if (temperature != null) {
-            generationConfigBuilder.setTemperature(temperature.floatValue());
+            generationConfigBuilder.setTemperature(temperature);
         }
         if (maxOutputTokens != null) {
             generationConfigBuilder.setMaxOutputTokens(maxOutputTokens);
@@ -91,7 +91,7 @@ public class VertexAiGeminiChatModel implements ChatLanguageModel, Closeable {
             generationConfigBuilder.setTopK(topK);
         }
         if (topP != null) {
-            generationConfigBuilder.setTopP(topP.floatValue());
+            generationConfigBuilder.setTopP(topP);
         }
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
