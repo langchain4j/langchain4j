@@ -65,20 +65,12 @@ public class VertexAiLanguageModel implements LanguageModel {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        if (publisher == null) {
-            this.endpointName = EndpointName.ofProjectLocationEndpointName(
-                ensureNotBlank(project, "project"),
-                ensureNotBlank(location, "location"),
-                ensureNotBlank(modelName, "modelName")
-            );
-        } else {
-            this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
+        this.endpointName = EndpointName.ofProjectLocationPublisherModelName(
                 ensureNotBlank(project, "project"),
                 ensureNotBlank(location, "location"),
                 ensureNotBlank(publisher, "publisher"),
                 ensureNotBlank(modelName, "modelName")
-            );
-        }
+        );
         this.vertexAiParameters = new VertexAiParameters(temperature, maxOutputTokens, topK, topP);
         this.maxRetries = maxRetries == null ? 3 : maxRetries;
     }
@@ -111,21 +103,11 @@ public class VertexAiLanguageModel implements LanguageModel {
     }
 
     private static String extractContent(PredictResponse predictResponse) {
-        System.out.println("predictResponse = " + predictResponse);
-
-        Value firstPrediction = predictResponse.getPredictions(0);
-        if (firstPrediction.hasStructValue()) {
-            return firstPrediction
+        return predictResponse.getPredictions(0)
                 .getStructValue()
                 .getFieldsMap()
                 .get("content")
                 .getStringValue();
-        } else if (firstPrediction.hasStringValue()) {
-            return firstPrediction
-                .getStringValue();
-        } else {
-            return firstPrediction.toString();
-        }
     }
 
     public static Builder builder() {
