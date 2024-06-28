@@ -98,7 +98,7 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @SuppressWarnings("unused")
-    public static class InvalidTools {
+    public static class InvalidToolsWithDuplicateMethodNames {
 
         @Tool
         public int duplicateMethod(String typeString) {
@@ -107,6 +107,20 @@ class ToolSpecificationsTest implements WithAssertions {
 
         @Tool
         public int duplicateMethod(int typeInt) {
+            return 42;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class InvalidToolsWithDuplicateNames {
+
+        @Tool(name = "duplicate_name")
+        public int oneMethod(String typeString) {
+            return 42;
+        }
+
+        @Tool(name = "duplicate_name")
+        public int aDifferentMethod(int typeInt) {
             return 42;
         }
     }
@@ -190,10 +204,19 @@ class ToolSpecificationsTest implements WithAssertions {
     }
 
     @Test
-    public void test_toolSpecificationsFrom_withDuplicates() {
+    public void test_toolSpecificationsFrom_with_duplicate_method_names() {
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidTools()))
-                .withMessage("Methods in Tools must be unique. The method 'duplicateMethod' appears several times")
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateMethodNames()))
+                .withMessage("Tool names must be unique. The tool 'duplicateMethod' appears several times")
+                .withNoCause();
+
+    }
+
+    @Test
+    public void test_toolSpecificationsFrom_with_duplicate_names() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidToolsWithDuplicateNames()))
+                .withMessage("Tool names must be unique. The tool 'duplicate_name' appears several times")
                 .withNoCause();
 
     }
