@@ -79,7 +79,7 @@ public class ToolSpecifications {
         Set<String> names = new HashSet<>();
         for (ToolSpecification toolSpecification : toolSpecifications) {
             if (!names.add(toolSpecification.name())) {
-                throw new IllegalArgumentException(format("Methods in Tools must be unique. The method '%s' appears several times", toolSpecification.name()));
+                throw new IllegalArgumentException(format("Tool names must be unique. The tool '%s' appears several times", toolSpecification.name()));
             }
         }
     }
