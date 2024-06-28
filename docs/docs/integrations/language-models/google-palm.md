@@ -17,14 +17,14 @@ Add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai</artifactId>
-  <version>{your-version}</version> <!-- Specify langchain4j version here -->
+  <version>0.31.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai:{your-version}'
+implementation 'dev.langchain4j:langchain4j-vertex-ai:0.31.0'
 ```
 
 ### Try out an example code:
