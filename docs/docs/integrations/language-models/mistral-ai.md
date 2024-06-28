@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>{your-version}</version> <!-- Specify your version here -->
+    <version>0.31.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>{your-version}</version>
+    <version>0.31.0</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:{your-version}'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:{your-version}'
+implementation 'dev.langchain4j:langchain4j:0.31.0'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:0.31.0'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code

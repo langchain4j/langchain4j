@@ -19,6 +19,9 @@ In order to use Amazon Bedrock models, you need to configure AWS credentials.
 One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
 More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html).
 
+## AI21 Models
+- `BedrockAI21LabsChatModel`
+
 ## Anthropic Models
 - `BedrockAnthropicMessageChatModel`: supports new Messages API
 - `BedrockAnthropicCompletionChatModel`: supports old Text Completions API
