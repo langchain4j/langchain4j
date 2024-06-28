@@ -187,12 +187,24 @@ class RedisChatMemoryStoreIT {
     }
 
     @Test
-    void constructor_user_password() {
+    void constructor_password_empty() {
         assertThatThrownBy(() -> RedisChatMemoryStore.builder()
                 .port(redis.getFirstMappedPort())
                 .host(redis.getHost())
                 .user("redisUser")
                 .password("   ")
+                .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("password cannot be null or blank");
+    }
+
+    @Test
+    void constructor_password_null() {
+        assertThatThrownBy(() -> RedisChatMemoryStore.builder()
+                .port(redis.getFirstMappedPort())
+                .host(redis.getHost())
+                .user("redisUser")
+                .password(null)
                 .build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("password cannot be null or blank");
