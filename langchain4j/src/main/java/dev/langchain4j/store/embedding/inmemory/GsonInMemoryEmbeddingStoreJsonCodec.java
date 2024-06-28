@@ -27,4 +27,5 @@ public class GsonInMemoryEmbeddingStoreJsonCodec implements InMemoryEmbeddingSto
     public String toJson(InMemoryEmbeddingStore<?> store) {
         return GSON.toJson(store);
     }
+
 }

@@ -204,6 +204,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .content(parsedResponse)
                                     .tokenUsage(tokenUsageAccumulator)
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(response.finishReason())
                                     .build();
                         } else {
                             return parsedResponse;
