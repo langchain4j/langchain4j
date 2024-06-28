@@ -216,7 +216,7 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -320,7 +320,7 @@ public class AzureOpenAiChatModelIT {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelNameString)
                 .maxTokens(1)
                 .logRequestsAndResponses(true)
@@ -373,7 +373,7 @@ public class AzureOpenAiChatModelIT {
 
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .tokenCredential(new DefaultAzureCredentialBuilder().build())
             .deploymentName(deploymentName)
             .topP(topP)
             .temperature(temperature)

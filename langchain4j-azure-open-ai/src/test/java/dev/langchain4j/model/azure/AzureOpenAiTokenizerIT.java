@@ -6,6 +6,8 @@ import static dev.langchain4j.agent.tool.JsonSchemaProperty.STRING;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.enums;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
+
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -75,7 +77,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .maxTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequestsAndResponses(true)
@@ -139,7 +141,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .maxTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequestsAndResponses(true)
@@ -355,7 +357,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .maxTokens(1) // we don't need outputs, let's not waste tokens
                 .logRequestsAndResponses(true)
@@ -781,7 +783,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .maxTokens(2) // we don't need outputs, let's not waste tokens
                 .logRequestsAndResponses(true)
@@ -1061,7 +1063,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .logRequestsAndResponses(true)
                 .build();
@@ -1111,7 +1113,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .logRequestsAndResponses(true)
                 .build();
@@ -1334,7 +1336,7 @@ class AzureOpenAiTokenizerIT {
         // given
         AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelName.toString())
                 .logRequestsAndResponses(true)
                 .build();

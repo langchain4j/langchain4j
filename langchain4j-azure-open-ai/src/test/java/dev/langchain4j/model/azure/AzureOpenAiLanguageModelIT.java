@@ -68,7 +68,7 @@ class AzureOpenAiLanguageModelIT {
 
         LanguageModel model = AzureOpenAiLanguageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelNameString)
                 .logRequestsAndResponses(true)
                 .build();
