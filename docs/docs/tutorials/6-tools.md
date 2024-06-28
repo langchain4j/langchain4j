@@ -282,7 +282,10 @@ This way, the LLM has more information to decide whether or not to call the give
 
 ### `@P`
 Method parameters can optionally be annotated with `@P`.
-`@P` has a single mandatory field (`value`) for providing a description of the parameter.
+
+The `@P` annotation has 2 fields
+- `value`: description of the parameter. Mandatory field.
+- `required`: whether the parameter is required, default is `true`. Optional field.
 
 ### `@ToolMemoryId`
 If your AI Service method has a parameter annotated with `@MemoryId`,
