@@ -80,7 +80,7 @@ class ToolSpecificationsTest implements WithAssertions {
                 Collection p27,
                 E p28,
                 Person p29,
-                @P(value = "optional", optional = true) int p30,
+                @P(value = "optional", required = false) int p30,
                 @P(value = "required") int p31) {
             return 42;
         }

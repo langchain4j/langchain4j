@@ -65,14 +65,14 @@ public class ToolSpecifications {
                 continue;
             }
 
-            boolean optional = Optional.ofNullable(parameter.getAnnotation(P.class))
-                    .map(P::optional)
-                    .orElse(false);
+            boolean required = Optional.ofNullable(parameter.getAnnotation(P.class))
+                    .map(P::required)
+                    .orElse(true);
 
-            if (optional) {
-                builder.addOptionalParameter(parameter.getName(), toJsonSchemaProperties(parameter));
-            } else {
+            if (required) {
                 builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
+            } else {
+                builder.addOptionalParameter(parameter.getName(), toJsonSchemaProperties(parameter));
             }
         }
 

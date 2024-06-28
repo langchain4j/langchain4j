@@ -20,8 +20,9 @@ public @interface P {
     String value();
 
     /**
-     * Whether the parameter is optional
-     * @return true if the parameter is optional, false otherwise
+     * Whether the parameter is required
+     * @return true if the parameter is required, false otherwise
+     * Default is true.
      */
-    boolean optional() default false;
+    boolean required() default true;
 }
