@@ -1,8 +1,8 @@
 package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-
 import dev.langchain4j.model.output.structured.Description;
+import static java.util.Arrays.asList;
 import lombok.Data;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -11,10 +11,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.*;
-
-import static dev.langchain4j.agent.tool.JsonSchemaProperty.items;
-import static java.util.Arrays.asList;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 class ToolSpecificationsTest implements WithAssertions {
 
@@ -95,6 +97,20 @@ class ToolSpecificationsTest implements WithAssertions {
         }
     }
 
+    @SuppressWarnings("unused")
+    public static class InvalidTools {
+
+        @Tool
+        public int duplicateMethod(String typeString) {
+            return 42;
+        }
+
+        @Tool
+        public int duplicateMethod(int typeInt) {
+            return 42;
+        }
+    }
+
     private static Method getF() throws NoSuchMethodException {
         return Wrapper.class.getMethod("f",
                 String.class,//0
@@ -171,6 +187,15 @@ class ToolSpecificationsTest implements WithAssertions {
 
         assertThat(specs).extracting(ToolSpecification::name)
                 .containsExactlyInAnyOrder("f", "func_name");
+    }
+
+    @Test
+    public void test_toolSpecificationsFrom_withDuplicates() {
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> ToolSpecifications.toolSpecificationsFrom(new InvalidTools()))
+                .withMessage("Methods in Tools must be unique. The method 'duplicateMethod' appears several times")
+                .withNoCause();
+
     }
 
     @Test
