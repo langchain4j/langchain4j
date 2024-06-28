@@ -1,7 +1,9 @@
 # LangChain for Java: Supercharge your Java application with the power of LLMs
 
-[![](https://img.shields.io/twitter/follow/langchain4j)](https://twitter.com/intent/follow?screen_name=langchain4j)
-[![](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?compact=true&style=flat)](https://discord.gg/JzTFvyjG6R)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/langchain4j/langchain4j/main.yaml?branch=main&style=for-the-badge&label=GITHUB%20ACTIONS&logo=github)](https://github.com/langchain4j/langchain4j/actions/workflows/main.yaml)
+[![Discord](https://dcbadge.vercel.app/api/server/JzTFvyjG6R?style=for-the-badge)](https://discord.gg/JzTFvyjG6R)
+[![X](https://img.shields.io/badge/@langchain4j-follow-blue?logo=x&style=for-the-badge)](https://x.com/langchain4j)
+[![Maven Version](https://img.shields.io/maven-central/v/dev.langchain4j/langchain4j?logo=apachemaven&style=for-the-badge)](https://search.maven.org/#search|gav|1|g:"dev.langchain4j"%20AND%20a:"langchain4j")
 
 
 ## Introduction

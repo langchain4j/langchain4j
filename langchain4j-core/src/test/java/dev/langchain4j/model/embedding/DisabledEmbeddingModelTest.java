@@ -18,5 +18,6 @@ class DisabledEmbeddingModelTest extends DisabledModelTest<EmbeddingModel> {
         performAssertion(() -> this.model.embed("Hello"));
         performAssertion(() -> this.model.embed((TextSegment) null));
         performAssertion(() -> this.model.embedAll(Collections.emptyList()));
+        performAssertion(() -> this.model.dimension());
     }
 }

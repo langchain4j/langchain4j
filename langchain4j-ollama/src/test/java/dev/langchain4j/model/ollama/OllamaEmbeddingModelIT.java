@@ -31,4 +31,16 @@ class OllamaEmbeddingModelIT extends AbstractOllamaEmbeddingModelInfrastructure 
         assertThat(response.tokenUsage()).isNull();
         assertThat(response.finishReason()).isNull();
     }
+
+    @Test
+    void should_return_correct_dimension() {
+        // given
+        String text = "hello world";
+
+        // when
+        Response<Embedding> response = model.embed(text);
+
+        // then
+        assertThat(model.dimension()).isEqualTo(response.content().dimension());
+    }
 }

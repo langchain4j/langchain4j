@@ -4,9 +4,25 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - 'LICENSE'
+      - '.github/*.md'
+      - '.github/*.yml'
+      - '.github/*.conf'
+      - '.github/ISSUE_TEMPLATE/*.md'
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - '.gitignore'
+      - '*.md'
+      - 'LICENSE'
+      - '.github/*.md'
+      - '.github/*.yml'
+      - '.github/*.conf'
+      - '.github/ISSUE_TEMPLATE/*.md'
 
 jobs:
   java_build:
