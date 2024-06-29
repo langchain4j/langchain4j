@@ -16,6 +16,7 @@ import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
 import dev.langchain4j.model.zhipu.shared.ErrorResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
+import lombok.Cleanup;
 import okhttp3.ResponseBody;
 
 import java.io.IOException;
@@ -30,13 +31,16 @@ import static dev.langchain4j.model.output.FinishReason.*;
 
 class DefaultZhipuAiHelper {
 
-    public static List<Embedding> toEmbed(List<EmbeddingResponse> response) {
+    static final String FINISH_REASON_SENSITIVE = "sensitive";
+    static final String FINISH_REASON_OTHER = "other";
+
+    static List<Embedding> toEmbed(List<EmbeddingResponse> response) {
         return response.stream()
                 .map(zhipuAiEmbedding -> Embedding.from(zhipuAiEmbedding.getEmbedding()))
                 .collect(Collectors.toList());
     }
 
-    public static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
+    static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(toolSpecification -> Tool.from(toFunction(toolSpecification)))
                 .collect(Collectors.toList());
@@ -61,7 +65,7 @@ class DefaultZhipuAiHelper {
     }
 
 
-    public static List<Message> toZhipuAiMessages(List<ChatMessage> messages) {
+    static List<Message> toZhipuAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(DefaultZhipuAiHelper::toZhipuAiMessage)
                 .collect(Collectors.toList());
@@ -120,7 +124,7 @@ class DefaultZhipuAiHelper {
         throw illegalArgument("Unknown message type: " + message.type());
     }
 
-    public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
+    static AiMessage aiMessageFrom(ChatCompletionResponse response) {
         AssistantMessage message = response.getChoices().get(0).getMessage();
         if (isNullOrEmpty(message.getToolCalls())) {
             return AiMessage.from(message.getContent());
@@ -129,7 +133,7 @@ class DefaultZhipuAiHelper {
         return AiMessage.from(specificationsFrom(message.getToolCalls()));
     }
 
-    public static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
+    static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
         List<ToolExecutionRequest> specifications = new ArrayList<>(toolCalls.size());
         for (ToolCall toolCall : toolCalls) {
             specifications.add(
@@ -143,7 +147,7 @@ class DefaultZhipuAiHelper {
         return specifications;
     }
 
-    public static Usage getEmbeddingUsage(List<EmbeddingResponse> responses) {
+    static Usage getEmbeddingUsage(List<EmbeddingResponse> responses) {
         Usage tokenUsage = Usage.builder()
                 .completionTokens(0)
                 .promptTokens(0)
@@ -157,7 +161,7 @@ class DefaultZhipuAiHelper {
     }
 
 
-    public static TokenUsage tokenUsageFrom(Usage zhipuUsage) {
+    static TokenUsage tokenUsageFrom(Usage zhipuUsage) {
         if (zhipuUsage == null) {
             return null;
         }
@@ -168,37 +172,63 @@ class DefaultZhipuAiHelper {
         );
     }
 
-    public static ChatCompletionResponse toChatErrorResponse(retrofit2.Response<?> retrofitResponse) throws IOException {
-        try (ResponseBody errorBody = retrofitResponse.errorBody()) {
-            return ChatCompletionResponse.builder()
-                    .choices(Collections.singletonList(toChatErrorChoice(errorBody)))
-                    .usage(Usage.builder().build())
-                    .build();
-        }
+    static ChatCompletionResponse toChatErrorResponse(Object object) {
+        return ChatCompletionResponse.builder()
+                .choices(Collections.singletonList(toChatErrorChoice(object)))
+                .usage(Usage.builder().build())
+                .build();
     }
 
     /**
      * error code see <a href="https://open.bigmodel.cn/dev/api#error-code-v3">error codes document</a>
      */
-    private static ChatCompletionChoice toChatErrorChoice(ResponseBody errorBody) throws IOException {
+    private static ChatCompletionChoice toChatErrorChoice(Object object) {
+        if (object instanceof Throwable) {
+            Throwable throwable = (Throwable) object;
+            return ChatCompletionChoice.builder()
+                    .message(AssistantMessage.builder().content(throwable.getMessage()).build())
+                    .finishReason(FINISH_REASON_OTHER)
+                    .build();
+        }
+        @Cleanup ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
+
         if (errorBody == null) {
             return ChatCompletionChoice.builder()
-                    .finishReason("other")
+                    .finishReason(FINISH_REASON_OTHER)
                     .build();
         }
-        ErrorResponse errorResponse = Json.fromJson(errorBody.string(), ErrorResponse.class);
-        // 1301: 系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合
-        if ("1301".equals(errorResponse.getError().get("code"))) {
+        ErrorResponse errorResponse;
+        try {
+            errorResponse = Json.fromJson(errorBody.string(), ErrorResponse.class);
+            String code = errorResponse.getError().get("code");
             return ChatCompletionChoice.builder()
                     .message(AssistantMessage.builder().content(errorResponse.getError().get("message")).build())
-                    .finishReason("sensitive")
+                    .finishReason(getFinishReason(code))
+                    .build();
+        } catch (IOException e) {
+            return ChatCompletionChoice.builder()
+                    .message(AssistantMessage.builder().content(e.getMessage()).build())
+                    .finishReason(FINISH_REASON_OTHER)
                     .build();
         }
-        return ChatCompletionChoice.builder()
-                .message(AssistantMessage.builder().content(errorResponse.getError().get("message")).build())
-                .finishReason("other")
-                .build();
     }
+
+    static String getFinishReason(Object o) {
+        if (o instanceof String) {
+            // 1301: 系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合
+            if ("1301".equals(o)) {
+                return FINISH_REASON_SENSITIVE;
+            }
+        }
+        if (o instanceof ZhipuAiException) {
+            ZhipuAiException exception = (ZhipuAiException) o;
+            if ("1301".equals(exception.getCode())) {
+                return FINISH_REASON_SENSITIVE;
+            }
+        }
+        return FINISH_REASON_OTHER;
+    }
+
 
     static ChatModelRequest createModelListenerRequest(ChatCompletionRequest options,
                                                        List<ChatMessage> messages,
@@ -229,7 +259,11 @@ class DefaultZhipuAiHelper {
                 .build();
     }
 
-    public static FinishReason finishReasonFrom(String finishReason) {
+    static boolean isSuccessFinishReason(FinishReason finishReason) {
+        return !CONTENT_FILTER.equals(finishReason) && !OTHER.equals(finishReason);
+    }
+
+    static FinishReason finishReasonFrom(String finishReason) {
         if (finishReason == null) {
             return null;
         }

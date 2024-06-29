@@ -24,7 +24,6 @@ import static java.util.stream.Collectors.toList;
  */
 public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
-    private final String baseUrl;
     private final Integer maxRetries;
     private final String model;
     private final ZhipuAiClient client;
@@ -38,11 +37,10 @@ public class ZhipuAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             Boolean logRequests,
             Boolean logResponses
     ) {
-        this.baseUrl = getOrDefault(baseUrl, "https://open.bigmodel.cn/");
         this.model = getOrDefault(model, EMBEDDING_2.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.client = ZhipuAiClient.builder()
-                .baseUrl(this.baseUrl)
+                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
                 .apiKey(apiKey)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
