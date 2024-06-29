@@ -36,5 +36,6 @@ public class ZhipuAiException extends RuntimeException {
 
     public ZhipuAiException(String message) {
         super(message);
+        this.message = message;
     }
 }
