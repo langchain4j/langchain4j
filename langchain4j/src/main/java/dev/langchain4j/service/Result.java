@@ -28,7 +28,7 @@ public class Result<T> {
     @Builder
     public Result(T content, TokenUsage tokenUsage, List<Content> sources, FinishReason finishReason) {
         this.content = ensureNotNull(content, "content");
-        this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
+        this.tokenUsage = tokenUsage;
         this.sources = copyIfNotNull(sources);
         this.finishReason = finishReason;
     }

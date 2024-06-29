@@ -10,6 +10,7 @@ sidebar_position: 0
 | [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                       |                     |
 | [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                |                       |                     |
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                       |                     |
+| [Azure CosmosDB NoSQL](/integrations/embedding-stores/azure-cosmos-nosql)             | ✅                |                       |                     |
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                       |                     |
 | [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                |                       |                     |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                     | ✅                   |
