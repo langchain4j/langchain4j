@@ -64,7 +64,16 @@ public class ToolSpecifications {
             if (parameter.isAnnotationPresent(ToolMemoryId.class)) {
                 continue;
             }
-            builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
+
+            boolean required = Optional.ofNullable(parameter.getAnnotation(P.class))
+                    .map(P::required)
+                    .orElse(true);
+
+            if (required) {
+                builder.addParameter(parameter.getName(), toJsonSchemaProperties(parameter));
+            } else {
+                builder.addOptionalParameter(parameter.getName(), toJsonSchemaProperties(parameter));
+            }
         }
 
         return builder.build();
