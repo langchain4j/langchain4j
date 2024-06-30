@@ -1,21 +1,20 @@
 package dev.langchain4j.model.jlama;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Optional;
-
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.safetensors.DType;
 import com.github.tjake.jlama.safetensors.SafeTensorSupport;
 import lombok.Getter;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Optional;
+
 /**
  * A Jlama model. Very basic information. Allows the model to be loaded with different options.
  */
-class JlamaModel
-{
+class JlamaModel {
     private final JlamaModelRegistry registry;
 
     @Getter
@@ -90,15 +89,15 @@ class JlamaModel
         }
 
         public AbstractModel load() {
-                return ModelSupport.loadModel(
-                        inferenceType,
-                        new File(registry.getModelCachePath().toFile(), modelName),
-                        workingDirectory == null ? null : workingDirectory.toFile(),
-                        DType.F32,
-                        DType.I8,
-                        Optional.ofNullable(quantizationType),
-                        Optional.ofNullable(threadCount),
-                        Optional.empty());
+            return ModelSupport.loadModel(
+                    inferenceType,
+                    new File(registry.getModelCachePath().toFile(), modelName),
+                    workingDirectory == null ? null : workingDirectory.toFile(),
+                    DType.F32,
+                    DType.I8,
+                    Optional.ofNullable(quantizationType),
+                    Optional.ofNullable(threadCount),
+                    Optional.empty());
         }
     }
 }

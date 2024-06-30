@@ -1,24 +1,21 @@
 package dev.langchain4j.model.jlama;
 
-import java.io.File;
-import java.util.concurrent.CompletableFuture;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.util.Files;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.io.File;
+import java.util.concurrent.CompletableFuture;
 
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaStreamingChatLanguageModelIT
-{
+public class JlamaStreamingChatLanguageModelIT {
 
     static File tmpDir;
     static StreamingChatLanguageModel model;

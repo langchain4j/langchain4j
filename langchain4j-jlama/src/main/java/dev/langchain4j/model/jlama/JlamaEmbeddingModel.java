@@ -1,10 +1,5 @@
 package dev.langchain4j.model.jlama;
 
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.ModelSupport;
 import com.github.tjake.jlama.model.bert.BertModel;
@@ -16,10 +11,14 @@ import dev.langchain4j.model.jlama.spi.JlamaEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel
-{
+public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
     private final BertModel model;
 
     @Builder
@@ -49,6 +48,13 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel
         this.dimension = model.getConfig().embeddingLength;
     }
 
+    public static JlamaEmbeddingModelBuilder builder() {
+        for (JlamaEmbeddingModelBuilderFactory factory : loadFactories(JlamaEmbeddingModelBuilderFactory.class)) {
+            return factory.get();
+        }
+        return new JlamaEmbeddingModelBuilder();
+    }
+
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
         List<Embedding> embeddings = new ArrayList<>();
@@ -58,13 +64,6 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel
         });
 
         return Response.from(embeddings);
-    }
-
-    public static JlamaEmbeddingModelBuilder builder() {
-        for (JlamaEmbeddingModelBuilderFactory factory : loadFactories(JlamaEmbeddingModelBuilderFactory.class)) {
-            return factory.get();
-        }
-        return new JlamaEmbeddingModelBuilder();
     }
 
     public static class JlamaEmbeddingModelBuilder {

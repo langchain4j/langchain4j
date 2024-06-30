@@ -1,30 +1,36 @@
 package dev.langchain4j.model.jlama;
 
+import com.github.tjake.jlama.model.ModelSupport;
+import com.github.tjake.jlama.safetensors.SafeTensorSupport;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOError;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.github.tjake.jlama.model.ModelSupport;
-import com.github.tjake.jlama.safetensors.SafeTensorSupport;
+import java.util.*;
 
 /**
  * A registry for managing Jlama models on local disk.
  */
-class JlamaModelRegistry
-{
+class JlamaModelRegistry {
     private static final Logger logger = LoggerFactory.getLogger(JlamaModelRegistry.class);
 
-    private static final String DEFAULT_MODEL_CACHE_PATH = System.getProperty("user.home", "") + File.pathSeparator + ".jlama" + File.pathSeparator +  "models";
+    private static final String DEFAULT_MODEL_CACHE_PATH = System.getProperty("user.home", "") + File.pathSeparator + ".jlama" + File.pathSeparator + "models";
+    private final Path modelCachePath;
+
+    private JlamaModelRegistry(Path modelCachePath) {
+        this.modelCachePath = modelCachePath;
+        if (!Files.exists(modelCachePath)) {
+            try {
+                Files.createDirectories(modelCachePath);
+            } catch (IOException e) {
+                throw new IOError(e);
+            }
+        }
+    }
 
     public static List<ModelSupport.ModelType> availableModelTypes() {
         return Arrays.stream(ModelSupport.ModelType.values()).toList();
@@ -32,22 +38,6 @@ class JlamaModelRegistry
 
     public static JlamaModelRegistry getOrCreate(Path modelCachePath) {
         return new JlamaModelRegistry(modelCachePath == null ? Path.of(DEFAULT_MODEL_CACHE_PATH) : modelCachePath);
-    }
-
-    private final Path modelCachePath;
-
-    private JlamaModelRegistry(Path modelCachePath) {
-        this.modelCachePath = modelCachePath;
-        if (!Files.exists(modelCachePath)) {
-            try
-            {
-                Files.createDirectories(modelCachePath);
-            }
-            catch (IOException e)
-            {
-                throw new IOError(e);
-            }
-        }
     }
 
     public Path getModelCachePath() {
@@ -59,24 +49,17 @@ class JlamaModelRegistry
      *
      * @return A list of JlamaModel objects.
      */
-    public List<JlamaModel> listLocalModels()
-    {
+    public List<JlamaModel> listLocalModels() {
         List<JlamaModel> localModels = new ArrayList<>();
 
-        for (File file : Objects.requireNonNull(modelCachePath.toFile().listFiles()))
-        {
-            if (file.isDirectory())
-            {
+        for (File file : Objects.requireNonNull(modelCachePath.toFile().listFiles())) {
+            if (file.isDirectory()) {
                 File config = new File(file, "config.json");
-                if (config.exists())
-                {
-                    try
-                    {
+                if (config.exists()) {
+                    try {
                         ModelSupport.ModelType type = SafeTensorSupport.detectModel(config);
                         localModels.add(new JlamaModel(this, type, file.getName(), Optional.empty(), file.getName(), false));
-                    }
-                    catch (IOException e)
-                    {
+                    } catch (IOException e) {
                         logger.warn("Error reading model config: " + config.getAbsolutePath(), e);
                     }
                 }
@@ -86,13 +69,11 @@ class JlamaModelRegistry
         return localModels;
     }
 
-    public JlamaModel downloadModel(String modelName) throws IOException
-    {
+    public JlamaModel downloadModel(String modelName) throws IOException {
         return downloadModel(modelName, Optional.empty());
     }
 
-    public JlamaModel downloadModel(String modelName, Optional<String> authToken) throws IOException
-    {
+    public JlamaModel downloadModel(String modelName, Optional<String> authToken) throws IOException {
         String[] parts = modelName.split("/");
         if (parts.length == 0 || parts.length > 2) {
             throw new IllegalArgumentException("Model must be in the form owner/name");

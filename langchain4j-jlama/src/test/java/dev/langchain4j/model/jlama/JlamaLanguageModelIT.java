@@ -1,16 +1,14 @@
 package dev.langchain4j.model.jlama;
 
-import java.io.File;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.util.Files;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.io.File;
 
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class JlamaLanguageModelIT {

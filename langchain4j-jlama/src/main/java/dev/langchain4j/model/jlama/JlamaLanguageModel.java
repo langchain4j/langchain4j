@@ -1,9 +1,5 @@
 package dev.langchain4j.model.jlama;
 
-import java.nio.file.Path;
-import java.util.Optional;
-import java.util.UUID;
-
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import dev.langchain4j.internal.RetryUtils;
@@ -14,10 +10,13 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.UUID;
+
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaLanguageModel implements LanguageModel
-{
+public class JlamaLanguageModel implements LanguageModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
@@ -25,13 +24,12 @@ public class JlamaLanguageModel implements LanguageModel
 
     @Builder
     public JlamaLanguageModel(Path modelCachePath,
-            String modelName,
-            String authToken,
-            Integer threadCount,
-            Boolean quantizeModelAtRuntime,
-            Float temperature,
-            Integer maxTokens)
-    {
+                              String modelName,
+                              String authToken,
+                              Integer threadCount,
+                              Boolean quantizeModelAtRuntime,
+                              Float temperature,
+                              Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
         JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
 
@@ -47,15 +45,7 @@ public class JlamaLanguageModel implements LanguageModel
         this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
     }
 
-    @Override
-    public Response<String> generate(String prompt)
-    {
-        Generator.Response r = model.generate(id, prompt, temperature, maxTokens, false, (token, time) -> {});
-        return Response.from(r.text, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
-    }
-
-    public static FinishReason toFinishReason(Generator.FinishReason reason)
-    {
+    public static FinishReason toFinishReason(Generator.FinishReason reason) {
         return switch (reason) {
             case STOP_TOKEN -> FinishReason.STOP;
             case MAX_TOKENS -> FinishReason.LENGTH;
@@ -69,6 +59,13 @@ public class JlamaLanguageModel implements LanguageModel
             return factory.get();
         }
         return new JlamaLanguageModelBuilder();
+    }
+
+    @Override
+    public Response<String> generate(String prompt) {
+        Generator.Response r = model.generate(id, prompt, temperature, maxTokens, false, (token, time) -> {
+        });
+        return Response.from(r.text, new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
     public static class JlamaLanguageModelBuilder {

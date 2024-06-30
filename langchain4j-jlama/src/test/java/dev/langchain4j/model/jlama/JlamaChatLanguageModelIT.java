@@ -1,24 +1,22 @@
 package dev.langchain4j.model.jlama;
 
-import java.io.File;
-import java.util.List;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import org.assertj.core.util.Files;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import java.io.File;
+import java.util.List;
 
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaChatLanguageModelIT
-{
+public class JlamaChatLanguageModelIT {
 
     static File tmpDir;
     static ChatLanguageModel model;

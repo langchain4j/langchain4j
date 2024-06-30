@@ -1,10 +1,5 @@
 package dev.langchain4j.model.jlama;
 
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
 import com.github.tjake.jlama.model.AbstractModel;
 import com.github.tjake.jlama.model.functions.Generator;
 import com.github.tjake.jlama.safetensors.tokenizer.PromptSupport;
@@ -17,11 +12,15 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
 
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaChatLanguageModel implements ChatLanguageModel
-{
+public class JlamaChatLanguageModel implements ChatLanguageModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
@@ -29,13 +28,12 @@ public class JlamaChatLanguageModel implements ChatLanguageModel
 
     @Builder
     public JlamaChatLanguageModel(Path modelCachePath,
-            String modelName,
-            String authToken,
-            Integer threadCount,
-            Boolean quantizeModelAtRuntime,
-            Float temperature,
-            Integer maxTokens)
-    {
+                                  String modelName,
+                                  String authToken,
+                                  Integer threadCount,
+                                  Boolean quantizeModelAtRuntime,
+                                  Float temperature,
+                                  Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
         JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
 
@@ -59,8 +57,7 @@ public class JlamaChatLanguageModel implements ChatLanguageModel
     }
 
     @Override
-    public Response<AiMessage> generate(List<ChatMessage> messages)
-    {
+    public Response<AiMessage> generate(List<ChatMessage> messages) {
         if (model.promptSupport().isEmpty())
             throw new UnsupportedOperationException("This model does not support chat generation");
 
@@ -74,7 +71,8 @@ public class JlamaChatLanguageModel implements ChatLanguageModel
             }
         }
 
-        Generator.Response r = model.generate(id, promptBuilder.build(), temperature, maxTokens, false, (token, time) -> {});
+        Generator.Response r = model.generate(id, promptBuilder.build(), temperature, maxTokens, false, (token, time) -> {
+        });
         return Response.from(AiMessage.from(r.text), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
