@@ -212,7 +212,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
                                  List<ChatModelListener> listeners) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = tokenizer;
+        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
