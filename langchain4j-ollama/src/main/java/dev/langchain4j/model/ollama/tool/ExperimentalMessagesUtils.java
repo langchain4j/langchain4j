@@ -5,7 +5,6 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.ollama.ImageUtils;
 import dev.langchain4j.model.ollama.Message;
 import dev.langchain4j.model.ollama.Role;
-import dev.langchain4j.model.ollama.tool.ExperimentalParallelToolsDelegate.AiStatsMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +25,7 @@ class ExperimentalMessagesUtils {
     final static Predicate<ChatMessage> isToolsRequestMessage =
             chatMessage -> chatMessage instanceof AiMessage && ((AiMessage) chatMessage).hasToolExecutionRequests();
     final static Predicate<ChatMessage> isAiStatsMessage =
-            chatMessage -> chatMessage instanceof ExperimentalParallelToolsDelegate.AiStatsMessage;
+            chatMessage -> chatMessage instanceof AiStatsMessage;
     final static Predicate<UserMessage> hasImages =
             userMessage -> userMessage.contents().stream()
                     .anyMatch(content -> IMAGE.equals(content.type()));

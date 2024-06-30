@@ -6,7 +6,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.internal.ValidationUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -34,32 +33,30 @@ import static dev.langchain4j.model.ollama.tool.ExperimentalMessagesUtils.*;
 public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
     static final PromptTemplate DEFAULT_SYSTEM_TEMPLATE = PromptTemplate
             .from("""
-                    --- Context ---
+                    You are a helpful AI assistant responding to user requests.
                     {{context}}
-                    ---------------
-
-                    You are a helpful AI assistant responding to user requests taking into account the previous context.
                     You have access to the following tools, and only those tools:
                     {{tools}}
                     
-                    Respond with a JSON object containing "tools" and required "response" fields:
-                        - "tools": if required, the list of tools from the provided list in JSON format, containing:
+                    You should break the user request into sequential list of tools
+                    and always provide a precise conclusion following your tool's selections and results.
+                    
+                    Respond with a JSON object containing "actions" and required "conclusion" fields:
+                        - "actions": the list of needed tools, from the previous list, to answer the user request. The tool Object contains 3 fields:
                             - "name": selected tool name.
-                            - "inputs": selected tool parameters matching the selected tool's JSON schema.
-                            - "result_id": an id to identify the result of this tool, e.g., id1.
-                        - "response": required String representing the conclusion with your answer using tools results
-                              reference including last action done if needed. Ex:  "response" = "The final result is $(id3)".
+                            - "inputs": selected tool's properties values matching tool's properties JSON schema.
+                            - "result_id": an id to identify the result of this tool, e.g. id1.
+                        - "conclusion":
+                            - your final answer as a simple string that could reference previous results
+                             or previous tools description, e.g. "Email sent!".
 
                     Guidelines:
-                        - If you have enough information, answer to it directly.
-                        - Break complex request down into full sequential list of tools to be able to answer precisely in the response field.
-                        - You cannot use tools that are not listed in the provided list.
-                        - You should always provide a response field.
-                        - Prefer using previous result.
-                        - Inputs and response can reference previous results using $(xxx), where xxx is a previous unique result_id, Ex: "inputs" = { "arg0": $(id1) }.
+                        - Inputs and conclusion fields can reference previous results using $(xxx), where xxx is a previous unique result_id, Ex: "inputs": { "arg0": $(id1) }.
+                        - If you have enough information, provide your conclusion directly.
+                        - Prefer using tools results.
                     """);
 
-    record ToolResponses(List<ToolResponse> tools, String response) {
+    record ToolResponses(List<ToolResponse> actions, String conclusion) {
     }
 
     record ToolResponse(String name, Map<String, Object> inputs, String result_id) {
@@ -102,7 +99,7 @@ public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
         if (hasAiStatsMessage(messages)) {
             AiStatsMessage aiStatsMessage = toAiStatsMessage(messages);
             if (aiStatsMessage.text() == null ) {
-                throw new RuntimeException("finalAnswer cannot be null or empty!");
+                throw new RuntimeException("Conclusion cannot be null or empty!");
             }
             return Response.from(withoutRequests(aiStatsMessage), aiStatsMessage.getTokenUsage(), FinishReason.STOP);
         }
@@ -127,13 +124,13 @@ public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
         TokenUsage tokenUsage = new TokenUsage(response.getPromptEvalCount(), response.getEvalCount());
         AiMessage aiMessage;
 
-        if (toolResponses.response != null && (toolResponses.tools == null || toolResponses.tools.isEmpty())) {
-            aiMessage = AiMessage.from(toolResponses.response);
+        if (toolResponses.conclusion != null && (toolResponses.actions == null || toolResponses.actions.isEmpty())) {
+            aiMessage = AiMessage.from(toolResponses.conclusion);
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = new ArrayList<>();
             List<String> availableTools = toolSpecifications.stream().map(ToolSpecification::name).toList();
 
-            for (ToolResponse toolResponse : toolResponses.tools) {
+            for (ToolResponse toolResponse : toolResponses.actions) {
                 if (!availableTools.contains(toolResponse.name)) {
                     throw new RuntimeException(String.format(
                             "Ollama server wants to call a name '%s' that is not part of the available tools %s",
@@ -144,8 +141,8 @@ public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
                             .ifPresent(toolExecutionRequests::add);
                 }
             }
-            if (toolResponses.response != null && !toolResponses.response().isEmpty()) {
-                aiMessage = new AiMessage(toolResponses.response, toolExecutionRequests);
+            if (toolResponses.conclusion != null && !toolResponses.conclusion().isEmpty()) {
+                aiMessage = new AiMessage(toolResponses.conclusion, toolExecutionRequests);
             } else {
                 aiMessage = AiMessage.from(toolExecutionRequests);
             }
@@ -157,7 +154,9 @@ public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
         String initialSystemMessages = messages.stream().filter(sm -> sm.getRole() == Role.SYSTEM)
                 .map(Message::getContent)
                 .collect(Collectors.joining("\n"));
-        List<ToolSpecification> tools = new ArrayList<>(toolSpecifications);
+        List<Properties> tools = toolSpecifications.stream()
+                .map(ts -> new Properties(ts.name(), ts.description(), ts.parameters().properties()))
+                .toList();
         Prompt prompt = DEFAULT_SYSTEM_TEMPLATE.apply(
                 Map.of("tools", Json.toJson(tools),
                         "context", initialSystemMessages)
@@ -167,6 +166,9 @@ public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
                 .content(prompt.text())
                 .build();
     }
+
+    record Properties (String name, String description, Map<String, Map<String, Object>> properties) {}
+
 
     private Optional<ToolSpecification> getToolSpecification(ToolResponse toolResponse,
                                                              List<ToolSpecification> toolSpecifications) {
@@ -184,35 +186,4 @@ public class ExperimentalParallelToolsDelegate implements ChatLanguageModel {
                 .build();
     }
 
-    static class AiStatsMessage extends AiMessage {
-
-        final TokenUsage tokenUsage;
-
-        AiStatsMessage(String text, TokenUsage tokenUsage) {
-            super(text);
-            this.tokenUsage = ValidationUtils.ensureNotNull(tokenUsage, "tokeUsage");
-        }
-
-        AiStatsMessage(List<ToolExecutionRequest> toolExecutionRequests, TokenUsage tokenUsage) {
-            super(toolExecutionRequests);
-            this.tokenUsage = ValidationUtils.ensureNotNull(tokenUsage, "tokeUsage");
-        }
-
-        AiStatsMessage(String text, List<ToolExecutionRequest> toolExecutionRequests, TokenUsage tokenUsage) {
-            super(text, toolExecutionRequests);
-            this.tokenUsage = ValidationUtils.ensureNotNull(tokenUsage, "tokenUsage");
-        }
-
-        TokenUsage getTokenUsage() {
-            return tokenUsage;
-        }
-
-        static AiStatsMessage from(AiMessage aiMessage, TokenUsage tokenUsage) {
-            if (aiMessage.text() == null) {
-                return new AiStatsMessage(aiMessage.toolExecutionRequests(), tokenUsage);
-            } else {
-                return new AiStatsMessage(aiMessage.text(), aiMessage.toolExecutionRequests(), tokenUsage);
-            }
-        }
-    }
 }

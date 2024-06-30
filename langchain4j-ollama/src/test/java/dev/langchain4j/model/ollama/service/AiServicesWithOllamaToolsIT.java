@@ -76,6 +76,8 @@ class AiServicesWithOllamaToolsIT {
                 .baseUrl(ollamaUrl)
                 .modelName("llama3")
                 .temperature(0.0)
+                .topK(40)
+                .topP(0.9)
                 .numCtx(2048)
                 .numPredict(2048)
                 .logRequests(true)
