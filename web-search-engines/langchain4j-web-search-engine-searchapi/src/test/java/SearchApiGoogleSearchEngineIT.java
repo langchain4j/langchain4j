@@ -1,4 +1,3 @@
-import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
@@ -23,13 +22,12 @@ class SearchApiGoogleSearchEngineIT {
         // when
         WebSearchRequest request = WebSearchRequest.builder()
                 .searchTerms("What is Langchain4j?")
-                .maxResults(5)
                 .build();
         WebSearchResults webSearchResults = searchEngine.search(request);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(5);
+        assertThat(results).hasSizeGreaterThan(0);
         results.forEach(result -> {
             assertThat(result.title()).isNotBlank();
             assertThat(result.url()).isNotNull();

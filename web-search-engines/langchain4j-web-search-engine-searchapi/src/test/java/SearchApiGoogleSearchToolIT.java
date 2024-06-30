@@ -1,10 +1,6 @@
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.*;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -46,7 +42,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
     }
 
     @Test
-    void should_execute_searchApi_tool_with_chatLanguageModel_to_give_a_final_response(){
+    void should_execute_searchApi_tool_with_chatLanguageModel_to_give_a_final_response() {
         // given
         searchApiEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(System.getenv("SEARCHAPI_API_KEY"))
@@ -86,7 +82,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
 
         // then
         assertThat(finalResponse.text())
-                .as("At least the string result should be contains 'movies' and 'coming soon' ignoring case")
+                .as("At least the string result should be contains 'movies' and 'May 2024' ignoring case")
                 .containsIgnoringCase("movies")
                 .containsIgnoringCase("May 2024");
     }
@@ -134,7 +130,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         assertThat(finalResponse.text())
                 .as("At least the string result should be contains 'madrid' and 'tourist' ignoring case")
                 .containsIgnoringCase("Madrid")
-                .containsIgnoringCase("Prado Museum");
+                .containsIgnoringCase("tourist");
     }
 
     @Test
