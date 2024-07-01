@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
@@ -11,8 +12,6 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-
-import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
 
 class DefaultToolExecutorTest implements WithAssertions {
     @Test
@@ -228,5 +227,65 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> coerceArgument("abc", "arg", BigInteger.class))
                 .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
+    }
+
+    private static class TestTool {
+
+        @Tool
+        public int addOne(int num) {
+            return num + 1;
+        }
+    }
+
+    @Test
+    public void should_execute_tool_by_method_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor =
+                new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    public void should_execute_tool_with_execution_request() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    public void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("unknownMethod")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), request))
+                .withMessageContaining("Method 'unknownMethod' is not found in object");
+
+    }
+
+    @Test
+    public void should_not_execute_tool_with_null_execution_request() throws NoSuchMethodException {
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
+
     }
 }
