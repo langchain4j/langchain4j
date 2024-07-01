@@ -5,9 +5,9 @@
 
 echo "Setting up environment variables..."
 echo "----------------------------------"
-PROJECT="langchain4j-eastus"
+PROJECT="langchain4j-$RANDOM"
 RESOURCE_GROUP="rg-$PROJECT"
-LOCATION="eastus"
+LOCATION="swedencentral"
 AI_SERVICE="ai-$PROJECT"
 TAG="$PROJECT"
 
@@ -38,18 +38,6 @@ az cognitiveservices account create \
 # Chat Models
 echo "Deploying Chat Models"
 echo "====================="
-
-echo "Deploying a gpt-35-turbo-0301 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-35-turbo-0301" \
-  --model-name "gpt-35-turbo" \
-  --model-version "0125"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
 
 echo "Deploying a gpt-35-turbo-0613 model..."
 echo "----------------------"
@@ -95,30 +83,6 @@ az cognitiveservices account deployment create \
   --deployment-name "gpt-4-0613" \
   --model-name "gpt-4" \
   --model-version "0613"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a gpt-4-0125-preview model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-4-0125-preview" \
-  --model-name "gpt-4" \
-  --model-version "0125-preview"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a gpt-4-1106-preview model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-4-1106-preview" \
-  --model-name "gpt-4" \
-  --model-version "1106-preview"  \
   --model-format "OpenAI" \
   --sku-capacity 1 \
   --sku-name "Standard"
@@ -175,30 +139,6 @@ az cognitiveservices account deployment create \
 echo "Deploying Embedding Models"
 echo "=========================="
 
-echo "Deploying a text-embedding-ada-002 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "text-embedding-ada-002" \
-  --model-name "text-embedding-ada-002" \
-  --model-version "2"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a text-embedding-ada-002-1 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "text-embedding-ada-002-1" \
-  --model-name "text-embedding-ada-002" \
-  --model-version "1"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
 echo "Deploying a text-embedding-ada-002-2 model..."
 echo "----------------------"
 az cognitiveservices account deployment create \
@@ -207,18 +147,6 @@ az cognitiveservices account deployment create \
   --deployment-name "text-embedding-ada-002-2" \
   --model-name "text-embedding-ada-002" \
   --model-version "2"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a text-embedding-3-small-1 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "text-embedding-3-small-1" \
-  --model-name "text-embedding-3-small" \
-  --model-version "1"  \
   --model-format "OpenAI" \
   --sku-capacity 1 \
   --sku-name "Standard"
@@ -244,30 +172,6 @@ echo "----------------------"
 az cognitiveservices account deployment create \
   --name "$AI_SERVICE" \
   --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "dall-e-2-20" \
-  --model-name "dall-e-2" \
-  --model-version "2.0"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a dall-e-3 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "dall-e-3" \
-  --model-name "dall-e-3" \
-  --model-version "3.0"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a dall-e-3-30 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
   --deployment-name "dall-e-3-30" \
   --model-name "dall-e-3" \
   --model-version "3.0"  \
@@ -278,18 +182,6 @@ az cognitiveservices account deployment create \
 # Language Models
 echo "Deploying Language Models"
 echo "========================="
-
-echo "Deploying a gpt-35-turbo-instruct model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-35-turbo-instruct" \
-  --model-name "gpt-35-turbo-instruct" \
-  --model-version "0914"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
 
 echo "Deploying a gpt-35-turbo-instruct-0914 model..."
 echo "----------------------"
