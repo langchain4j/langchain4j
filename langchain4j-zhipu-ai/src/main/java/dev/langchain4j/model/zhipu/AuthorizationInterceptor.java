@@ -17,6 +17,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.google.common.net.HttpHeaders.ACCEPT;
+import static com.google.common.net.HttpHeaders.AUTHORIZATION;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -57,8 +59,8 @@ class AuthorizationInterceptor implements Interceptor {
         String token = getOrDefault(cache.getIfPresent(this.apiKey), generateToken());
         Request request = chain.request()
                 .newBuilder()
-                .addHeader("Authorization", "Bearer " + token)
-                .removeHeader("Accept")
+                .addHeader(AUTHORIZATION, "Bearer " + token)
+                .removeHeader(ACCEPT)
                 .build();
         return chain.proceed(request);
     }
