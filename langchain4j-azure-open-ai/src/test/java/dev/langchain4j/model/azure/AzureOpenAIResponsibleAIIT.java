@@ -81,7 +81,7 @@ public class AzureOpenAIResponsibleAIIT {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
-                .deploymentName("dall-e-3")
+                .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -99,7 +99,7 @@ public class AzureOpenAIResponsibleAIIT {
         LanguageModel model = AzureOpenAiLanguageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
-                .deploymentName("gpt-35-turbo-instruct")
+                .deploymentName("gpt-35-turbo-instruct-0914")
                 .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
                 .temperature(0.0)
                 .maxTokens(20)
@@ -171,7 +171,7 @@ public class AzureOpenAIResponsibleAIIT {
         StreamingLanguageModel model = AzureOpenAiStreamingLanguageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .tokenCredential(new DefaultAzureCredentialBuilder().build())
-                .deploymentName("gpt-35-turbo-instruct")
+                .deploymentName("gpt-35-turbo-instruct-0914")
                 .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
                 .temperature(0.0)
                 .maxTokens(20)

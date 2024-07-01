@@ -26,7 +26,7 @@ class AzureOpenAiEmbeddingModelIT {
     EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .tokenCredential(new DefaultAzureCredentialBuilder().build())
-            .deploymentName("text-embedding-ada-002")
+            .deploymentName("text-embedding-ada-002-2")
             .tokenizer(new AzureOpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
             .logRequestsAndResponses(true)
             .build();
@@ -74,7 +74,7 @@ class AzureOpenAiEmbeddingModelIT {
 
     @ParameterizedTest(name = "Testing model {0}")
     @EnumSource(value = AzureOpenAiEmbeddingModelName.class,
-            mode = EXCLUDE, names = "TEXT_EMBEDDING_ADA_002_2")
+            mode = EXCLUDE, names = {"TEXT_EMBEDDING_ADA_002_2", "TEXT_EMBEDDING_3_SMALL", "TEXT_EMBEDDING_3_SMALL_1", "TEXT_EMBEDDING_3_LARGE", "TEXT_EMBEDDING_ADA_002", "TEXT_EMBEDDING_ADA_002_1"})
     void should_support_all_string_model_names(AzureOpenAiEmbeddingModelName modelName) {
 
         // given

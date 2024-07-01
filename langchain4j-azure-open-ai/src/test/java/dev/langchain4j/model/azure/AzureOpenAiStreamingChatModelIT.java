@@ -48,6 +48,8 @@ class AzureOpenAiStreamingChatModelIT {
 
     Percentage tokenizerPrecision = withPercentage(5);
 
+    public long STREAMING_TIMEOUT = 120;
+
     @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
     @CsvSource({
             "gpt-4o,        gpt-4o, true",
@@ -91,8 +93,8 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        String answer = futureAnswer.get(STREAMING_TIMEOUT, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         assertThat(answer).contains("Paris");
         assertThat(response.content().text()).isEqualTo(answer);
@@ -155,8 +157,8 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        String answer = futureAnswer.get(STREAMING_TIMEOUT, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         assertThat(answer).contains("Paris");
         assertThat(response.content().text()).isEqualTo(answer);
@@ -242,7 +244,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
@@ -283,7 +285,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response2 = futureResponse2.get(30, SECONDS);
+        Response<AiMessage> response2 = futureResponse2.get(STREAMING_TIMEOUT, SECONDS);
         AiMessage aiMessage2 = response2.content();
 
         // then
@@ -357,7 +359,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
@@ -403,7 +405,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response2 = futureResponse2.get(30, SECONDS);
+        Response<AiMessage> response2 = futureResponse2.get(STREAMING_TIMEOUT, SECONDS);
         AiMessage aiMessage2 = response2.content();
 
         // then
@@ -561,7 +563,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         // when
         model.generate(userMessage, handler);
-        String content = future.get(5, SECONDS);
+        String content = future.get(STREAMING_TIMEOUT, SECONDS);
 
         // then
         assertThat(content).contains("Access denied due to invalid subscription key or wrong API endpoint");

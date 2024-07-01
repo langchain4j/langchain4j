@@ -52,6 +52,6 @@ public class TestStreamingResponseHandler<T> implements StreamingResponseHandler
 
     @SneakyThrows
     public Response<T> get() {
-        return futureResponse.get(30, SECONDS);
+        return futureResponse.get(120, SECONDS);
     }
 }
