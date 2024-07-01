@@ -177,6 +177,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
      * copying all entries from each store.
      */
     public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(Collection<InMemoryEmbeddingStore<Embedded>> stores) {
+        ensureNotNull(stores, "stores");
         List<Entry<Embedded>> entries = new ArrayList<>();
         for (InMemoryEmbeddingStore<Embedded> store : stores) {
             entries.addAll(store.entries);
