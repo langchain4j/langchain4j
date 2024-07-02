@@ -19,13 +19,13 @@ public class ToolsResultMemory {
         variables.put(var, value);
     }
 
-    public AiMessage substituteAssistantArguments(AiMessage message) {
+    public AiMessage substituteAiMessage(AiMessage message) {
         if (message.text() == null) {
             return message;
         }
         // TODO: Discuss with langchain the best approach
         // return new AiMessage(substituteArguments(message.text(), variables), message.toolExecutionRequests());
-        message.updateText(substituteArguments(message.text(), variables));
+        message.updateText(substituteVariables(message.text(), variables));
         return message;
     }
 
@@ -33,21 +33,20 @@ public class ToolsResultMemory {
         return ToolExecutionRequest.builder()
                 .id(toolExecutionRequest.id())
                 .name(toolExecutionRequest.name())
-                .arguments(substituteArguments(toolExecutionRequest.arguments(), variables)).build();
+                .arguments(substituteVariables(toolExecutionRequest.arguments(), variables)).build();
     }
 
-    private static String substituteArguments(String msg, Map<String, String> resultMap) {
+    private static String substituteVariables(String msg, Map<String, String> resultMap) {
         Matcher matcher = VARIABLE_PATTERN.matcher(msg);
-//        if (!matcher.hasMatch()) {
-//            return msg;
-//        }
         StringBuffer newArguments = new StringBuffer();
-        while (matcher.find()) {
+        if(!matcher.find()) {
+            return msg;
+        }
+        do {
             String key = matcher.group(1);
             String replacement = resultMap.getOrDefault(key, matcher.group(0));
-
             matcher.appendReplacement(newArguments, replacement);
-        }
+        } while (matcher.find());
         matcher.appendTail(newArguments);
         return newArguments.toString();
     }

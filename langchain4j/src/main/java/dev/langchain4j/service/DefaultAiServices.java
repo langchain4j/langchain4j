@@ -173,7 +173,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 );
                                 toolExecutionResultMessages.add(toolExecutionResultMessage);
                             }
-                            aiMessage = toolsResultMemory.substituteAssistantArguments(aiMessage);
+                            aiMessage = toolsResultMemory.substituteAiMessage(aiMessage);
                             chatMemory.add(aiMessage);
                             toolExecutionResultMessages.forEach(chatMemory::add);
 
