@@ -13,7 +13,10 @@ class ResponseGrounding {
 
     static Tool googleSearchTool() {
         return Tool.newBuilder()
-            .setGoogleSearchRetrieval(GoogleSearchRetrieval.newBuilder().setDisableAttribution(false).build())
+            .setGoogleSearchRetrieval(
+                GoogleSearchRetrieval.newBuilder()
+//                    .setDisableAttribution(false)
+                    .build())
             .build();
     }
 

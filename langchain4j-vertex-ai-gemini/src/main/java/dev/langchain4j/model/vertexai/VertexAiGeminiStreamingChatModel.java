@@ -1,8 +1,11 @@
 package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
+import com.google.cloud.vertexai.api.FunctionCallingConfig;
 import com.google.cloud.vertexai.api.GenerationConfig;
+import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.api.Tool;
+import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -43,6 +46,9 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
     private final Tool googleSearch;
     private final Tool vertexSearch;
 
+    private final ToolConfig toolConfig;
+    private final List<String> allowedFunctionNames;
+
     private final Boolean logRequests;
     private final Boolean logResponses;
 
@@ -57,9 +63,12 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
                                             Integer topK,
                                             Float topP,
                                             String responseMimeType,
+                                            Schema responseSchema,
                                             Map<HarmCategory, SafetyThreshold> safetySettings,
                                             Boolean useGoogleSearch,
                                             String vertexSearchDatastore,
+                                            ToolCallingMode toolCallingMode,
+                                            List<String> allowedFunctionNames,
                                             Boolean logRequests,
                                             Boolean logResponses) {
         GenerationConfig.Builder generationConfigBuilder = GenerationConfig.newBuilder();
@@ -78,12 +87,16 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         if (responseMimeType != null) {
             generationConfigBuilder.setResponseMimeType(responseMimeType);
         }
+        if (responseSchema != null) {
+            generationConfigBuilder.setResponseMimeType("application/json");
+            generationConfigBuilder.setResponseSchema(responseSchema);
+        }
         this.generationConfig = generationConfigBuilder.build();
 
         if (safetySettings != null) {
-            this.safetySettings = safetySettings;
+            this.safetySettings = new HashMap<>(safetySettings);
         } else {
-            this.safetySettings = new HashMap<>();
+            this.safetySettings = Collections.emptyMap();
         }
 
         if (useGoogleSearch != null && useGoogleSearch) {
@@ -95,6 +108,42 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
             vertexSearch = ResponseGrounding.vertexAiSearch(vertexSearchDatastore);
         } else {
             vertexSearch = null;
+        }
+
+        if (allowedFunctionNames != null) {
+            this.allowedFunctionNames = Collections.unmodifiableList(allowedFunctionNames);
+        } else {
+            this.allowedFunctionNames = Collections.emptyList();
+        }
+        if (toolCallingMode != null) {
+            // only a subset of functions allowed to be used by the model
+            if (toolCallingMode == ToolCallingMode.ANY &&
+                allowedFunctionNames != null && !allowedFunctionNames.isEmpty()) {
+                this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                    FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.ANY)
+                        .addAllAllowedFunctionNames(this.allowedFunctionNames)
+                        .build()
+                ).build();
+            } else if (toolCallingMode == ToolCallingMode.NONE) { // no functions allowed
+                this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                    FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.NONE)
+                        .build()
+                ).build();
+            } else { // Mode AUTO by default
+                this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                    FunctionCallingConfig.newBuilder()
+                        .setMode(FunctionCallingConfig.Mode.AUTO)
+                        .build()
+                ).build();
+            }
+        } else {
+            this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+                FunctionCallingConfig.newBuilder()
+                    .setMode(FunctionCallingConfig.Mode.AUTO)
+                    .build()
+            ).build();
         }
 
         this.vertexAI = new VertexAI(
@@ -122,9 +171,15 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.vertexAI = null;
-        this.safetySettings = new HashMap<>();
+        this.safetySettings = Collections.emptyMap();
         this.googleSearch = null;
         this.vertexSearch = null;
+        this.toolConfig = ToolConfig.newBuilder().setFunctionCallingConfig(
+            FunctionCallingConfig.newBuilder()
+                .setMode(FunctionCallingConfig.Mode.AUTO)
+                .build()
+        ).build();
+        this.allowedFunctionNames = Collections.emptyList();
         this.logRequests = false;
         this.logResponses = false;
     }
@@ -152,7 +207,8 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatLanguageMo
         }
 
         GenerativeModel model = this.generativeModel
-            .withTools(tools);
+            .withTools(tools)
+            .withToolConfig(this.toolConfig);
 
         ContentsMapper.InstructionAndContent instructionAndContent =
             ContentsMapper.splitInstructionAndContent(messages);

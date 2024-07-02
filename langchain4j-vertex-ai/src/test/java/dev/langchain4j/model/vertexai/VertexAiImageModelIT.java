@@ -93,7 +93,7 @@ public class VertexAiImageModelIT {
                 .publisher(PUBLISHER)
                 .modelName("imagegeneration@002")
                 .seed(19707L)
-                .sampleImageStyle(VertexAiImageModel.ImageStyle.photograph)
+                .sampleImageStyle(VertexAiImageModel.ImageStyle.PHOTOGRAPH)
                 .guidanceScale(100)
                 .maxRetries(4)
                 .withPersisting()
@@ -196,7 +196,7 @@ public class VertexAiImageModelIT {
 
 //    @Test
     public void should_generate_one_imagen_v3_with_persistence() {
-        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
+//        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
 
         VertexAiImageModel imagenModel = VertexAiImageModel.builder()
             .endpoint(ENDPOINT)

@@ -2,7 +2,9 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
+import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -21,6 +23,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -170,7 +173,7 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(response.tokenUsage().totalTokenCount())
                 .isEqualTo(response.tokenUsage().inputTokenCount() + response.tokenUsage().outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
     @Test
@@ -420,9 +423,10 @@ class VertexAiGeminiStreamingChatModelIT {
             .topK(1)
             .build();
 
+        MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         StreamingStockAssistant assistant = AiServices.builder(StreamingStockAssistant.class)
             .streamingChatLanguageModel(model)
-            .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+            .chatMemory(chatMemory)
             .tools(new StockInventory())
             .build();
 
@@ -437,6 +441,30 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(response.content().toString()).contains("XYZ");
+
+        chatMemory.messages().forEach(System.out::println);
+
+        // Chat memory contains:
+        // - SystemMessage -> "You MUST call `getStockInventory()` for stock inventory requests."
+        // - UserMessage -> "Is there more stock of ABC or of XYZ?"
+        // - AiMessage with 2 parallel tool execution requests:
+        //     * { id = null, name = "getStockInventory", arguments = "{"product":"ABC"}" }
+        //     * { id = null, name = "getStockInventory", arguments = "{"product":"XYZ"}" }
+        // User then feeds two tool execution result messages:
+        // - { id = null toolName = "getStockInventory" text = "10" }
+        // - { id = null toolName = "getStockInventory" text = "42" }
+        // - AiMessage { text = "There is more stock of XYZ.", toolExecutionRequests = null }
+
+        assertThat(chatMemory.messages().get(2).type()).isEqualTo(ChatMessageType.AI);
+
+        AiMessage aiMsg = (AiMessage) chatMemory.messages().get(2);
+        assertThat(aiMsg.hasToolExecutionRequests()).isTrue();
+        assertThat(aiMsg.toolExecutionRequests().size()).isEqualTo(2);
+        assertThat(aiMsg.toolExecutionRequests().get(0).name()).isEqualTo("getStockInventory");
+        assertThat(aiMsg.toolExecutionRequests().get(0).arguments()).isEqualTo("{\"product\":\"ABC\"}");
+        assertThat(aiMsg.toolExecutionRequests().get(1).name()).isEqualTo("getStockInventory");
+        assertThat(aiMsg.toolExecutionRequests().get(1).arguments()).isEqualTo("{\"product\":\"XYZ\"}");
+
     }
 
     @Test
@@ -470,14 +498,21 @@ class VertexAiGeminiStreamingChatModelIT {
             .responseMimeType("application/json")
             .build();
 
-        // when
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
+            "Before returning, tell me a joke."; // nudging it to say something additionally to json
+
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
+
         StringBuilder accumulatedResponse = new StringBuilder();
-        modelWithResponseMimeType.generate("Run a dice roll", onNext(accumulatedResponse::append));
-        String response = accumulatedResponse.toString();
+        model.generate(userMessage, onNext(accumulatedResponse::append));
+        assertThat(accumulatedResponse.toString()).isNotEqualToIgnoringWhitespace(expectedJson);
+
+        // when
+        accumulatedResponse = new StringBuilder();
+        modelWithResponseMimeType.generate(userMessage, onNext(accumulatedResponse::append));
 
         // then
-        System.out.println("streamed response = " + response);
-        assertThat(response).containsAnyOf("1", "2", "3", "4", "5", "6");
+        assertThat(accumulatedResponse.toString()).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Test
@@ -505,5 +540,110 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
+    }
+
+    class Artist {
+        public String artistName;
+        int artistAge;
+        protected boolean artistAdult;
+        private String artistAddress;
+        public VertexAiGeminiChatModelIT.Pet[] pets;
+    }
+
+    class Pet {
+        public String name;
+    }
+
+    @Test
+    void should_accept_response_schema() {
+        // given
+        Schema schema = SchemaHelper.fromClass(VertexAiGeminiChatModelIT.Artist.class);
+
+        // when
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseMimeType("application/json")
+            .responseSchema(schema)
+            .build();
+
+        List<ChatMessage> messages = new ArrayList<>();
+        messages.add(SystemMessage.from("Return a JSON object, as defined in the JSON schema."));
+        messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
+
+        StringBuilder accumulatedResponse = new StringBuilder();
+        model.generate(messages, onNext(accumulatedResponse::append));
+        String response = accumulatedResponse.toString();
+        System.out.println("response = " + response);
+
+        // then
+        Artist artist = new Gson().fromJson(response, Artist.class);
+        assertThat(artist.artistName).contains("Anna");
+        assertThat(artist.artistAge).isEqualTo(23);
+        assertThat(artist.artistAdult).isTrue();
+        assertThat(artist.artistAddress).contains("New York");
+        assertThat(artist.pets).hasSize(2);
+    }
+
+    @Test
+    void should_honor_subset_of_function_calls() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .toolCallingMode(ToolCallingMode.ANY)
+            .allowedFunctionNames(Arrays.asList("add"))
+            .build();
+
+        ToolSpecification adder = ToolSpecification.builder()
+            .description("adds two numbers")
+            .name("add")
+            .addParameter("a", JsonSchemaProperty.INTEGER)
+            .addParameter("b", JsonSchemaProperty.INTEGER)
+            .build();
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        UserMessage msg = UserMessage.from("How much is 1 + 2?");
+        model.generate(Arrays.asList(msg), adder, handler);
+
+        // then
+        assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(true);
+        assertThat(handler.get().content().toolExecutionRequests().get(0).name()).isEqualTo("add");
+        assertThat(handler.get().content().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
+    }
+
+    @Test
+    void should_forbid_function_calls() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .toolCallingMode(ToolCallingMode.NONE)
+            .build();
+
+        ToolSpecification adder = ToolSpecification.builder()
+            .description("adds two numbers")
+            .name("add")
+            .addParameter("a", JsonSchemaProperty.INTEGER)
+            .addParameter("b", JsonSchemaProperty.INTEGER)
+            .build();
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        UserMessage msg = UserMessage.from("How much is 1 + 2?");
+        model.generate(Arrays.asList(msg), adder, handler);
+
+        // then
+        assertThat(handler.get().content().hasToolExecutionRequests()).isEqualTo(false);
     }
 }

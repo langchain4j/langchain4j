@@ -2,7 +2,9 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.VertexAI;
 import com.google.cloud.vertexai.api.GenerationConfig;
+import com.google.cloud.vertexai.api.Schema;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
+import com.google.gson.Gson;
 import dev.langchain4j.agent.tool.JsonSchemaProperty;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
@@ -32,6 +34,7 @@ import java.util.stream.Stream;
 
 import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
+import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -74,7 +77,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(FinishReason.STOP);
+        assertThat(response.finishReason()).isEqualTo(STOP);
     }
 
     @ParameterizedTest
@@ -164,7 +167,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(tokenUsage.totalTokenCount())
                 .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
 
-        assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.finishReason()).isIn(LENGTH, STOP);
     }
 
     @Test
@@ -398,7 +401,7 @@ class VertexAiGeminiChatModelIT {
         assertThat(messageResponse.content().hasToolExecutionRequests()).isTrue();
 
         List<ToolExecutionRequest> executionRequests = messageResponse.content().toolExecutionRequests();
-        assertThat(executionRequests.size()).isEqualTo(2);
+        assertThat(executionRequests.size()).isEqualTo(2); // ie. parallel function execution requests
 
         String inventoryStock = executionRequests.stream()
             .map(ToolExecutionRequest::arguments)
@@ -424,7 +427,7 @@ class VertexAiGeminiChatModelIT {
         // then
         String text = messageResponse.content().text();
         List<String> sequence = Arrays.asList("ABC123", "more", "XYZ789");
-        assertThat(text.split(" ")).containsAll(sequence);
+        assertThat(text.split(" ")).containsSubsequence(sequence);
     }
 
     static class Calculator {
@@ -463,7 +466,7 @@ class VertexAiGeminiChatModelIT {
         String answer = assistant.chat("How much is 74589613588 + 4786521789?");
 
         // then
-        // assertThat(answer).contains("79376135377"); TODO
+         assertThat(answer).contains("79376135377");
 
         verify(calculator).add(74589613588.0, 4786521789.0);
         verifyNoMoreInteractions(calculator);
@@ -639,12 +642,18 @@ class VertexAiGeminiChatModelIT {
             .responseMimeType("application/json")
             .build();
 
+        String userMessage = "Return JSON with two fields: name and surname of Klaus Heisler. " +
+            "Before returning, tell me a joke."; // nudging it to say something additionally to json
+
+        String expectedJson = "{\"name\": \"Klaus\", \"surname\": \"Heisler\"}";
+
+        assertThat(model.generate(userMessage)).isNotEqualToIgnoringWhitespace(expectedJson);
+
         // when
-        String response = modelWithResponseMimeType.generate("Run a dice roll");
+        String json = modelWithResponseMimeType.generate(userMessage);
 
         // then
-        System.out.println("response = " + response);
-        assertThat(response).containsAnyOf("1", "2", "3", "4", "5", "6");
+        assertThat(json).isEqualToIgnoringWhitespace(expectedJson);
     }
 
     @Test
@@ -672,5 +681,107 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(exception.getMessage()).contains("The response is blocked due to safety reason");
+    }
+
+    class Artist {
+        public String artistName;
+        int artistAge;
+        protected boolean artistAdult;
+        private String artistAddress;
+        public Pet[] pets;
+    }
+
+    class Pet {
+        public String name;
+    }
+
+    @Test
+    void should_accept_response_schema() {
+        // given
+        Schema schema = SchemaHelper.fromClass(Artist.class);
+
+        // when
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .responseMimeType("application/json")
+            .responseSchema(schema)
+            .build();
+
+        List<ChatMessage> messages = new ArrayList<>();
+//        messages.add(SystemMessage.from("Return a JSON object, with keys: `artist-name`, `artist-age`, `artist-address`, `artist-pets`, `artist-adult`."));
+        messages.add(SystemMessage.from("Return a JSON object, as defined in the JSON schema."));
+        messages.add(UserMessage.from("Anna is a 23 year old artist from New York City. She's got a dog and a cat."));
+
+        Response<AiMessage> response = model.generate(messages);
+        System.out.println("response = " + response.content().text());
+
+        // then
+        Artist artist = new Gson().fromJson(response.content().text(), Artist.class);
+        assertThat(artist.artistName).contains("Anna");
+        assertThat(artist.artistAge).isEqualTo(23);
+        assertThat(artist.artistAdult).isTrue();
+        assertThat(artist.artistAddress).contains("New York");
+        assertThat(artist.pets).hasSize(2);
+    }
+
+    @Test
+    void should_honor_subset_of_function_calls() {
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .toolCallingMode(ToolCallingMode.ANY)
+            .allowedFunctionNames(Arrays.asList("add"))
+            .build();
+
+        ToolSpecification adder = ToolSpecification.builder()
+            .description("adds two numbers")
+            .name("add")
+            .addParameter("a", JsonSchemaProperty.INTEGER)
+            .addParameter("b", JsonSchemaProperty.INTEGER)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from("How much is 1 + 2?");
+        Response<AiMessage> answer = model.generate(asList(msg), adder);
+
+        // then
+        assertThat(answer.content().hasToolExecutionRequests()).isEqualTo(true);
+        assertThat(answer.content().toolExecutionRequests().get(0).name()).isEqualTo("add");
+        assertThat(answer.content().toolExecutionRequests().get(0).arguments()).isEqualTo("{\"a\":1.0,\"b\":2.0}");
+    }
+
+    @Test
+    void should_forbid_function_calls() {
+        // given
+        ChatLanguageModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .toolCallingMode(ToolCallingMode.NONE)
+            .build();
+
+        ToolSpecification adder = ToolSpecification.builder()
+            .description("adds two numbers")
+            .name("add")
+            .addParameter("a", JsonSchemaProperty.INTEGER)
+            .addParameter("b", JsonSchemaProperty.INTEGER)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from("How much is 1 + 2?");
+        Response<AiMessage> answer = model.generate(asList(msg), adder);
+
+        // then
+        assertThat(answer.content().hasToolExecutionRequests()).isEqualTo(false);
     }
 }

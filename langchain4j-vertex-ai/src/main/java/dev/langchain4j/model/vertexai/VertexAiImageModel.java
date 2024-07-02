@@ -57,7 +57,7 @@ public class VertexAiImageModel implements ImageModel {
     private final Integer sampleImageSize;
     private final AspectRatio aspectRatio;
     private final PersonGeneration personGeneration;
-    private final Boolean watermark;
+    private final Boolean addWatermark;
     private final int maxRetries;
     private final Boolean withPersisting;
     private final String modelName;
@@ -72,13 +72,23 @@ public class VertexAiImageModel implements ImageModel {
      * For <code>imagen@005</code> (Imagen v2), specify the style in the prompt instead.
      */
     public enum ImageStyle {
-        photograph,
-        digital_art,
-        landscape,
-        sketch,
-        watercolor,
-        cyberpunk,
-        pop_art
+        PHOTOGRAPH("photograph"),
+        DIGITAL_ART("digital_art"),
+        LANDSCAPE("landscape"),
+        SKETCH("sketch"),
+        WATERCOLOR("watercolor"),
+        CYBERPUNK("cyberpunk"),
+        POP_ART("pop_art");
+
+        private final String style;
+
+        ImageStyle(String style) {
+            this.style = style;
+        }
+
+        public String toString() {
+            return style;
+        }
     }
 
     /**
@@ -89,8 +99,8 @@ public class VertexAiImageModel implements ImageModel {
         SQUARE("1:1"),
         PORTRAIT("9:16"),
         LANDSCAPE("16:9"),
-        THREE_FOURTH("3:4"),
-        FOUR_THIRD("4:3");
+        THREE_FOURTHS("3:4"),
+        FOUR_THIRDS("4:3");
 
         private final String ratio;
 
@@ -98,7 +108,7 @@ public class VertexAiImageModel implements ImageModel {
             this.ratio = ratio;
         }
 
-        public String getRatio() {
+        public String toString() {
             return ratio;
         }
     }
@@ -118,7 +128,7 @@ public class VertexAiImageModel implements ImageModel {
             this.mimeType = mimeType;
         }
 
-        public String getMimeType() {
+        public String toString() {
             return mimeType;
         }
     }
@@ -129,9 +139,19 @@ public class VertexAiImageModel implements ImageModel {
      * For all persons, including children, your project will need to be allowlisted.
      */
     public enum PersonGeneration {
-        dont_allow,
-        allow_adult,
-        allow_all
+        DONT_ALLOW("dont_allow"),
+        ALLOW_ADULT("allow_adult"),
+        ALLOW_ALL("allow_all");
+
+        private final String personGeneration;
+
+        PersonGeneration(String value) {
+            this.personGeneration = value;
+        }
+
+        public String toString() {
+            return personGeneration;
+        }
     }
 
     /**
@@ -150,11 +170,11 @@ public class VertexAiImageModel implements ImageModel {
      * @param sampleImageStyle the style of the image for Imagen v1, see the <code>ImageStyle</code> enum for reference
      * @param sampleImageSize  the size of the images to generate
      * @param aspectRatio      the aspect ratio of the image, whether square, portrait or landscape
-     * @param personGeneration specify if it is allowed to generate persons (all, only adults, all)
+     * @param personGeneration specify if it is allowed to generate persons (none, only adults, all)
      * @param maxRetries       number of times to retry in case of error (default: 3)
      * @param mimeType         specify the mime type of the image to generate (image/png by default, but image/jpeg possible)
      * @param compressionQuality when generating a JPEG image, specify the compression quality (ex: 80 for good quality)
-     * @param watermark        true to generate a watermark so users can know it's an AI generated image
+     * @param addWatermark     true to generate a watermark so users can know it's an AI generated image
      *                         (default to false for Imagen v1 and v2, but to true for Imagen v3)
      * @param cloudStorageBucket URI of the Google Cloud Storage bucket where to persist the generated image
      * @param withPersisting   true if the generated images should be persisted on the local file system
@@ -176,7 +196,7 @@ public class VertexAiImageModel implements ImageModel {
                               Integer maxRetries,
                               MimeType mimeType,
                               Integer compressionQuality,
-                              Boolean watermark,
+                              Boolean addWatermark,
                               String cloudStorageBucket,
                               Boolean withPersisting,
                               Path persistTo,
@@ -203,7 +223,7 @@ public class VertexAiImageModel implements ImageModel {
         this.mimeType = mimeType;
         this.compressionQuality = compressionQuality;
         this.personGeneration = personGeneration;
-        this.watermark = watermark;
+        this.addWatermark = addWatermark;
 
         this.maxRetries = maxRetries == null ? 3 : maxRetries;
 
@@ -333,14 +353,14 @@ public class VertexAiImageModel implements ImageModel {
 
         paramsMap.put("includeRaiReason", true);
         paramsMap.put("includeSafetyAttributes", true);
-        paramsMap.put("safetySetting", "block_few");
+//        paramsMap.put("safetySettings", "block_fewest"); // TODO: only available in the upcoming models
 
         if (this.seed != null) {
             paramsMap.put("seed", this.seed);
         }
 
         if (this.sampleImageStyle != null) {
-            paramsMap.put("sampleImageStyle", this.sampleImageStyle.name());
+            paramsMap.put("sampleImageStyle", this.sampleImageStyle.toString());
         }
 
         if (this.sampleImageSize != null) {
@@ -361,12 +381,12 @@ public class VertexAiImageModel implements ImageModel {
         }
 
         if (this.aspectRatio != null) {
-            paramsMap.put("aspectRatio", this.aspectRatio.getRatio());
+            paramsMap.put("aspectRatio", this.aspectRatio.toString());
         }
 
         if (this.mimeType != null) {
             Map<String, Object> outputOptions = new HashMap<>();
-            outputOptions.put("mimeType", this.mimeType.getMimeType());
+            outputOptions.put("mimeType", this.mimeType.toString());
             if (this.mimeType == MimeType.JPEG && this.compressionQuality != null) {
                 outputOptions.put("compressionQuality", this.compressionQuality);
             }
@@ -375,11 +395,15 @@ public class VertexAiImageModel implements ImageModel {
         }
 
         if (this.personGeneration != null) {
-            paramsMap.put("personGeneration", this.personGeneration);
+            paramsMap.put("personGeneration", this.personGeneration.toString());
         }
 
-        if (this.watermark != null) {
-            paramsMap.put("addWatermark", this.watermark);
+        if (this.addWatermark != null) {
+            paramsMap.put("addWatermark", this.addWatermark);
+        }
+
+        if (this.cloudStorageBucket != null) {
+            paramsMap.put("storageUri", this.cloudStorageBucket);
         }
 
         Value.Builder parametersBuilder = Value.newBuilder();
@@ -436,7 +460,7 @@ public class VertexAiImageModel implements ImageModel {
         if (this.withPersisting != null && this.withPersisting) {
             try {
                 String suffix = ".png";
-                if (this.mimeType != null && this.mimeType == MimeType.JPEG) {
+                if (this.mimeType == MimeType.JPEG) {
                     suffix = ".jpg";
                 }
 
