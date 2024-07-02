@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
 import co.elastic.clients.elasticsearch._types.InlineScript;
+import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.elasticsearch._types.mapping.DenseVectorProperty;
 import co.elastic.clients.elasticsearch._types.mapping.Property;
 import co.elastic.clients.elasticsearch._types.mapping.TextProperty;
@@ -267,6 +268,65 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
     }
 
+    public EmbeddingSearchResult<TextSegment> searchExactKnn(
+            EmbeddingSearchRequest embeddingSearchRequest) {
+        try {
+            // Use the Knn query
+            // see
+            // https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html#approximate-knn
+
+            KnnQuery knnQuery = buildKnnQuery(
+                    embeddingSearchRequest.queryEmbedding().vector(),
+                    embeddingSearchRequest.maxResults(), embeddingSearchRequest.filter());
+
+            // Use Script Score and cosineSimilarity to calculate
+            // see
+            // https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine
+            ScriptScoreQuery scriptScoreQuery = buildScriptScoreQuery(
+                    embeddingSearchRequest.queryEmbedding().vector(),
+                    (float) embeddingSearchRequest.minScore(),
+                    embeddingSearchRequest.filter()
+            );
+
+            // Combined Script Score query and Knn query to produce an Exact Knn search query
+            // see
+            // https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html#exact-knn
+            SearchResponse<Document> response = client
+                    .search(co.elastic.clients.elasticsearch.core.SearchRequest
+                                    .of(s -> s.index(indexName).knn(knnQuery)
+                                            .query(q -> q.scriptScore(scriptScoreQuery))
+                                            .size(embeddingSearchRequest.maxResults())),
+                            Document.class);
+
+            return new EmbeddingSearchResult<>(toMatches(response));
+        } catch (IOException e) {
+            throw new ElasticsearchRequestFailedException(e.getMessage());
+        }
+    }
+
+    public EmbeddingSearchResult<TextSegment> searchApproximateKnn(
+            EmbeddingSearchRequest embeddingSearchRequest) {
+        try {
+            // Use the approximate Knn query to search
+            // see
+            // https://www.elastic.co/guide/en/elasticsearch/reference/current/knn-search.html#approximate-knn
+
+            KnnQuery knnQuery = buildKnnQuery(
+                    embeddingSearchRequest.queryEmbedding().vector(),
+                    embeddingSearchRequest.maxResults(), embeddingSearchRequest.filter());
+
+            SearchResponse<Document> response = client
+                    .search(co.elastic.clients.elasticsearch.core.SearchRequest
+                                    .of(s -> s.index(indexName).knn(knnQuery)
+                                            .size(embeddingSearchRequest.maxResults())),
+                            Document.class);
+
+            return new EmbeddingSearchResult<>(toMatches(response));
+        } catch (IOException e) {
+            throw new ElasticsearchRequestFailedException(e.getMessage());
+        }
+    }
+
     @Override
     public void removeAll(Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
@@ -308,6 +368,28 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
                         .params("query_vector", toJsonData(vector))))
                 )
         );
+    }
+
+    private KnnQuery buildKnnQuery(float[] vectors,
+                                   int numberOfCandidates,
+                                   Filter filter) {
+        Query query;
+        if (filter == null) {
+            query = Query.of(q -> q.matchAll(m -> m));
+        } else {
+            query = ElasticsearchMetadataFilterMapper.map(filter);
+        }
+
+        List<Float> vectorList = new ArrayList<>();
+        for (float vector : vectors) {
+            vectorList.add(vector);
+        }
+
+        return KnnQuery.of(s -> s.field("vector")
+                .numCandidates(numberOfCandidates)
+                .k(numberOfCandidates)
+                .queryVector(vectorList)
+                .filter(query));
     }
 
     private <T> JsonData toJsonData(T rawData) {
