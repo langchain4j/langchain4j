@@ -65,6 +65,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private final Filter filter;
 
+    private final String searchFilter;
+
     public AzureAiSearchContentRetriever(String endpoint,
                                          AzureKeyCredential keyCredential,
                                          TokenCredential tokenCredential,
@@ -110,6 +112,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         this.maxResults = maxResults;
         this.minScore = minScore;
         this.filter = filter;
+        this.searchFilter = filterMapper.map(filter);
+
     }
 
     /**
@@ -197,7 +201,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                 searchClient.search(content,
                         new SearchOptions()
                                 .setTop(maxResults)
-                                .setFilter(filterMapper.map(filter)),
+                                .setFilter(searchFilter),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
@@ -215,7 +219,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                         new SearchOptions()
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
                                 .setTop(maxResults)
-                                .setFilter(filterMapper.map(filter)),
+                                .setFilter(searchFilter),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID, minScore);
@@ -235,7 +239,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                 .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
                                 .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
                                 .setTop(maxResults)
-                                .setFilter(filterMapper.map(filter)),
+                                .setFilter(searchFilter),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
