@@ -2,12 +2,18 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.FunctionResponse;
 import com.google.cloud.vertexai.api.Part;
-import com.google.cloud.vertexai.generativeai.PartMaker;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 import java.net.URI;
 import java.util.Base64;
@@ -19,6 +25,7 @@ import java.util.Map;
 import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -86,7 +93,12 @@ class PartsMapper {
                 try {
                     JsonFormat.parser().merge(functionResponseTextAsMap, structBuilder);
                 } catch (InvalidProtocolBufferException e2) {
-                    throw new RuntimeException(e);
+                    String functionResponseTextWithQuotesAsMap = "{\"result\":" + quoted(functionResponseText) + "}";
+                    try {
+                        JsonFormat.parser().merge(functionResponseTextWithQuotesAsMap, structBuilder);
+                    } catch (InvalidProtocolBufferException e3) {
+                        throw new RuntimeException(e3);
+                    }
                 }
             }
             Struct responseStruct = structBuilder.build();
