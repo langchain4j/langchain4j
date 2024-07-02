@@ -28,29 +28,28 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     private final AiServiceContext context;
     private final Object memoryId;
 
-    private final List<ChatMessage> tempToolExecutionMessages;
-
     private final Consumer<String> tokenHandler;
     private final Consumer<Response<AiMessage>> completionHandler;
     private final Consumer<Throwable> errorHandler;
 
+    private final List<ChatMessage> temporaryMemory;
     private final TokenUsage tokenUsage;
 
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
-                                      List<ChatMessage> tempToolExecutionMessages,
                                       Consumer<String> tokenHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
+                                      List<ChatMessage> temporaryMemory,
                                       TokenUsage tokenUsage) {
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
-        this.tempToolExecutionMessages = new ArrayList<>(tempToolExecutionMessages);
 
         this.tokenHandler = ensureNotNull(tokenHandler, "tokenHandler");
         this.completionHandler = completionHandler;
         this.errorHandler = errorHandler;
 
+        this.temporaryMemory = new ArrayList<>(temporaryMemory);
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
     }
 
@@ -63,7 +62,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     public void onComplete(Response<AiMessage> response) {
 
         AiMessage aiMessage = response.content();
-        addChatMessage(aiMessage);
+        addToMemory(aiMessage);
 
         if (aiMessage.hasToolExecutionRequests()) {
             for (ToolExecutionRequest toolExecutionRequest : aiMessage.toolExecutionRequests()) {
@@ -73,19 +72,19 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                         toolExecutionRequest,
                         toolExecutionResult
                 );
-                addChatMessage(toolExecutionResultMessage);
+                addToMemory(toolExecutionResultMessage);
             }
 
             context.streamingChatModel.generate(
-                    getMemoryMessages(memoryId),
+                    messagesToSend(memoryId),
                     context.toolSpecifications,
                     new AiServiceStreamingResponseHandler(
                             context,
                             memoryId,
-                            tempToolExecutionMessages,
                             tokenHandler,
                             completionHandler,
                             errorHandler,
+                            temporaryMemory,
                             TokenUsage.sum(tokenUsage, response.tokenUsage())
                     )
             );
@@ -100,29 +99,18 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
         }
     }
 
-    /**
-     * Add ChatMessage into memory
-     * or if memory is not available, into temporary list tempToolExecutionMessages.
-     *
-     * @param chatMessage the ChatMessage to add. {@link AiMessage} or {@link ToolExecutionResultMessage}
-     */
-    private void addChatMessage(ChatMessage chatMessage) {
+    private void addToMemory(ChatMessage chatMessage) {
         if (context.hasChatMemory()) {
             context.chatMemory(memoryId).add(chatMessage);
         } else {
-            tempToolExecutionMessages.add(chatMessage);
+            temporaryMemory.add(chatMessage);
         }
     }
 
-    /**
-     * Get memory messages
-     * or if memory is not available, get messages from temporary list tempToolExecutionMessages.
-     *
-     * @param memoryId the memory id.
-     * @return the list of memory messages.
-     */
-    private List<ChatMessage> getMemoryMessages(Object memoryId) {
-        return context.hasChatMemory() ? context.chatMemory(memoryId).messages() : tempToolExecutionMessages;
+    private List<ChatMessage> messagesToSend(Object memoryId) {
+        return context.hasChatMemory()
+                ? context.chatMemory(memoryId).messages()
+                : temporaryMemory;
     }
 
     @Override

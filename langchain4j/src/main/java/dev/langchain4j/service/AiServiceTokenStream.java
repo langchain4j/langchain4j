@@ -6,12 +6,12 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
 
 public class AiServiceTokenStream implements TokenStream {
 
@@ -80,10 +80,10 @@ public class AiServiceTokenStream implements TokenStream {
             AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
                     context,
                     memoryId,
-                    initTempToolExecutionMessages(context, messagesToSend),
                     tokenHandler,
                     completionHandler,
                     errorHandler,
+                    initTemporaryMemory(context, messagesToSend),
                     new TokenUsage()
             );
 
@@ -94,17 +94,9 @@ public class AiServiceTokenStream implements TokenStream {
             }
         }
 
-        /**
-         * Initialize temporary tool execution messages.
-         * If context has chat memory, the temp messages list is useless.
-         *
-         * @param context        the AI service context.
-         * @param messagesToSend the init list of messages to send.
-         * @return the list of temporary tool execution messages.
-         */
-        private List<ChatMessage> initTempToolExecutionMessages(AiServiceContext context, List<ChatMessage> messagesToSend) {
+        private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
             if (context.hasChatMemory()) {
-                return Collections.emptyList();
+                return emptyList();
             } else {
                 return new ArrayList<>(messagesToSend);
             }

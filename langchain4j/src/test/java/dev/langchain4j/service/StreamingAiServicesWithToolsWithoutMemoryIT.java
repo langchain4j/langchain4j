@@ -6,22 +6,19 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.azure.AzureOpenAiStreamingChatModel;
-import dev.langchain4j.model.azure.AzureOpenAiTokenizer;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.output.FinishReason.STOP;
@@ -29,36 +26,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("unchecked")
 class StreamingAiServicesWithToolsWithoutMemoryIT {
 
-    static Stream<StreamingChatLanguageModel> callToolsParallelModels() {
-        return Stream.of(
-                AzureOpenAiStreamingChatModel
-                        .builder()
-                        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                        .apiKey(System.getenv("AZURE_OPENAI_API_KEY"))
-                        .deploymentName(System.getenv("AZURE_OPENAI_DEPLOYMENT_NAME"))
-                        .temperature(0.0)
-                        .tokenizer(new AzureOpenAiTokenizer())
-                        .logRequestsAndResponses(true)
-                        .build());
-    }
-
-    static Stream<StreamingChatLanguageModel> callToolsSequentiallyModels() {
-        return Stream.of(
-                OpenAiStreamingChatModel
-                        .builder()
-                        .baseUrl(System.getenv("OPENAI_BASE_URL"))
-                        .apiKey(System.getenv("OPENAI_API_KEY"))
-                        .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                        .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
-                        .temperature(0.0)
-                        .logRequests(true)
-                        .logResponses(true)
-                        .build()
-        );
-    }
+    @Spy
+    StreamingChatLanguageModel spyModel = OpenAiStreamingChatModel.builder()
+            .baseUrl(System.getenv("OPENAI_BASE_URL"))
+            .apiKey(System.getenv("OPENAI_API_KEY"))
+            .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+            .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
 
     interface Assistant {
 
@@ -74,14 +52,11 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         }
     }
 
-    @ParameterizedTest
-    @MethodSource({"callToolsParallelModels", "callToolsSequentiallyModels"})
-    void should_execute_a_tool_then_answer(StreamingChatLanguageModel model) throws Exception {
+    @Test
+    void should_execute_a_tool_then_answer() throws Exception {
 
         // given
         Calculator calculator = spy(new Calculator());
-
-        StreamingChatLanguageModel spyModel = spy(model);
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
@@ -131,12 +106,22 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         assertThat(secondGenerateSendMessages.get(2).type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
     }
 
-    @ParameterizedTest
-    @MethodSource("callToolsSequentiallyModels")
-    void should_execute_multiple_tools_sequentially_then_answer(StreamingChatLanguageModel model) throws Exception {
+    @Test
+    void should_execute_multiple_tools_sequentially_then_answer() throws Exception {
 
         // given
         Calculator calculator = spy(new Calculator());
+
+        StreamingChatLanguageModel model = OpenAiStreamingChatModel
+                .builder()
+                .baseUrl(System.getenv("OPENAI_BASE_URL"))
+                .apiKey(System.getenv("OPENAI_API_KEY"))
+                .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
+                .modelName(GPT_3_5_TURBO_0613) // this model can only call tools sequentially
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build();
 
         StreamingChatLanguageModel spyModel = spy(model);
 
@@ -198,14 +183,11 @@ class StreamingAiServicesWithToolsWithoutMemoryIT {
         assertThat(thirdGenerateSendMessages.get(4).type()).isEqualTo(ChatMessageType.TOOL_EXECUTION_RESULT);
     }
 
-    @ParameterizedTest
-    @MethodSource("callToolsParallelModels")
-    void should_execute_multiple_tools_in_parallel_then_answer(StreamingChatLanguageModel model) throws Exception {
+    @Test
+    void should_execute_multiple_tools_in_parallel_then_answer() throws Exception {
 
         // given
         Calculator calculator = spy(new Calculator());
-
-        StreamingChatLanguageModel spyModel = spy(model);
 
         Assistant assistant = AiServices
                 .builder(Assistant.class)
