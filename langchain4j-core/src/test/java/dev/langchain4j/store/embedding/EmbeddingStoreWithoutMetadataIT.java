@@ -137,7 +137,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
+                relevanceScore(firstEmbedding, secondEmbedding),
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
@@ -183,7 +183,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
+                relevanceScore(firstEmbedding, secondEmbedding),
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(ids.get(1));
@@ -218,7 +218,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(firstMatch.embeddingId()).isEqualTo(firstId);
         EmbeddingMatch<TextSegment> secondMatch = relevant.get(1);
         assertThat(secondMatch.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(firstEmbedding, secondEmbedding)),
+                relevanceScore(firstEmbedding, secondEmbedding),
                 withPercentage(1)
         );
         assertThat(secondMatch.embeddingId()).isEqualTo(secondId);
@@ -290,7 +290,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
 
         EmbeddingMatch<TextSegment> match = relevant.get(0);
         assertThat(match.score()).isCloseTo(
-                RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding)),
+                relevanceScore(embedding, referenceEmbedding),
                 withPercentage(1)
         );
 
@@ -299,6 +299,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
                 .queryEmbedding(referenceEmbedding)
                 .maxResults(1)
                 .build()).matches()).isEqualTo(relevant);
+    }
+
+    protected double relevanceScore(Embedding embedding, Embedding referenceEmbedding) {
+        return RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(embedding, referenceEmbedding));
     }
 
     protected void awaitUntilPersisted() {
