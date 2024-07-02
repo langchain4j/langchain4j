@@ -1,7 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
 import dev.langchain4j.model.bedrock.internal.AbstractBedrockChatModel;
-import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Builder;
@@ -13,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 public class BedrockLlamaChatModel extends AbstractBedrockChatModel<BedrockLlamaChatModelResponse> {
 
     @Builder.Default
-    private final String model = Types.MetaLlama2Chat70B.getValue();
+    private final String model = Types.MetaLlama2Chat13B.getValue();
 
     @Override
     protected String getModelId() {

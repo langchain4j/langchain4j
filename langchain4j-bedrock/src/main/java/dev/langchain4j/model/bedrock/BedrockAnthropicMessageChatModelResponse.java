@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import dev.langchain4j.model.bedrock.BedrockAnthropicCompletionChatModelResponse.BedrockAnthropicContent;
 import dev.langchain4j.model.bedrock.internal.BedrockChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
