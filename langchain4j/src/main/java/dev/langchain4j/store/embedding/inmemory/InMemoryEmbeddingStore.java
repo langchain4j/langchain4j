@@ -20,6 +20,7 @@ import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.util.Arrays.asList;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
@@ -37,7 +38,15 @@ import static java.util.stream.Collectors.toList;
  */
 public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
 
-    final CopyOnWriteArrayList<Entry<Embedded>> entries = new CopyOnWriteArrayList<>();
+    final CopyOnWriteArrayList<Entry<Embedded>> entries;
+
+    public InMemoryEmbeddingStore() {
+        this.entries = new CopyOnWriteArrayList<>();
+    }
+
+    private InMemoryEmbeddingStore(Collection<Entry<Embedded>> entries) {
+        this.entries = new CopyOnWriteArrayList<>(entries);
+    }
 
     @Override
     public String add(Embedding embedding) {
@@ -187,6 +196,28 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
         return fromFile(Paths.get(filePath));
+    }
+
+    /**
+     * Merges given {@code InMemoryEmbeddingStore}s into a single {@code InMemoryEmbeddingStore},
+     * copying all entries from each store.
+     */
+    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(Collection<InMemoryEmbeddingStore<Embedded>> stores) {
+        ensureNotNull(stores, "stores");
+        List<Entry<Embedded>> entries = new ArrayList<>();
+        for (InMemoryEmbeddingStore<Embedded> store : stores) {
+            entries.addAll(store.entries);
+        }
+        return new InMemoryEmbeddingStore<>(entries);
+    }
+
+    /**
+     * Merges given {@code InMemoryEmbeddingStore}s into a single {@code InMemoryEmbeddingStore},
+     * copying all entries from each store.
+     */
+    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(InMemoryEmbeddingStore<Embedded> first,
+                                                                    InMemoryEmbeddingStore<Embedded> second) {
+        return merge(asList(first, second));
     }
 
     private static class Entry<Embedded> {
