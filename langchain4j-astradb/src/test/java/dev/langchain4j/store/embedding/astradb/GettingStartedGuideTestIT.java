@@ -65,8 +65,8 @@ public class GettingStartedGuideTestIT {
     static final String OPENAI_API_KEY = System.getenv("OPENAI_API_KEY");
     static Database astraDatabase;
 
-    static AstraDBEmbeddingStore storeJohnny;
-    static AstraDBEmbeddingStore storeShadow;
+    static AstraDbEmbeddingStore storeJohnny;
+    static AstraDbEmbeddingStore storeShadow;
     static EmbeddingModel openAiEmbeddingModel;
 
     @BeforeAll
@@ -77,7 +77,7 @@ public class GettingStartedGuideTestIT {
                 .logRequests().build())
                 .getDatabase(ASTRA_ENDPOINT);
 
-        storeJohnny = new AstraDBEmbeddingStore(
+        storeJohnny = new AstraDbEmbeddingStore(
            astraDatabase.createCollection("store_johnny", CollectionOptions
                 .builder()
                 .vector(1536, SimilarityMetric.COSINE)
@@ -85,7 +85,7 @@ public class GettingStartedGuideTestIT {
                 .build()));
         storeJohnny.clear();
 
-        storeShadow = new AstraDBEmbeddingStore(
+        storeShadow = new AstraDbEmbeddingStore(
                 astraDatabase.createCollection("store_shadow", CollectionOptions
                         .builder()
                         .vector(1536, SimilarityMetric.COSINE)

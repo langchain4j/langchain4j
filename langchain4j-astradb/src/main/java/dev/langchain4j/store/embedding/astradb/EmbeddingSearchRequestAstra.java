@@ -13,14 +13,14 @@ public class EmbeddingSearchRequestAstra extends EmbeddingSearchRequest {
     /**
      * The field to vectorize
      */
-    private final String vectorize;
+    private final String query;
 
     /**
      * Constructor leveraging default search request but with the vectorize options.
      * @param queryEmbedding
      *      vector or left empty to use the vectorize field
-     * @param vectorize
-     *      field to vectorize
+     * @param query
+     *      the text fragment where embedding are computed on the spot during the search
      * @param maxResults
      *      maximum number of results to return
      * @param minScore
@@ -28,9 +28,9 @@ public class EmbeddingSearchRequestAstra extends EmbeddingSearchRequest {
      * @param filter
      *      filter to apply
      */
-    public EmbeddingSearchRequestAstra(Embedding queryEmbedding, String vectorize, Integer maxResults, Double minScore, Filter filter) {
+    public EmbeddingSearchRequestAstra(Embedding queryEmbedding, String query, Integer maxResults, Double minScore, Filter filter) {
         super(queryEmbedding != null ? queryEmbedding : Embedding.from(new float[0]), maxResults, minScore, filter);
-        this.vectorize = vectorize;
+        this.query = query;
     }
 
     /**
@@ -39,7 +39,7 @@ public class EmbeddingSearchRequestAstra extends EmbeddingSearchRequest {
      * @return
      *      current vectorize value.
      */
-    public String vectorize() {
-        return vectorize;
+    public String query() {
+        return query;
     }
 }

@@ -10,11 +10,11 @@
         <appender-ref ref="STDOUT" />
     </logger>
 
-    <logger name="dev.langchain4j.store.embedding.astradb" level="DEBUG" additivity="false">
+    <logger name="dev.langchain4j.store" level="DEBUG" additivity="false">
         <appender-ref ref="STDOUT" />
     </logger>
 
-    <root level="ERROR">
+    <root level="WARN">
         <appender-ref ref="STDOUT" />
     </root>
     

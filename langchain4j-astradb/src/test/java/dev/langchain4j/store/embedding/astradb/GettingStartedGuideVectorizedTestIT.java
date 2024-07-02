@@ -45,7 +45,7 @@ public class GettingStartedGuideVectorizedTestIT {
      * Different Embedding Stores topologies
      */
     static Database astraDatabase;
-    static AstraDBEmbeddingStore embeddingStoreVectorizeNVidia;
+    static AstraDbEmbeddingStore embeddingStoreVectorizeNVidia;
 
     @BeforeAll
     public static void initStoreForTests() {
@@ -63,7 +63,7 @@ public class GettingStartedGuideVectorizedTestIT {
          * An embedding store that compute the embedding for you on the fly without
          * the need of a embedding model. It is done at database level for you.
          */
-        embeddingStoreVectorizeNVidia = new AstraDBEmbeddingStore(
+        embeddingStoreVectorizeNVidia = new AstraDbEmbeddingStore(
                 astraDatabase.createCollection(NAME_STORE_WITH_COMPUTE_NVIDIA, CollectionOptions
                         .builder()
                         .vector(1024, SimilarityMetric.COSINE)

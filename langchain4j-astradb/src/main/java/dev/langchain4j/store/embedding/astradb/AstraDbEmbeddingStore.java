@@ -12,7 +12,6 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import lombok.Getter;
@@ -36,7 +35,7 @@ import static com.datastax.astra.client.model.Filters.eq;
 @Slf4j
 @Getter @Setter
 @Accessors(fluent = true)
-public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
+public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
 
    /**
     * Saving the text chunk as an attribute.
@@ -69,7 +68,7 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param client
      *      astra db collection client
      */
-    public AstraDBEmbeddingStore(@NonNull Collection<Document> client) {
+    public AstraDbEmbeddingStore(@NonNull Collection<Document> client) {
         this(client, 20, 8);
     }
 
@@ -83,7 +82,7 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param concurrentThreads
      *      concurrent threads
      */
-    public AstraDBEmbeddingStore(@NonNull Collection<Document> client, int itemsPerChunk, int concurrentThreads) {
+    public AstraDbEmbeddingStore(@NonNull Collection<Document> client, int itemsPerChunk, int concurrentThreads) {
         if (itemsPerChunk>100 || itemsPerChunk<1) {
             throw new IllegalArgumentException("'itemsPerChunk' should be in between 1 and 20");
         }
@@ -196,10 +195,10 @@ public class AstraDBEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Mapping of the filter to internal representation
         Filter astraFilter = null;
         if (request.filter() != null) {
-            astraFilter = AstraDBFilterMapper.map(request.filter());
+            astraFilter = AstraDbFilterMapper.map(request.filter());
         }
-        if (request.vectorize() != null) {
-            return new EmbeddingSearchResult<>(findRelevant(request.vectorize(),
+        if (request.query() != null) {
+            return new EmbeddingSearchResult<>(findRelevant(request.query(),
                     astraFilter, request.maxResults(), request.minScore()));
         }
         // Call the search

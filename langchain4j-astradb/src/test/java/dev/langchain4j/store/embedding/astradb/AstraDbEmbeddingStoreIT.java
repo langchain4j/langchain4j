@@ -21,7 +21,6 @@ import dev.langchain4j.store.embedding.EmbeddingStoreIT;
 import lombok.extern.slf4j.Slf4j;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -43,7 +42,7 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
 
     static final String TEST_DB = "test_langchain4j";
     static final String TEST_COLLECTION = "test_collection";
-    static AstraDBEmbeddingStore embeddingStore;
+    static AstraDbEmbeddingStore embeddingStore;
     static EmbeddingModel embeddingModel;
 
     static UUID dbId;
@@ -86,7 +85,7 @@ class AstraDbEmbeddingStoreIT extends EmbeddingStoreIT {
         log.info("[init] - Collection create name={}", TEST_COLLECTION);
 
         // Creating the store (and collection) if not exists
-        embeddingStore = new AstraDBEmbeddingStore(collection);
+        embeddingStore = new AstraDbEmbeddingStore(collection);
         log.info("[init] - Embedding Store initialized");
     }
 
