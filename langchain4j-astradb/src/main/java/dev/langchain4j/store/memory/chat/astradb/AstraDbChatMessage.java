@@ -1,7 +1,6 @@
 package dev.langchain4j.store.memory.chat.astradb;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -85,11 +84,16 @@ public class AstraDbChatMessage {
         }
     }
 
+    /**
+     * Constructor using the Langchain4J abstraction
+     * @param chatMessage
+     *      lc4j classes
+     */
     public AstraDbChatMessage(ChatMessage chatMessage) {
         this.chatId = chatMessage.type().name();
         this.messageType = chatMessage.type();
         this.messageTime = Instant.now();
-        System.out.println("chatMessage.type(): " + chatMessage.type());
+        // Flatten to ease serialization in DB
         switch (chatMessage.type()) {
             case SYSTEM:
                 SystemMessage systemMessage = (SystemMessage) chatMessage;

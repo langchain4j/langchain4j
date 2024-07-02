@@ -5,8 +5,6 @@ import com.datastax.astra.client.Database;
 import com.datastax.astra.client.model.CollectionOptions;
 import com.datastax.astra.client.model.FindOptions;
 import com.datastax.astra.client.model.Sorts;
-import com.datastax.astra.internal.command.LoggingCommandObserver;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import lombok.Getter;

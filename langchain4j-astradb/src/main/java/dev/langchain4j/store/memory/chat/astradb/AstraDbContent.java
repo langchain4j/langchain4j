@@ -7,8 +7,6 @@ import dev.langchain4j.data.message.ImageContent;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.net.URI;
-
 /**
  * Content interface makes the serialization more complex than it should be.
  * This flatten structure is a workaround to simplify the serialization.

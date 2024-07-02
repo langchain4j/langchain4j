@@ -4,10 +4,12 @@ import com.datastax.astra.client.Collection;
 import com.datastax.astra.client.model.DataAPIKeywords;
 import com.datastax.astra.client.model.Document;
 import com.datastax.astra.client.model.Filter;
+import com.datastax.astra.client.model.Filters;
 import com.datastax.astra.client.model.FindOneAndReplaceOptions;
 import com.datastax.astra.client.model.FindOptions;
 import com.datastax.astra.client.model.InsertManyOptions;
 import com.datastax.astra.client.model.Projections;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -26,6 +28,9 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static com.datastax.astra.client.model.Filters.eq;
+import static com.datastax.astra.client.model.Filters.in;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static java.util.Collections.singletonList;
 
 /**
  * Implementation of {@link EmbeddingStore} using AstraDB.
@@ -235,6 +240,38 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
                 .filter(r -> r.getSimilarity().isPresent() &&  r.getSimilarity().get()>= minScore)
                 .map(this::fromDocumentToEmbeddingMatch)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Removes a single embedding from the store by ID.
+     *
+     * @param id The unique ID of the embedding to be removed.
+     */
+    @Override
+    public void remove(String id) {
+        astraDBCollection.deleteOne(eq(id));
+    }
+
+    /**
+     * Removes all embeddings that match the specified IDs from the store.
+     *
+     * @param ids A collection of unique IDs of the embeddings to be removed.
+     */
+    @Override
+    public void removeAll(java.util.Collection<String> ids) {
+        astraDBCollection.deleteMany(in(DataAPIKeywords.ID.getKeyword(), ids));
+    }
+
+    /**
+     * Removes all embeddings that match the specified {@link dev.langchain4j.store.embedding.filter.Filter} from the store.
+     *
+     * @param filter The filter to be applied to the {@link Metadata} of the {@link TextSegment} during removal.
+     *               Only embeddings whose {@code TextSegment}'s {@code Metadata}
+     *               match the {@code Filter} will be removed.
+     */
+    @Override
+    public void removeAll(dev.langchain4j.store.embedding.filter.Filter filter) {
+        astraDBCollection.deleteMany(AstraDbFilterMapper.map(filter));
     }
 
     /**
