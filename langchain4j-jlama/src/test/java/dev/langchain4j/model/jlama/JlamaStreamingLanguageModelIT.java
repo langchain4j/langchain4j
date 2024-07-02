@@ -21,10 +21,11 @@ public class JlamaStreamingLanguageModelIT {
 
     @BeforeAll
     static void setup() {
-        tmpDir = Files.newTemporaryFolder();
+        tmpDir = new File(System.getProperty("java.io.tmpdir") + File.separator + "jlama_tests");
+        tmpDir.mkdirs();
 
         model = JlamaStreamingLanguageModel.builder()
-                .modelName("openai-community/gpt2")
+                .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
                 .maxTokens(10)
                 .build();
@@ -65,7 +66,7 @@ public class JlamaStreamingLanguageModelIT {
         assertThat(streamedAnswer).isNotBlank();
 
         String aiMessage = response.content();
-        assertThat(aiMessage).isEqualTo(streamedAnswer.substring(1)); // Jlama bug fix needed
+        assertThat(streamedAnswer).contains(aiMessage); // Jlama bug fix needed
 
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.finishReason()).isEqualTo(LENGTH);

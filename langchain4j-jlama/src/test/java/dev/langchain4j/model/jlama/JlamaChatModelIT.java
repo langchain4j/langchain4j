@@ -16,16 +16,17 @@ import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class JlamaChatLanguageModelIT {
+public class JlamaChatModelIT {
 
     static File tmpDir;
     static ChatLanguageModel model;
 
     @BeforeAll
     static void setup() {
-        tmpDir = Files.newTemporaryFolder();
+        tmpDir = new File(System.getProperty("java.io.tmpdir") + File.separator + "jlama_tests");
+        tmpDir.mkdirs();
 
-        model = JlamaChatLanguageModel.builder()
+        model = JlamaChatModel.builder()
                 .modelName("tjake/TinyLlama-1.1B-Chat-v1.0-Jlama-Q4")
                 .modelCachePath(tmpDir.toPath())
                 .maxTokens(25)

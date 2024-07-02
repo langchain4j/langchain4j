@@ -28,6 +28,7 @@ public class JlamaLanguageModel implements LanguageModel {
                               String authToken,
                               Integer threadCount,
                               Boolean quantizeModelAtRuntime,
+                              Path workingDirectory,
                               Float temperature,
                               Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
@@ -39,6 +40,9 @@ public class JlamaLanguageModel implements LanguageModel {
 
         if (threadCount != null)
             loader = loader.threadCount(threadCount);
+
+        if (workingDirectory != null)
+            loader = loader.workingDirectory(workingDirectory);
 
         this.model = loader.load();
         this.temperature = temperature == null ? 0.7f : temperature;

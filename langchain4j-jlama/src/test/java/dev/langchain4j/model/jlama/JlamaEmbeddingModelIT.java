@@ -21,19 +21,14 @@ public class JlamaEmbeddingModelIT {
 
     @BeforeAll
     static void setup() {
-        tmpDir = Files.newTemporaryFolder();
+        tmpDir = new File(System.getProperty("java.io.tmpdir") + File.separator + "jlama_tests");
+        tmpDir.mkdirs();
 
         model = JlamaEmbeddingModel.builder()
                 .modelName("intfloat/e5-small-v2")
                 .modelCachePath(tmpDir.toPath())
                 .build();
     }
-
-    @AfterAll
-    static void cleanup() {
-        Files.delete(tmpDir);
-    }
-
 
     @Test
     void should_embed() {

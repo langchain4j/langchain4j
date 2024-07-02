@@ -26,7 +26,8 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
                                String modelName,
                                String authToken,
                                Integer threadCount,
-                               Boolean quantizeModelAtRuntime) {
+                               Boolean quantizeModelAtRuntime,
+                               Path workingDirectory) {
 
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
         JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
@@ -41,6 +42,9 @@ public class JlamaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         if (threadCount != null)
             loader = loader.threadCount(threadCount);
+
+        if (workingDirectory != null)
+            loader = loader.workingDirectory(workingDirectory);
 
         loader = loader.inferenceType(AbstractModel.InferenceType.FORWARD_PASS);
 

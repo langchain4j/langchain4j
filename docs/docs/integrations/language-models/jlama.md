@@ -63,7 +63,7 @@ Create a class and add the following code.
 
 ```java
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.jlama.JlamaChatLanguageModel;
+import dev.langchain4j.model.jlama.JlamaChatModel;
 
 public class HelloWorld {
     public static void main(String[] args) {
@@ -88,7 +88,7 @@ Create a class and add the following code.
 ```java
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
-import dev.langchain4j.model.jlama.JlamaStreamingChatLanguageModel;
+import dev.langchain4j.model.jlama.JlamaStreamingChatModel;
 import dev.langchain4j.model.output.Response;
 
 import java.util.concurrent.CompletableFuture;
@@ -141,7 +141,7 @@ Jlama has some special model parameters that you can set
 
  - `modelCachePath` parameter, which allows you to specify a path to a directory where the model will be cached once downloaded. Default is `~/.jlama`.
  - `workingDirectory` parameter, which allows you to keep a persistent ChatMemory on disk for a given model instance. This is faster than using Chat Memory.
- - `quantized` parameter, which will quantize the model at runtime. The current quantization is always Q4. You can also pre-quantize the model using jlama project tools (See [Jlama Project](https://github.com/tjake/jlama) for more information).
+ - `quantizeModelAtRuntime` parameter, which will quantize the model at runtime. The current quantization is always Q4. You can also pre-quantize the model using jlama project tools (See [Jlama Project](https://github.com/tjake/jlama) for more information).
 
 ### Function Calling
 Jlama does not support function calling (yet).

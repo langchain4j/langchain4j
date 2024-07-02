@@ -18,7 +18,7 @@ import java.util.*;
 class JlamaModelRegistry {
     private static final Logger logger = LoggerFactory.getLogger(JlamaModelRegistry.class);
 
-    private static final String DEFAULT_MODEL_CACHE_PATH = System.getProperty("user.home", "") + File.pathSeparator + ".jlama" + File.pathSeparator + "models";
+    private static final String DEFAULT_MODEL_CACHE_PATH = System.getProperty("user.home", "") + File.separator + ".jlama" + File.separator + "models";
     private final Path modelCachePath;
 
     private JlamaModelRegistry(Path modelCachePath) {

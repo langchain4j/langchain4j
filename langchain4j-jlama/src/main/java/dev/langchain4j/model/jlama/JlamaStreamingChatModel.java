@@ -8,7 +8,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-import dev.langchain4j.model.jlama.spi.JlamaStreamingChatLanguageModelBuilderFactory;
+import dev.langchain4j.model.jlama.spi.JlamaStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -21,20 +21,21 @@ import java.util.UUID;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaStreamingChatLanguageModel implements StreamingChatLanguageModel {
+public class JlamaStreamingChatModel implements StreamingChatLanguageModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
     private final UUID id = UUID.randomUUID();
 
     @Builder
-    public JlamaStreamingChatLanguageModel(Path modelCachePath,
-                                           String modelName,
-                                           String authToken,
-                                           Integer threadCount,
-                                           Boolean quantizeModelAtRuntime,
-                                           Float temperature,
-                                           Integer maxTokens) {
+    public JlamaStreamingChatModel(Path modelCachePath,
+                                   String modelName,
+                                   String authToken,
+                                   Integer threadCount,
+                                   Boolean quantizeModelAtRuntime,
+                                   Path workingDirectory,
+                                   Float temperature,
+                                   Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
         JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
 
@@ -45,16 +46,19 @@ public class JlamaStreamingChatLanguageModel implements StreamingChatLanguageMod
         if (threadCount != null)
             loader = loader.threadCount(threadCount);
 
+        if (workingDirectory != null)
+            loader = loader.workingDirectory(workingDirectory);
+
         this.model = loader.load();
         this.temperature = temperature == null ? 0.7f : temperature;
         this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
     }
 
-    public static JlamaStreamingChatLanguageModelBuilder builder() {
-        for (JlamaStreamingChatLanguageModelBuilderFactory factory : loadFactories(JlamaStreamingChatLanguageModelBuilderFactory.class)) {
+    public static JlamaStreamingChatModelBuilder builder() {
+        for (JlamaStreamingChatModelBuilderFactory factory : loadFactories(JlamaStreamingChatModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new JlamaStreamingChatLanguageModelBuilder();
+        return new JlamaStreamingChatModelBuilder();
     }
 
     @Override
@@ -83,8 +87,8 @@ public class JlamaStreamingChatLanguageModel implements StreamingChatLanguageMod
         }
     }
 
-    public static class JlamaStreamingChatLanguageModelBuilder {
-        public JlamaStreamingChatLanguageModelBuilder() {
+    public static class JlamaStreamingChatModelBuilder {
+        public JlamaStreamingChatModelBuilder() {
             // This is public, so it can be extended
             // By default with Lombok it becomes package private
         }

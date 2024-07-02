@@ -7,7 +7,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.RetryUtils;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.jlama.spi.JlamaChatLanguageModelBuilderFactory;
+import dev.langchain4j.model.jlama.spi.JlamaChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -20,20 +20,21 @@ import java.util.UUID;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-public class JlamaChatLanguageModel implements ChatLanguageModel {
+public class JlamaChatModel implements ChatLanguageModel {
     private final AbstractModel model;
     private final Float temperature;
     private final Integer maxTokens;
     private final UUID id = UUID.randomUUID();
 
     @Builder
-    public JlamaChatLanguageModel(Path modelCachePath,
-                                  String modelName,
-                                  String authToken,
-                                  Integer threadCount,
-                                  Boolean quantizeModelAtRuntime,
-                                  Float temperature,
-                                  Integer maxTokens) {
+    public JlamaChatModel(Path modelCachePath,
+                          String modelName,
+                          String authToken,
+                          Integer threadCount,
+                          Boolean quantizeModelAtRuntime,
+                          Path workingDirectory,
+                          Float temperature,
+                          Integer maxTokens) {
         JlamaModelRegistry registry = JlamaModelRegistry.getOrCreate(modelCachePath);
         JlamaModel jlamaModel = RetryUtils.withRetry(() -> registry.downloadModel(modelName, Optional.ofNullable(authToken)), 3);
 
@@ -44,16 +45,19 @@ public class JlamaChatLanguageModel implements ChatLanguageModel {
         if (threadCount != null)
             loader = loader.threadCount(threadCount);
 
+        if (workingDirectory != null)
+            loader = loader.workingDirectory(workingDirectory);
+
         this.model = loader.load();
         this.temperature = temperature == null ? 0.7f : temperature;
         this.maxTokens = maxTokens == null ? model.getConfig().contextLength : maxTokens;
     }
 
-    public static JlamaChatLanguageModelBuilder builder() {
-        for (JlamaChatLanguageModelBuilderFactory factory : loadFactories(JlamaChatLanguageModelBuilderFactory.class)) {
+    public static JlamaChatModelBuilder builder() {
+        for (JlamaChatModelBuilderFactory factory : loadFactories(JlamaChatModelBuilderFactory.class)) {
             return factory.get();
         }
-        return new JlamaChatLanguageModelBuilder();
+        return new JlamaChatModelBuilder();
     }
 
     @Override
@@ -76,8 +80,8 @@ public class JlamaChatLanguageModel implements ChatLanguageModel {
         return Response.from(AiMessage.from(r.text), new TokenUsage(r.promptTokens, r.generatedTokens), toFinishReason(r.finishReason));
     }
 
-    public static class JlamaChatLanguageModelBuilder {
-        public JlamaChatLanguageModelBuilder() {
+    public static class JlamaChatModelBuilder {
+        public JlamaChatModelBuilder() {
             // This is public, so it can be extended
             // By default with Lombok it becomes package private
         }
