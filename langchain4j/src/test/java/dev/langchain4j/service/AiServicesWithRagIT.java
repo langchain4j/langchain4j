@@ -537,10 +537,10 @@ class AiServicesWithRagIT {
                 .build();
 
         // when
-        String answer1 = assistant.answer("Which animal?");
+        String answer = assistant.answer("Which animal is mentioned?");
 
         // then
-        assertThat(answer1).containsIgnoringCase("dog");
+        assertThat(answer).containsIgnoringCase("dog");
     }
 
     @ParameterizedTest
