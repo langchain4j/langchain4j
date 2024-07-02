@@ -1,8 +1,9 @@
 package dev.langchain4j.model.ollama;
 
-enum Role {
+public enum Role {
 
     SYSTEM,
     USER,
-    ASSISTANT;
+    ASSISTANT,
+    TOOL_EXECUTION_RESULT
 }

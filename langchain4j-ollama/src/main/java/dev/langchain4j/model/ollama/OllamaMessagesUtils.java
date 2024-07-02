@@ -1,5 +1,9 @@
 package dev.langchain4j.model.ollama;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import dev.langchain4j.data.message.*;
 
 import java.util.List;
@@ -10,7 +14,7 @@ import java.util.stream.Collectors;
 import static dev.langchain4j.data.message.ContentType.IMAGE;
 import static dev.langchain4j.data.message.ContentType.TEXT;
 
-class OllamaMessagesUtils {
+public class OllamaMessagesUtils {
 
     private final static Predicate<ChatMessage> isUserMessage =
             chatMessage -> chatMessage instanceof UserMessage;
@@ -18,7 +22,7 @@ class OllamaMessagesUtils {
             userMessage -> userMessage.contents().stream()
                     .anyMatch(content -> IMAGE.equals(content.type()));
 
-    static List<Message> toOllamaMessages(List<ChatMessage> messages) {
+    public static List<Message> toOllamaMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message) ?
                         messagesWithImageSupport((UserMessage) message)
@@ -55,15 +59,17 @@ class OllamaMessagesUtils {
     }
 
     private static Role toOllamaRole(ChatMessageType chatMessageType) {
-        switch (chatMessageType) {
-            case SYSTEM:
-                return Role.SYSTEM;
-            case USER:
-                return Role.USER;
-            case AI:
-                return Role.ASSISTANT;
-            default:
-                throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
-        }
+        return switch (chatMessageType) {
+            case SYSTEM -> Role.SYSTEM;
+            case USER -> Role.USER;
+            case AI -> Role.ASSISTANT;
+            default -> throw new IllegalArgumentException("Unknown ChatMessageType: " + chatMessageType);
+        };
+    }
+
+    static String toPrettyString(String originalString) {
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        JsonElement jsonElement = JsonParser.parseString(originalString);
+        return gson.toJson(jsonElement);
     }
 }

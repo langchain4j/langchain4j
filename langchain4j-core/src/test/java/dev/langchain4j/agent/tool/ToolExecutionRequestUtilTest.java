@@ -11,8 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
     @Test
@@ -23,14 +22,15 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
                 .arguments("{\"foo\":\"bar\", \"qux\": 12}")
                 .build();
 
+        // TODO: Langchain4j: is ok to have now either long or double ? It fixes other issues.
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                        .containsEntry("qux", 12.0);
+                        .containsEntry("qux", 12L);
 
         assertThat((String) ToolExecutionRequestUtil.argument(request, "foo"))
                 .isEqualTo("bar");
         assertThat((Number) ToolExecutionRequestUtil.argument(request, "qux"))
-                .isEqualTo(12.0);
+                .isEqualTo(12L);
     }
 
     @Test
@@ -43,12 +43,12 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
               .containsEntry("foo", "bar")
-              .containsEntry("qux", 12.0);
+              .containsEntry("qux", 12L);
 
         assertThat((String) ToolExecutionRequestUtil.argument(request, "foo"))
               .isEqualTo("bar");
         assertThat((Number) ToolExecutionRequestUtil.argument(request, "qux"))
-              .isEqualTo(12.0);
+              .isEqualTo(12L);
     }
 
     @Test
@@ -63,16 +63,16 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
               .containsKey("key");
 
-        assertTrue(ToolExecutionRequestUtil.argument(request, "key") instanceof ArrayList);
+        assertInstanceOf(ArrayList.class, ToolExecutionRequestUtil.argument(request, "key"));
 
         List<Object> keys = ToolExecutionRequestUtil.argument(request, "key");
 
         keys.forEach(key -> {
-            assertTrue(key instanceof LinkedTreeMap);
+            assertInstanceOf(LinkedTreeMap.class, key);
             assertTrue(((LinkedTreeMap<?, ?>) key).containsKey("foo"));
             assertTrue(((LinkedTreeMap<?, ?>) key).containsKey("qux"));
             assertThat(((LinkedTreeMap<?, ?>) key).get("foo")).isEqualTo("bar");
-            assertThat(((LinkedTreeMap<?, ?>) key).get("qux")).isEqualTo(12.0);
+            assertThat(((LinkedTreeMap<?, ?>) key).get("qux")).isEqualTo(12L);
         });
     }
 

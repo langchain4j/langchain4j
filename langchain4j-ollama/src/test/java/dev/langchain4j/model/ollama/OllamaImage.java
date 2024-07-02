@@ -9,15 +9,15 @@ import java.util.List;
 
 public class OllamaImage {
 
-    static final String OLLAMA_IMAGE = "ollama/ollama:latest";
+    public static final String OLLAMA_IMAGE = "ollama/ollama:latest";
 
-    static final String BAKLLAVA_MODEL = "bakllava";
+    public static final String BAKLLAVA_MODEL = "bakllava";
 
-    static final String TINY_DOLPHIN_MODEL = "tinydolphin";
+    public static final String TINY_DOLPHIN_MODEL = "tinydolphin";
 
-    static final String ALL_MINILM_MODEL = "all-minilm";
+    public static final String ALL_MINILM_MODEL = "all-minilm";
 
-    static DockerImageName resolve(String baseImage, String localImageName) {
+    public static DockerImageName resolve(String baseImage, String localImageName) {
         DockerImageName dockerImageName = DockerImageName.parse(baseImage);
         DockerClient dockerClient = DockerClientFactory.instance().client();
         List<Image> images = dockerClient.listImagesCmd().withReferenceFilter(localImageName).exec();

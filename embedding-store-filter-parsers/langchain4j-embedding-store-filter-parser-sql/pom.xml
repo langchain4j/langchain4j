@@ -57,12 +57,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Test not active + Ollama integration specific tests should be moved to ollama.
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-ollama</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+        -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
