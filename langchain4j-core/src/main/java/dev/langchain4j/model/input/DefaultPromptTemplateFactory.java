@@ -1,6 +1,7 @@
 package dev.langchain4j.model.input;
 
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
+import lombok.Getter;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -23,6 +24,7 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
         private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{(.+?)}}");
 
         private final String template;
+        @Getter
         private final Set<String> allVariables;
 
         public DefaultTemplate(String template) {
