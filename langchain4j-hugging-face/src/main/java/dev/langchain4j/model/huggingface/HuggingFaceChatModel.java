@@ -8,6 +8,7 @@ import dev.langchain4j.model.huggingface.spi.HuggingFaceChatModelBuilderFactory;
 import dev.langchain4j.model.huggingface.spi.HuggingFaceClientFactory;
 import dev.langchain4j.model.output.Response;
 
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -30,7 +31,8 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
                                 Double temperature,
                                 Integer maxNewTokens,
                                 Boolean returnFullText,
-                                Boolean waitForModel) {
+                                Boolean waitForModel,
+                                Proxy proxy) {
         this(HuggingFaceChatModel.builder()
                 .accessToken(accessToken)
                 .modelId(modelId)
@@ -38,7 +40,8 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
                 .temperature(temperature)
                 .maxNewTokens(maxNewTokens)
                 .returnFullText(returnFullText)
-                .waitForModel(waitForModel));
+                .waitForModel(waitForModel)
+                .proxy(proxy));
     }
 
     public HuggingFaceChatModel(Builder builder) {
@@ -56,6 +59,11 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
             @Override
             public Duration timeout() {
                 return builder.timeout;
+            }
+
+            @Override
+            public Proxy proxy() {
+                return builder.proxy;
             }
         });
         this.temperature = builder.temperature;
@@ -102,6 +110,7 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         private Integer maxNewTokens;
         private Boolean returnFullText = false;
         private Boolean waitForModel = true;
+        private Proxy proxy;
 
         public Builder accessToken(String accessToken) {
             this.accessToken = accessToken;
@@ -142,6 +151,13 @@ public class HuggingFaceChatModel implements ChatLanguageModel {
         public Builder waitForModel(Boolean waitForModel) {
             if (waitForModel != null) {
                 this.waitForModel = waitForModel;
+            }
+            return this;
+        }
+
+        public Builder proxy(Proxy proxy){
+            if (waitForModel != null) {
+                this.proxy = proxy;
             }
             return this;
         }

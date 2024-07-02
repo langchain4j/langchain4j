@@ -12,6 +12,7 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
 
@@ -23,7 +24,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
     private final HuggingFaceApi huggingFaceApi;
     private final String modelId;
 
-    DefaultHuggingFaceClient(String apiKey, String modelId, Duration timeout) {
+    DefaultHuggingFaceClient(String apiKey, String modelId, Duration timeout, Proxy proxy) {
 
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
@@ -31,6 +32,7 @@ class DefaultHuggingFaceClient implements HuggingFaceClient {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout)
+                .proxy(proxy)
                 .build();
 
         Gson gson = new GsonBuilder()
