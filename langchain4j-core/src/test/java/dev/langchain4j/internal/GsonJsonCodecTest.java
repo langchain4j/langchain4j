@@ -75,7 +75,7 @@ class GsonJsonCodecTest implements WithAssertions {
         {
             Map<Object, Object> map = codec.fromJson("{\"a\": [1, 2]}", Map.class);
 
-            assertThat(map).containsExactly(MapEntry.entry("a", asList(1.0, 2.0)));
+            assertThat(map).containsExactly(MapEntry.entry("a", asList(1L, 2L)));
         }
     }
 
