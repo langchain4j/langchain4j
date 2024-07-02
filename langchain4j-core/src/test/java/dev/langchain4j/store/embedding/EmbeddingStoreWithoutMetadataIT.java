@@ -42,6 +42,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(id).isNotBlank();
 
         awaitUntilPersisted();
+        awaitUntilPersisted(embedding, 1);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -68,6 +69,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         embeddingStore().add(id, embedding);
 
         awaitUntilPersisted();
+        awaitUntilPersisted(embedding, 1);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -95,6 +97,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(id).isNotBlank();
 
         awaitUntilPersisted();
+        awaitUntilPersisted(embedding, 1);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(embedding, 10);
         assertThat(relevant).hasSize(1);
@@ -125,6 +128,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
         awaitUntilPersisted();
+        awaitUntilPersisted(firstEmbedding, 2);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -171,6 +175,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(ids.get(0)).isNotEqualTo(ids.get(1));
 
         awaitUntilPersisted();
+        awaitUntilPersisted(firstEmbedding, 2);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -210,6 +215,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         embeddingStore().add(secondId, secondEmbedding);
 
         awaitUntilPersisted();
+        awaitUntilPersisted(firstEmbedding, 2);
 
         List<EmbeddingMatch<TextSegment>> relevant = embeddingStore().findRelevant(firstEmbedding, 10);
         assertThat(relevant).hasSize(2);
@@ -282,6 +288,7 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
         assertThat(id).isNotBlank();
 
         awaitUntilPersisted();
+        awaitUntilPersisted(embedding, 1);
 
         Embedding referenceEmbedding = embeddingModel().embed("hi").content();
 
@@ -302,6 +309,10 @@ public abstract class EmbeddingStoreWithoutMetadataIT {
     }
 
     protected void awaitUntilPersisted() {
+        // not waiting by default
+    }
+
+    protected void awaitUntilPersisted(Embedding firstEmbedding, int expectedSize) {
         // not waiting by default
     }
 }
