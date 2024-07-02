@@ -83,7 +83,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                 "miles-of-smiles-terms-of-use.txt",
                 "test-file.banana",
                 "test-file-iso-8859-1.txt",
-                "test-file-utf8.txt"
+                "test-file-utf8.txt",
+                "chefs-prompt-based-on-ingredients-in-root.txt"
         );
 
         // when-then
@@ -169,6 +170,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                 "test-file-utf8.txt",
                 "chefs-prompt-based-on-ingredients.txt",
                 "chefs-prompt-system-message.txt",
+                "chefs-prompt-based-on-ingredients-in-root.txt",
+                "chefs-prompt-based-on-ingredients-in-subdirectory.txt",
                 "test-file-2.banana"
         );
 
