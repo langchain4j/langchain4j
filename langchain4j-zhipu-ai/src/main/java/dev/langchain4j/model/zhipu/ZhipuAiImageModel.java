@@ -15,7 +15,6 @@ public class ZhipuAiImageModel implements ImageModel {
 
     private final String model;
     private final String userId;
-    private final String baseUrl;
     private final Integer maxRetries;
     private final ZhipuAiClient client;
 
@@ -38,12 +37,11 @@ public class ZhipuAiImageModel implements ImageModel {
             Boolean logRequests,
             Boolean logResponses
     ) {
-        this.baseUrl = getOrDefault(baseUrl, "https://open.bigmodel.cn/");
         this.model = getOrDefault(model, ImageModelName.COGVIEW_3.toString());
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.userId = userId;
         this.client = ZhipuAiClient.builder()
-                .baseUrl(this.baseUrl)
+                .baseUrl(getOrDefault(baseUrl, "https://open.bigmodel.cn/"))
                 .apiKey(apiKey)
                 .logRequests(getOrDefault(logRequests, false))
                 .logResponses(getOrDefault(logResponses, false))
@@ -54,8 +52,8 @@ public class ZhipuAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         ImageRequest request = ImageRequest.builder()
                 .prompt(prompt)
-                .userId(userId)
-                .model(model)
+                .userId(this.userId)
+                .model(this.model)
                 .build();
         ImageResponse response = withRetry(() -> client.imagesGeneration(request), maxRetries);
         if (response == null) {
