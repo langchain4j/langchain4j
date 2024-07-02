@@ -42,6 +42,7 @@
         <module>langchain4j-zhipu-ai</module>
 
         <!-- embedding stores -->
+        <module>langchain4j-astradb</module>
         <module>langchain4j-azure-ai-search</module>
         <module>langchain4j-azure-cosmos-mongo-vcore</module>
         <module>langchain4j-azure-cosmos-nosql</module>
