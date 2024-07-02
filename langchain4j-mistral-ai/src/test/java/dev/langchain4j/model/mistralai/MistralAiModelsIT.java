@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 

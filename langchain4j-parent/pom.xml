@@ -20,10 +20,10 @@
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <openai4j.version>0.17.0</openai4j.version>
         <azure-ai-openai.version>1.0.0-beta.8</azure-ai-openai.version>
-        <azure-ai-search.version>11.6.5</azure-ai-search.version>
-        <azure.storage-blob.version>12.26.0</azure.storage-blob.version>
-        <azure.storage-common.version>12.25.0</azure.storage-common.version>
-        <azure.identity.version>1.12.1</azure.identity.version>
+        <azure-ai-search.version>11.6.6</azure-ai-search.version>
+        <azure.storage-blob.version>12.26.1</azure.storage-blob.version>
+        <azure.storage-common.version>12.25.1</azure.storage-common.version>
+        <azure.identity.version>1.13.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>
@@ -47,6 +47,7 @@
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
+        <milvus-sdk-java.version>2.3.6</milvus-sdk-java.version>
         <netty.version>4.1.104.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
@@ -368,6 +369,12 @@
                 <groupId>org.kohsuke</groupId>
                 <artifactId>github-api</artifactId>
                 <version>${github-api.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.milvus</groupId>
+                <artifactId>milvus-sdk-java</artifactId>
+                <version>${milvus-sdk-java.version}</version>
             </dependency>
 
             <dependency>

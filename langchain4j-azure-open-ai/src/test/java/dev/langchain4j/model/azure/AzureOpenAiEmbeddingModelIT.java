@@ -3,7 +3,6 @@ package dev.langchain4j.model.azure;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -15,10 +14,11 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static dev.langchain4j.model.openai.OpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
+import static dev.langchain4j.model.azure.AzureOpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
-public class AzureOpenAiEmbeddingModelIT {
+class AzureOpenAiEmbeddingModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiEmbeddingModelIT.class);
 
@@ -26,7 +26,7 @@ public class AzureOpenAiEmbeddingModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("text-embedding-ada-002")
-            .tokenizer(new OpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
+            .tokenizer(new AzureOpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
             .logRequestsAndResponses(true)
             .build();
 
@@ -72,7 +72,8 @@ public class AzureOpenAiEmbeddingModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiEmbeddingModelName.class)
+    @EnumSource(value = AzureOpenAiEmbeddingModelName.class,
+            mode = EXCLUDE, names = "TEXT_EMBEDDING_ADA_002_2")
     void should_support_all_string_model_names(AzureOpenAiEmbeddingModelName modelName) {
 
         // given
@@ -91,5 +92,10 @@ public class AzureOpenAiEmbeddingModelIT {
 
         // then
         assertThat(response.content().vector()).isNotEmpty();
+    }
+
+    @Test
+    void should_return_correct_dimension() {
+        assertThat(model.dimension()).isEqualTo(1536);
     }
 }

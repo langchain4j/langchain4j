@@ -18,7 +18,6 @@ import io.milvus.param.index.CreateIndexParam;
 import io.milvus.response.QueryResultsWrapper;
 import io.milvus.response.SearchResultsWrapper;
 
-import java.lang.String;
 import java.util.List;
 
 import static dev.langchain4j.store.embedding.milvus.CollectionRequestBuilder.*;
@@ -45,27 +44,30 @@ class CollectionOperationsExecutor {
 
         CreateCollectionParam request = CreateCollectionParam.newBuilder()
                 .withCollectionName(collectionName)
-                .addFieldType(FieldType.newBuilder()
-                        .withName(ID_FIELD_NAME)
-                        .withDataType(VarChar)
-                        .withMaxLength(36)
-                        .withPrimaryKey(true)
-                        .withAutoID(false)
-                        .build())
-                .addFieldType(FieldType.newBuilder()
-                        .withName(TEXT_FIELD_NAME)
-                        .withDataType(VarChar)
-                        .withMaxLength(65535)
-                        .build())
-                .addFieldType(FieldType.newBuilder()
-                        .withName(METADATA_FIELD_NAME)
-                        .withDataType(JSON)
-                        .build())
-                .addFieldType(FieldType.newBuilder()
-                        .withName(VECTOR_FIELD_NAME)
-                        .withDataType(FloatVector)
-                        .withDimension(dimension)
-                        .build())
+                .withSchema(CollectionSchemaParam.newBuilder()
+                        .addFieldType(FieldType.newBuilder()
+                                .withName(ID_FIELD_NAME)
+                                .withDataType(VarChar)
+                                .withMaxLength(36)
+                                .withPrimaryKey(true)
+                                .withAutoID(false)
+                                .build())
+                        .addFieldType(FieldType.newBuilder()
+                                .withName(TEXT_FIELD_NAME)
+                                .withDataType(VarChar)
+                                .withMaxLength(65535)
+                                .build())
+                        .addFieldType(FieldType.newBuilder()
+                                .withName(METADATA_FIELD_NAME)
+                                .withDataType(JSON)
+                                .build())
+                        .addFieldType(FieldType.newBuilder()
+                                .withName(VECTOR_FIELD_NAME)
+                                .withDataType(FloatVector)
+                                .withDimension(dimension)
+                                .build())
+                        .build()
+                )
                 .build();
 
         R<RpcStatus> response = milvusClient.createCollection(request);
@@ -122,6 +124,13 @@ class CollectionOperationsExecutor {
         checkResponseNotFailed(response);
 
         return new QueryResultsWrapper(response.getData());
+    }
+
+    static void removeForVector(MilvusServiceClient milvusClient,
+                                String collectionName,
+                                String expr) {
+        R<MutationResult> response = milvusClient.delete(buildDeleteRequest(collectionName, expr));
+        checkResponseNotFailed(response);
     }
 
     private static <T> void checkResponseNotFailed(R<T> response) {

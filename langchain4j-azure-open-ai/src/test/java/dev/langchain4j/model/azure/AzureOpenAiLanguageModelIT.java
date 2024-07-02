@@ -1,7 +1,6 @@
 package dev.langchain4j.model.azure;
 
 import dev.langchain4j.model.language.LanguageModel;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.junit.jupiter.api.Test;
@@ -10,10 +9,11 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static dev.langchain4j.model.openai.OpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
+import static dev.langchain4j.model.azure.AzureOpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 class AzureOpenAiLanguageModelIT {
 
@@ -23,7 +23,7 @@ class AzureOpenAiLanguageModelIT {
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
             .deploymentName("gpt-35-turbo-instruct")
-            .tokenizer(new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
+            .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)
             .maxTokens(20)
             .logRequestsAndResponses(true)
@@ -58,7 +58,8 @@ class AzureOpenAiLanguageModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiLanguageModelName.class)
+    @EnumSource(value = AzureOpenAiLanguageModelName.class,
+            mode = EXCLUDE, names = {"TEXT_DAVINCI_002", "TEXT_DAVINCI_002_1"})
     void should_support_all_string_model_names(AzureOpenAiLanguageModelName modelName) {
 
         // given

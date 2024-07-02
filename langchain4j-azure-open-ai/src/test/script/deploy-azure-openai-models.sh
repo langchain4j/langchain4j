@@ -297,3 +297,10 @@ AZURE_OPENAI_ENDPOINT=$(
 
 echo "AZURE_OPENAI_KEY=$AZURE_OPENAI_KEY"
 echo "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT"
+
+# Once you finish the tests, you can delete the resource group with the following command:
+echo "Deleting the resource group..."
+echo "------------------------------"
+az group delete \
+  --name "$RESOURCE_GROUP" \
+  --yes

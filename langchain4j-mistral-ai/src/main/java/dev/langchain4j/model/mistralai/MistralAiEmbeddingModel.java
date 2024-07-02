@@ -2,7 +2,10 @@ package dev.langchain4j.model.mistralai;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingRequest;
+import dev.langchain4j.model.mistralai.internal.api.MistralAiEmbeddingResponse;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.mistralai.spi.MistralAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -12,7 +15,7 @@ import java.util.List;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.mistralai.DefaultMistralAiHelper.*;
+import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
 
@@ -20,8 +23,9 @@ import static java.util.stream.Collectors.toList;
  * Represents a Mistral AI embedding model, such as mistral-embed.
  * You can find description of parameters <a href="https://docs.mistral.ai/api/#operation/createEmbedding">here</a>.
  */
-public class MistralAiEmbeddingModel implements EmbeddingModel {
+public class MistralAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
+    private static final String EMBEDDINGS_ENCODING_FORMAT = "float";
     private final MistralAiClient client;
     private final String modelName;
     private final Integer maxRetries;
@@ -48,7 +52,7 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
                                    Boolean logResponses,
                                    Integer maxRetries) {
         this.client = MistralAiClient.builder()
-                .baseUrl(getOrDefault(baseUrl, MISTRALAI_API_URL))
+                .baseUrl(getOrDefault(baseUrl, "https://api.mistral.ai/v1"))
                 .apiKey(apiKey)
                 .timeout(getOrDefault(timeout, Duration.ofSeconds(60)))
                 .logRequests(getOrDefault(logRequests, false))
@@ -80,7 +84,7 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
         MistralAiEmbeddingRequest request = MistralAiEmbeddingRequest.builder()
                 .model(modelName)
                 .input(textSegments.stream().map(TextSegment::text).collect(toList()))
-                .encodingFormat(MISTRALAI_API_CREATE_EMBEDDINGS_ENCODING_FORMAT)
+                .encodingFormat(EMBEDDINGS_ENCODING_FORMAT)
                 .build();
 
         MistralAiEmbeddingResponse response = withRetry(() -> client.embedding(request), maxRetries);
@@ -96,13 +100,14 @@ public class MistralAiEmbeddingModel implements EmbeddingModel {
     }
 
     public static MistralAiEmbeddingModelBuilder builder() {
-        for (MistralAiEmbeddingModelBuilderFactory factory : loadFactories(MistralAiEmbeddingModelBuilderFactory.class)){
+        for (MistralAiEmbeddingModelBuilderFactory factory : loadFactories(MistralAiEmbeddingModelBuilderFactory.class)) {
             return factory.get();
         }
         return new MistralAiEmbeddingModelBuilder();
     }
 
     public static class MistralAiEmbeddingModelBuilder {
+
         public MistralAiEmbeddingModelBuilder() {
         }
 
