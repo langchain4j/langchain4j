@@ -376,11 +376,11 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
@@ -399,11 +399,11 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
                 "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
-                        "You must answer strictly in the following JSON format: dev.langchain4j.service.AiServicesIT$Recipe: {\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
                         "\"title\": (type: string),\n" +
                         "\"description\": (type: string),\n" +
                         "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
-                        "\"preparationTimeMinutes\": (type: integer),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
                         "}")));
     }
 
