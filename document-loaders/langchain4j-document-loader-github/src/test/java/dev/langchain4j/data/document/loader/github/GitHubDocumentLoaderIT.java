@@ -36,8 +36,8 @@ class GitHubDocumentLoaderIT {
         Document document = loader.loadDocument(TEST_OWNER, TEST_REPO, "main", "pom.xml", parser);
 
         assertThat(document.text()).contains("<groupId>dev.langchain4j</groupId>");
-        assertThat(document.metadata().asMap()).hasSize(9);
-        assertThat(document.metadata("github_git_url")).startsWith("https://api.github.com/repos/langchain4j/langchain4j");
+        assertThat(document.metadata().toMap()).hasSize(9);
+        assertThat(document.metadata().getString("github_git_url")).startsWith("https://api.github.com/repos/langchain4j/langchain4j");
     }
 
     @Test

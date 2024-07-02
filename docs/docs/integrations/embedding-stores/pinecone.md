@@ -1,10 +1,28 @@
 ---
-sidebar_position: 12
+sidebar_position: 14
 ---
 
 # Pinecone
 
-[Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/pinecone-example/src/main/java/PineconeEmbeddingStoreExample.java)
-with [Pinecone](https://www.pinecone.io/)
+https://www.pinecone.io/
 
-Tutorial coming soon
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-pinecone</artifactId>
+    <version>0.31.0</version>
+</dependency>
+```
+
+
+## APIs
+
+- `PineconeEmbeddingStore`
+
+
+## Examples
+
+- [PineconeEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/pinecone-example/src/main/java/PineconeEmbeddingStoreExample.java)

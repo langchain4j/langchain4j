@@ -8,6 +8,7 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
@@ -66,11 +67,11 @@ class MilvusMetadataFilterMapper {
         return format("%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
     }
 
-    public static String mapIn(IsIn isIn) {
+    private static String mapIn(IsIn isIn) {
         return format("%s in %s", formatKey(isIn.key()), formatValues(isIn.comparisonValues()));
     }
 
-    public static String mapNotIn(IsNotIn isNotIn) {
+    private static String mapNotIn(IsNotIn isNotIn) {
         return format("%s not in %s", formatKey(isNotIn.key()), formatValues(isNotIn.comparisonValues()));
     }
 
@@ -91,21 +92,15 @@ class MilvusMetadataFilterMapper {
     }
 
     private static String formatValue(Object value) {
-        if (value instanceof String) {
+        if (value instanceof String || value instanceof UUID) {
             return "\"" + value + "\"";
         } else {
             return value.toString();
         }
     }
 
-    private static List<String> formatValues(Collection<?> values) {
-        return values.stream().map(value -> {
-            if (value instanceof String) {
-                return "\"" + value + "\"";
-            } else {
-                return value.toString();
-            }
-        }).collect(toList());
+    protected static List<String> formatValues(Collection<?> values) {
+        return values.stream().map(MilvusMetadataFilterMapper::formatValue).collect(toList());
     }
 }
 

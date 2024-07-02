@@ -1,5 +1,5 @@
 ---
-sidebar_position: 18
+sidebar_position: 12
 ---
 
 # Ollama
@@ -34,17 +34,16 @@ To get started, add the following dependencies to your project's `pom.xml`:
 ```xml
 
 <dependency>
-  <groupId>dev.langchain4j</groupId>
-  <artifactId>langchain4j-ollama</artifactId>
-  <version>${lanchain4j-ollama.version}</version>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-ollama</artifactId>
+    <version>0.31.0</version>
 </dependency>
 
 <dependency>
-<groupId>org.testcontainers</groupId>
-<artifactId>testcontainers</artifactId>
-<version>1.19.1</version>
+    <groupId>org.testcontainers</groupId>
+    <artifactId>testcontainers</artifactId>
+    <version>1.19.1</version>
 </dependency>
-
 ```
 
 Try out a simple chat example code:

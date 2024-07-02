@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai;
 
 import com.google.cloud.vertexai.api.FunctionResponse;
 import com.google.cloud.vertexai.api.Part;
+import com.google.cloud.vertexai.generativeai.PartMaker;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
@@ -11,6 +12,7 @@ import dev.langchain4j.data.message.*;
 import java.net.URI;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -43,24 +45,34 @@ class PartsMapper {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
 
-            if (aiMessage.hasToolExecutionRequests()) {
-                return singletonList(Part.newBuilder()
-                    .setFunctionCall(
-                        //TODO: handling one function call, but can there be several?
+            List<Part> parts = new ArrayList<>();
 
-                        FunctionCallHelper.fromToolExecutionRequest(aiMessage.toolExecutionRequests().get(0))
-                    )
-                    .build());
-            } else {
-                return singletonList(Part.newBuilder()
+            if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
+                parts.add(Part.newBuilder()
                     .setText(aiMessage.text())
                     .build());
             }
-        } else
-        if (message instanceof UserMessage) {
+
+            if (aiMessage.hasToolExecutionRequests()) {
+                List<Part> fnCallReqParts = aiMessage.toolExecutionRequests().stream()
+                    .map(FunctionCallHelper::fromToolExecutionRequest)
+                    .map(fnCall -> Part.newBuilder()
+                        .setFunctionCall(fnCall)
+                        .build())
+                    .collect(toList());
+
+                parts.addAll(fnCallReqParts);
+            }
+
+            return parts;
+        } else if (message instanceof UserMessage) {
             return ((UserMessage) message).contents().stream()
                 .map(PartsMapper::map)
                 .collect(toList());
+        } else if (message instanceof SystemMessage) {
+            return singletonList(Part.newBuilder()
+                .setText(((SystemMessage) message).text())
+                .build());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             String functionResponseText = toolExecutionResultMessage.text();

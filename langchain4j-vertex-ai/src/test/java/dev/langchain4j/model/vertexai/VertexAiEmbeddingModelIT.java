@@ -211,7 +211,7 @@ class VertexAiEmbeddingModelIT {
         // Document retrieval embedding
 
         Metadata metadata = new Metadata();
-        metadata.add("title", "Text embeddings");
+        metadata.put("title", "Text embeddings");
 
         TextSegment segmentForRetrieval = new TextSegment("Text embeddings can be used to represent both the " +
             "user's query and the universe of documents in a high-dimensional vector space. Documents " +
@@ -236,7 +236,7 @@ class VertexAiEmbeddingModelIT {
         // as the embedding model requires "title" to be used only for RETRIEVAL_DOCUMENT
 
         Metadata metadataCustomTitleKey = new Metadata();
-        metadataCustomTitleKey.add("customTitle", "Text embeddings");
+        metadataCustomTitleKey.put("customTitle", "Text embeddings");
 
         TextSegment segmentForRetrievalWithCustomKey = new TextSegment("Text embeddings can be used to represent both the " +
             "user's query and the universe of documents in a high-dimensional vector space. Documents " +

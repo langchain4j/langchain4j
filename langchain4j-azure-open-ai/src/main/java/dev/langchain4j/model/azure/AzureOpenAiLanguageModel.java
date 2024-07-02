@@ -5,18 +5,23 @@ import com.azure.ai.openai.models.Completions;
 import com.azure.ai.openai.models.CompletionsOptions;
 import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.ProxyOptions;
 import dev.langchain4j.model.Tokenizer;
 import dev.langchain4j.model.azure.spi.AzureOpenAiLanguageModelBuilderFactory;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.language.TokenCountEstimator;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -49,6 +54,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * Then, provide the DefaultAzureCredential instance to the builder: `builder.tokenCredential(new DefaultAzureCredentialBuilder().build())`.
  */
 public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstimator {
+
+    private static final Logger logger = LoggerFactory.getLogger(AzureOpenAiLanguageModel.class);
 
     private OpenAIClient client;
     private final String deploymentName;
@@ -84,58 +91,60 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
         this.client = client;
-    }
+        }
 
-    public AzureOpenAiLanguageModel(String endpoint,
-                                    String serviceVersion,
-                                    String apiKey,
-                                    String deploymentName,
-                                    Tokenizer tokenizer,
-                                    Integer maxTokens,
-                                    Double temperature,
-                                    Double topP,
-                                    Map<String, Integer> logitBias,
-                                    String user,
-                                    Integer n,
-                                    Integer logprobs,
-                                    Boolean echo,
-                                    List<String> stop,
-                                    Double presencePenalty,
-                                    Double frequencyPenalty,
-                                    Integer bestOf,
-                                    Duration timeout,
-                                    Integer maxRetries,
-                                    ProxyOptions proxyOptions,
-                                    boolean logRequestsAndResponses) {
-
-        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-    }
-
-    public AzureOpenAiLanguageModel(String endpoint,
-                                    String serviceVersion,
-                                    KeyCredential keyCredential,
-                                    String deploymentName,
-                                    Tokenizer tokenizer,
-                                    Integer maxTokens,
-                                    Double temperature,
-                                    Double topP,
-                                    Map<String, Integer> logitBias,
-                                    String user,
-                                    Integer n,
-                                    Integer logprobs,
-                                    Boolean echo,
-                                    List<String> stop,
-                                    Double presencePenalty,
-                                    Double frequencyPenalty,
-                                    Integer bestOf,
-                                    Duration timeout,
-                                    Integer maxRetries,
-                                    ProxyOptions proxyOptions,
-                                    boolean logRequestsAndResponses) {
+        public AzureOpenAiLanguageModel(String endpoint,
+                        String serviceVersion,
+                        String apiKey,
+                        String deploymentName,
+                        Tokenizer tokenizer,
+                        Integer maxTokens,
+                        Double temperature,
+                        Double topP,
+                        Map<String, Integer> logitBias,
+                        String user,
+                        Integer n,
+                        Integer logprobs,
+                        Boolean echo,
+                        List<String> stop,
+                        Double presencePenalty,
+                        Double frequencyPenalty,
+                        Integer bestOf,
+                        Duration timeout,
+                        Integer maxRetries,
+                        ProxyOptions proxyOptions,
+                        boolean logRequestsAndResponses,
+                        String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        }
+
+        public AzureOpenAiLanguageModel(String endpoint,
+                        String serviceVersion,
+                        KeyCredential keyCredential,
+                        String deploymentName,
+                        Tokenizer tokenizer,
+                        Integer maxTokens,
+                        Double temperature,
+                        Double topP,
+                        Map<String, Integer> logitBias,
+                        String user,
+                        Integer n,
+                        Integer logprobs,
+                        Boolean echo,
+                        List<String> stop,
+                        Double presencePenalty,
+                        Double frequencyPenalty,
+                        Integer bestOf,
+                        Duration timeout,
+                        Integer maxRetries,
+                        ProxyOptions proxyOptions,
+                        boolean logRequestsAndResponses,
+                        String userAgentSuffix) {
+
+        this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
+        this.client = setupSyncClient(endpoint, serviceVersion, keyCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     public AzureOpenAiLanguageModel(String endpoint,
@@ -158,10 +167,11 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                     Duration timeout,
                                     Integer maxRetries,
                                     ProxyOptions proxyOptions,
-                                    boolean logRequestsAndResponses) {
+                                    boolean logRequestsAndResponses,
+                                    String userAgentSuffix) {
 
         this(deploymentName, tokenizer, maxTokens, temperature, topP, logitBias, user, n, logprobs, echo, stop, presencePenalty, frequencyPenalty, bestOf);
-        this.client = setupOpenAIClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
+        this.client = setupSyncClient(endpoint, serviceVersion, tokenCredential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
     }
 
     private AzureOpenAiLanguageModel(String deploymentName,
@@ -180,7 +190,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                                      Integer bestOf) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo-instruct");
-        this.tokenizer = tokenizer;
+        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -213,13 +223,22 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                 .setFrequencyPenalty(frequencyPenalty)
                 .setBestOf(bestOf);
 
-        Completions completions = client.getCompletions(deploymentName, options);
-
-        return Response.from(
-                completions.getChoices().get(0).getText(),
-                tokenUsageFrom(completions.getUsage()),
-                finishReasonFrom(completions.getChoices().get(0).getFinishReason())
-        );
+        try {
+            Completions completions = client.getCompletions(deploymentName, options);
+            return Response.from(
+                    completions.getChoices().get(0).getText(),
+                    tokenUsageFrom(completions.getUsage()),
+                    finishReasonFrom(completions.getChoices().get(0).getFinishReason())
+            );
+        } catch (HttpResponseException httpResponseException) {
+            logger.info("Error generating response, {}", httpResponseException.getValue());
+            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            return Response.from(
+                    httpResponseException.getMessage(),
+                    null,
+                    exceptionFinishReason
+            );
+        }
     }
 
     @Override
@@ -235,7 +254,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
     }
 
     public static class Builder {
-
+    
         private String endpoint;
         private String serviceVersion;
         private String apiKey;
@@ -260,8 +279,9 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
         private ProxyOptions proxyOptions;
         private boolean logRequestsAndResponses;
         private OpenAIClient openAIClient;
+        private String userAgentSuffix;
 
-        /**
+     /**
          * Sets the Azure OpenAI endpoint. This is a mandatory parameter.
          *
          * @param endpoint The Azure OpenAI endpoint in the format: https://{resource}.openai.azure.com/
@@ -424,6 +444,11 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             return this;
         }
 
+        public Builder userAgentSuffix(String userAgentSuffix) {
+            this.userAgentSuffix = userAgentSuffix;
+            return this;
+        }
+
         public AzureOpenAiLanguageModel build() {
             if (openAIClient == null) {
                 if (tokenCredential != null) {
@@ -448,7 +473,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            userAgentSuffix
                     );
                 } else if (keyCredential != null) {
                     return new AzureOpenAiLanguageModel(
@@ -472,7 +498,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                             timeout,
                             maxRetries,
                             proxyOptions,
-                            logRequestsAndResponses
+                            logRequestsAndResponses,
+                            userAgentSuffix
                     );
                 }
                 return new AzureOpenAiLanguageModel(
@@ -496,7 +523,8 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
                         timeout,
                         maxRetries,
                         proxyOptions,
-                        logRequestsAndResponses
+                        logRequestsAndResponses,
+                        userAgentSuffix
                 );
             } else {
                 return new AzureOpenAiLanguageModel(

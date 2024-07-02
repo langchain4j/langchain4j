@@ -1,10 +1,27 @@
 ---
-sidebar_position: 3
+sidebar_position: 6
 ---
 
 # Chroma
 
-[Integration](https://github.com/langchain4j/langchain4j-examples/blob/main/chroma-example/src/main/java/ChromaEmbeddingStoreExample.java)
-with [Chroma](https://www.trychroma.com/)
+https://www.trychroma.com/
 
-Tutorial coming soon
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-chroma</artifactId>
+    <version>0.31.0</version>
+</dependency>
+```
+
+## APIs
+
+- `ChromaEmbeddingStore`
+
+
+## Examples
+
+- [ChromaEmbeddingStoreExample](https://github.com/langchain4j/langchain4j-examples/blob/main/chroma-example/src/main/java/ChromaEmbeddingStoreExample.java)

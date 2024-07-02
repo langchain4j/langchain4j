@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.injector;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
@@ -12,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -71,6 +73,29 @@ public class DefaultContentInjector implements ContentInjector {
     }
 
     @Override
+    public ChatMessage inject(List<Content> contents, ChatMessage chatMessage) {
+
+        if (contents.isEmpty()) {
+            return chatMessage;
+        }
+
+        Prompt prompt = createPrompt(chatMessage, contents);
+        if (chatMessage instanceof UserMessage && isNotNullOrBlank(((UserMessage)chatMessage).name())) {
+            return prompt.toUserMessage(((UserMessage)chatMessage).name());
+        }
+
+        return prompt.toUserMessage();
+    }
+
+    protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {
+        return createPrompt((UserMessage) chatMessage, contents);
+    }
+
+    /**
+     * @deprecated use {@link #inject(List, ChatMessage)} instead.
+     */
+    @Override
+    @Deprecated
     public UserMessage inject(List<Content> contents, UserMessage userMessage) {
 
         if (contents.isEmpty()) {
@@ -78,9 +103,16 @@ public class DefaultContentInjector implements ContentInjector {
         }
 
         Prompt prompt = createPrompt(userMessage, contents);
+        if (isNotNullOrBlank(userMessage.name())) {
+            return prompt.toUserMessage(userMessage.name());
+        }
         return prompt.toUserMessage();
     }
 
+    /**
+     * @deprecated implement/override {@link #createPrompt(ChatMessage, List)} instead.
+     */
+    @Deprecated
     protected Prompt createPrompt(UserMessage userMessage, List<Content> contents) {
         Map<String, Object> variables = new HashMap<>();
         variables.put("userMessage", userMessage.text());

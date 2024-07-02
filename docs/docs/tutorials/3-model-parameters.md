@@ -21,7 +21,7 @@ For example, OpenAI API's parameters can be found at https://platform.openai.com
 | `frequencyPenalty` | Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.           | `Double`  |
 | `...`              | ...                                                                                                                                                                                                  | `...`     |
 
-For the full list of parameters in OpenAI LLMs, see the [OpenAI Language Model page](/integrations/language-models/openai).
+For the full list of parameters in OpenAI LLMs, see the [OpenAI Language Model page](/integrations/language-models/open-ai).
 Full lists of parameters and default values per model can be found under the separate model pages
 (under Integration, Language Model and Image Model).
 
@@ -75,7 +75,7 @@ and your changes are automatically ported to the code.
 The DEV UI can be accessed by running your Quarkus application with the command `quarkus dev`,
 then you can find it on localhost:8080/q/dev-ui (or wherever you deploy your application).
 
-[![](/img/quarkus-dev-ui-parameters.png)](/tutorials/set-model-parameters)
+[![](/img/quarkus-dev-ui-parameters.png)](/tutorials/model-parameters)
 
 More info on Quarkus integration can be found [here](/tutorials/quarkus-integration).
 

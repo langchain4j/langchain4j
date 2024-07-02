@@ -118,11 +118,10 @@ public class ServiceOutputParser {
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
     }
 
-    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
+    public static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
-        String simpleTypeName = simpleTypeName(structured);
-        visited.add(structured);
-        jsonSchema.append(simpleTypeName + ": {\n");
+
+        jsonSchema.append("{\n");
         for (Field field : structured.getDeclaredFields()) {
             String name = field.getName();
             if (name.equals("__$hits$__") || java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
@@ -130,6 +129,11 @@ public class ServiceOutputParser {
                 continue;
             }
             jsonSchema.append(format("\"%s\": (%s),\n", name, descriptionFor(field, visited)));
+        }
+
+        int trailingCommaIndex = jsonSchema.lastIndexOf(",");
+        if (trailingCommaIndex > 0) {
+            jsonSchema.delete(trailingCommaIndex, trailingCommaIndex +1);
         }
         jsonSchema.append("}");
         return jsonSchema.toString();
@@ -171,7 +175,8 @@ public class ServiceOutputParser {
                 || visited.contains(structured)) {
             return simpleTypeName;
         } else {
-            return jsonStructure(structured, visited);
+            visited.add(structured);
+            return simpleTypeName + ": " + jsonStructure(structured, visited);
         }
     }
 

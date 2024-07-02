@@ -4,58 +4,43 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.internal.Utils;
+import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.model.zhipu.chat.AssistantMessage;
-import dev.langchain4j.model.zhipu.chat.ChatCompletionResponse;
-import dev.langchain4j.model.zhipu.chat.Function;
-import dev.langchain4j.model.zhipu.chat.FunctionCall;
-import dev.langchain4j.model.zhipu.chat.Message;
-import dev.langchain4j.model.zhipu.chat.Parameters;
-import dev.langchain4j.model.zhipu.chat.Tool;
-import dev.langchain4j.model.zhipu.chat.ToolCall;
-import dev.langchain4j.model.zhipu.chat.ToolMessage;
-import dev.langchain4j.model.zhipu.chat.ToolType;
+import dev.langchain4j.model.zhipu.chat.*;
 import dev.langchain4j.model.zhipu.embedding.EmbeddingResponse;
+import dev.langchain4j.model.zhipu.shared.ErrorResponse;
 import dev.langchain4j.model.zhipu.shared.Usage;
+import lombok.Cleanup;
+import okhttp3.ResponseBody;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.OTHER;
-import static dev.langchain4j.model.output.FinishReason.STOP;
-import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
+import static dev.langchain4j.model.output.FinishReason.*;
 
 class DefaultZhipuAiHelper {
 
-    public static List<Embedding> toEmbed(EmbeddingResponse response) {
-        return response.getData().stream()
+    static final String FINISH_REASON_SENSITIVE = "sensitive";
+    static final String FINISH_REASON_OTHER = "other";
+
+    static List<Embedding> toEmbed(List<EmbeddingResponse> response) {
+        return response.stream()
                 .map(zhipuAiEmbedding -> Embedding.from(zhipuAiEmbedding.getEmbedding()))
                 .collect(Collectors.toList());
     }
 
-    public static String toEmbedTexts(List<TextSegment> textSegments) {
-        List<String> embedText = textSegments.stream()
-                .map(TextSegment::text)
-                .collect(Collectors.toList());
-        if (Utils.isNullOrEmpty(embedText)) {
-            return null;
-        }
-        return embedText.get(0);
-    }
-
-    public static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
+    static List<Tool> toTools(List<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
                 .map(toolSpecification -> Tool.from(toFunction(toolSpecification)))
                 .collect(Collectors.toList());
@@ -70,6 +55,9 @@ class DefaultZhipuAiHelper {
     }
 
     private static Parameters toFunctionParameters(ToolParameters toolParameters) {
+        if (toolParameters == null) {
+            return Parameters.builder().build();
+        }
         return Parameters.builder()
                 .properties(toolParameters.properties())
                 .required(toolParameters.required())
@@ -77,7 +65,7 @@ class DefaultZhipuAiHelper {
     }
 
 
-    public static List<Message> toZhipuAiMessages(List<ChatMessage> messages) {
+    static List<Message> toZhipuAiMessages(List<ChatMessage> messages) {
         return messages.stream()
                 .map(DefaultZhipuAiHelper::toZhipuAiMessage)
                 .collect(Collectors.toList());
@@ -95,7 +83,7 @@ class DefaultZhipuAiHelper {
         if (message instanceof UserMessage) {
             UserMessage userMessage = (UserMessage) message;
             return dev.langchain4j.model.zhipu.chat.UserMessage.builder()
-                    .content(userMessage.text())
+                    .content(userMessage.singleText())
                     .build();
         }
 
@@ -136,17 +124,16 @@ class DefaultZhipuAiHelper {
         throw illegalArgument("Unknown message type: " + message.type());
     }
 
-    public static AiMessage aiMessageFrom(ChatCompletionResponse response) {
-        Message message = response.getChoices().get(0).getMessage();
-        AssistantMessage assistantMessage = (AssistantMessage) message;
-        if (isNullOrEmpty(assistantMessage.getToolCalls())) {
-            return AiMessage.from(assistantMessage.getContent());
+    static AiMessage aiMessageFrom(ChatCompletionResponse response) {
+        AssistantMessage message = response.getChoices().get(0).getMessage();
+        if (isNullOrEmpty(message.getToolCalls())) {
+            return AiMessage.from(message.getContent());
         }
 
-        return AiMessage.from(specificationsFrom(assistantMessage.getToolCalls()));
+        return AiMessage.from(specificationsFrom(message.getToolCalls()));
     }
 
-    public static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
+    static List<ToolExecutionRequest> specificationsFrom(List<ToolCall> toolCalls) {
         List<ToolExecutionRequest> specifications = new ArrayList<>(toolCalls.size());
         for (ToolCall toolCall : toolCalls) {
             specifications.add(
@@ -160,8 +147,21 @@ class DefaultZhipuAiHelper {
         return specifications;
     }
 
+    static Usage getEmbeddingUsage(List<EmbeddingResponse> responses) {
+        Usage tokenUsage = Usage.builder()
+                .completionTokens(0)
+                .promptTokens(0)
+                .totalTokens(0)
+                .build();
 
-    public static TokenUsage tokenUsageFrom(Usage zhipuUsage) {
+        for (EmbeddingResponse response : responses) {
+            tokenUsage.add(response.getUsage());
+        }
+        return tokenUsage;
+    }
+
+
+    static TokenUsage tokenUsageFrom(Usage zhipuUsage) {
         if (zhipuUsage == null) {
             return null;
         }
@@ -172,7 +172,98 @@ class DefaultZhipuAiHelper {
         );
     }
 
-    public static FinishReason finishReasonFrom(String finishReason) {
+    static ChatCompletionResponse toChatErrorResponse(Object object) {
+        return ChatCompletionResponse.builder()
+                .choices(Collections.singletonList(toChatErrorChoice(object)))
+                .usage(Usage.builder().build())
+                .build();
+    }
+
+    /**
+     * error code see <a href="https://open.bigmodel.cn/dev/api#error-code-v3">error codes document</a>
+     */
+    private static ChatCompletionChoice toChatErrorChoice(Object object) {
+        if (object instanceof Throwable) {
+            Throwable throwable = (Throwable) object;
+            return ChatCompletionChoice.builder()
+                    .message(AssistantMessage.builder().content(throwable.getMessage()).build())
+                    .finishReason(FINISH_REASON_OTHER)
+                    .build();
+        }
+        @Cleanup ResponseBody errorBody = ((retrofit2.Response<?>) object).errorBody();
+
+        if (errorBody == null) {
+            return ChatCompletionChoice.builder()
+                    .finishReason(FINISH_REASON_OTHER)
+                    .build();
+        }
+        ErrorResponse errorResponse;
+        try {
+            errorResponse = Json.fromJson(errorBody.string(), ErrorResponse.class);
+            String code = errorResponse.getError().get("code");
+            return ChatCompletionChoice.builder()
+                    .message(AssistantMessage.builder().content(errorResponse.getError().get("message")).build())
+                    .finishReason(getFinishReason(code))
+                    .build();
+        } catch (IOException e) {
+            return ChatCompletionChoice.builder()
+                    .message(AssistantMessage.builder().content(e.getMessage()).build())
+                    .finishReason(FINISH_REASON_OTHER)
+                    .build();
+        }
+    }
+
+    static String getFinishReason(Object o) {
+        if (o instanceof String) {
+            // 1301: 系统检测到输入或生成内容可能包含不安全或敏感内容，请您避免输入易产生敏感内容的提示语，感谢您的配合
+            if ("1301".equals(o)) {
+                return FINISH_REASON_SENSITIVE;
+            }
+        }
+        if (o instanceof ZhipuAiException) {
+            ZhipuAiException exception = (ZhipuAiException) o;
+            if ("1301".equals(exception.getCode())) {
+                return FINISH_REASON_SENSITIVE;
+            }
+        }
+        return FINISH_REASON_OTHER;
+    }
+
+
+    static ChatModelRequest createModelListenerRequest(ChatCompletionRequest options,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+                .model(options.getModel())
+                .temperature(options.getTemperature())
+                .topP(options.getTopP())
+                .maxTokens(options.getMaxTokens())
+                .messages(messages)
+                .toolSpecifications(toolSpecifications)
+                .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+                .id(responseId)
+                .model(responseModel)
+                .tokenUsage(response.tokenUsage())
+                .finishReason(response.finishReason())
+                .aiMessage(response.content())
+                .build();
+    }
+
+    static boolean isSuccessFinishReason(FinishReason finishReason) {
+        return !CONTENT_FILTER.equals(finishReason) && !OTHER.equals(finishReason);
+    }
+
+    static FinishReason finishReasonFrom(String finishReason) {
         if (finishReason == null) {
             return null;
         }
@@ -183,6 +274,8 @@ class DefaultZhipuAiHelper {
                 return LENGTH;
             case "tool_calls":
                 return TOOL_EXECUTION;
+            case "sensitive":
+                return CONTENT_FILTER;
             default:
                 return OTHER;
         }

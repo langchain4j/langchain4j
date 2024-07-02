@@ -1,5 +1,6 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -70,13 +71,13 @@ class DefaultRetrievalAugmentorTest {
         UserMessage augmented = retrievalAugmentor.augment(userMessage, metadata);
 
         // then
-        assertThat(augmented.text()).isEqualTo(
+        assertThat(augmented.singleText()).isEqualTo(
                 "query\n" +
                         "content 1\n" +
                         "content 2\n" +
                         "content 3\n" +
                         "content 4\n" +
-                        "content 1\n" +
+                        "content 1\n" + // contents are repeating because TestContentAggregator does not perform RRF
                         "content 2\n" +
                         "content 3\n" +
                         "content 4"
@@ -115,6 +116,10 @@ class DefaultRetrievalAugmentorTest {
                 content1, content2, content3, content4,
                 content1, content2, content3, content4
         ), userMessage);
+        verify(contentInjector).inject(asList(
+                content1, content2, content3, content4,
+                content1, content2, content3, content4
+        ), (ChatMessage) userMessage);
         verifyNoMoreInteractions(contentInjector);
     }
 

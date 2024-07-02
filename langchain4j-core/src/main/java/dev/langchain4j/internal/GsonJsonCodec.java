@@ -1,11 +1,9 @@
 package dev.langchain4j.internal;
 
 import com.google.gson.*;
-import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonWriter;
 
 import java.io.*;
-import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -40,8 +38,6 @@ class GsonJsonCodec implements Json.JsonCodec {
         )
         .create();
 
-    public static final Type MAP_TYPE = new TypeToken<Map<String, String>>() {}.getType();
-
     @Override
     public String toJson(Object o) {
         return GSON.toJson(o);
@@ -60,9 +56,6 @@ class GsonJsonCodec implements Json.JsonCodec {
      */
     @Override
     public <T> T fromJson(String json, Class<T> type) {
-        if (type == Map.class) {
-            return GSON.fromJson(json, MAP_TYPE);
-        }
         return GSON.fromJson(json, type);
     }
 

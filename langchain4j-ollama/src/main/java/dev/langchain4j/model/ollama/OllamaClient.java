@@ -7,20 +7,30 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import okhttp3.ResponseBody;
+import org.jetbrains.annotations.NotNull;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
 
+@Slf4j
 class OllamaClient {
 
     private static final Gson GSON = new GsonBuilder()
@@ -28,16 +38,31 @@ class OllamaClient {
             .create();
 
     private final OllamaApi ollamaApi;
+    private final boolean logStreamingResponses;
 
     @Builder
-    public OllamaClient(String baseUrl, Duration timeout) {
-
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+    public OllamaClient(String baseUrl,
+                        Duration timeout,
+                        Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses,
+                        Map<String, String> customHeaders) {
+        OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .build();
+                .writeTimeout(timeout);
+        if (logRequests != null && logRequests) {
+            okHttpClientBuilder.addInterceptor(new OllamaRequestLoggingInterceptor());
+        }
+        if (logResponses != null && logResponses) {
+            okHttpClientBuilder.addInterceptor(new OllamaResponseLoggingInterceptor());
+        }
+        this.logStreamingResponses = logStreamingResponses != null && logStreamingResponses;
+
+        // add custom header interceptor
+        if (customHeaders != null && !customHeaders.isEmpty()) {
+            okHttpClientBuilder.addInterceptor(new GenericHeadersInterceptor(customHeaders));
+        }
+        OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
@@ -89,8 +114,10 @@ class OllamaClient {
                         byte[] bytes = new byte[1024];
                         int len = inputStream.read(bytes);
                         String partialResponse = new String(bytes, 0, len);
+                        if (logStreamingResponses) {
+                            log.debug("Streaming partial response: {}", partialResponse);
+                        }
                         CompletionResponse completionResponse = GSON.fromJson(partialResponse, CompletionResponse.class);
-
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -106,8 +133,8 @@ class OllamaClient {
                             return;
                         }
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    handler.onError(e);
                 }
             }
 
@@ -124,31 +151,36 @@ class OllamaClient {
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
-                    StringBuilder contentBuilder = new StringBuilder();
-                    while (true) {
-                        byte[] bytes = new byte[1024];
-                        int len = inputStream.read(bytes);
-                        String partialResponse = new String(bytes, 0, len);
-                        ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
+                    try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+                        StringBuilder contentBuilder = new StringBuilder();
+                        while (true) {
+                            String partialResponse = reader.readLine();
 
-                        String content = chatResponse.getMessage().getContent();
-                        contentBuilder.append(content);
-                        handler.onNext(content);
+                            if (logStreamingResponses) {
+                                log.debug("Streaming partial response: {}", partialResponse);
+                            }
 
-                        if (TRUE.equals(chatResponse.getDone())) {
-                            Response<AiMessage> response = Response.from(
-                                    AiMessage.from(contentBuilder.toString()),
-                                    new TokenUsage(
-                                            chatResponse.getPromptEvalCount(),
-                                            chatResponse.getEvalCount()
-                                    )
-                            );
-                            handler.onComplete(response);
-                            return;
+                            ChatResponse chatResponse = GSON.fromJson(partialResponse, ChatResponse.class);
+
+                            String content = chatResponse.getMessage().getContent();
+                            contentBuilder.append(content);
+                            handler.onNext(content);
+
+                            if (TRUE.equals(chatResponse.getDone())) {
+                                Response<AiMessage> response = Response.from(
+                                        AiMessage.from(contentBuilder.toString()),
+                                        new TokenUsage(
+                                                chatResponse.getPromptEvalCount(),
+                                                chatResponse.getEvalCount()
+                                        )
+                                );
+                                handler.onComplete(response);
+                                return;
+                            }
                         }
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    handler.onError(e);
                 }
             }
 
@@ -204,5 +236,26 @@ class OllamaClient {
 
         String errorMessage = String.format("status code: %s; body: %s", code, body);
         return new RuntimeException(errorMessage);
+    }
+
+    static class GenericHeadersInterceptor implements Interceptor {
+
+        private final Map<String, String> headers = new HashMap<>();
+
+        GenericHeadersInterceptor(Map<String, String> headers) {
+            Optional.ofNullable(headers)
+                    .ifPresent(this.headers::putAll);
+        }
+
+        @NotNull
+        @Override
+        public okhttp3.Response intercept(Chain chain) throws IOException {
+            Request.Builder builder = chain.request().newBuilder();
+
+            // Add headers
+            this.headers.forEach(builder::addHeader);
+
+            return chain.proceed(builder.build());
+        }
     }
 }

@@ -74,14 +74,14 @@ class OpenAiEmbeddingModelIT {
     void should_embed_text_with_embedding_shortening() {
 
         // given
-        int dimensions = 42;
+        int dimension = 42;
 
         EmbeddingModel model = OpenAiEmbeddingModel.builder()
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
                 .modelName("text-embedding-3-small")
-                .dimensions(dimensions)
+                .dimensions(dimension)
                 .logRequests(true)
                 .logResponses(true)
                 .build();
@@ -93,7 +93,7 @@ class OpenAiEmbeddingModelIT {
         System.out.println(response);
 
         // then
-        assertThat(response.content().dimension()).isEqualTo(dimensions);
+        assertThat(response.content().dimension()).isEqualTo(dimension);
 
         TokenUsage tokenUsage = response.tokenUsage();
         assertThat(tokenUsage.inputTokenCount()).isEqualTo(2);

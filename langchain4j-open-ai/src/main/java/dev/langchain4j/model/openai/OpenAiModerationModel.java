@@ -14,6 +14,7 @@ import lombok.Builder;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -42,7 +43,8 @@ public class OpenAiModerationModel implements ModerationModel {
                                  Integer maxRetries,
                                  Proxy proxy,
                                  Boolean logRequests,
-                                 Boolean logResponses) {
+                                 Boolean logResponses,
+                                 Map<String, String> customHeaders) {
 
         baseUrl = getOrDefault(baseUrl, OPENAI_URL);
         if (OPENAI_DEMO_API_KEY.equals(apiKey)) {
@@ -63,6 +65,7 @@ public class OpenAiModerationModel implements ModerationModel {
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .userAgent(DEFAULT_USER_AGENT)
+                .customHeaders(customHeaders)
                 .build();
         this.modelName = getOrDefault(modelName, TEXT_MODERATION_LATEST);
         this.maxRetries = getOrDefault(maxRetries, 3);

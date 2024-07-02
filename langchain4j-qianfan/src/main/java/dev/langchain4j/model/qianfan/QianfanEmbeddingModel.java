@@ -3,38 +3,34 @@ package dev.langchain4j.model.qianfan;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.qianfan.client.QianfanClient;
-import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.client.embedding.EmbeddingRequest;
+import dev.langchain4j.model.qianfan.client.embedding.EmbeddingResponse;
 import dev.langchain4j.model.qianfan.spi.QianfanEmbeddingModelBuilderFactory;
 import lombok.Builder;
+
+import java.net.Proxy;
 import java.util.List;
+
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.model.qianfan.InternalQianfanHelper.*;
+import static dev.langchain4j.model.qianfan.InternalQianfanHelper.tokenUsageFrom;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.stream.Collectors.toList;
+
 /**
- *
  * see details here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu
  */
-
-public class QianfanEmbeddingModel implements EmbeddingModel {
+public class QianfanEmbeddingModel extends DimensionAwareEmbeddingModel {
 
 
     private final QianfanClient client;
-
     private final String baseUrl;
-
     private final String modelName;
-
     private final Integer maxRetries;
-
     private final String user;
-
-
     private final String endpoint;
 
     @Builder
@@ -46,27 +42,29 @@ public class QianfanEmbeddingModel implements EmbeddingModel {
                                  String endpoint,
                                  String user,
                                  Boolean logRequests,
-                                 Boolean logResponses
-                             ) {
-        if (Utils.isNullOrBlank(apiKey)||Utils.isNullOrBlank(secretKey)) {
+                                 Boolean logResponses,
+                                 Proxy proxy
+    ) {
+        if (Utils.isNullOrBlank(apiKey) || Utils.isNullOrBlank(secretKey)) {
             throw new IllegalArgumentException(" api key and secret key must be defined. It can be generated here: https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application");
         }
 
 
-        this.modelName=modelName;
-        this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanEmbeddingModelNameEnum.getEndpoint(modelName):endpoint;
+        this.modelName = modelName;
+        this.endpoint = Utils.isNullOrBlank(endpoint) ? QianfanEmbeddingModelNameEnum.getEndpoint(modelName) : endpoint;
 
-        if (Utils.isNullOrBlank(this.endpoint) ) {
+        if (Utils.isNullOrBlank(this.endpoint)) {
             throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
-        this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");
+        this.baseUrl = getOrDefault(baseUrl, "https://aip.baidubce.com");
         this.client = QianfanClient.builder()
                 .baseUrl(this.baseUrl)
                 .apiKey(apiKey)
                 .secretKey(secretKey)
                 .logRequests(logRequests)
                 .logResponses(logResponses)
+                .proxy(proxy)
                 .build();
         this.maxRetries = getOrDefault(maxRetries, 3);
         this.user = user;

@@ -1,12 +1,25 @@
 ---
-sidebar_position: 30
+sidebar_position: 5
 ---
 
-# DashScope
+# DashScope (Qwen)
 
 [DashScope](https://dashscope.aliyun.com/) 
 
-- Chats (sync + streaming)
-- Completions (sync + streaming)
 
-Coming soon
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-dashscope</artifactId>
+    <version>0.31.0</version>
+</dependency>
+```
+
+## DashScope Models
+
+- `QwenChatModel`
+- `QwenStreamingChatModel`
+- `QwenLanguageModel`
+- `QwenStreamingLanguageModel`
