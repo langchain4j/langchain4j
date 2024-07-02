@@ -3,6 +3,7 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.core.exception.HttpResponseException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -47,6 +48,8 @@ class AzureOpenAiStreamingChatModelIT {
 
     Percentage tokenizerPrecision = withPercentage(5);
 
+    public long STREAMING_TIMEOUT = 120;
+
     @ParameterizedTest(name = "Deployment name {0} using {1} with async client set to {2}")
     @CsvSource({
             "gpt-4o,        gpt-4o, true",
@@ -59,7 +62,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .useAsyncClient(useAsyncClient)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
@@ -90,8 +93,8 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        String answer = futureAnswer.get(STREAMING_TIMEOUT, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         assertThat(answer).contains("Paris");
         assertThat(response.content().text()).isEqualTo(answer);
@@ -116,16 +119,16 @@ class AzureOpenAiStreamingChatModelIT {
         OpenAIAsyncClient asyncClient = null;
         OpenAIClient client = null;
         if(useCustomAsyncClient) {
-            asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true, null);
+            asyncClient = InternalAzureOpenAiHelper.setupAsyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, new DefaultAzureCredentialBuilder().build(), Duration.ofSeconds(30), 5, null, true, null);
         } else {
-            client = InternalAzureOpenAiHelper.setupSyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, System.getenv("AZURE_OPENAI_KEY"), Duration.ofSeconds(30), 5, null, true, null);
+            client = InternalAzureOpenAiHelper.setupSyncClient(System.getenv("AZURE_OPENAI_ENDPOINT"), gptVersion, new DefaultAzureCredentialBuilder().build(), Duration.ofSeconds(30), 5, null, true, null);
         }
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .openAIAsyncClient(asyncClient)
                 .openAIClient(client)
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -154,8 +157,8 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        String answer = futureAnswer.get(30, SECONDS);
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        String answer = futureAnswer.get(STREAMING_TIMEOUT, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         assertThat(answer).contains("Paris");
         assertThat(response.content().text()).isEqualTo(answer);
@@ -174,7 +177,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .responseFormat(new ChatCompletionsJsonResponseFormat())
                 .temperature(0.0)
@@ -203,7 +206,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -241,7 +244,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
@@ -282,7 +285,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response2 = futureResponse2.get(30, SECONDS);
+        Response<AiMessage> response2 = futureResponse2.get(STREAMING_TIMEOUT, SECONDS);
         AiMessage aiMessage2 = response2.content();
 
         // then
@@ -308,7 +311,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
                 .logRequestsAndResponses(true)
@@ -356,7 +359,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response = futureResponse.get(30, SECONDS);
+        Response<AiMessage> response = futureResponse.get(STREAMING_TIMEOUT, SECONDS);
 
         AiMessage aiMessage = response.content();
         assertThat(aiMessage.text()).isNull();
@@ -402,7 +405,7 @@ class AzureOpenAiStreamingChatModelIT {
             }
         });
 
-        Response<AiMessage> response2 = futureResponse2.get(30, SECONDS);
+        Response<AiMessage> response2 = futureResponse2.get(STREAMING_TIMEOUT, SECONDS);
         AiMessage aiMessage2 = response2.content();
 
         // then
@@ -457,7 +460,7 @@ class AzureOpenAiStreamingChatModelIT {
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
             .deploymentName(deploymentName)
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .tokenCredential(new DefaultAzureCredentialBuilder().build())
             .tokenizer(new AzureOpenAiTokenizer(gptVersion))
             .temperature(temperature)
             .topP(topP)
@@ -560,7 +563,7 @@ class AzureOpenAiStreamingChatModelIT {
 
         // when
         model.generate(userMessage, handler);
-        String content = future.get(5, SECONDS);
+        String content = future.get(STREAMING_TIMEOUT, SECONDS);
 
         // then
         assertThat(content).contains("Access denied due to invalid subscription key or wrong API endpoint");
@@ -574,7 +577,7 @@ class AzureOpenAiStreamingChatModelIT {
         // given
         StreamingChatLanguageModel model = AzureOpenAiStreamingChatModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName("gpt-4o")
                 .logRequestsAndResponses(true)
                 .build();

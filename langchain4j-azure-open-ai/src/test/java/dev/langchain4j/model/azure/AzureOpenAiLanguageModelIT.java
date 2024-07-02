@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import dev.langchain4j.model.language.LanguageModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -21,8 +22,8 @@ class AzureOpenAiLanguageModelIT {
 
     LanguageModel model = AzureOpenAiLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-35-turbo-instruct")
+            .tokenCredential(new DefaultAzureCredentialBuilder().build())
+            .deploymentName("gpt-35-turbo-instruct-0914")
             .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)
             .maxTokens(20)
@@ -59,7 +60,7 @@ class AzureOpenAiLanguageModelIT {
 
     @ParameterizedTest(name = "Testing model {0}")
     @EnumSource(value = AzureOpenAiLanguageModelName.class,
-            mode = EXCLUDE, names = {"TEXT_DAVINCI_002", "TEXT_DAVINCI_002_1"})
+            mode = EXCLUDE, names = {"GPT_3_5_TURBO_INSTRUCT", "TEXT_DAVINCI_002", "TEXT_DAVINCI_002_1"})
     void should_support_all_string_model_names(AzureOpenAiLanguageModelName modelName) {
 
         // given
@@ -67,7 +68,7 @@ class AzureOpenAiLanguageModelIT {
 
         LanguageModel model = AzureOpenAiLanguageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
-                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .tokenCredential(new DefaultAzureCredentialBuilder().build())
                 .deploymentName(modelNameString)
                 .logRequestsAndResponses(true)
                 .build();

@@ -5,9 +5,9 @@
 
 echo "Setting up environment variables..."
 echo "----------------------------------"
-PROJECT="langchain4j-eastus"
+PROJECT="langchain4j-$RANDOM"
 RESOURCE_GROUP="rg-$PROJECT"
-LOCATION="eastus"
+LOCATION="swedencentral"
 AI_SERVICE="ai-$PROJECT"
 TAG="$PROJECT"
 
@@ -23,14 +23,35 @@ az group create \
 
 echo "Creating the Cognitive Service..."
 echo "---------------------------------"
-az cognitiveservices account create \
+COGNITIVE_SERVICE_ID=$(az cognitiveservices account create \
   --name "$AI_SERVICE" \
   --resource-group "$RESOURCE_GROUP" \
   --location "$LOCATION" \
   --custom-domain "$AI_SERVICE" \
   --tags system="$TAG" \
   --kind "OpenAI" \
-  --sku "S0"
+  --sku "S0" \
+   | jq -r ".id")
+
+
+# Security
+# - Disable API Key authentication
+# - Assign a system Managed Identity to the Cognitive Service -> this is for using from other Azure services, like Azure Container Apps
+# - Assign the Contributor role on this resource group to the current user, so he can use the models from the CLI (this is how tests would be normally executed)
+az resource update --ids $COGNITIVE_SERVICE_ID --set properties.disableLocalAuth=true --latest-include-preview
+
+az cognitiveservices account identity assign \
+  --name "$AI_SERVICE" \
+  --resource-group "$RESOURCE_GROUP"
+
+PRINCIPAL_ID=$(az ad signed-in-user show --query id -o tsv)
+SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+az role assignment create \
+        --role "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd" \
+        --assignee-object-id "$PRINCIPAL_ID" \
+        --scope /subscriptions/"$SUBSCRIPTION_ID"/resourceGroups/"$RESOURCE_GROUP" \
+        --assignee-principal-type User
 
 # If you want to know the available models, run the following Azure CLI command:
 # az cognitiveservices account list-models --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE" -o table  
@@ -38,18 +59,6 @@ az cognitiveservices account create \
 # Chat Models
 echo "Deploying Chat Models"
 echo "====================="
-
-echo "Deploying a gpt-35-turbo-0301 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-35-turbo-0301" \
-  --model-name "gpt-35-turbo" \
-  --model-version "0125"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
 
 echo "Deploying a gpt-35-turbo-0613 model..."
 echo "----------------------"
@@ -175,18 +184,6 @@ az cognitiveservices account deployment create \
 echo "Deploying Embedding Models"
 echo "=========================="
 
-echo "Deploying a text-embedding-ada-002-1 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "text-embedding-ada-002-1" \
-  --model-name "text-embedding-ada-002" \
-  --model-version "1"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
 echo "Deploying a text-embedding-ada-002-2 model..."
 echo "----------------------"
 az cognitiveservices account deployment create \
@@ -195,18 +192,6 @@ az cognitiveservices account deployment create \
   --deployment-name "text-embedding-ada-002-2" \
   --model-name "text-embedding-ada-002" \
   --model-version "2"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a text-embedding-3-small-1 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "text-embedding-3-small-1" \
-  --model-name "text-embedding-3-small" \
-  --model-version "1"  \
   --model-format "OpenAI" \
   --sku-capacity 1 \
   --sku-name "Standard"
@@ -226,18 +211,6 @@ az cognitiveservices account deployment create \
 # Image Models
 echo "Deploying Image Models"
 echo "======================"
-
-echo "Deploying a dall-e-3 model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "dall-e-2-20" \
-  --model-name "dall-e-2" \
-  --model-version "2.0"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
 
 echo "Deploying a dall-e-3 model..."
 echo "----------------------"
@@ -280,14 +253,8 @@ az cognitiveservices account deployment create \
   --sku-name "Standard"
 
 
-echo "Storing the key and endpoint in environment variables..."
+echo "Storing endpoint in an environment variable..."
 echo "--------------------------------------------------------"
-AZURE_OPENAI_KEY=$(
-  az cognitiveservices account keys list \
-    --name "$AI_SERVICE" \
-    --resource-group "$RESOURCE_GROUP" \
-    | jq -r .key1
-  )
 AZURE_OPENAI_ENDPOINT=$(
   az cognitiveservices account show \
     --name "$AI_SERVICE" \
@@ -295,7 +262,6 @@ AZURE_OPENAI_ENDPOINT=$(
     | jq -r .properties.endpoint
   )
 
-echo "AZURE_OPENAI_KEY=$AZURE_OPENAI_KEY"
 echo "AZURE_OPENAI_ENDPOINT=$AZURE_OPENAI_ENDPOINT"
 
 # Once you finish the tests, you can delete the resource group with the following command:
