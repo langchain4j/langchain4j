@@ -112,7 +112,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         this.maxResults = maxResults;
         this.minScore = minScore;
         this.filter = filter;
-        this.searchFilter = filterMapper.map(filter);
+        this.searchFilter = this.filterMapper.map(filter);
 
     }
 
