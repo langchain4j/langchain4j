@@ -323,7 +323,7 @@ class InternalAzureOpenAiHelper {
             return LENGTH;
         } else if (openAiFinishReason == CompletionsFinishReason.CONTENT_FILTERED) {
             return CONTENT_FILTER;
-        } else if (openAiFinishReason == CompletionsFinishReason.FUNCTION_CALL) {
+        } else if (openAiFinishReason == CompletionsFinishReason.FUNCTION_CALL || openAiFinishReason == CompletionsFinishReason.TOOL_CALLS) {
             return TOOL_EXECUTION;
         } else {
             return null;

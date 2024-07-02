@@ -8,7 +8,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -18,7 +22,6 @@ import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.data.Percentage;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,20 +30,25 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
 import static org.assertj.core.data.Percentage.withPercentage;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AzureOpenAiChatModelIT {
 
@@ -206,6 +214,46 @@ public class AzureOpenAiChatModelIT {
         ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
         assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
+        assertThat(response.finishReason()).isEqualTo(STOP);
+    }
+
+    @ParameterizedTest(name = "Deployment name {0} using {1}")
+    @CsvSource({
+            "gpt-4o,        gpt-4o"
+    })
+    void should_call_function_finish_reason_is_tool_calls(String deploymentName, String gptVersion) {
+
+        ChatLanguageModel model = AzureOpenAiChatModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(deploymentName)
+                .tokenizer(new AzureOpenAiTokenizer(gptVersion))
+                .logRequestsAndResponses(true)
+                .build();
+
+        UserMessage userMessage = userMessage("What time is it?");
+
+        // This test will use the function called "getCurrentDateAndTime" which takes no arguments
+        String toolName = "getCurrentDateAndTime";
+
+        ToolSpecification noArgToolSpec = ToolSpecification.builder()
+                .name(toolName)
+                .description("Get the current date and time")
+                .build();
+
+        // pay attention here generate API
+        Response<AiMessage> response = model.generate(Collections.singletonList(userMessage), Collections.singletonList(noArgToolSpec));
+
+        AiMessage aiMessage = response.content();
+        assertThat(aiMessage.text()).isNull();
+
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
+        assertThat(toolExecutionRequest.name()).isEqualTo(toolName);
+        assertThat(toolExecutionRequest.arguments()).isEqualTo("{}");
+        // if the tool must be executed, finish reason should be `STOP`
+        // if the tool is optional, finish reason maybe be `TOOL_EXECUTION`
+        assertThat(response.finishReason()).isEqualTo(TOOL_EXECUTION);
     }
 
     @ParameterizedTest(name = "Deployment name {0} using {1}")
