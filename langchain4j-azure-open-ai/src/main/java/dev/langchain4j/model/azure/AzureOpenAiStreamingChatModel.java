@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -236,7 +235,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                                           List<ChatModelListener> listeners) {
 
         this.deploymentName = getOrDefault(deploymentName, "gpt-35-turbo");
-        this.tokenizer = tokenizer;
+        this.tokenizer = getOrDefault(tokenizer, AzureOpenAiTokenizer::new);
         this.maxTokens = maxTokens;
         this.temperature = getOrDefault(temperature, 0.7);
         this.topP = topP;
@@ -290,12 +289,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatLanguageModel
                 .setSeed(seed)
                 .setResponseFormat(responseFormat);
 
-        Integer inputTokenCount = tokenizer == null ? null : tokenizer.estimateTokenCountInMessages(messages);
+        int inputTokenCount = tokenizer.estimateTokenCountInMessages(messages);
 
         if (toolThatMustBeExecuted != null) {
             options.setTools(toToolDefinitions(singletonList(toolThatMustBeExecuted)));
             options.setToolChoice(toToolChoice(toolThatMustBeExecuted));
-            inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
+             inputTokenCount += tokenizer.estimateTokenCountInForcefulToolSpecification(toolThatMustBeExecuted);
         }
         if (!isNullOrEmpty(toolSpecifications)) {
             options.setTools(toToolDefinitions(toolSpecifications));
