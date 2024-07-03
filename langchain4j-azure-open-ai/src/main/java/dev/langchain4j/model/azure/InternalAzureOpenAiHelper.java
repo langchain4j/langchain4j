@@ -39,6 +39,7 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
@@ -264,7 +265,7 @@ class InternalAzureOpenAiHelper {
     }
 
     public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
-        if (chatResponseMessage.getContent() != null) {
+        if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
             return aiMessage(chatResponseMessage.getContent());
         } else {
             List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
