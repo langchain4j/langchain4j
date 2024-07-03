@@ -79,8 +79,8 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
         });
 
         assertThat(results).anyMatch(result ->
-                result.url().toString().contains("https://chat.openai.com/")
-                        && (result.snippet().contains("ChatGPT is a free-to-use AI system.") // when "snippet" != null
+                result.url().toString().contains("https://openai.com/chatgpt/")
+                        && (result.snippet().contains("Free to use") // when "snippet" != null
                         || result.snippet().contains("ChatGPT")) // when "displayedLink" != null
         );
     }
