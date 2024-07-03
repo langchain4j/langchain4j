@@ -363,13 +363,9 @@ class InternalAzureOpenAiHelper {
                     Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
                     Object errorCode = errorDetails.get("code");
                     if (errorCode instanceof String) {
-                        String code = (String) errorCode;
-                        if (contentFilterCode.equals(code)) {
-                            // The content was filtered by Azure OpenAI's content filter (for violence, self harm, or hate).
-                            exceptionFinishReason = FinishReason.CONTENT_FILTER;
+                            exceptionFinishReason = finishReasonFrom((String) errorCode);
                         }
                     }
-                }
             } catch (ClassCastException classCastException) {
                 logger.error("Error parsing error response from Azure OpenAI", classCastException);
             }
