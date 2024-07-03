@@ -492,8 +492,8 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // given
         VertexAiGeminiStreamingChatModel modelWithResponseMimeType = VertexAiGeminiStreamingChatModel.builder()
-            .project("genai-java-demos")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .responseMimeType("application/json")
             .build();
@@ -525,8 +525,8 @@ class VertexAiGeminiStreamingChatModelIT {
         safetySettings.put(HARM_CATEGORY_SEXUALLY_EXPLICIT, BLOCK_MEDIUM_AND_ABOVE);
 
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
-            .project("genai-java-demos")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .safetySettings(safetySettings)
             .logRequests(true)

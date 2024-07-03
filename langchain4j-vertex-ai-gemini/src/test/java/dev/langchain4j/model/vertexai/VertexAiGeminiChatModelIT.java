@@ -568,8 +568,8 @@ class VertexAiGeminiChatModelIT {
     void should_work_with_interspersed_function_execution_results() {
         // given
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
-            .project("genai-java-demos")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .temperature(0.0f)
             .topK(1)
@@ -616,8 +616,8 @@ class VertexAiGeminiChatModelIT {
 
         // given
         VertexAiGeminiChatModel modelWithSearch = VertexAiGeminiChatModel.builder()
-            .project("genai-java-demos")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .useGoogleSearch(true)
             .build();
@@ -636,8 +636,8 @@ class VertexAiGeminiChatModelIT {
 
         // given
         VertexAiGeminiChatModel modelWithResponseMimeType = VertexAiGeminiChatModel.builder()
-            .project("genai-java-demos")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .responseMimeType("application/json")
             .build();
@@ -666,8 +666,8 @@ class VertexAiGeminiChatModelIT {
         safetySettings.put(HARM_CATEGORY_SEXUALLY_EXPLICIT, BLOCK_MEDIUM_AND_ABOVE);
 
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
-            .project("genai-java-demos")
-            .location("us-central1")
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
             .modelName("gemini-1.5-flash-001")
             .safetySettings(safetySettings)
             .logRequests(true)
