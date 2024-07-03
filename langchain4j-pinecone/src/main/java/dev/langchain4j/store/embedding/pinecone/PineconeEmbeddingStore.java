@@ -9,7 +9,6 @@ import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.RelevanceScore;
-import dev.langchain4j.store.embedding.filter.Filter;
 import io.pinecone.clients.Index;
 import io.pinecone.clients.Pinecone;
 import io.pinecone.unsigned_indices_model.QueryResponseWithUnsignedIndices;
@@ -22,6 +21,8 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
+import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
 import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -76,6 +77,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.index = client.getIndexConnection(index);
     }
 
+    public static Builder builder() {
+        return new Builder();
+    }
+
     @Override
     public String add(Embedding embedding) {
         String id = randomUUID();
@@ -121,12 +126,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        index.deleteByIds(new ArrayList<>(ids));
-    }
-
-    @Override
-    public void removeAll(Filter filter) {
-        // TODO
+        index.deleteByIds(new ArrayList<>(ids), nameSpace);
     }
 
     @Override
@@ -150,27 +150,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
             Struct struct = null;
             if (textSegments != null) {
                 TextSegment textSegment = textSegments.get(i);
-                Metadata metadata = textSegment.metadata();
-                Struct.Builder metadataBuilder = Struct.newBuilder()
-                        .putFields(metadataTextKey, Value.newBuilder().setStringValue(textSegment.text()).build());
-                if (metadataTypeMap != null && !metadataTypeMap.isEmpty() && !metadata.toMap().isEmpty()) {
-                    for (Map.Entry<String, Value.KindCase> metadataType : metadataTypeMap.entrySet()) {
-                        String metadataKey = metadataType.getKey();
-                        Value.KindCase type = metadataType.getValue();
-
-                        switch (type) {
-                            case NUMBER_VALUE:
-                                metadataBuilder.putFields(metadataKey, Value.newBuilder().setNumberValue(metadata.getDouble(metadataKey)).build());
-                                break;
-                            case STRING_VALUE:
-                                metadataBuilder.putFields(metadataKey, Value.newBuilder().setStringValue(metadata.getString(metadataKey)).build());
-                                break;
-                            default:
-                                throw new UnsupportedOperationException("Pinecone does not support type " + type);
-                        }
-                    }
-                }
-                struct = metadataBuilder.build();
+                struct = metadataToStruct(textSegment, metadataTypeMap, metadataTextKey);
             }
 
             vectors.add(buildUpsertVectorWithUnsignedIndices(id, embedding.vectorAsList(), null, null, struct));
@@ -213,24 +193,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         Value textSegmentValue = filedsMap.get(metadataTextKey);
         Metadata metadata = new Metadata();
         if (metadataTypeMap != null && !metadataTypeMap.isEmpty()) {
-            Map<String, Object> metadataMap = new HashMap<>(metadataTypeMap.size());
-            for (Map.Entry<String, Value.KindCase> metadataType : metadataTypeMap.entrySet()) {
-                String metadataKey = metadataType.getKey();
-                Value.KindCase type = metadataType.getValue();
-
-                if (filedsMap.containsKey(metadataKey)) {
-                    switch (type) {
-                        case NUMBER_VALUE:
-                            metadataMap.put(metadataKey, filedsMap.get(metadataKey).getNumberValue());
-                            break;
-                        case STRING_VALUE:
-                            metadataMap.put(metadataKey, filedsMap.get(metadataKey).getStringValue());
-                            break;
-                        default:
-                            throw new UnsupportedOperationException("Pinecone does not support type " + type);
-                    }
-                }
-            }
+            Map<String, Object> metadataMap = structToMetadata(metadataTypeMap, filedsMap);
             metadata = Metadata.from(metadataMap);
         }
 
@@ -243,10 +206,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                 embedding,
                 textSegmentValue == null ? null : TextSegment.from(textSegmentValue.getStringValue(), metadata)
         );
-    }
-
-    public static Builder builder() {
-        return new Builder();
     }
 
     public static class Builder {
