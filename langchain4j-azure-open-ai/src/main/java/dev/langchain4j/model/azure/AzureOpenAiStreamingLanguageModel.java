@@ -27,7 +27,7 @@ import java.util.Map;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
-import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.contentFilterManagement;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.exceptionFinishReasonManagement;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -239,7 +239,7 @@ public class AzureOpenAiStreamingLanguageModel implements StreamingLanguageModel
             ));
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            FinishReason exceptionFinishReason = exceptionFinishReasonManagement(httpResponseException);
             Response<String> response = Response.from(
                     httpResponseException.getMessage(),
                     null,

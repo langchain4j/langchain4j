@@ -351,9 +351,11 @@ class InternalAzureOpenAiHelper {
     }
 
     /**
-     * Support for Responsible AI (content filtered by Azure OpenAI for violence, self harm, or hate).
+     * Extracts the finish reason from an exception thrown by Azure OpenAI.
+     * @param httpResponseException The exception thrown by Azure OpenAI.
+     * @return The finish reason extracted from the exception.
      */
-    public static FinishReason contentFilterManagement(HttpResponseException httpResponseException, String contentFilterCode) {
+    public static FinishReason exceptionFinishReasonManagement(HttpResponseException httpResponseException) {
         FinishReason exceptionFinishReason = FinishReason.OTHER;
         if (httpResponseException.getValue() instanceof Map) {
             try {

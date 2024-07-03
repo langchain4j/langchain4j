@@ -232,7 +232,7 @@ public class AzureOpenAiLanguageModel implements LanguageModel, TokenCountEstima
             );
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            FinishReason exceptionFinishReason = exceptionFinishReasonManagement(httpResponseException);
             return Response.from(
                     httpResponseException.getMessage(),
                     null,

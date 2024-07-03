@@ -312,7 +312,7 @@ public class AzureOpenAiChatModel implements ChatLanguageModel, TokenCountEstima
             return response;
         } catch (HttpResponseException httpResponseException) {
             logger.info("Error generating response, {}", httpResponseException.getValue());
-            FinishReason exceptionFinishReason = contentFilterManagement(httpResponseException, "content_filter");
+            FinishReason exceptionFinishReason = exceptionFinishReasonManagement(httpResponseException);
             Response<AiMessage> response = Response.from(
                     aiMessage(httpResponseException.getMessage()),
                     null,
