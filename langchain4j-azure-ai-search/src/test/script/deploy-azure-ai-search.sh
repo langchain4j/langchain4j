@@ -1,7 +1,18 @@
 #!/usr/bin/env bash
 
-# Execute this script to deploy the needed Azure AI Search resources to execute the integration tests.
-# For this, you need Azure CLI installed: https://learn.microsoft.com/cli/azure/install-azure-cli
+# Execute this script to deploy the necessary Azure AI Search resources to execute the integration tests.
+#
+# For this, you need to have Azure CLI installed: https://learn.microsoft.com/cli/azure/install-azure-cli
+#
+# Azure CLI runs on:
+# - Windows (using Windows Command Prompt (CMD), PowerShell, or Windows Subsystem for Linux (WSL)): https://learn.microsoft.com/cli/azure/install-azure-cli-windows 
+# - macOS: https://learn.microsoft.com/cli/azure/install-azure-cli-macos
+# - Linux: https://learn.microsoft.com/cli/azure/install-azure-cli-linux
+# - Docker: https://learn.microsoft.com/cli/azure/run-azure-cli-docker
+#
+# Once installed, you can run the following commands to check your installation is correct:
+# az --version
+# az --help
 
 echo "Setting up environment variables..."
 echo "----------------------------------"
