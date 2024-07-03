@@ -41,7 +41,7 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         @dev.langchain4j.service.SystemMessage({
                 "You are a web search support agent.",
                 "If there is any event that has not happened yet",
-                "You MUST create a web search request with with user query and",
+                "You MUST create a web search request with user query and",
                 "use the web search tool to search the web for organic web results.",
                 "Include the source link in your final response."
         })
@@ -53,8 +53,8 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         // given
         webSearchEngine = SearchApiWebSearchEngine
         		.withApiKey(System.getenv(DEFAULT_ENV_VAR))
-                .logRequests(logRequests)
-                .build();
+        		.logRequests(logRequests)
+        		.build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(webSearchEngine);
         List<ToolSpecification> tools = ToolSpecifications.toolSpecificationsFrom(webSearchTool);

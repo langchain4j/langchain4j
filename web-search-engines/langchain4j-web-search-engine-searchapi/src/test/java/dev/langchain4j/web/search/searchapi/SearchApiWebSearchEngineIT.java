@@ -36,36 +36,27 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
         WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
 
         // then
-        assertThat(webSearchResults.searchInformation().totalResults() > 0);
-        assertThat(webSearchResults.searchInformation().pageNumber() == 1);
+        assertThat(webSearchResults.searchInformation().totalResults()).isPositive();
+        assertThat(webSearchResults.searchInformation().pageNumber()).isEqualTo(1);
 
         // then
-        WebSearchInformationResult searchParams = webSearchResults.searchInformation();        
-        assertThat(searchParams.metadata().containsKey("engine"));
-        assertThat(searchParams.metadata().get("engine").equals(DEFAULT_ENGINE));
-        assertThat(searchParams.metadata().containsKey("q"));
-        assertThat(searchParams.metadata().get("q").equals("chatgpt"));
-        assertThat(searchParams.metadata().containsKey("google_domain"));
-        assertThat(searchParams.metadata().get("google_domain").equals("google.com"));
-        assertThat(searchParams.metadata().containsKey("device"));
-        assertThat(searchParams.metadata().get("device").equals("desktop"));
-        assertThat(searchParams.metadata().containsKey("safe"));
-        assertThat(searchParams.metadata().get("safe").equals("active"));
-        assertThat(searchParams.metadata().containsKey("page"));
-        assertThat(searchParams.metadata().get("page").equals(1));
+        WebSearchInformationResult searchParams = webSearchResults.searchInformation();
+        assertThat(searchParams.metadata()).containsEntry("engine", DEFAULT_ENGINE);
+        assertThat(searchParams.metadata()).containsEntry("q", "chatgpt");
+        assertThat(searchParams.metadata()).containsEntry("google_domain", "google.com");
+        assertThat(searchParams.metadata()).containsEntry("device", "desktop");
+        assertThat(searchParams.metadata()).containsEntry("safe", "active");
+        assertThat(searchParams.metadata()).containsEntry("page", "1");
 
         // then
         Map<String, Object> searchMetadata = webSearchResults.searchMetadata();
-        assertThat(searchMetadata.containsKey("id"));
+        assertThat(searchMetadata).containsKey("id");
         assertThat(searchMetadata.get("id")).isNotNull();
-        assertThat(searchMetadata.containsKey("created_at"));
+        assertThat(searchMetadata).containsKey("created_at");
         assertThat(searchMetadata.get("created_at")).isNotNull();
-        assertThat(searchMetadata.containsKey("request_url"));
+        assertThat(searchMetadata).containsKey("request_url");
         assertThat(searchMetadata.get("request_url")).isNotNull();
-        assertThat(searchMetadata.containsKey("query_displayed"));
-        assertThat(searchMetadata.get("query_displayed").equals("chatgpt"));
-        assertThat(searchMetadata.containsKey("status"));
-        assertThat(searchMetadata.get("status").equals("Success"));
+        assertThat(searchMetadata).containsEntry("query_displayed", "chatgpt").containsEntry("status", "Success");
         
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
