@@ -662,7 +662,7 @@ class VertexAiGeminiChatModelIT {
         HashMap<HarmCategory, SafetyThreshold> safetySettings = new HashMap<>();
         safetySettings.put(HARM_CATEGORY_HARASSMENT, BLOCK_LOW_AND_ABOVE);
         safetySettings.put(HARM_CATEGORY_DANGEROUS_CONTENT, BLOCK_ONLY_HIGH);
-        safetySettings.put(HARM_CATEGORY_HATE_SPEECH, BLOCK_NONE);
+//        safetySettings.put(HARM_CATEGORY_HATE_SPEECH, BLOCK_NONE);
         safetySettings.put(HARM_CATEGORY_SEXUALLY_EXPLICIT, BLOCK_MEDIUM_AND_ABOVE);
 
         VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
