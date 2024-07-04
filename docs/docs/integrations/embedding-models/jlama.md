@@ -38,8 +38,8 @@ For Maven project `pom.xml`
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.31.0'
-implementation 'dev.langchain4j:langchain4j-jlama:0.31.0'
+implementation 'dev.langchain4j:langchain4j:0.32.0'
+implementation 'dev.langchain4j:langchain4j-jlama:0.32.0'
 ```
 
 ## Embedding
