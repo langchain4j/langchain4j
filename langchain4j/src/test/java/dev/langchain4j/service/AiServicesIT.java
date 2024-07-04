@@ -25,7 +25,7 @@ import java.util.List;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiModelName.GPT_3_5_TURBO_1106;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
@@ -62,6 +62,26 @@ public class AiServicesIT {
         verifyNoMoreInteractions(chatLanguageModel);
         verifyNoMoreInteractions(chatMemory);
         verifyNoMoreInteractions(moderationModel);
+    }
+
+    interface EggCounter {
+
+        @UserMessage("Count number of 'egg' mentions in this sentence:\n|||{{it}}|||")
+        int count(String sentence);
+    }
+
+    @Test
+    void test_simple_instruction_with_primitive_return_type() {
+        EggCounter eggCounter = AiServices.create(EggCounter.class, chatLanguageModel);
+
+        String sentence = "I have ten eggs in my basket and three in my pocket.";
+
+        int count = eggCounter.count(sentence);
+        System.out.println(count);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
+                "|||I have ten eggs in my basket and three in my pocket.|||\n" +
+                "You must answer strictly in the following format: integer number")));
     }
 
 
@@ -198,7 +218,7 @@ public class AiServicesIT {
     }
 
     @Test
-    void test_extract_enum_with_description() {
+    void test_extract_single_enum_with_description() {
 
         WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatLanguageModel);
 
@@ -218,6 +238,86 @@ public class AiServicesIT {
                 "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions")));
     }
 
+    public enum Ingredient {
+        SALT,
+        PEPPER,
+        VINEGAR,
+        OIL
+    }
+
+    interface IngredientsExtractor {
+
+        @UserMessage("Analyze the following recipe:\n|||{{it}}|||")
+        List<Ingredient> extractIngredients(String recipe);
+    }
+
+    @Test
+    void test_extract_list_of_enums() {
+        IngredientsExtractor ingredientsExtractor = AiServices.create(IngredientsExtractor.class, chatLanguageModel);
+
+        String recipe = "Just mix some salt, pepper and oil in the bowl. That will be a basis for...";
+
+        List<Ingredient> ingredients = ingredientsExtractor.extractIngredients(recipe);
+        System.out.println(ingredients);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze the following recipe:\n" +
+                "|||" + recipe + "|||\n" +
+                "You must answer strictly with zero or more of these enums on a separate line:\n" +
+                "SALT\n" +
+                "PEPPER\n" +
+                "VINEGAR\n" +
+                "OIL")));
+    }
+
+    public enum IssueCategory {
+        @Description("The feedback mentions issues with the hotel's maintenance, such as air conditioning and plumbing problems")
+        MAINTENANCE_ISSUE,
+        @Description("The feedback mentions issues with the service provided, such as slow room service")
+        SERVICE_ISSUE,
+        @Description("The feedback mentions issues affecting the comfort of the stay, such as uncomfortable room conditions")
+        COMFORT_ISSUE,
+        @Description("The feedback mentions issues with hotel facilities, such as problems with the bathroom plumbing")
+        FACILITY_ISSUE,
+        @Description("The feedback mentions issues with the cleanliness of the hotel, such as dust and stains")
+        CLEANLINESS_ISSUE,
+        @Description("The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi")
+        CONNECTIVITY_ISSUE,
+        @Description("The feedback mentions issues with the check-in process, such as it being tedious and time-consuming")
+        CHECK_IN_ISSUE,
+        @Description("The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")
+        OVERALL_EXPERIENCE_ISSUE
+    }
+
+    interface HotelReviewIssueAnalyzer {
+        @UserMessage("Please analyse the following review: |||{{it}}|||")
+        List<IssueCategory> analyzeReview(String review);
+    }
+
+    @Test
+    void test_extract_list_of_enums_with_descriptions() {
+        HotelReviewIssueAnalyzer hotelReviewIssueAnalyzer = AiServices.create(HotelReviewIssueAnalyzer.class, chatLanguageModel);
+
+        String review = "Our stay at hotel was a mixed experience. The location was perfect, just a stone's throw away " +
+                "from the beach, which made our daily outings very convenient. The rooms were spacious and well-decorated, " +
+                "providing a comfortable and pleasant environment. However, we encountered several issues during our " +
+                "stay. The air conditioning in our room was not functioning properly, making the nights quite uncomfortable. " +
+                "Additionally, the room service was slow, and we had to call multiple times to get extra towels. Despite the " +
+                "friendly staff and enjoyable breakfast buffet, these issues significantly impacted our stay.";
+
+        List<IssueCategory> issueCategories = hotelReviewIssueAnalyzer.analyzeReview(review);
+        System.out.println(issueCategories); // [MAINTENANCE_ISSUE, SERVICE_ISSUE, COMFORT_ISSUE, OVERALL_EXPERIENCE_ISSUE]
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Please analyse the following review: |||" + review + "|||\n" +
+                "You must answer strictly with zero or more of these enums on a separate line:\n" +
+                "MAINTENANCE_ISSUE - The feedback mentions issues with the hotel's maintenance, such as air conditioning and plumbing problems\n" +
+                "SERVICE_ISSUE - The feedback mentions issues with the service provided, such as slow room service\n" +
+                "COMFORT_ISSUE - The feedback mentions issues affecting the comfort of the stay, such as uncomfortable room conditions\n" +
+                "FACILITY_ISSUE - The feedback mentions issues with hotel facilities, such as problems with the bathroom plumbing\n" +
+                "CLEANLINESS_ISSUE - The feedback mentions issues with the cleanliness of the hotel, such as dust and stains\n" +
+                "CONNECTIVITY_ISSUE - The feedback mentions issues with internet connectivity, such as unreliable Wi-Fi\n" +
+                "CHECK_IN_ISSUE - The feedback mentions issues with the check-in process, such as it being tedious and time-consuming\n" +
+                "OVERALL_EXPERIENCE_ISSUE - The feedback mentions a general dissatisfaction with the overall hotel experience due to multiple issues")));
+    }
 
     @ToString
     static class Address {
@@ -283,7 +383,7 @@ public class AiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(GPT_3_5_TURBO_1106) // supports response_format = 'json_object'
+                .modelName(GPT_3_5_TURBO) // supports response_format = 'json_object'
                 .responseFormat("json_object")
                 .temperature(0.0)
                 .logRequests(true)
@@ -738,6 +838,54 @@ public class AiServicesIT {
                 AiServices.create(InvalidAssistantWithResult.class, chatLanguageModel))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
-                        "parameterized with a type, for example: Result<String> or Result<MyCustomPojo>");
+                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
+    }
+
+    interface InvalidAssistantWithResultAndList {
+
+        Result<List> answerWithNoGenericType(String query);
+    }
+
+    @Test
+    void should_throw_exception_when_retrieve_result_and_list_and_generic_type_is_not_set() {
+
+        // when-then
+        assertThatThrownBy(() ->
+                AiServices.create(InvalidAssistantWithResultAndList.class, chatLanguageModel))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
+                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
+    }
+
+    interface InvalidAssistantWithList {
+
+        List answerWithNoGenericType(String query);
+    }
+
+    @Test
+    void should_throw_exception_when_retrieve_list_and_generic_type_is_not_set() {
+
+        // when-then
+        assertThatThrownBy(() ->
+                AiServices.create(InvalidAssistantWithList.class, chatLanguageModel))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
+                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
+    }
+
+    interface InvalidAssistantWithSet {
+
+        List answerWithNoGenericType(String query);
+    }
+
+    @Test
+    void should_throw_exception_when_retrieve_set_and_generic_type_is_not_set() {
+
+        // when-then
+        assertThatThrownBy(() ->
+                AiServices.create(InvalidAssistantWithSet.class, chatLanguageModel))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
+                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
     }
 }

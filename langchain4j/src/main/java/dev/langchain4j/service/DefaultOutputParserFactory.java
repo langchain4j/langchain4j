@@ -7,10 +7,7 @@ import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class DefaultOutputParserFactory implements OutputParserFactory {
 
@@ -49,12 +46,32 @@ public class DefaultOutputParserFactory implements OutputParserFactory {
     }
 
     @Override
-    public Optional<OutputParser<?>> get(Class<?> returnType) {
-        if (returnType.isEnum()) {
-            return Optional.of(new EnumOutputParser(returnType.asSubclass(Enum.class)));
+    public Optional<OutputParser<?>> get(Class<?> rawClass, Class<?> typeArgumentClass) {
+        if (rawClass.isEnum()) {
+            return Optional.of(new EnumOutputParser(rawClass.asSubclass(Enum.class)));
         }
 
-        OutputParser<?> outputParser = OUTPUT_PARSERS.get(returnType);
+        if (rawClass.equals(List.class)) {
+            if (typeArgumentClass.isEnum()) {
+                return Optional.of(new EnumListOutputParser(typeArgumentClass.asSubclass(Enum.class)));
+            }
+
+            if (typeArgumentClass.equals(String.class)) {
+                return Optional.of(new StringListOutputParser());
+            }
+        }
+
+        if (rawClass.equals(Set.class)) {
+            if (typeArgumentClass.isEnum()) {
+                return Optional.of(new EnumSetOutputParser(typeArgumentClass.asSubclass(Enum.class)));
+            }
+
+            if (typeArgumentClass.equals(String.class)) {
+                return Optional.of(new StringSetOutputParser());
+            }
+        }
+
+        OutputParser<?> outputParser = OUTPUT_PARSERS.get(rawClass);
         if (outputParser != null) {
             return Optional.of(outputParser);
         } else {

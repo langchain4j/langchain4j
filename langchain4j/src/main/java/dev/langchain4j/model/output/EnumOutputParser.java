@@ -41,11 +41,11 @@ public class EnumOutputParser implements OutputParser<Enum> {
 
             // 'enums' keyword will hopefully make it clearer that
             // no description should be included (if present)
-            instruction.append("one of these enums:");
+            instruction.append("\nYou must answer strictly with one of these enums:");
 
             for (Enum enumConstant : enumConstants) {
                 instruction.append("\n").append(enumConstant.name().toUpperCase(Locale.ROOT));
-                Optional<String> optionalEnumDescription = getEnumDescription(enumConstant);
+                Optional<String> optionalEnumDescription = getEnumDescription(enumClass, enumConstant);
                 optionalEnumDescription.ifPresent(description -> instruction.append(" - ").append(description));
             }
 
@@ -62,7 +62,7 @@ public class EnumOutputParser implements OutputParser<Enum> {
      * @param enumConstant for which description should be returned
      * @return description of the provided enum
      */
-    private Optional<String> getEnumDescription(Enum enumConstant) throws NoSuchFieldException {
+    public static Optional<String> getEnumDescription(Class<? extends Enum> enumClass, Enum enumConstant) throws NoSuchFieldException {
         Field field = enumClass.getDeclaredField(enumConstant.name());
 
         if (field.isAnnotationPresent(Description.class)) {
