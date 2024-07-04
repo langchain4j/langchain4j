@@ -60,6 +60,7 @@
         <module>langchain4j-vearch</module>
         <module>langchain4j-vespa</module>
         <module>langchain4j-weaviate</module>
+        <module>langchain4j-sparkdesk-ai</module>
 
         <!-- document loaders -->
         <module>document-loaders/langchain4j-document-loader-amazon-s3</module>
