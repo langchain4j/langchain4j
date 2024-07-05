@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 14
 ---
 
 # Qianfan
@@ -11,14 +11,14 @@ sidebar_position: 13
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>{{version}}</version>
-</dependency>
-<dependency>
-  <groupId>dev.langchain4j</groupId>
-  <artifactId>langchain4j-qianfan</artifactId>
-  <version>{{version}}</version>
+    <version>0.32.0</version>
 </dependency>
 
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-qianfan</artifactId>
+    <version>0.32.0</version>
+</dependency>
 ```
 
 
@@ -245,7 +245,7 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>{{version}}</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 - Use

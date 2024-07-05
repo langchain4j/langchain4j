@@ -2,6 +2,7 @@ package dev.langchain4j.model.jina;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingRequest;
 import dev.langchain4j.model.jina.internal.api.JinaEmbeddingResponse;
@@ -22,7 +23,7 @@ import static java.util.stream.Collectors.toList;
  * An implementation of an {@link EmbeddingModel} that uses
  * <a href="https://jina.ai/embeddings">Jina Embeddings API</a>.
  */
-public class JinaEmbeddingModel implements EmbeddingModel {
+public class JinaEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private static final String DEFAULT_BASE_URL = "https://api.jina.ai/";
     private static final String DEFAULT_MODEL = "jina-embeddings-v2-base-en";

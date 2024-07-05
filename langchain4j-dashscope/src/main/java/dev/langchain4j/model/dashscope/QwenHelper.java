@@ -7,6 +7,12 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationO
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
+import com.alibaba.dashscope.tools.*;
+import com.alibaba.dashscope.utils.JsonUtils;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import com.google.gson.JsonObject;
+import dev.langchain4j.agent.tool.ToolParameters;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
@@ -23,8 +29,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.alibaba.dashscope.common.Role.*;
-import static dev.langchain4j.model.output.FinishReason.LENGTH;
-import static dev.langchain4j.model.output.FinishReason.STOP;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
 class QwenHelper {
@@ -45,6 +52,9 @@ class QwenHelper {
         return Message.builder()
                 .role(roleFrom(message))
                 .content(toSingleText(message))
+                .name(nameFrom(message))
+                .toolCallId(toolCallIdFrom(message))
+                .toolCalls(toolCallsFrom(message))
                 .build();
     }
 
@@ -58,7 +68,7 @@ class QwenHelper {
                         .map(TextContent::text)
                         .collect(Collectors.joining("\n"));
             case AI:
-                return ((AiMessage) message).text();
+                return ((AiMessage) message).hasToolExecutionRequests() ? "" : ((AiMessage) message).text();
             case SYSTEM:
                 return ((SystemMessage) message).text();
             case TOOL_EXECUTION_RESULT:
@@ -66,6 +76,31 @@ class QwenHelper {
             default:
                 return "";
         }
+    }
+
+    static String nameFrom(ChatMessage message) {
+        switch (message.type()) {
+            case USER:
+                return ((UserMessage) message).name();
+            case TOOL_EXECUTION_RESULT:
+                return ((ToolExecutionResultMessage) message).toolName();
+            default:
+                return null;
+        }
+    }
+
+    static String toolCallIdFrom(ChatMessage message) {
+        if (message.type() == ChatMessageType.TOOL_EXECUTION_RESULT) {
+            return ((ToolExecutionResultMessage) message).id();
+        }
+        return null;
+    }
+
+    static List<ToolCallBase> toolCallsFrom(ChatMessage message) {
+        if (message.type() == ChatMessageType.AI && ((AiMessage) message).hasToolExecutionRequests()) {
+            return toToolCalls(((AiMessage) message).toolExecutionRequests());
+        }
+        return null;
     }
 
     static List<MultiModalMessage> toQwenMultiModalMessages(List<ChatMessage> messages) {
@@ -84,7 +119,7 @@ class QwenHelper {
     static List<Map<String, Object>> toMultiModalContents(ChatMessage message) {
         switch (message.type()) {
             case USER:
-                return((UserMessage) message).contents()
+                return ((UserMessage) message).contents()
                         .stream()
                         .map(QwenHelper::toMultiModalContent)
                         .collect(Collectors.toList());
@@ -154,10 +189,12 @@ class QwenHelper {
     }
 
     static String roleFrom(ChatMessage message) {
-        if (message instanceof AiMessage) {
+        if (message.type() == ChatMessageType.AI) {
             return ASSISTANT.getValue();
-        } else if (message instanceof SystemMessage) {
+        } else if (message.type() == ChatMessageType.SYSTEM) {
             return SYSTEM.getValue();
+        } else if (message.type() == ChatMessageType.TOOL_EXECUTION_RESULT) {
+            return TOOL.getValue();
         } else {
             return USER.getValue();
         }
@@ -228,19 +265,23 @@ class QwenHelper {
     }
 
     static FinishReason finishReasonFrom(GenerationResult result) {
-        String finishReason = Optional.of(result)
-                .map(GenerationResult::getOutput)
-                .map(GenerationOutput::getChoices)
-                .filter(choices -> !choices.isEmpty())
-                .map(choices -> choices.get(0))
-                .map(Choice::getFinishReason)
-                .orElse("");
+        Choice choice = result.getOutput().getChoices().get(0);
+        String finishReason = choice.getFinishReason();
+        if (finishReason == null) {
+            if (isNullOrEmpty(choice.getMessage().getToolCalls())) {
+                return null;
+            }
+            // Upon observation, when tool_calls occur, the returned finish_reason may be null, not "tool_calls".
+            finishReason = "tool_calls";
+        }
 
         switch (finishReason) {
             case "stop":
                 return STOP;
             case "length":
                 return LENGTH;
+            case "tool_calls":
+                return TOOL_EXECUTION;
             default:
                 return null;
         }
@@ -268,5 +309,97 @@ class QwenHelper {
     public static boolean isMultimodalModel(String modelName) {
         // for now, multimodal models start with "qwen-vl"
         return modelName.startsWith("qwen-vl");
+    }
+
+    static List<ToolBase> toToolFunctions(Collection<ToolSpecification> toolSpecifications) {
+        if (isNullOrEmpty(toolSpecifications)) {
+            return Collections.emptyList();
+        }
+
+        return toolSpecifications.stream()
+                .map(QwenHelper::toToolFunction)
+                .collect(Collectors.toList());
+    }
+
+    static ToolBase toToolFunction(ToolSpecification toolSpecification) {
+        FunctionDefinition functionDefinition = FunctionDefinition.builder()
+                .name(toolSpecification.name())
+                .description(toolSpecification.description())
+                .parameters(toParameters(toolSpecification.parameters()))
+                .build();
+        return ToolFunction.builder().function(functionDefinition).build();
+    }
+
+    private static JsonObject toParameters(ToolParameters toolParameters) {
+        return toolParameters == null ?
+                JsonUtils.toJsonObject(Collections.emptyMap()) :
+                JsonUtils.toJsonObject(toolParameters);
+    }
+
+    static AiMessage aiMessageFrom(GenerationResult result) {
+        return isFunctionToolCalls(result) ?
+                new AiMessage(functionToolCallsFrom(result)) : new AiMessage(answerFrom(result));
+    }
+
+    private static List<ToolExecutionRequest> functionToolCallsFrom(GenerationResult result) {
+        List<ToolCallBase> toolCalls = Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls)
+                .orElseThrow(IllegalStateException::new);
+
+        return toolCalls.stream()
+                .filter(ToolCallFunction.class::isInstance)
+                .map(ToolCallFunction.class::cast)
+                .map(toolCall -> ToolExecutionRequest.builder()
+                        .id(getOrDefault(toolCall.getId(), () -> toolCallIdFromMessage(result)))
+                        .name(toolCall.getFunction().getName())
+                        .arguments(toolCall.getFunction().getArguments())
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    static String toolCallIdFromMessage(GenerationResult result) {
+        // Not sure about the difference between Message::getToolCallId() and ToolCallFunction::getId().
+        // Currently, they all return null.
+        // Encapsulate a method to get the ID using Message::getToolCallId() when ToolCallFunction::getId() is null.
+        return Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCallId)
+                .orElse(null);
+    }
+
+    static boolean isFunctionToolCalls(GenerationResult result) {
+        Optional<List<ToolCallBase>> toolCallBases = Optional.of(result)
+                .map(GenerationResult::getOutput)
+                .map(GenerationOutput::getChoices)
+                .filter(choices -> !choices.isEmpty())
+                .map(choices -> choices.get(0))
+                .map(Choice::getMessage)
+                .map(Message::getToolCalls);
+        return toolCallBases.isPresent() && !isNullOrEmpty(toolCallBases.get());
+    }
+
+    private static List<ToolCallBase> toToolCalls(Collection<ToolExecutionRequest> toolExecutionRequests) {
+        return toolExecutionRequests.stream()
+                .map(QwenHelper::toToolCall)
+                .collect(toList());
+    }
+
+    private static ToolCallBase toToolCall(ToolExecutionRequest toolExecutionRequest) {
+        ToolCallFunction toolCallFunction = new ToolCallFunction();
+        toolCallFunction.setId(toolExecutionRequest.id());
+        ToolCallFunction.CallFunction callFunction = toolCallFunction.new CallFunction();
+        callFunction.setName(toolExecutionRequest.name());
+        callFunction.setArguments(toolExecutionRequest.arguments());
+        toolCallFunction.setFunction(callFunction);
+        return toolCallFunction;
     }
 }

@@ -4,7 +4,7 @@ public class IntOutputParser implements OutputParser<Integer> {
 
     @Override
     public Integer parse(String string) {
-        return Integer.parseInt(string);
+        return Integer.parseInt(string.trim());
     }
 
     @Override
