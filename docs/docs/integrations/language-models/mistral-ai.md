@@ -370,6 +370,6 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
-### More examples
-If you want to check more MistralAI examples, you can find them in the [langchain4j-examples/mistral-ai-examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples) project.
 
+## Examples
+- [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

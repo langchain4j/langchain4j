@@ -1,11 +1,13 @@
 ---
-sidebar_position: 4
+sidebar_position: 15
 ---
 
 # Cloudflare Workers AI
 
 https://developers.cloudflare.com/workers-ai/
 
+
+## Maven Dependency
 
 ```xml
 <dependency>
@@ -17,9 +19,9 @@ https://developers.cloudflare.com/workers-ai/
 
 ## APIs
 
-- `WorkersAiImageModel`
+- `WorkersAiEmbeddingModel`
 
 
 ## Examples
 
-- [WorkersAiImageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-workers-ai/src/test/java/dev/langchain4j/model/workersai/WorkersAiImageModelIT.java)
+- [WorkersAiEmbeddingModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-workers-ai/src/test/java/dev/langchain4j/model/workersai/WorkersAiEmbeddingModelIT.java)

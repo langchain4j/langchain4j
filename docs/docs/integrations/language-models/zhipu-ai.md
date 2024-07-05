@@ -2,10 +2,13 @@
 sidebar_position: 16
 ---
 
-# ZhipuAI
+# Zhipu AI
 
 - https://www.zhipuai.cn/
 - https://open.bigmodel.cn/
+
+
+## Maven Dependency
 
 ```xml
 <dependency>
@@ -15,7 +18,14 @@ sidebar_position: 16
 </dependency>
 ```
 
-## ZhipuAI Models
+
+## APIs
 
 - `ZhipuAiChatModel`
 - `ZhipuAiStreamingChatModel`
+
+
+## Examples
+
+- [ZhipuAiChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-zhipu-ai/src/test/java/dev/langchain4j/model/zhipu/ZhipuAiChatModelIT.java)
+- [ZhipuAiStreamingChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-zhipu-ai/src/test/java/dev/langchain4j/model/zhipu/ZhipuAiStreamingChatModelIT.java)

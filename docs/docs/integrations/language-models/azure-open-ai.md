@@ -205,3 +205,8 @@ Tokenizer tokenizer = new AzureOpenAiTokenizer("gpt-4o");
 
 ### Spring Boot
 The `AzureOpenAiTokenizer` bean is created automatically.
+
+
+## Examples
+
+- [Azure OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/azure-open-ai-examples/src/main/java)

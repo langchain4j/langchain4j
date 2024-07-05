@@ -211,3 +211,7 @@ Tokenizer tokenizer = new OpenAiTokenizer("gpt-3.5-turbo");
 
 ### Spring Boot
 The `OpenAiTokenizer` bean is created automatically.
+
+
+## Examples
+- [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)

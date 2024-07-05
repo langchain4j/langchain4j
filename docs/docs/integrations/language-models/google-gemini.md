@@ -157,3 +157,8 @@ If there are `SystemMessage`s provided to the `generate()` methods, they will be
 [Available locations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#available-regions)
 
 [Multimodal capabilities](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/overview#multimodal_models)
+
+
+## Examples
+
+- [Google Vertex AI Gemini Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/vertex-ai-gemini-examples/src/main/java)

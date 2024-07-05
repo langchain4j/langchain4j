@@ -5,6 +5,8 @@ sidebar_position: 14
 # Qianfan
 [百度智能云千帆大模型](https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application)
 ![image](https://github.com/langchain4j/langchain4j/assets/95265298/600f8006-4484-4a75-829c-c8c16a3130c2)
+
+
 ## Maven Dependency(Maven依赖)
 
 ```xml
@@ -272,3 +274,8 @@ LangChain4j has an "Easy RAG" feature that makes it as easy as possible to get s
   System.out.println(answer);
 
 ```
+
+
+## Examples
+
+- [Qianfan Examples](https://github.com/langchain4j/langchain4j/tree/main/langchain4j-qianfan/src/test/java/dev/langchain4j/model/qianfan)

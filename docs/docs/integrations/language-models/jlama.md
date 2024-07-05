@@ -148,3 +148,8 @@ Jlama does not support function calling (yet).
 
 ### JSON mode
 Jlama does not support JSON mode (yet). But you can always ask the model nicely to return JSON.
+
+
+## Examples
+
+- [Jlama Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/jlama-examples)
