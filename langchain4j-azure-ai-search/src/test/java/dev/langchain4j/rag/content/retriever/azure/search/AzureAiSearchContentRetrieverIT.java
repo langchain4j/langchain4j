@@ -291,6 +291,56 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFiltering
         assertThat(relevant2.get(0).textSegment().text()).contains("Paul-Michel Foucault");
     }
 
+    @Test
+    void testCustomFieldNamesAndSemanticSearchConfig() {
+        String customFieldId = "customId";
+        String customFieldContent = "customContent";
+        String customFieldContentVector = "customContentVector";
+        String customSemanticSearchConfigName = "customSemanticConfig";
+
+        contentRetrieverWithVector = AzureAiSearchContentRetriever.builder()
+                .endpoint(System.getenv("AZURE_SEARCH_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_SEARCH_KEY"))
+                .dimensions(dimensions)
+                .embeddingModel(embeddingModel)
+                .queryType(AzureAiSearchQueryType.VECTOR)
+                .maxResults(3)
+                .minScore(0.0)
+                .fieldId(customFieldId)
+                .fieldContent(customFieldContent)
+                .fieldContentVector(customFieldContentVector)
+                .semanticSearchConfigName(customSemanticSearchConfigName)
+                .build();
+
+        String content1 = "banana";
+        String content2 = "computer";
+        String content3 = "apple";
+        List<String> contents = asList(content1, content2, content3);
+
+        for (String content : contents) {
+            TextSegment textSegment = TextSegment.from(content);
+            Embedding embedding = embeddingModel.embed(content).content();
+            contentRetrieverWithVector.add(embedding, textSegment);
+        }
+
+        awaitUntilPersisted();
+
+        String content = "fruit";
+        Query query = Query.from(content);
+
+        List<Content> relevant = contentRetrieverWithVector.retrieve(query);
+        assertThat(relevant).hasSize(3);
+        assertThat(relevant.get(0).textSegment()).isNotNull();
+        assertThat(relevant.get(0).textSegment().text()).isIn(content1, content3);
+        log.info("#1 relevant item: {}", relevant.get(0).textSegment().text());
+        assertThat(relevant.get(1).textSegment()).isNotNull();
+        assertThat(relevant.get(1).textSegment().text()).isIn(content1, content3);
+        log.info("#2 relevant item: {}", relevant.get(1).textSegment().text());
+        assertThat(relevant.get(2).textSegment()).isNotNull();
+        assertThat(relevant.get(2).textSegment().text()).isIn(content1, content3);
+        log.info("#3 relevant item: {}", relevant.get(2).textSegment().text());
+    }
+
     @Override
     protected EmbeddingStore<TextSegment> embeddingStore() {
         return contentRetrieverWithVector;

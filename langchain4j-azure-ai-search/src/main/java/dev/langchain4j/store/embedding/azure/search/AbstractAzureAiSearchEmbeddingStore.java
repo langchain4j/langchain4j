@@ -62,7 +62,15 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected AzureAiSearchFilterMapper filterMapper;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper) {
+    protected String fieldId = DEFAULT_FIELD_ID;
+
+    protected String fieldContent = DEFAULT_FIELD_CONTENT;
+
+    protected String fieldContentVector = DEFAULT_FIELD_CONTENT_VECTOR;
+
+    protected String semanticSearchConfigName = SEMANTIC_SEARCH_CONFIG_NAME;
+
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper, String fieldId, String fieldContent, String fieldContentVector, String semanticSearchConfigName) {
         ensureNotNull(endpoint, "endpoint");
 
         if (filterMapper == null) {
@@ -116,6 +124,11 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 createOrUpdateIndex(index);
             }
         }
+
+        this.fieldId = getOrDefault(fieldId, DEFAULT_FIELD_ID);
+        this.fieldContent = getOrDefault(fieldContent, DEFAULT_FIELD_CONTENT);
+        this.fieldContentVector = getOrDefault(fieldContentVector, DEFAULT_FIELD_CONTENT_VECTOR);
+        this.semanticSearchConfigName = getOrDefault(semanticSearchConfigName, SEMANTIC_SEARCH_CONFIG_NAME);
     }
 
     /**
@@ -132,15 +145,15 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         }
 
         List<SearchField> fields = new ArrayList<>();
-        fields.add(new SearchField(DEFAULT_FIELD_ID, SearchFieldDataType.STRING)
+        fields.add(new SearchField(fieldId, SearchFieldDataType.STRING)
                 .setKey(true)
                 .setFilterable(true));
-        fields.add(new SearchField(DEFAULT_FIELD_CONTENT, SearchFieldDataType.STRING)
+        fields.add(new SearchField(fieldContent, SearchFieldDataType.STRING)
                 .setSearchable(true)
                 .setFilterable(true));
 
         if (dimensions > 0) {
-            fields.add(new SearchField(DEFAULT_FIELD_CONTENT_VECTOR, SearchFieldDataType.collection(SearchFieldDataType.SINGLE))
+            fields.add(new SearchField(fieldContentVector, SearchFieldDataType.collection(SearchFieldDataType.SINGLE))
                     .setSearchable(true)
                     .setVectorSearchDimensions(dimensions)
                     .setVectorSearchProfileName(VECTOR_SEARCH_PROFILE_NAME));
@@ -176,12 +189,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                     .setProfiles(Collections.singletonList(
                             new VectorSearchProfile(VECTOR_SEARCH_PROFILE_NAME, VECTOR_ALGORITHM_NAME)));
 
-            SemanticSearch semanticSearch = new SemanticSearch().setDefaultConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME)
+            SemanticSearch semanticSearch = new SemanticSearch().setDefaultConfigurationName(semanticSearchConfigName)
                     .setConfigurations(singletonList(
-                            new SemanticConfiguration(SEMANTIC_SEARCH_CONFIG_NAME,
+                            new SemanticConfiguration(semanticSearchConfigName,
                                     new SemanticPrioritizedFields()
-                                            .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
-                                            .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
+                                            .setContentFields(new SemanticField(fieldContent))
+                                            .setKeywordsFields(new SemanticField(fieldContent)))));
 
             index = new SearchIndex(this.indexName)
                     .setFields(fields)
@@ -267,7 +280,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
         List<Float> vector = request.queryEmbedding().vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
-                .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
+                .setFields(fieldContentVector)
                 .setKNearestNeighborsCount(request.maxResults());
 
         SearchPagedIterable searchResults =
@@ -284,14 +297,14 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 continue;
             }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
-            String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
-            List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
+            String embeddingId = (String) searchDocument.get(fieldId);
+            List<Double> embeddingList = (List<Double>) searchDocument.get(fieldContentVector);
             Embedding embedding = null;
             if (embeddingList != null) {
                 float[] embeddingArray = doublesListToFloatArray(embeddingList);
                 embedding = Embedding.from(embeddingArray);
             }
-            String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
+            String embeddedContent = (String) searchDocument.get(fieldContent);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
                 LinkedHashMap metadata = (LinkedHashMap) searchDocument.get(DEFAULT_FIELD_METADATA);

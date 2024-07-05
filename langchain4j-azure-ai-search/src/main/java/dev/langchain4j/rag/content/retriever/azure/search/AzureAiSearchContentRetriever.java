@@ -67,6 +67,14 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private final String searchFilter;
 
+    private final String fieldId;
+
+    private final String fieldContent;
+
+    private final String fieldContentVector;
+
+    private final String semanticSearchConfigName;
+
     public AzureAiSearchContentRetriever(String endpoint,
                                          AzureKeyCredential keyCredential,
                                          TokenCredential tokenCredential,
@@ -79,7 +87,11 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                          double minScore,
                                          AzureAiSearchQueryType azureAiSearchQueryType,
                                          AzureAiSearchFilterMapper filterMapper,
-                                         Filter filter) {
+                                         Filter filter,
+                                         String fieldId,
+                                         String fieldContent,
+                                         String fieldContentVector,
+                                         String semanticSearchConfigName) {
         ensureNotNull(endpoint, "endpoint");
         ensureTrue((keyCredential != null && tokenCredential == null) || (keyCredential == null && tokenCredential != null), "either keyCredential or tokenCredential must be set");
 
@@ -96,15 +108,15 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName, filterMapper, fieldId, fieldContent, fieldContentVector, semanticSearchConfigName);
             } else {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName, filterMapper);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName, filterMapper, fieldId, fieldContent, fieldContentVector, semanticSearchConfigName);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName, filterMapper, fieldId, fieldContent, fieldContentVector, semanticSearchConfigName);
             } else {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName, filterMapper);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName, filterMapper, fieldId, fieldContent, fieldContentVector, semanticSearchConfigName);
             }
         }
         this.embeddingModel = embeddingModel;
@@ -113,7 +125,10 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         this.minScore = minScore;
         this.filter = filter;
         this.searchFilter = this.filterMapper.map(filter);
-
+        this.fieldId = fieldId;
+        this.fieldContent = fieldContent;
+        this.fieldContentVector = fieldContentVector;
+        this.semanticSearchConfigName = semanticSearchConfigName;
     }
 
     /**
@@ -211,7 +226,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         List<Float> vector = referenceEmbedding.vectorAsList();
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
-                .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
+                .setFields(fieldContentVector)
                 .setKNearestNeighborsCount(maxResults);
 
         SearchPagedIterable searchResults =
@@ -229,14 +244,14 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         List<Float> vector = referenceEmbedding.vectorAsList();
 
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
-                .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
+                .setFields(fieldContentVector)
                 .setKNearestNeighborsCount(maxResults);
 
         SearchPagedIterable searchResults =
                 searchClient.search(content,
                         new SearchOptions()
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                                .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
+                                .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(semanticSearchConfigName))
                                 .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
                                 .setTop(maxResults)
                                 .setFilter(searchFilter),
@@ -253,7 +268,7 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                 continue;
             }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
-            String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
+            String embeddedContent = (String) searchDocument.get(fieldContent);
             Content content = Content.from(embeddedContent);
             result.add(content);
         }
@@ -321,6 +336,14 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         private Filter filter;
 
         private AzureAiSearchFilterMapper filterMapper;
+
+        private String fieldId = DEFAULT_FIELD_ID;
+
+        private String fieldContent = DEFAULT_FIELD_CONTENT;
+
+        private String fieldContentVector = DEFAULT_FIELD_CONTENT_VECTOR;
+
+        private String semanticSearchConfigName = SEMANTIC_SEARCH_CONFIG_NAME;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -468,9 +491,53 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             return this;
         }
 
+        /**
+         * Sets the custom field name for the ID field.
+         *
+         * @param fieldId The custom field name for the ID field.
+         * @return builder
+         */
+        public Builder fieldId(String fieldId) {
+            this.fieldId = fieldId;
+            return this;
+        }
+
+        /**
+         * Sets the custom field name for the content field.
+         *
+         * @param fieldContent The custom field name for the content field.
+         * @return builder
+         */
+        public Builder fieldContent(String fieldContent) {
+            this.fieldContent = fieldContent;
+            return this;
+        }
+
+        /**
+         * Sets the custom field name for the content vector field.
+         *
+         * @param fieldContentVector The custom field name for the content vector field.
+         * @return builder
+         */
+        public Builder fieldContentVector(String fieldContentVector) {
+            this.fieldContentVector = fieldContentVector;
+            return this;
+        }
+
+        /**
+         * Sets the custom semantic search configuration name.
+         *
+         * @param semanticSearchConfigName The custom semantic search configuration name.
+         * @return builder
+         */
+        public Builder semanticSearchConfigName(String semanticSearchConfigName) {
+            this.semanticSearchConfigName = semanticSearchConfigName;
+            return this;
+        }
+
         public AzureAiSearchContentRetriever build() {
             return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, createOrUpdateIndex, dimensions, index,
-                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType, filterMapper, filter);
+                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType, filterMapper, filter, fieldId, fieldContent, fieldContentVector, semanticSearchConfigName);
         }
     }
 }
