@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
 
 # Execute this script to deploy the needed Azure OpenAI models to execute the integration tests.
-# For this, you need Azure CLI installed: https://learn.microsoft.com/cli/azure/install-azure-cli
+#
+# For this, you need to have Azure CLI installed: https://learn.microsoft.com/cli/azure/install-azure-cli
+#
+# Azure CLI runs on:
+# - Windows (using Windows Command Prompt (CMD), PowerShell, or Windows Subsystem for Linux (WSL)): https://learn.microsoft.com/cli/azure/install-azure-cli-windows 
+# - macOS: https://learn.microsoft.com/cli/azure/install-azure-cli-macos
+# - Linux: https://learn.microsoft.com/cli/azure/install-azure-cli-linux
+# - Docker: https://learn.microsoft.com/cli/azure/run-azure-cli-docker
+#
+# Once installed, you can run the following commands to check your installation is correct:
+# az --version
+# az --help
 
 echo "Setting up environment variables..."
 echo "----------------------------------"
-PROJECT="langchain4j-$RANDOM"
+
+PROJECT="langchain4j-swedencentral"
 RESOURCE_GROUP="rg-$PROJECT"
 LOCATION="swedencentral"
 AI_SERVICE="ai-$PROJECT"
@@ -104,30 +116,6 @@ az cognitiveservices account deployment create \
   --deployment-name "gpt-4-0613" \
   --model-name "gpt-4" \
   --model-version "0613"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a gpt-4-0125-preview model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-4-0125-preview" \
-  --model-name "gpt-4" \
-  --model-version "0125-preview"  \
-  --model-format "OpenAI" \
-  --sku-capacity 1 \
-  --sku-name "Standard"
-
-echo "Deploying a gpt-4-1106-preview model..."
-echo "----------------------"
-az cognitiveservices account deployment create \
-  --name "$AI_SERVICE" \
-  --resource-group "$RESOURCE_GROUP" \
-  --deployment-name "gpt-4-1106-preview" \
-  --model-name "gpt-4" \
-  --model-version "1106-preview"  \
   --model-format "OpenAI" \
   --sku-capacity 1 \
   --sku-name "Standard"

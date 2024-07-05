@@ -20,7 +20,7 @@ If you are using Quarkus, please refer to the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -29,7 +29,7 @@ If you are using Quarkus, please refer to the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-azure-open-ai-spring-boot-starter</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
