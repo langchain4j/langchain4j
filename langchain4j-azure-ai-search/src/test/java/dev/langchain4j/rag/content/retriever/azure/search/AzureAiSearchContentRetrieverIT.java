@@ -10,7 +10,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -19,12 +19,12 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
-import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.INDEX_NAME;
+import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_SEARCH_ENDPOINT", matches = ".+")
-public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
+public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreWithFilteringIT {
 
     private static final Logger log = LoggerFactory.getLogger(AzureAiSearchContentRetrieverIT.class);
 
@@ -49,7 +49,7 @@ public class AzureAiSearchContentRetrieverIT extends EmbeddingStoreIT {
                  .credential(new AzureKeyCredential(System.getenv("AZURE_SEARCH_KEY")))
                  .buildClient();
 
-         searchIndexClient.deleteIndex(INDEX_NAME);
+         searchIndexClient.deleteIndex(DEFAULT_INDEX_NAME);
 
          contentRetrieverWithVector =  createContentRetriever(AzureAiSearchQueryType.VECTOR);
          contentRetrieverWithFullText =  createFullTextSearchContentRetriever();

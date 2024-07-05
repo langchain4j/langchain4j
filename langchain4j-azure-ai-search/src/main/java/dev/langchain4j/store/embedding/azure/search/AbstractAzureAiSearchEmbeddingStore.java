@@ -14,15 +14,16 @@ import com.azure.search.documents.util.SearchPagedIterable;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.RelevanceScore;
+import dev.langchain4j.rag.content.retriever.azure.search.AzureAiSearchFilterMapper;
+import dev.langchain4j.rag.content.retriever.azure.search.DefaultAzureAiSearchFilterMapper;
+import dev.langchain4j.store.embedding.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 import static dev.langchain4j.internal.Utils.*;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureTrue;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -31,7 +32,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     private static final Logger log = LoggerFactory.getLogger(AbstractAzureAiSearchEmbeddingStore.class);
 
-    public static final String INDEX_NAME = "vectorsearch";
+    public static final String DEFAULT_INDEX_NAME = "vectorsearch";
 
     static final String DEFAULT_FIELD_ID = "id";
 
@@ -57,7 +58,28 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
 
     protected SearchClient searchClient;
 
-    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index) {
+    private String indexName;
+
+    protected AzureAiSearchFilterMapper filterMapper;
+
+    protected void initialize(String endpoint, AzureKeyCredential keyCredential, TokenCredential tokenCredential, boolean createOrUpdateIndex, int dimensions, SearchIndex index, String indexName, AzureAiSearchFilterMapper filterMapper) {
+        ensureNotNull(endpoint, "endpoint");
+
+        if (filterMapper == null) {
+            this.filterMapper = new DefaultAzureAiSearchFilterMapper();
+        } else {
+            this.filterMapper = filterMapper;
+        }
+        if (index != null && isNotNullOrBlank(indexName)) {
+            // if an index is provided, it has its own name already configured
+            // if the indexName is provided, it will be used when creating the default index
+            throw new IllegalArgumentException("index and indexName cannot be both defined");
+        }
+        if (createOrUpdateIndex && index != null) {
+            this.indexName = index.getName();
+        } else {
+            this.indexName = getOrDefault(indexName, DEFAULT_INDEX_NAME);
+        }
         this.createOrUpdateIndex = createOrUpdateIndex;
         if (keyCredential != null) {
             if (createOrUpdateIndex) {
@@ -70,7 +92,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
                     .credential(keyCredential)
-                    .indexName(INDEX_NAME)
+                    .indexName(this.indexName)
                     .buildClient();
         } else {
             if (createOrUpdateIndex) {
@@ -83,7 +105,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             searchClient = new SearchClientBuilder()
                     .endpoint(endpoint)
                     .credential(tokenCredential)
-                    .indexName(INDEX_NAME)
+                    .indexName(this.indexName)
                     .buildClient();
         }
 
@@ -161,12 +183,12 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                                             .setContentFields(new SemanticField(DEFAULT_FIELD_CONTENT))
                                             .setKeywordsFields(new SemanticField(DEFAULT_FIELD_CONTENT)))));
 
-            index = new SearchIndex(INDEX_NAME)
+            index = new SearchIndex(this.indexName)
                     .setFields(fields)
                     .setVectorSearch(vectorSearch)
                     .setSemanticSearch(semanticSearch);
         } else {
-            index = new SearchIndex(INDEX_NAME)
+            index = new SearchIndex(this.indexName)
                     .setFields(fields);
         }
 
@@ -189,7 +211,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
         if (!createOrUpdateIndex) {
             throw new IllegalArgumentException("createOrUpdateIndex is false, so the index cannot be deleted");
         }
-        searchIndexClient.deleteIndex(INDEX_NAME);
+        searchIndexClient.deleteIndex(this.indexName);
     }
 
     /**
@@ -241,29 +263,34 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
-        List<Float> vector = referenceEmbedding.vectorAsList();
+    public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+
+        List<Float> vector = request.queryEmbedding().vectorAsList();
         VectorizedQuery vectorizedQuery = new VectorizedQuery(vector)
                 .setFields(DEFAULT_FIELD_CONTENT_VECTOR)
-                .setKNearestNeighborsCount(maxResults);
+                .setKNearestNeighborsCount(request.maxResults());
 
         SearchPagedIterable searchResults =
                 searchClient.search(null,
                         new SearchOptions()
+                                .setFilter(filterMapper.map(request.filter()))
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery)),
                         Context.NONE);
 
         List<EmbeddingMatch<TextSegment>> result = new ArrayList<>();
         for (SearchResult searchResult : searchResults) {
             Double score = fromAzureScoreToRelevanceScore(searchResult.getScore());
-            if (score < minScore) {
+            if (score < request.minScore()) {
                 continue;
             }
             SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
             String embeddingId = (String) searchDocument.get(DEFAULT_FIELD_ID);
             List<Double> embeddingList = (List<Double>) searchDocument.get(DEFAULT_FIELD_CONTENT_VECTOR);
-            float[] embeddingArray = doublesListToFloatArray(embeddingList);
-            Embedding embedding = Embedding.from(embeddingArray);
+            Embedding embedding = null;
+            if (embeddingList != null) {
+                float[] embeddingArray = doublesListToFloatArray(embeddingList);
+                embedding = Embedding.from(embeddingArray);
+            }
             String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
             EmbeddingMatch<TextSegment> embeddingMatch;
             if (isNotNullOrBlank(embeddedContent)) {
@@ -284,7 +311,7 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
             }
             result.add(embeddingMatch);
         }
-        return result;
+        return new EmbeddingSearchResult<>(result);
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -313,10 +340,10 @@ public abstract class AbstractAzureAiSearchEmbeddingStore implements EmbeddingSt
                 document.setContent(embedded.get(i).text());
                 Document.Metadata metadata = new Document.Metadata();
                 List<Document.Metadata.Attribute> attributes = new ArrayList<>();
-                for (Map.Entry<String, String> entry : embedded.get(i).metadata().asMap().entrySet()) {
+                for (Map.Entry<String, Object> entry : embedded.get(i).metadata().toMap().entrySet()) {
                     Document.Metadata.Attribute attribute = new Document.Metadata.Attribute();
                     attribute.setKey(entry.getKey());
-                    attribute.setValue(entry.getValue());
+                    attribute.setValue(String.valueOf(entry.getValue()));
                     attributes.add(attribute);
                 }
                 metadata.setAttributes(attributes);

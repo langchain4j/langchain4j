@@ -4,6 +4,11 @@ sidebar_position: 5
 
 # Response Streaming
 
+:::note
+This page describes response streaming with a low-level LLM API.
+See [AI Services](/tutorials/ai-services#streaming) for a high-level LLM API.
+:::
+
 LLMs generate text one token at a time, so many LLM providers offer a way to stream the response
 token-by-token instead of waiting for the entire text to be generated.
 This significantly improves the user experience, as the user does not need to wait an unknown

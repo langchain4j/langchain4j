@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO_0613;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -43,10 +44,12 @@ public class StreamingAiServicesIT {
                 AzureOpenAiStreamingChatModel.builder()
                         .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                         .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                        .deploymentName("gpt-4o")
                         .logRequestsAndResponses(true)
                         .build(),
                 MistralAiStreamingChatModel.builder()
                         .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                        .modelName(MISTRAL_LARGE_LATEST)
                         .logRequests(true)
                         .logResponses(true)
                         .build()

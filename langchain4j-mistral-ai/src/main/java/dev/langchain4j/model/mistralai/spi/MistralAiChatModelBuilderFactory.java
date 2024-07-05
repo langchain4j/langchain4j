@@ -7,5 +7,5 @@ import java.util.function.Supplier;
 /**
  * A factory for building {@link dev.langchain4j.model.mistralai.MistralAiChatModel.MistralAiChatModelBuilder} instances.
  */
-public interface MistralAiChatModelBuilderFactory extends Supplier<MistralAiChatModel.MistralAiChatModelBuilder>{
+public interface MistralAiChatModelBuilderFactory extends Supplier<MistralAiChatModel.MistralAiChatModelBuilder> {
 }

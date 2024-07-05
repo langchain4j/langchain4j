@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.30.0</version>
+    <version>0.32.0</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -17,13 +17,13 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1705675871</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <openai4j.version>0.17.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.7</azure-ai-openai.version>
-        <azure-ai-search.version>11.6.4</azure-ai-search.version>
-        <azure.storage-blob.version>12.25.3</azure.storage-blob.version>
-        <azure.storage-common.version>12.24.4</azure.storage-common.version>
-        <azure.identity.version>1.12.0</azure.identity.version>
+        <azure-ai-openai.version>1.0.0-beta.10</azure-ai-openai.version>
+        <azure-ai-search.version>11.6.6</azure-ai-search.version>
+        <azure.storage-blob.version>12.26.1</azure.storage-blob.version>
+        <azure.storage-common.version>12.25.1</azure.storage-common.version>
+        <azure.identity.version>1.13.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>
@@ -47,6 +47,7 @@
         <jedis.version>5.0.0</jedis.version>
         <aws.java.sdk.version>2.21.44</aws.java.sdk.version>
         <github-api.version>1.318</github-api.version>
+        <milvus-sdk-java.version>2.3.6</milvus-sdk-java.version>
         <netty.version>4.1.104.Final</netty.version>
         <awaitility.version>4.2.0</awaitility.version>
         <jsonpath.version>2.9.0</jsonpath.version>
@@ -120,6 +121,18 @@
 
             <dependency>
                 <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-mistral-ai</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -139,6 +152,12 @@
             <dependency>
                 <groupId>com.squareup.retrofit2</groupId>
                 <artifactId>converter-gson</artifactId>
+                <version>${retrofit.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.squareup.retrofit2</groupId>
+                <artifactId>converter-jackson</artifactId>
                 <version>${retrofit.version}</version>
             </dependency>
 
@@ -296,6 +315,18 @@
             </dependency>
 
             <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-xml</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.apache.opennlp</groupId>
                 <artifactId>opennlp-tools</artifactId>
                 <version>1.9.4</version>
@@ -341,12 +372,25 @@
             </dependency>
 
             <dependency>
+                <groupId>io.milvus</groupId>
+                <artifactId>milvus-sdk-java</artifactId>
+                <version>${milvus-sdk-java.version}</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.infinispan</groupId>
                 <artifactId>infinispan-bom</artifactId>
                 <version>${infinispan.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.3.14</version>
+            </dependency>
+
         </dependencies>
 
     </dependencyManagement>

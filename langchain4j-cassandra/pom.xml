@@ -10,14 +10,13 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>0.30.0</version>
+        <version>0.32.0</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <properties>
         <astra-db-client.version>1.2.4</astra-db-client.version>
         <jackson.version>2.16.1</jackson.version>
-        <logback.version>1.4.14</logback.version>
         <maven.compiler.release>11</maven.compiler.release>
     </properties>
 
@@ -98,7 +97,6 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
-            <version>${logback.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

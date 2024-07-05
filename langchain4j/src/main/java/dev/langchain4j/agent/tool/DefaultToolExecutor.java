@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
 import dev.langchain4j.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,8 +13,6 @@ import java.math.BigInteger;
 import java.util.Map;
 import java.util.Objects;
 
-import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
-
 public class DefaultToolExecutor implements ToolExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultToolExecutor.class);
@@ -24,6 +23,26 @@ public class DefaultToolExecutor implements ToolExecutor {
     public DefaultToolExecutor(Object object, Method method) {
         this.object = Objects.requireNonNull(object, "object");
         this.method = Objects.requireNonNull(method, "method");
+    }
+
+    public DefaultToolExecutor(Object object, ToolExecutionRequest toolExecutionRequest) {
+        this.object = Objects.requireNonNull(object, "object");
+        Objects.requireNonNull(toolExecutionRequest, "toolExecutionRequest");
+        this.method = findMethod(object, toolExecutionRequest);
+    }
+
+    Method findMethod(Object object, ToolExecutionRequest toolExecutionRequest) {
+        String requestedMethodName = toolExecutionRequest.name();
+
+        for (Method method : object.getClass().getDeclaredMethods()) {
+            if (method.getName().equals(requestedMethodName)) {
+                return method;
+            }
+        }
+
+        throw new IllegalArgumentException(
+                String.format("Method '%s' is not found in object '%s'",
+                        requestedMethodName, object.getClass().getName()));
     }
 
     public String execute(ToolExecutionRequest toolExecutionRequest, Object memoryId) {
@@ -166,11 +185,8 @@ public class DefaultToolExecutor implements ToolExecutor {
                     getNonFractionalDoubleValue(argument, parameterName, parameterType)).toBigInteger();
         }
 
-        // TODO: Consider full type coverage.
-        // throw new IllegalArgumentException(String.format(
-        //         "Unsupported parameter type: %s :: <%s>", parameterType, argument));
-
-        return argument;
+        String result  = Json.toJson(argument);
+        return Json.fromJson(result, parameterType);
     }
 
     private static double getDoubleValue(

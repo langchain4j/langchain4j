@@ -6,17 +6,26 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 
 import java.net.URI;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.quoted;
 import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -43,24 +52,34 @@ class PartsMapper {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
 
-            if (aiMessage.hasToolExecutionRequests()) {
-                return singletonList(Part.newBuilder()
-                    .setFunctionCall(
-                        //TODO: handling one function call, but can there be several?
+            List<Part> parts = new ArrayList<>();
 
-                        FunctionCallHelper.fromToolExecutionRequest(aiMessage.toolExecutionRequests().get(0))
-                    )
-                    .build());
-            } else {
-                return singletonList(Part.newBuilder()
+            if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
+                parts.add(Part.newBuilder()
                     .setText(aiMessage.text())
                     .build());
             }
-        } else
-        if (message instanceof UserMessage) {
+
+            if (aiMessage.hasToolExecutionRequests()) {
+                List<Part> fnCallReqParts = aiMessage.toolExecutionRequests().stream()
+                    .map(FunctionCallHelper::fromToolExecutionRequest)
+                    .map(fnCall -> Part.newBuilder()
+                        .setFunctionCall(fnCall)
+                        .build())
+                    .collect(toList());
+
+                parts.addAll(fnCallReqParts);
+            }
+
+            return parts;
+        } else if (message instanceof UserMessage) {
             return ((UserMessage) message).contents().stream()
                 .map(PartsMapper::map)
                 .collect(toList());
+        } else if (message instanceof SystemMessage) {
+            return singletonList(Part.newBuilder()
+                .setText(((SystemMessage) message).text())
+                .build());
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
             String functionResponseText = toolExecutionResultMessage.text();
@@ -74,7 +93,12 @@ class PartsMapper {
                 try {
                     JsonFormat.parser().merge(functionResponseTextAsMap, structBuilder);
                 } catch (InvalidProtocolBufferException e2) {
-                    throw new RuntimeException(e);
+                    String functionResponseTextWithQuotesAsMap = "{\"result\":" + quoted(functionResponseText) + "}";
+                    try {
+                        JsonFormat.parser().merge(functionResponseTextWithQuotesAsMap, structBuilder);
+                    } catch (InvalidProtocolBufferException e3) {
+                        throw new RuntimeException(e3);
+                    }
                 }
             }
             Struct responseStruct = structBuilder.build();

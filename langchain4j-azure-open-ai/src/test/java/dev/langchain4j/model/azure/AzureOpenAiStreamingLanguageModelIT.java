@@ -2,7 +2,6 @@ package dev.langchain4j.model.azure;
 
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.language.StreamingLanguageModel;
-import dev.langchain4j.model.openai.OpenAiTokenizer;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -10,7 +9,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CompletableFuture;
 
-import static dev.langchain4j.model.azure.AzureOpenAiModelName.GPT_3_5_TURBO_INSTRUCT;
+import static dev.langchain4j.model.azure.AzureOpenAiLanguageModelName.GPT_3_5_TURBO_INSTRUCT;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -23,8 +22,8 @@ class AzureOpenAiStreamingLanguageModelIT {
     StreamingLanguageModel model = AzureOpenAiStreamingLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-35-turbo-instruct")
-            .tokenizer(new OpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
+            .deploymentName("gpt-35-turbo-instruct-0914")
+            .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)
             .maxTokens(20)
             .logRequestsAndResponses(true)

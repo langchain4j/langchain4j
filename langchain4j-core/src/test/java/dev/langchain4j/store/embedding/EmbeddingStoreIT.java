@@ -6,6 +6,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
@@ -14,6 +15,9 @@ import static org.assertj.core.data.Percentage.withPercentage;
  * A minimum set of tests that each implementation of {@link EmbeddingStore} must pass.
  */
 public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
+
+    static final UUID TEST_UUID = UUID.randomUUID();
+    static final UUID TEST_UUID2 = UUID.randomUUID();
 
     @Test
     void should_add_embedding_with_segment_with_metadata() {
@@ -30,7 +34,7 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
             // Not returned.
             TextSegment altSegment = TextSegment.from("hello?");
             Embedding altEmbedding = embeddingModel().embed(altSegment.text()).content();
-            embeddingStore().add(altEmbedding, segment);
+            embeddingStore().add(altEmbedding, altSegment);
         }
 
         awaitUntilPersisted();
@@ -48,6 +52,8 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         assertThat(match.embedded().metadata().getString("string_empty")).isEqualTo("");
         assertThat(match.embedded().metadata().getString("string_space")).isEqualTo(" ");
         assertThat(match.embedded().metadata().getString("string_abc")).isEqualTo("abc");
+
+        assertThat(match.embedded().metadata().getUUID("uuid")).isEqualTo(TEST_UUID);
 
         assertThat(match.embedded().metadata().getInteger("integer_min")).isEqualTo(Integer.MIN_VALUE);
         assertThat(match.embedded().metadata().getInteger("integer_minus_1")).isEqualTo(-1);
@@ -87,6 +93,8 @@ public abstract class EmbeddingStoreIT extends EmbeddingStoreWithoutMetadataIT {
         metadata.put("string_empty", "");
         metadata.put("string_space", " ");
         metadata.put("string_abc", "abc");
+
+        metadata.put("uuid", TEST_UUID);
 
         metadata.put("integer_min", Integer.MIN_VALUE);
         metadata.put("integer_minus_1", -1);

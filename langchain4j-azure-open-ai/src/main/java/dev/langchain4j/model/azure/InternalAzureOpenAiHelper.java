@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIClientBuilder;
 import com.azure.ai.openai.OpenAIServiceVersion;
@@ -23,6 +24,8 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
@@ -36,6 +39,7 @@ import java.util.*;
 
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.time.Duration.ofSeconds;
@@ -47,31 +51,17 @@ class InternalAzureOpenAiHelper {
 
     public static final String DEFAULT_USER_AGENT = "langchain4j-azure-openai";
 
-    public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, String apiKey, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-
-        return openAIClientBuilder
-                .credential(new AzureKeyCredential(apiKey))
-                .buildClient();
+    public static OpenAIClient setupSyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        return openAIClientBuilder.buildClient();
     }
 
-    public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, KeyCredential keyCredential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-
-        return openAIClientBuilder
-                .credential(keyCredential)
-                .buildClient();
+    public static OpenAIAsyncClient setupAsyncClient(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
+        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, credential, timeout, maxRetries, proxyOptions, logRequestsAndResponses, userAgentSuffix);
+        return openAIClientBuilder.buildAsyncClient();
     }
 
-    public static OpenAIClient setupOpenAIClient(String endpoint, String serviceVersion, TokenCredential tokenCredential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
-        OpenAIClientBuilder openAIClientBuilder = setupOpenAIClientBuilder(endpoint, serviceVersion, timeout, maxRetries, proxyOptions, logRequestsAndResponses);
-
-        return openAIClientBuilder
-                .credential(tokenCredential)
-                .buildClient();
-    }
-
-    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses) {
+    private static OpenAIClientBuilder setupOpenAIClientBuilder(String endpoint, String serviceVersion, Object credential, Duration timeout, Integer maxRetries, ProxyOptions proxyOptions, boolean logRequestsAndResponses, String userAgentSuffix) {
         timeout = getOrDefault(timeout, ofSeconds(60));
         HttpClientOptions clientOptions = new HttpClientOptions();
         clientOptions.setConnectTimeout(timeout);
@@ -80,7 +70,11 @@ class InternalAzureOpenAiHelper {
         clientOptions.setWriteTimeout(timeout);
         clientOptions.setProxyOptions(proxyOptions);
 
-        Header header = new Header("User-Agent", DEFAULT_USER_AGENT);
+        String userAgent = DEFAULT_USER_AGENT;
+        if (userAgentSuffix!=null && !userAgentSuffix.isEmpty()) {
+            userAgent = DEFAULT_USER_AGENT + "-" + userAgentSuffix;
+        }
+        Header header = new Header("User-Agent", userAgent);
         clientOptions.setHeaders(Collections.singletonList(header));
         HttpClient httpClient = new NettyAsyncHttpClientProvider().createInstance(clientOptions);
 
@@ -94,13 +88,26 @@ class InternalAzureOpenAiHelper {
         exponentialBackoffOptions.setMaxRetries(maxRetries);
         RetryOptions retryOptions = new RetryOptions(exponentialBackoffOptions);
 
-        return new OpenAIClientBuilder()
+        OpenAIClientBuilder openAIClientBuilder = new OpenAIClientBuilder()
                 .endpoint(ensureNotBlank(endpoint, "endpoint"))
                 .serviceVersion(getOpenAIServiceVersion(serviceVersion))
                 .httpClient(httpClient)
                 .clientOptions(clientOptions)
                 .httpLogOptions(httpLogOptions)
                 .retryOptions(retryOptions);
+
+        if (credential instanceof String) {
+            openAIClientBuilder.credential(new AzureKeyCredential((String) credential));
+        } else if (credential instanceof KeyCredential) {
+            openAIClientBuilder.credential((KeyCredential) credential);
+        } else if (credential instanceof TokenCredential) {
+            openAIClientBuilder.credential((TokenCredential) credential);
+        } else {
+            throw new IllegalArgumentException("Unsupported credential type: " + credential.getClass());
+        }
+
+        return openAIClientBuilder;
+
     }
 
     private static OpenAIClientBuilder authenticate(TokenCredential tokenCredential) {
@@ -117,22 +124,22 @@ class InternalAzureOpenAiHelper {
         return OpenAIServiceVersion.getLatest();
     }
 
-    public static List<com.azure.ai.openai.models.ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
+    public static List<ChatRequestMessage> toOpenAiMessages(List<ChatMessage> messages) {
 
         return messages.stream()
                 .map(InternalAzureOpenAiHelper::toOpenAiMessage)
                 .collect(toList());
     }
 
-    public static com.azure.ai.openai.models.ChatRequestMessage toOpenAiMessage(ChatMessage message) {
+    public static ChatRequestMessage toOpenAiMessage(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             ChatRequestAssistantMessage chatRequestAssistantMessage = new ChatRequestAssistantMessage(getOrDefault(aiMessage.text(), ""));
-            chatRequestAssistantMessage.setFunctionCall(functionCallFrom(message));
+            chatRequestAssistantMessage.setToolCalls(toolExecutionRequestsFrom(message));
             return chatRequestAssistantMessage;
         } else if (message instanceof ToolExecutionResultMessage) {
             ToolExecutionResultMessage toolExecutionResultMessage = (ToolExecutionResultMessage) message;
-            return new ChatRequestFunctionMessage(nameFrom(message), toolExecutionResultMessage.text());
+            return new ChatRequestToolMessage(toolExecutionResultMessage.text(), toolExecutionResultMessage.id());
         } else if (message instanceof SystemMessage) {
             SystemMessage systemMessage = (SystemMessage) message;
             return new ChatRequestSystemMessage(systemMessage.text());
@@ -179,37 +186,45 @@ class InternalAzureOpenAiHelper {
         return null;
     }
 
-    private static FunctionCall functionCallFrom(ChatMessage message) {
+    private static List<ChatCompletionsToolCall> toolExecutionRequestsFrom(ChatMessage message) {
         if (message instanceof AiMessage) {
             AiMessage aiMessage = (AiMessage) message;
             if (aiMessage.hasToolExecutionRequests()) {
-                // TODO switch to tools once supported
-                ToolExecutionRequest toolExecutionRequest = aiMessage.toolExecutionRequests().get(0);
-                return new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments());
+                return aiMessage.toolExecutionRequests().stream()
+                        .map(toolExecutionRequest -> new ChatCompletionsFunctionToolCall(toolExecutionRequest.id(), new FunctionCall(toolExecutionRequest.name(), toolExecutionRequest.arguments())))
+                        .collect(toList());
+
             }
         }
-
         return null;
     }
 
-    public static List<FunctionDefinition> toFunctions(Collection<ToolSpecification> toolSpecifications) {
+    public static List<ChatCompletionsToolDefinition> toToolDefinitions(Collection<ToolSpecification> toolSpecifications) {
         return toolSpecifications.stream()
-                .map(InternalAzureOpenAiHelper::toFunction)
+                .map(InternalAzureOpenAiHelper::toToolDefinition)
                 .collect(toList());
     }
 
-    private static FunctionDefinition toFunction(ToolSpecification toolSpecification) {
+    private static ChatCompletionsToolDefinition toToolDefinition(ToolSpecification toolSpecification) {
         FunctionDefinition functionDefinition = new FunctionDefinition(toolSpecification.name());
         functionDefinition.setDescription(toolSpecification.description());
         functionDefinition.setParameters(toOpenAiParameters(toolSpecification.parameters()));
-        return functionDefinition;
+        return new ChatCompletionsFunctionToolDefinition(functionDefinition);
+    }
+
+    public static BinaryData toToolChoice(ToolSpecification toolThatMustBeExecuted) {
+        FunctionCall functionCall = new FunctionCall(toolThatMustBeExecuted.name(), toOpenAiParameters(toolThatMustBeExecuted.parameters()).toString());
+        ChatCompletionsToolCall toolToCall = new ChatCompletionsFunctionToolCall(toolThatMustBeExecuted.name(), functionCall);
+        return BinaryData.fromObject(toolToCall);
     }
 
     private static final Map<String, Object> NO_PARAMETER_DATA = new HashMap<>();
+
     static {
         NO_PARAMETER_DATA.put("type", "object");
         NO_PARAMETER_DATA.put("properties", new HashMap<>());
     }
+
     private static BinaryData toOpenAiParameters(ToolParameters toolParameters) {
         Parameters parameters = new Parameters();
         if (toolParameters == null) {
@@ -225,6 +240,7 @@ class InternalAzureOpenAiHelper {
         private final String type = "object";
 
         private Map<String, Map<String, Object>> properties = new HashMap<>();
+
         private List<String> required = new ArrayList<>();
 
         public String getType() {
@@ -248,22 +264,27 @@ class InternalAzureOpenAiHelper {
         }
     }
 
-    public static AiMessage aiMessageFrom(com.azure.ai.openai.models.ChatResponseMessage chatResponseMessage) {
-        if (chatResponseMessage.getContent() != null) {
+    public static AiMessage aiMessageFrom(ChatResponseMessage chatResponseMessage) {
+        if (isNullOrEmpty(chatResponseMessage.getToolCalls())) {
             return aiMessage(chatResponseMessage.getContent());
         } else {
-            FunctionCall functionCall = chatResponseMessage.getFunctionCall();
+            List<ToolExecutionRequest> toolExecutionRequests = chatResponseMessage.getToolCalls()
+                    .stream()
+                    .filter(toolCall -> toolCall instanceof ChatCompletionsFunctionToolCall)
+                    .map(toolCall -> (ChatCompletionsFunctionToolCall) toolCall)
+                    .map(chatCompletionsFunctionToolCall ->
+                            ToolExecutionRequest.builder()
+                                    .id(chatCompletionsFunctionToolCall.getId())
+                                    .name(chatCompletionsFunctionToolCall.getFunction().getName())
+                                    .arguments(chatCompletionsFunctionToolCall.getFunction().getArguments())
+                                    .build())
+                    .collect(toList());
 
-            ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
-                    .name(functionCall.getName())
-                    .arguments(functionCall.getArguments())
-                    .build();
-
-            return aiMessage(toolExecutionRequest);
+            return aiMessage(toolExecutionRequests);
         }
     }
 
-    public static Image imageFrom(com.azure.ai.openai.models.ImageGenerationData imageGenerationData) {
+    public static Image imageFrom(ImageGenerationData imageGenerationData) {
         Image.Builder imageBuilder = Image.builder()
                 .revisedPrompt(imageGenerationData.getRevisedPrompt());
 
@@ -335,5 +356,34 @@ class InternalAzureOpenAiHelper {
             }
         }
         return exceptionFinishReason;
+    }
+
+    static ChatModelRequest createModelListenerRequest(ChatCompletionsOptions options,
+                                                       List<ChatMessage> messages,
+                                                       List<ToolSpecification> toolSpecifications) {
+        return ChatModelRequest.builder()
+            .model(options.getModel())
+            .temperature(options.getTemperature())
+            .topP(options.getTopP())
+            .maxTokens(options.getMaxTokens())
+            .messages(messages)
+            .toolSpecifications(toolSpecifications)
+            .build();
+    }
+
+    static ChatModelResponse createModelListenerResponse(String responseId,
+                                                         String responseModel,
+                                                         Response<AiMessage> response) {
+        if (response == null) {
+            return null;
+        }
+
+        return ChatModelResponse.builder()
+            .id(responseId)
+            .model(responseModel)
+            .tokenUsage(response.tokenUsage())
+            .finishReason(response.finishReason())
+            .aiMessage(response.content())
+            .build();
     }
 }

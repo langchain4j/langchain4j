@@ -1,5 +1,6 @@
 package dev.langchain4j.rag;
 
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
@@ -26,6 +27,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
@@ -119,10 +121,23 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this.executor = getOrDefault(executor, Executors::newCachedThreadPool);
     }
 
+    /**
+     * @deprecated use {@link #augment(AugmentationRequest)} instead.
+     */
     @Override
+    @Deprecated
     public UserMessage augment(UserMessage userMessage, Metadata metadata) {
+        AugmentationRequest augmentationRequest = new AugmentationRequest(userMessage, metadata);
+        return (UserMessage) augment(augmentationRequest).chatMessage();
+    }
 
-        Query originalQuery = Query.from(userMessage.text(), metadata);
+    @Override
+    public AugmentationResult augment(AugmentationRequest augmentationRequest) {
+
+        ChatMessage chatMessage = augmentationRequest.chatMessage();
+        Metadata metadata = augmentationRequest.metadata();
+
+        Query originalQuery = Query.from(chatMessage.text(), metadata);
 
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
@@ -145,10 +160,13 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         List<Content> contents = contentAggregator.aggregate(queryToContents);
         log(queryToContents, contents);
 
-        UserMessage augmentedUserMessage = contentInjector.inject(contents, userMessage);
-        log(augmentedUserMessage);
+        ChatMessage augmentedChatMessage = contentInjector.inject(contents, chatMessage);
+        log(augmentedChatMessage);
 
-        return augmentedUserMessage;
+        return AugmentationResult.builder()
+                .chatMessage(augmentedChatMessage)
+                .contents(contents)
+                .build();
     }
 
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
@@ -247,8 +265,8 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                         .collect(joining("\n")));
     }
 
-    private static void log(UserMessage augmentedUserMessage) {
-        log.trace("Augmented user message: " + escapeNewlines(augmentedUserMessage.singleText()));
+    private static void log(ChatMessage augmentedChatMessage) {
+        log.trace("Augmented chat message: {}", escapeNewlines(augmentedChatMessage.text()));
     }
 
     private static String escapeNewlines(String text) {
