@@ -1,7 +1,10 @@
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
-import dev.langchain4j.data.message.*;
-import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModelName;
@@ -22,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".*")
 class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
 
+    private static final String SYSTEM_MSG = "You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response. Do not say that you have not the capability to browse the web in real time";
+
     WebSearchEngine searchApiEngine = SearchApiWebSearchEngine.withApiKey(System.getenv("SEARCHAPI_API_KEY"));
 
     ChatLanguageModel chatModel = OpenAiChatModel.builder()
@@ -31,13 +36,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
             .build();
 
     interface Assistant {
-        @dev.langchain4j.service.SystemMessage({
-                "You are a web search support agent.",
-                "If there is any event that has not happened yet",
-                "You MUST create a web search request with with user query and",
-                "use the web search tool to search the web for organic web results.",
-                "Include the source link in your final response."
-        })
+        @dev.langchain4j.service.SystemMessage(SYSTEM_MSG)
         String answer(String userMessage);
     }
 
@@ -51,9 +50,9 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
 
         WebSearchTool webSearchTool = WebSearchTool.from(searchApiEngine);
         List<ToolSpecification> tools = ToolSpecifications.toolSpecificationsFrom(webSearchTool);
-        String query = "What are the release dates for the movies coming out last week of May 2024?";
+        String query = "What are the movies to be released in May 2024?";
         List<ChatMessage> messages = new ArrayList<>();
-        SystemMessage systemMessage = SystemMessage.from("You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response. Do not say that you have not the capability to browse the web in real time");
+        SystemMessage systemMessage = SystemMessage.from(SYSTEM_MSG);
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
@@ -82,7 +81,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
 
         // then
         assertThat(finalResponse.text())
-                .as("At least the string result should be contains 'movies' and 'May 2024' ignoring case")
+                .as("The result string should contain 'movies' and 'May 2024' ignoring case")
                 .containsIgnoringCase("movies")
                 .containsIgnoringCase("May 2024");
     }
@@ -99,7 +98,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         List<ToolSpecification> tools = ToolSpecifications.toolSpecificationsFrom(webSearchTool);
         String query = "My family is coming to visit me in Madrid next week, list the best tourist activities suitable for the whole family";
         List<ChatMessage> messages = new ArrayList<>();
-        SystemMessage systemMessage = SystemMessage.from("You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response and the image urls. Do not say that you have not the capability to browse the web in real time");
+        SystemMessage systemMessage = SystemMessage.from(SYSTEM_MSG);
         messages.add(systemMessage);
         UserMessage userMessage = UserMessage.from(query);
         messages.add(userMessage);
@@ -128,7 +127,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
 
         // then
         assertThat(finalResponse.text())
-                .as("At least the string result should be contains 'madrid' and 'tourist' ignoring case")
+                .as("The result string should contain 'madrid' and 'tourist' ignoring case")
                 .containsIgnoringCase("Madrid")
                 .containsIgnoringCase("tourist");
     }
@@ -141,10 +140,9 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatModel)
                 .tools(webTool)
-                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();
         // when
-        String answer = assistant.answer("Search in the web who won the FIFA World Cup 2022?");
+        String answer = assistant.answer("Who won the FIFA World Cup 2022?");
 
         // then
         assertThat(answer).containsIgnoringCase("Argentina");

@@ -43,7 +43,7 @@ public class SearchApiTool {
         @dev.langchain4j.service.SystemMessage({
                 "You are a web search support agent.",
                 "If there is any event that has not happened yet",
-                "You MUST create a web search request with with user query and",
+                "You MUST create a web search request with user query and",
                 "use the web search tool to search the web for organic web results.",
                 "Include the source link in your final response."
         })
@@ -69,7 +69,6 @@ public class SearchApiTool {
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatLanguageModel(chatModel)
                 .tools(webTool)
-                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
                 .build();
 
         String answer = assistant.answer("My family is coming to visit me in Madrid next week, list the best tourist activities suitable for the whole family");
