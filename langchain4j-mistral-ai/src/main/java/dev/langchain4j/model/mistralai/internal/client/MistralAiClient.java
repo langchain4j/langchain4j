@@ -27,11 +27,11 @@ public abstract class MistralAiClient {
 
     @SuppressWarnings("unchecked")
     public abstract static class Builder<T extends MistralAiClient, B extends Builder<T, B>> {
-        public String baseUrl;
+        public String baseUrl = "https://api.mistral.ai/v1";
         public String apiKey;
-        public Duration timeout;
-        public Boolean logRequests;
-        public Boolean logResponses;
+        public Duration timeout = Duration.ofSeconds(60);
+        public Boolean logRequests = false;
+        public Boolean logResponses = false;
 
         public abstract T build();
 

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai;
 
 import dev.langchain4j.model.mistralai.internal.api.MistralAiModelCard;
+import dev.langchain4j.model.mistralai.internal.client.MistralAiClient;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
 
@@ -10,7 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class MistralAiModelsIT {
 
-    MistralAiModels models = MistralAiModels.withApiKey(System.getenv("MISTRAL_AI_API_KEY"));
+    MistralAiModels models = MistralAiModels.withClient(MistralAiClient.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .build());
 
     //https://docs.mistral.ai/models/
     @Test
@@ -24,4 +27,5 @@ class MistralAiModelsIT {
         assertThat(response.content()).extracting("object").contains("model");
         assertThat(response.content()).extracting("permission").isNotNull();
     }
+
 }
