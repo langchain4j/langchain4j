@@ -116,8 +116,12 @@ Friend friend = AiServices.create(Friend.class, model);
 
 String answer = friend.chat("Hello"); // Hey! What's up?
 ```
-In this example, we have added the `@SystemMessage` annotation with a system prompt we want to use.
+
+In this example, we have added the `@SystemMessage` annotation with a system prompt template we want to use.
 This will be converted into a `SystemMessage` behind the scenes and sent to the LLM along with the `UserMessage`.
+
+`@SystemMessage` can also load a prompt template from resources:
+`@SystemMessage(fromResource = "my-prompt-template.txt")`
 
 ### System Message Provider
 System messages can also be defined dynamically with the system message provider:
@@ -146,6 +150,9 @@ String answer = friend.chat("Hello"); // Hey! What's shakin'?
 ```
 We have replaced the `@SystemMessage` annotation with `@UserMessage`
 and specified a prompt template with the variable `it` to refer to the only method argument.
+
+`@UserMessage` can also load a prompt template from resources:
+`@UserMessage(fromResource = "my-prompt-template.txt")`
 
 Additionally, it's possible to annotate the `String userMessage` with `@V`
 and assign a custom name to the prompt template variable:
@@ -290,6 +297,14 @@ OpenAiChatModel.builder()
 AzureOpenAiChatModel.builder()
         ...
         .responseFormat(new ChatCompletionsJsonResponseFormat())
+        .build();
+```
+
+- For Vertex AI Gemini:
+```java
+VertexAiGeminiChatModel.builder()
+        ...
+        .responseMimeType("application/json")
         .build();
 ```
 

@@ -108,6 +108,15 @@ public class Utils {
   }
 
   /**
+   * Is the iterable object {@code null} or empty?
+   * @param iterable The iterable object to check.
+   * @return {@code true} if the iterable object is {@code null} or there are no objects to iterate over, otherwise {@code false}.
+   */
+  public static boolean isNullOrEmpty(Iterable<?> iterable) {
+    return iterable == null || !iterable.iterator().hasNext();
+  }
+
+  /**
    * @deprecated Use {@link #isNullOrEmpty(Collection)} instead.
    * @param collection The collection to check.
    * @return {@code true} if the collection is {@code null} or empty, {@code false} otherwise.

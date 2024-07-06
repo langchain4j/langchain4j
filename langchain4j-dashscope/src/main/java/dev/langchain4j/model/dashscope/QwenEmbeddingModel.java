@@ -6,7 +6,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.dashscope.spi.QwenEmbeddingModelBuilderFactory;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
@@ -20,15 +20,15 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Collections.singletonList;
 
 /**
- * An implementation of an {@link EmbeddingModel} that uses
+ * An implementation of an {@link dev.langchain4j.model.embedding.EmbeddingModel} that uses
  * <a href="https://help.aliyun.com/zh/dashscope/developer-reference/text-embedding-api-details">DashScope Embeddings API</a>.
  */
-public class QwenEmbeddingModel implements EmbeddingModel {
+public class QwenEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     public static final String TYPE_KEY = "type";
     public static final String TYPE_QUERY = "query";
     public static final String TYPE_DOCUMENT = "document";
-    private static final int MAX_BATCH_SIZE = 25;
+    private static final int BATCH_SIZE = 25;
 
     private final String apiKey;
     private final String modelName;
@@ -61,21 +61,17 @@ public class QwenEmbeddingModel implements EmbeddingModel {
     private Response<List<Embedding>> embedTexts(List<TextSegment> textSegments,
                                                  TextEmbeddingParam.TextType textType) {
         int size = textSegments.size();
-        if (size < MAX_BATCH_SIZE) {
+        if (size < BATCH_SIZE) {
             return batchEmbedTexts(textSegments, textType);
         }
 
         List<Embedding> allEmbeddings = new ArrayList<>(size);
         TokenUsage allUsage = null;
-        int fromIndex = 0;
-        int toIndex = MAX_BATCH_SIZE;
-        while (fromIndex < size) {
-            List<TextSegment> batchTextSegments = textSegments.subList(fromIndex, toIndex);
+        for (int i = 0; i < size; i += BATCH_SIZE) {
+            List<TextSegment> batchTextSegments = textSegments.subList(i, Math.min(size, i + BATCH_SIZE));
             Response<List<Embedding>> batchResponse = batchEmbedTexts(batchTextSegments, textType);
             allEmbeddings.addAll(batchResponse.content());
             allUsage = TokenUsage.sum(allUsage, batchResponse.tokenUsage());
-            fromIndex = toIndex;
-            toIndex = Math.min(size, fromIndex + MAX_BATCH_SIZE);
         }
 
         return Response.from(allEmbeddings, allUsage);

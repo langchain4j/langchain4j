@@ -16,11 +16,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.util.Arrays.asList;
 import static java.util.Comparator.comparingDouble;
 import static java.util.stream.Collectors.toList;
 
@@ -38,7 +38,15 @@ import static java.util.stream.Collectors.toList;
  */
 public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded> {
 
-    final CopyOnWriteArrayList<Entry<Embedded>> entries = new CopyOnWriteArrayList<>();
+    final CopyOnWriteArrayList<Entry<Embedded>> entries;
+
+    public InMemoryEmbeddingStore() {
+        this.entries = new CopyOnWriteArrayList<>();
+    }
+
+    private InMemoryEmbeddingStore(Collection<Entry<Embedded>> entries) {
+        this.entries = new CopyOnWriteArrayList<>(entries);
+    }
 
     @Override
     public String add(Embedding embedding) {
@@ -93,6 +101,33 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
         return newEntries.stream()
                 .map(entry -> entry.id)
                 .collect(toList());
+    }
+
+    @Override
+    public void removeAll(Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+
+        entries.removeIf(entry -> ids.contains(entry.id));
+    }
+
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+
+        entries.removeIf(entry -> {
+            if (entry.embedded instanceof TextSegment) {
+                return filter.test(((TextSegment) entry.embedded).metadata());
+            } else if (entry.embedded == null) {
+                return false;
+            } else {
+                throw new UnsupportedOperationException("Not supported yet.");
+            }
+        });
+    }
+
+    @Override
+    public void removeAll() {
+        entries.clear();
     }
 
     @Override
@@ -161,6 +196,28 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     public static InMemoryEmbeddingStore<TextSegment> fromFile(String filePath) {
         return fromFile(Paths.get(filePath));
+    }
+
+    /**
+     * Merges given {@code InMemoryEmbeddingStore}s into a single {@code InMemoryEmbeddingStore},
+     * copying all entries from each store.
+     */
+    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(Collection<InMemoryEmbeddingStore<Embedded>> stores) {
+        ensureNotNull(stores, "stores");
+        List<Entry<Embedded>> entries = new ArrayList<>();
+        for (InMemoryEmbeddingStore<Embedded> store : stores) {
+            entries.addAll(store.entries);
+        }
+        return new InMemoryEmbeddingStore<>(entries);
+    }
+
+    /**
+     * Merges given {@code InMemoryEmbeddingStore}s into a single {@code InMemoryEmbeddingStore},
+     * copying all entries from each store.
+     */
+    public static <Embedded> InMemoryEmbeddingStore<Embedded> merge(InMemoryEmbeddingStore<Embedded> first,
+                                                                    InMemoryEmbeddingStore<Embedded> second) {
+        return merge(asList(first, second));
     }
 
     private static class Entry<Embedded> {

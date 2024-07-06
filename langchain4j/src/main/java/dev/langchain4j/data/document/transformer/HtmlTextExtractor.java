@@ -71,7 +71,7 @@ public class HtmlTextExtractor implements DocumentTransformer {
         Metadata metadata = document.metadata().copy();
         if (metadataCssSelectors != null) {
             metadataCssSelectors.forEach((metadataKey, cssSelector) ->
-                    metadata.add(metadataKey, jsoupDocument.select(cssSelector).text()));
+                    metadata.put(metadataKey, jsoupDocument.select(cssSelector).text()));
         }
 
         return Document.from(text, metadata);

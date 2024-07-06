@@ -36,10 +36,10 @@ public class AzureBlobStorageSource implements DocumentSource {
     @Override
     public Metadata metadata() {
         Metadata metadata = new Metadata();
-        metadata.add(SOURCE, format("https://%s.blob.core.windows.net/%s/%s", accountName, containerName, blobName));
+        metadata.put(SOURCE, format("https://%s.blob.core.windows.net/%s/%s", accountName, containerName, blobName));
         metadata.add("azure_storage_blob_creation_time", properties.getCreationTime());
         metadata.add("azure_storage_blob_last_modified", properties.getLastModified());
-        metadata.add("azure_storage_blob_content_length", String.valueOf(properties.getBlobSize()));
+        metadata.put("azure_storage_blob_content_length", String.valueOf(properties.getBlobSize()));
         return metadata;
     }
 }

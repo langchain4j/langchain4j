@@ -204,6 +204,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                     .content(parsedResponse)
                                     .tokenUsage(tokenUsageAccumulator)
                                     .sources(augmentationResult == null ? null : augmentationResult.contents())
+                                    .finishReason(response.finishReason())
                                     .build();
                         } else {
                             return parsedResponse;
@@ -371,8 +372,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         return messageTemplate;
     }
 
-    private static String getResourceText(Class<?> clazz, String name) {
-        return getText(clazz.getResourceAsStream(name));
+    private static String getResourceText(Class<?> clazz, String resource) {
+        InputStream inputStream = clazz.getResourceAsStream(resource);
+        if (inputStream == null) {
+            inputStream = clazz.getResourceAsStream("/" + resource);
+        }
+        return getText(inputStream);
     }
 
     private static String getText(InputStream inputStream) {

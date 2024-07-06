@@ -93,7 +93,7 @@ public class VertexAiImageModelIT {
                 .publisher(PUBLISHER)
                 .modelName("imagegeneration@002")
                 .seed(19707L)
-                .sampleImageStyle(VertexAiImageModel.ImageStyle.photograph)
+                .sampleImageStyle(VertexAiImageModel.ImageStyle.PHOTOGRAPH)
                 .guidanceScale(100)
                 .maxRetries(4)
                 .withPersisting()
@@ -192,5 +192,40 @@ public class VertexAiImageModelIT {
                 .build();
 
         assertThatExceptionOfType(Throwable.class).isThrownBy(() -> imagenModel.generate("a nude woman"));
+    }
+
+//    @Test
+    public void should_generate_one_imagen_v3_with_persistence() {
+//        System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG");
+
+        VertexAiImageModel imagenModel = VertexAiImageModel.builder()
+            .endpoint(ENDPOINT)
+            .location(LOCATION)
+            .project(PROJECT)
+            .publisher(PUBLISHER)
+            .modelName("imagen-3.0-generate-preview-0611")
+            .aspectRatio(VertexAiImageModel.AspectRatio.LANDSCAPE)
+            .mimeType(VertexAiImageModel.MimeType.JPEG)
+            .compressionQuality(80)
+//            .personGeneration(VertexAiImageModel.PersonGeneration.dont_allow) // TODO: extra test
+            .watermark(false) // true by default with v3 // TODO: not sure how to test a watermark is present or not
+            .maxRetries(2)
+            .withPersisting()
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        String prompt = "A cubist oil painting close-up, with heavy brush strokes full of paint, of an imaginary three mast boat flying in the clouds";
+
+        Response<Image> imageResponse = imagenModel.generate(prompt);
+        System.out.println(imageResponse.content().url());
+
+        // has a URL because the generated image is persisted into a file
+        assertThat(imageResponse.content().url()).isNotNull();
+        assertThat(new File(imageResponse.content().url())).exists();
+        // checks that there's Base64 data representing the image
+        assertThat(imageResponse.content().base64Data()).isNotNull();
+        // checks that the Base64 content is valid Base64 encoded
+        assertDoesNotThrow(() -> Base64.getDecoder().decode(imageResponse.content().base64Data()));
     }
 }

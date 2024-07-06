@@ -8,7 +8,7 @@ public class LocalTimeOutputParser implements OutputParser<LocalTime> {
 
     @Override
     public LocalTime parse(String string) {
-        return LocalTime.parse(string, ISO_LOCAL_TIME);
+        return LocalTime.parse(string.trim(), ISO_LOCAL_TIME);
     }
 
     @Override
