@@ -1,6 +1,5 @@
 package dev.langchain4j.model.huggingface.client;
 
-import dev.langchain4j.model.huggingface.client.Options;
 import java.util.List;
 
 public class EmbeddingRequest {

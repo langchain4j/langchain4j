@@ -21,7 +21,7 @@ class ApachePdfBoxDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().asMap()).isEmpty();
+        assertThat(document.metadata().toMap()).isEmpty();
     }
 
     @Test

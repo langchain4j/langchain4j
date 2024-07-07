@@ -10,6 +10,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -17,6 +18,7 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.dashscope.QwenTestHelper.apiKey;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -82,6 +84,12 @@ public class QwenTokenizerIT {
 
         String text3 = String.join(" ", repeat("Hello, how are you doing? What do you want to talk about?", 100));
         assertThat(tokenizer.estimateTokenCountInText(text3)).isEqualTo(100 * 15);
+    }
+
+    @Test
+    void should_count_empty_messages_and_return_0() {
+        assertThat(tokenizer.estimateTokenCountInMessages(null)).isEqualTo(0);
+        assertThat(tokenizer.estimateTokenCountInMessages(emptyList())).isEqualTo(0);
     }
 
     public static List<String> repeat(String s, int n) {

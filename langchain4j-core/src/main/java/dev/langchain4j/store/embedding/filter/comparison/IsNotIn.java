@@ -8,10 +8,12 @@ import lombok.ToString;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import static dev.langchain4j.internal.ValidationUtils.*;
 import static dev.langchain4j.store.embedding.filter.comparison.NumberComparator.containsAsBigDecimals;
 import static dev.langchain4j.store.embedding.filter.comparison.TypeChecker.ensureTypesAreCompatible;
+import static dev.langchain4j.store.embedding.filter.comparison.UUIDComparator.containsAsUUID;
 import static java.util.Collections.unmodifiableSet;
 
 @ToString
@@ -52,6 +54,9 @@ public class IsNotIn implements Filter {
 
         if (comparisonValues.iterator().next() instanceof Number) {
             return !containsAsBigDecimals(actualValue, comparisonValues);
+        }
+        if (comparisonValues.iterator().next() instanceof UUID) {
+            return !containsAsUUID(actualValue, comparisonValues);
         }
 
         return !comparisonValues.contains(actualValue);

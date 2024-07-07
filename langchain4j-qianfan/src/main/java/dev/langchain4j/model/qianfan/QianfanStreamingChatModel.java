@@ -65,7 +65,7 @@ public class QianfanStreamingChatModel implements StreamingChatLanguageModel  {
         this.endpoint=Utils.isNullOrBlank(endpoint)? QianfanChatModelNameEnum.getEndpoint(modelName):endpoint;
 
         if (Utils.isNullOrBlank(this.endpoint)) {
-            throw new IllegalArgumentException("Qianfan is no such model name. You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
+            throw new IllegalArgumentException("Qianfan is no such model name(or there is no model definition in the QianfanChatModelNameEnum class). You can see model name here: https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Nlks5zkzu");
         }
 
         this.baseUrl = getOrDefault(baseUrl,  "https://aip.baidubce.com");

@@ -118,7 +118,7 @@ public class ServiceOutputParser {
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure(returnType, new HashSet<>());
     }
 
-    private static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
+    public static String jsonStructure(Class<?> structured, Set<Class<?>> visited) {
         StringBuilder jsonSchema = new StringBuilder();
 
         jsonSchema.append("{\n");

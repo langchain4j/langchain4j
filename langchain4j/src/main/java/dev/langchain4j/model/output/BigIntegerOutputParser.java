@@ -6,7 +6,7 @@ public class BigIntegerOutputParser implements OutputParser<BigInteger> {
 
     @Override
     public BigInteger parse(String string) {
-        return new BigInteger(string);
+        return new BigInteger(string.trim());
     }
 
     @Override
