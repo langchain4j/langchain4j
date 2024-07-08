@@ -1,6 +1,6 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;

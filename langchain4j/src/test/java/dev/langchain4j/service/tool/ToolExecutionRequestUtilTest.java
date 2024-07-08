@@ -1,20 +1,21 @@
-package dev.langchain4j.agent.tool;
+package dev.langchain4j.service.tool;
 
 import com.google.gson.internal.LinkedTreeMap;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
+
     @Test
     public void test_argument() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
@@ -25,50 +26,37 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
                 .containsEntry("foo", "bar")
-                        .containsEntry("qux", 12.0);
-
-        assertThat((String) ToolExecutionRequestUtil.argument(request, "foo"))
-                .isEqualTo("bar");
-        assertThat((Number) ToolExecutionRequestUtil.argument(request, "qux"))
-                .isEqualTo(12.0);
+                .containsEntry("qux", 12.0);
     }
 
     @Test
     public void test_argument_comma() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                                                           .id("id")
-                                                           .name("name")
-                                                           .arguments("{\"foo\":\"bar\", \"qux\": 12,}")
-                                                           .build();
+                .id("id")
+                .name("name")
+                .arguments("{\"foo\":\"bar\", \"qux\": 12,}")
+                .build();
 
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
-              .containsEntry("foo", "bar")
-              .containsEntry("qux", 12.0);
-
-        assertThat((String) ToolExecutionRequestUtil.argument(request, "foo"))
-              .isEqualTo("bar");
-        assertThat((Number) ToolExecutionRequestUtil.argument(request, "qux"))
-              .isEqualTo(12.0);
+                .containsEntry("foo", "bar")
+                .containsEntry("qux", 12.0);
     }
 
     @Test
     public void test_argument_comma_array() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
-                                                           .id("id")
-                                                           .name("name")
-                                                           .arguments(
-                                                                 "{\"key\":[{\"foo\":\"bar\", \"qux\": 12,},{\"foo\":\"bar\", \"qux\": 12,},]}")
-                                                           .build();
+                .id("id")
+                .name("name")
+                .arguments(
+                        "{\"key\":[{\"foo\":\"bar\", \"qux\": 12,},{\"foo\":\"bar\", \"qux\": 12,},]}")
+                .build();
 
-        assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
-              .containsKey("key");
+        Map<String, Object> argumentsAsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
+        assertThat(argumentsAsMap).containsOnlyKeys("key");
 
-        assertTrue(ToolExecutionRequestUtil.argument(request, "key") instanceof ArrayList);
-
-        List<Object> keys = ToolExecutionRequestUtil.argument(request, "key");
-
+        List<Object> keys = (List<Object>) argumentsAsMap.get("key");
         keys.forEach(key -> {
-            assertTrue(key instanceof LinkedTreeMap);
+            assertInstanceOf(LinkedTreeMap.class, key);
             assertTrue(((LinkedTreeMap<?, ?>) key).containsKey("foo"));
             assertTrue(((LinkedTreeMap<?, ?>) key).containsKey("qux"));
             assertThat(((LinkedTreeMap<?, ?>) key).get("foo")).isEqualTo("bar");
@@ -128,7 +116,7 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
                 Arguments.of(
                         "{\"name\":\"John\"}",
                         "{\"name\":\"John\"}"
-                ),                Arguments.of(
+                ), Arguments.of(
                         "{\"name\":\"John\",}",
                         "{\"name\":\"John\"}"
                 ),

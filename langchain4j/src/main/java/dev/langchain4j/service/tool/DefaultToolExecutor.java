@@ -1,6 +1,9 @@
-package dev.langchain4j.agent.tool;
+package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+
+import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.internal.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +53,8 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         // TODO ensure this method never throws exceptions
 
-        Object[] arguments = prepareArguments(
-                method, argumentsAsMap(toolExecutionRequest.arguments()), memoryId);
+        Map<String, Object> argumentsMap = argumentsAsMap(toolExecutionRequest.arguments());
+        Object[] arguments = prepareArguments(method, argumentsMap, memoryId);
         try {
             String result = execute(arguments);
             log.debug("Tool execution result: {}", result);

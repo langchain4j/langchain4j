@@ -1,5 +1,6 @@
-package dev.langchain4j.agent.tool;
+package dev.langchain4j.service.tool;
 
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.service.MemoryId;
 
 /**

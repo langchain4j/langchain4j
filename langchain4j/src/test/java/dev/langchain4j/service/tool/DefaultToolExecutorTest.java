@@ -1,6 +1,10 @@
-package dev.langchain4j.agent.tool;
+package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
+import static dev.langchain4j.service.tool.DefaultToolExecutor.coerceArgument;
+
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
@@ -14,6 +18,7 @@ import java.util.Map;
 import java.util.UUID;
 
 class DefaultToolExecutorTest implements WithAssertions {
+
     @Test
     public void tesT_hasNoFractionalPart() {
         assertThat(DefaultToolExecutor.hasNoFractionalPart(3.0)).isTrue();
