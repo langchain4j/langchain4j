@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class FloatOutputParser implements OutputParser<Float> {
+class FloatOutputParser implements OutputParser<Float> {
 
     @Override
     public Float parse(String string) {

@@ -1,9 +1,9 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.util.Arrays;
 
 @SuppressWarnings("rawtypes")
-public class EnumOutputParser implements OutputParser<Enum> {
+class EnumOutputParser implements OutputParser<Enum> {
 
     private final Class<? extends Enum> enumClass;
 

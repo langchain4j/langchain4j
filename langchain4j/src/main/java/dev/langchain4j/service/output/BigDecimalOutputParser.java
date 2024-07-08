@@ -1,8 +1,8 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.math.BigDecimal;
 
-public class BigDecimalOutputParser implements OutputParser<BigDecimal> {
+class BigDecimalOutputParser implements OutputParser<BigDecimal> {
 
     @Override
     public BigDecimal parse(String string) {

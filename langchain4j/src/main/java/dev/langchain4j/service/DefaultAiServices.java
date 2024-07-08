@@ -28,8 +28,8 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static dev.langchain4j.service.ServiceOutputParser.parse;
+import static dev.langchain4j.service.output.ServiceOutputParser.outputFormatInstructions;
+import static dev.langchain4j.service.output.ServiceOutputParser.parse;
 
 class DefaultAiServices<T> extends AiServices<T> {
 

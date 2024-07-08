@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -10,8 +10,8 @@ import java.time.LocalTime;
 import java.util.Calendar;
 import java.util.Date;
 
-
 class OutputParserTest implements WithAssertions {
+
     @Test
     public void test_BigDecimal() {
         BigDecimalOutputParser parser = new BigDecimalOutputParser();

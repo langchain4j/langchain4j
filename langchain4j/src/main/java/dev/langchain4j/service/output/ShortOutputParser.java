@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class ShortOutputParser implements OutputParser<Short> {
+class ShortOutputParser implements OutputParser<Short> {
 
     @Override
     public Short parse(String string) {

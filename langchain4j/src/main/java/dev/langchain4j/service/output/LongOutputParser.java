@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class LongOutputParser implements OutputParser<Long> {
+class LongOutputParser implements OutputParser<Long> {
 
     @Override
     public Long parse(String string) {

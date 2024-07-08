@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class IntOutputParser implements OutputParser<Integer> {
+class IntOutputParser implements OutputParser<Integer> {
 
     @Override
     public Integer parse(String string) {

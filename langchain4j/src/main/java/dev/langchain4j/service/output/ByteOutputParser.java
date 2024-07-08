@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class ByteOutputParser implements OutputParser<Byte> {
+class ByteOutputParser implements OutputParser<Byte> {
 
     @Override
     public Byte parse(String string) {

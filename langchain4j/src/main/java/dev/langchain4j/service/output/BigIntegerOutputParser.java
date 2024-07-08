@@ -1,8 +1,8 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.math.BigInteger;
 
-public class BigIntegerOutputParser implements OutputParser<BigInteger> {
+class BigIntegerOutputParser implements OutputParser<BigInteger> {
 
     @Override
     public BigInteger parse(String string) {

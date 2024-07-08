@@ -1,10 +1,10 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 /**
  * Represents an output parser.
  * @param <T> the type of the output.
  */
-public interface OutputParser<T> {
+interface OutputParser<T> {
 
     /**
      * Parse the given text.

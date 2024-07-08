@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class DoubleOutputParser implements OutputParser<Double> {
+class DoubleOutputParser implements OutputParser<Double> {
 
     @Override
     public Double parse(String string) {

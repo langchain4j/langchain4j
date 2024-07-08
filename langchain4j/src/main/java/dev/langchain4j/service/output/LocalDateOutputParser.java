@@ -1,10 +1,10 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.time.LocalDate;
 
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE;
 
-public class LocalDateOutputParser implements OutputParser<LocalDate> {
+class LocalDateOutputParser implements OutputParser<LocalDate> {
 
     @Override
     public LocalDate parse(String string) {

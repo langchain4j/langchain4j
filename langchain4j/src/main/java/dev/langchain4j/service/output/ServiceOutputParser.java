@@ -1,9 +1,10 @@
-package dev.langchain4j.service;
+package dev.langchain4j.service.output;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.output.*;
 import dev.langchain4j.model.output.structured.Description;
+import dev.langchain4j.service.TokenStream;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;

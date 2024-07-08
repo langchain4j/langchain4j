@@ -1,6 +1,6 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
-public class BooleanOutputParser implements OutputParser<Boolean> {
+class BooleanOutputParser implements OutputParser<Boolean> {
 
     @Override
     public Boolean parse(String string) {

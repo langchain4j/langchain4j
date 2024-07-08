@@ -1,10 +1,10 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class DateOutputParser implements OutputParser<Date> {
+class DateOutputParser implements OutputParser<Date> {
 
     private static final String DATE_PATTERN = "yyyy-MM-dd";
     private static final SimpleDateFormat SIMPLE_DATE_FORMAT = new SimpleDateFormat(DATE_PATTERN);
