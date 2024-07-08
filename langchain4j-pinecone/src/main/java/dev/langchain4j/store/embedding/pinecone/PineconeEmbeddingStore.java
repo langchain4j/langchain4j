@@ -21,6 +21,8 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
 import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
@@ -41,7 +43,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final Index index;
     private final String nameSpace;
     private final String metadataTextKey;
-    private final Map<String, Value.KindCase> metadataTypeMap;
 
     /**
      * Creates an instance of PineconeEmbeddingStore.
@@ -52,9 +53,10 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param index           The name of the index (e.g., "test").
      * @param nameSpace       (Optional) Namespace. If not provided, "default" will be used.
      * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
-     * @param metadataTypeMap (Optional) The remaining metadata type map to store metadata. If not provided, will not store metadata.
      * @param dimension       (Optional) The dimension of embedding aims to create index. If not provided, will not create index
      * @param createIndex     (Optional) Whether to create index or not. If not provided "false" will be used
+     * @param environment     (Deprecated) Please use cloud and region
+     * @param projectId       (Deprecated) Please use cloud and region
      */
     public PineconeEmbeddingStore(String apiKey,
                                   String cloud,
@@ -62,16 +64,20 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
                                   String index,
                                   String nameSpace,
                                   String metadataTextKey,
-                                  Map<String, Value.KindCase> metadataTypeMap,
                                   Integer dimension,
-                                  Boolean createIndex) {
+                                  Boolean createIndex,
+                                  String environment,
+                                  String projectId) {
         Pinecone client = new Pinecone.Builder(apiKey).build();
         this.nameSpace = nameSpace == null ? DEFAULT_NAMESPACE : nameSpace;
         this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
-        this.metadataTypeMap = metadataTypeMap;
 
         // create serverless index if not exist
         if (Boolean.TRUE.equals(createIndex) && index != null && !isIndexExist(client, index)) {
+            index = ensureNotBlank(index, "index");
+            ensureNotNull(dimension, "dimension");
+            cloud = ensureNotBlank(cloud, "cloud");
+            region = ensureNotBlank(region, "region");
             client.createServerlessIndex(index, "cosine", dimension, cloud, region);
         }
         this.index = client.getIndexConnection(index);
@@ -150,7 +156,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
             Struct struct = null;
             if (textSegments != null) {
                 TextSegment textSegment = textSegments.get(i);
-                struct = metadataToStruct(textSegment, metadataTypeMap, metadataTextKey);
+                struct = metadataToStruct(textSegment, metadataTextKey);
             }
 
             vectors.add(buildUpsertVectorWithUnsignedIndices(id, embedding.vectorAsList(), null, null, struct));
@@ -191,11 +197,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         Map<String, Value> filedsMap = indices.getMetadata().getFieldsMap();
 
         Value textSegmentValue = filedsMap.get(metadataTextKey);
-        Metadata metadata = new Metadata();
-        if (metadataTypeMap != null && !metadataTypeMap.isEmpty()) {
-            Map<String, Object> metadataMap = structToMetadata(metadataTypeMap, filedsMap);
-            metadata = Metadata.from(metadataMap);
-        }
+        Metadata metadata = Metadata.from(structToMetadata(filedsMap, metadataTextKey));
 
         Embedding embedding = Embedding.from(indices.getValuesList());
         double cosineSimilarity = CosineSimilarity.between(embedding, referenceEmbedding);
@@ -216,9 +218,12 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String index;
         private String nameSpace;
         private String metadataTextKey;
-        private Map<String, Value.KindCase> metadataTypeMap;
         private Integer dimension;
         private Boolean createIndex;
+        @Deprecated
+        private String environment;
+        @Deprecated
+        private String projectId;
 
         /**
          * @param apiKey The Pinecone API key.
@@ -269,14 +274,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param metadataTypeMap (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
-         */
-        public Builder metadataTypeMap(Map<String, Value.KindCase> metadataTypeMap) {
-            this.metadataTypeMap = metadataTypeMap;
-            return this;
-        }
-
-        /**
          * @param dimension (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
          */
         public Builder dimension(Integer dimension) {
@@ -292,8 +289,27 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        /**
+         * @param environment The environment (e.g., "northamerica-northeast1-gcp").
+         */
+        @Deprecated
+        public Builder environment(String environment) {
+            this.environment = environment;
+            return this;
+        }
+
+        /**
+         * @param projectId The ID of the project (e.g., "19a129b"). This is <b>not</b> a project name.
+         *                  The ID can be found in the Pinecone URL: https://app.pinecone.io/organizations/.../projects/...:{projectId}/indexes.
+         */
+        @Deprecated
+        public Builder projectId(String projectId) {
+            this.projectId = projectId;
+            return this;
+        }
+
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, cloud, region, index, nameSpace, metadataTextKey, metadataTypeMap, dimension, createIndex);
+            return new PineconeEmbeddingStore(apiKey, cloud, region, index, nameSpace, metadataTextKey, dimension, createIndex, environment, projectId);
         }
     }
 }

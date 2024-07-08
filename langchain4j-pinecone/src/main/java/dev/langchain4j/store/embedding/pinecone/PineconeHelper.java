@@ -2,11 +2,11 @@ package dev.langchain4j.store.embedding.pinecone;
 
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Helper for Pinecone Struct conversion
@@ -17,50 +17,43 @@ class PineconeHelper {
         throw new InstantiationException("can't instantiate this class");
     }
 
-    public static Map<String, Object> structToMetadata(Map<String, Value.KindCase> metadataTypeMap, Map<String, Value> filedsMap) {
-        Map<String, Object> metadataMap = new HashMap<>(metadataTypeMap.size());
-        for (Map.Entry<String, Value.KindCase> metadataType : metadataTypeMap.entrySet()) {
-            String metadataKey = metadataType.getKey();
-            Value.KindCase type = metadataType.getValue();
+    public static Map<String, Object> structToMetadata(Map<String, Value> filedsMap, String metadataTextKey) {
+        if ((filedsMap.size() == 1 && filedsMap.containsKey(metadataTextKey)) || filedsMap.isEmpty()) {
+            return new HashMap<>();
+        }
 
-            if (filedsMap.containsKey(metadataKey)) {
-                switch (type) {
-                    case NUMBER_VALUE:
-                        metadataMap.put(metadataKey, filedsMap.get(metadataKey).getNumberValue());
-                        break;
-                    case STRING_VALUE:
-                        metadataMap.put(metadataKey, filedsMap.get(metadataKey).getStringValue());
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("Pinecone does not support type " + type);
-                }
+        Map<String, Object> metadataMap = new HashMap<>(filedsMap.size() - 1);
+        for (Map.Entry<String, Value> entry : filedsMap.entrySet()) {
+            String key = entry.getKey();
+            Value value = entry.getValue();
+
+            if (value.hasNumberValue()) {
+                metadataMap.put(key, value.getNumberValue());
+            } else if (value.hasStringValue()) {
+                metadataMap.put(key, value.getStringValue());
             }
         }
 
         return metadataMap;
     }
 
-    public static Struct metadataToStruct(TextSegment textSegment, Map<String, Value.KindCase> metadataTypeMap, String metadataTextKey) {
-        Metadata metadata = textSegment.metadata();
+    public static Struct metadataToStruct(TextSegment textSegment, String metadataTextKey) {
+        Map<String, Object> metadata = textSegment.metadata().toMap();
         Struct.Builder metadataBuilder = Struct.newBuilder()
                 .putFields(metadataTextKey, Value.newBuilder().setStringValue(textSegment.text()).build());
-        if (metadataTypeMap != null && !metadataTypeMap.isEmpty() && !metadata.toMap().isEmpty()) {
-            for (Map.Entry<String, Value.KindCase> metadataType : metadataTypeMap.entrySet()) {
-                String metadataKey = metadataType.getKey();
-                Value.KindCase type = metadataType.getValue();
+        if (!metadata.isEmpty()) {
+            for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
 
-                switch (type) {
-                    case NUMBER_VALUE:
-                        metadataBuilder.putFields(metadataKey, Value.newBuilder().setNumberValue(metadata.getDouble(metadataKey)).build());
-                        break;
-                    case STRING_VALUE:
-                        metadataBuilder.putFields(metadataKey, Value.newBuilder().setStringValue(metadata.getString(metadataKey)).build());
-                        break;
-                    default:
-                        throw new UnsupportedOperationException("Pinecone does not support type " + type);
+                if (value instanceof String || value instanceof UUID) {
+                    metadataBuilder.putFields(key, Value.newBuilder().setStringValue(value.toString()).build());
+                } else if (value instanceof Integer || value instanceof Long || value instanceof Float || value instanceof Double) {
+                    metadataBuilder.putFields(key, Value.newBuilder().setNumberValue(((Number) value).doubleValue()).build());
                 }
             }
         }
+
         return metadataBuilder.build();
     }
 }
