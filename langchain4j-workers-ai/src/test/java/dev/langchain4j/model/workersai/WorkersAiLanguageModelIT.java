@@ -8,7 +8,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
-class WorkerAILanguageModelIT {
+class WorkersAiLanguageModelIT {
 
     static WorkersAiLanguageModel languageModel;
 

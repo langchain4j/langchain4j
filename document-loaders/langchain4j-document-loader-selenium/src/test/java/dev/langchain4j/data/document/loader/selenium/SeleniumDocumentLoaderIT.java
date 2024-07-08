@@ -14,7 +14,7 @@ import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.remote.RemoteWebDriver;
 import org.testcontainers.containers.BrowserWebDriverContainer;
 
-class SeleniumDocumentLoaderTestIT {
+class SeleniumDocumentLoaderIT {
 
     static SeleniumDocumentLoader loader;
 
