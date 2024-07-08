@@ -4,7 +4,9 @@ sidebar_position: 4
 
 # Apache PDFBox
 
-`ApachePdfBoxDocumentParser` can be found in the following module:
+
+## Maven Dependency
+
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
@@ -12,3 +14,13 @@ sidebar_position: 4
     <version>0.32.0</version>
 </dependency>
 ```
+
+
+## APIs
+
+- `ApachePdfBoxDocumentParser`
+
+
+## Examples
+
+- [ApachePdfBoxDocumentParserTest](https://github.com/langchain4j/langchain4j/blob/main/document-parsers/langchain4j-document-parser-apache-pdfbox/src/test/java/dev/langchain4j/data/document/parser/apache/pdfbox/ApachePdfBoxDocumentParserTest.java)

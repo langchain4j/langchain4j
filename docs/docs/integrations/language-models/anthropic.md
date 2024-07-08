@@ -103,3 +103,10 @@ Configure `AnthropicStreamingChatModel` bean:
 ```
 langchain4j.anthropic.streaming-chat-model.api-key = ${ANTHROPIC_API_KEY}
 ```
+
+
+## Examples
+
+- [AnthropicChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicChatModelTest.java)
+- [AnthropicStreamingChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicStreamingChatModelTest.java)
+- [AnthropicToolsTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicToolsTest.java)

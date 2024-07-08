@@ -4,7 +4,8 @@ sidebar_position: 10
 
 # LocalAI
 
-[LocalAI](https://localai.io/)
+https://localai.io/
+
 
 ## Maven Dependency
 
@@ -16,9 +17,18 @@ sidebar_position: 10
 </dependency>
 ```
 
-## LocalAI Models
+
+## APIs
 
 - `LocalAiChatModel`
 - `LocalAiStreamingChatModel`
 - `LocalAiLanguageModel`
 - `LocalAiStreamingLanguageModel`
+
+
+## Examples
+
+- [LocalAiChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-local-ai/src/test/java/dev/langchain4j/model/localai/LocalAiChatModelIT.java)
+- [LocalAiStreamingChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-local-ai/src/test/java/dev/langchain4j/model/localai/LocalAiStreamingChatModelIT.java)
+- [LocalAiLanguageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-local-ai/src/test/java/dev/langchain4j/model/localai/LocalAiLanguageModelIT.java)
+- [LocalAiStreamingLanguageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-local-ai/src/test/java/dev/langchain4j/model/localai/LocalAiStreamingLanguageModelIT.java)

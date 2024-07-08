@@ -46,3 +46,9 @@ ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
 ## Titan Models
 - `BedrockTitanChatModel`
 - `BedrockTitanEmbeddingModel`
+
+
+## Examples
+
+- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockChatModelExample.java)
+- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockStreamingChatModelExample.java)

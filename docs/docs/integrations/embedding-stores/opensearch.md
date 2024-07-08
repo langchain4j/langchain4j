@@ -4,6 +4,9 @@ sidebar_position: 12
 
 # OpenSearch
 
+https://opensearch.org/
+
+
 ## Maven Dependency
 
 ```xml

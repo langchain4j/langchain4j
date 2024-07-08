@@ -4,6 +4,9 @@ sidebar_position: 13
 
 # PGVector
 
+https://github.com/pgvector/pgvector
+
+
 ## Maven Dependency
 
 ```xml

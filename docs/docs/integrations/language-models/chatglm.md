@@ -16,6 +16,11 @@ sidebar_position: 4
 ```
 
 
-## ChatGLM Models
+## APIs
 
 - `ChatGlmChatModel`
+
+
+## Examples
+
+- [ChatGlmChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-chatglm/src/test/java/dev/langchain4j/model/chatglm/ChatGlmChatModelIT.java)
