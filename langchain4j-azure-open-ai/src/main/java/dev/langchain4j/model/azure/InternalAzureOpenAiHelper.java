@@ -365,13 +365,18 @@ class InternalAzureOpenAiHelper {
                     Map<String, Object> errorDetails = (Map<String, Object>) errorMap;
                     Object errorCode = errorDetails.get("code");
                     if (errorCode instanceof String) {
-                            exceptionFinishReason = finishReasonFrom((String) errorCode);
-                        }
+                        exceptionFinishReason = finishReasonFrom((String) errorCode);
                     }
+                }
             } catch (ClassCastException classCastException) {
                 logger.error("Error parsing error response from Azure OpenAI", classCastException);
             }
         }
+
+        if (exceptionFinishReason == FinishReason.LENGTH) {
+            throw new AzureOpenAiRuntimeException("Request content length exceeded", httpResponseException);
+        }
+
         return exceptionFinishReason;
     }
 
