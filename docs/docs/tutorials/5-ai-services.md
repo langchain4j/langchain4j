@@ -300,6 +300,14 @@ AzureOpenAiChatModel.builder()
         .build();
 ```
 
+- For Vertex AI Gemini:
+```java
+VertexAiGeminiChatModel.builder()
+        ...
+        .responseMimeType("application/json")
+        .build();
+```
+
 - For Mistral AI:
 ```java
 MistralAiChatModel.builder()

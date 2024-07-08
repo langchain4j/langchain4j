@@ -68,14 +68,14 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
   <groupId>dev.langchain4j</groupId>
   <artifactId>langchain4j-vertex-ai-gemini</artifactId>
-  <version>0.31.0</version>
+  <version>0.32.0</version>
 </dependency>
 ```
 
 or project's `build.gradle`:
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.31.0'
+implementation 'dev.langchain4j:langchain4j-vertex-ai-gemini:0.32.0'
 ```
 
 ### Try out an example code:
@@ -157,3 +157,8 @@ If there are `SystemMessage`s provided to the `generate()` methods, they will be
 [Available locations](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#available-regions)
 
 [Multimodal capabilities](https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/overview#multimodal_models)
+
+
+## Examples
+
+- [Google Vertex AI Gemini Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/vertex-ai-gemini-examples/src/main/java)
