@@ -1,21 +1,21 @@
 package dev.langchain4j.store.embedding.chroma;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static java.time.Duration.ofSeconds;
+import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toList;
+
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.time.Duration.ofSeconds;
-import static java.util.Collections.singletonList;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Represents a store for embeddings using the Chroma backend.
@@ -110,10 +110,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<String> addAll(List<Embedding> embeddings) {
-
-        List<String> ids = embeddings.stream()
-                .map(embedding -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(embedding -> randomUUID()).collect(toList());
 
         addAllInternal(ids, embeddings, null);
 
@@ -122,10 +119,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public List<String> addAll(List<Embedding> embeddings, List<TextSegment> textSegments) {
-
-        List<String> ids = embeddings.stream()
-                .map(embedding -> randomUUID())
-                .collect(toList());
+        List<String> ids = embeddings.stream().map(embedding -> randomUUID()).collect(toList());
 
         addAllInternal(ids, embeddings, textSegments);
 
@@ -133,49 +127,55 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment textSegment) {
-        addAllInternal(singletonList(id), singletonList(embedding), textSegment == null ? null : singletonList(textSegment));
+        addAllInternal(
+            singletonList(id),
+            singletonList(embedding),
+            textSegment == null ? null : singletonList(textSegment)
+        );
     }
 
     private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> textSegments) {
-        AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest.builder()
-                .embeddings(embeddings.stream()
-                        .map(Embedding::vector)
-                        .collect(toList()))
-                .ids(ids)
-                .metadatas(textSegments == null
-                        ? null
-                        : textSegments.stream()
-                        .map(TextSegment::metadata)
-                        .map(Metadata::asMap)
-                        .collect(toList()))
-                .documents(textSegments == null
-                        ? null
-                        : textSegments.stream()
-                        .map(TextSegment::text)
-                        .collect(toList()))
-                .build();
+        AddEmbeddingsRequest addEmbeddingsRequest = AddEmbeddingsRequest
+            .builder()
+            .embeddings(embeddings.stream().map(Embedding::vector).collect(toList()))
+            .ids(ids)
+            .metadatas(
+                textSegments == null
+                    ? null
+                    : textSegments.stream().map(TextSegment::metadata).map(Metadata::asMap).collect(toList())
+            )
+            .documents(textSegments == null ? null : textSegments.stream().map(TextSegment::text).collect(toList()))
+            .build();
 
         chromaClient.addEmbeddings(collectionId, addEmbeddingsRequest);
     }
 
     @Override
-    public List<EmbeddingMatch<TextSegment>> findRelevant(Embedding referenceEmbedding, int maxResults, double minScore) {
+    public List<EmbeddingMatch<TextSegment>> findRelevant(
+        Embedding referenceEmbedding,
+        int maxResults,
+        double minScore
+    ) {
         QueryRequest queryRequest = new QueryRequest(referenceEmbedding.vectorAsList(), maxResults);
 
         QueryResponse queryResponse = chromaClient.queryCollection(collectionId, queryRequest);
 
         List<EmbeddingMatch<TextSegment>> matches = toEmbeddingMatches(queryResponse);
 
-        return matches.stream()
-                .filter(match -> match.score() >= minScore)
-                .collect(toList());
+        return matches.stream().filter(match -> match.score() >= minScore).collect(toList());
+    }
+
+    @Override
+    public void removeAll(java.util.Collection<String> ids) {
+        ensureNotEmpty(ids, "ids");
+        DeleteEmbeddingsRequest request = DeleteEmbeddingsRequest.builder().ids(new ArrayList<>(ids)).build();
+        chromaClient.deleteEmbeddings(collectionId, request);
     }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
 
         for (int i = 0; i < queryResponse.ids().get(0).size(); i++) {
-
             double score = distanceToScore(queryResponse.distances().get(0).get(i));
             String embeddingId = queryResponse.ids().get(0).get(i);
             Embedding embedding = Embedding.from(queryResponse.embeddings().get(0).get(i));
