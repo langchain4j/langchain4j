@@ -56,7 +56,6 @@
 
     <dependencyManagement>
         <dependencies>
-
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j</artifactId>
@@ -390,9 +389,7 @@
                 <artifactId>logback-classic</artifactId>
                 <version>1.3.14</version>
             </dependency>
-
         </dependencies>
-
     </dependencyManagement>
 
     <build>
