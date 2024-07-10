@@ -77,21 +77,22 @@ public class SearchApiResponse {
 	 *	are also Mandatory JSON elements. They are always included in the API response but are currently ignored since they are never used directly.
 	 * 
 	 */
+
 	
 	/** Mandatory JSON elements */
 	private Map<String, Object> searchMetadata;
 	private Map<String, Object> searchParameters;
 	private Map<String, Object> searchInformation;
 	private List<OrganicResult> organicResults;
-		
+
 	/** Optional JSON elements */
 	private List<Map<String, Object>> inlineVideos;
-	
+
 	private Map<String, Object> inlineImages;
 	private Map<String, Object> knowledgeGraph;
 	private Map<String, Object> answerBox;
-	
+
 	/** Mandatory JSON element */
 	private Pagination pagination;
-	
+
 }
