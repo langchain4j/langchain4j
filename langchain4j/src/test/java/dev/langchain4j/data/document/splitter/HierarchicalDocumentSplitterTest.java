@@ -103,7 +103,7 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
         List<TextSegment> textSegments = splitter.split(Document.from(text));
         for (TextSegment textSegment : textSegments) {
             String firstWord = textSegment.text().split("\\s+")[0];
-            Integer startIndex = textSegment.metadata().getInteger("startIndex");
+            Integer startIndex = textSegment.metadata().getInteger("start_index");
             Integer mapIndex = wordMap.get(firstWord);
             assertThat(startIndex).isEqualTo(mapIndex);
         }

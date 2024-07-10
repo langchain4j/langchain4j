@@ -28,13 +28,13 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             new DocumentBySentenceSplitter(1, 0, null, null);
 
     private static final String INDEX = "index";
-    private static final String START_INDEX = "startIndex";
+    private static final String START_INDEX = "start_index";
 
     protected final int maxSegmentSize;
     protected final int maxOverlapSize;
     protected final Tokenizer tokenizer;
     protected final DocumentSplitter subSplitter;
-    protected final AtomicInteger startIndex = new AtomicInteger(0);
+
 
     /**
      * Creates a new instance of {@link HierarchicalDocumentSplitter}.
@@ -109,11 +109,11 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
     @Override
     public List<TextSegment> split(Document document) {
         ensureNotNull(document, "document");
-        startIndex.set(0);
 
         List<TextSegment> segments = new ArrayList<>();
         SegmentBuilder segmentBuilder = new SegmentBuilder(maxSegmentSize, this::estimateSize, joinDelimiter());
         AtomicInteger index = new AtomicInteger(0);
+        AtomicInteger startIndex = new AtomicInteger(0);
 
         String[] parts = split(document.text());
         String overlap = null;

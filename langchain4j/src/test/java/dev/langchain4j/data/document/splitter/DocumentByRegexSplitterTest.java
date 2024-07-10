@@ -31,9 +31,9 @@ class DocumentByRegexSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment("one", metadata("index", "0").put("document", "0").put("startIndex", "0")),
-                textSegment("two", metadata("index", "1").put("document", "0").put("startIndex", "4")),
-                textSegment("three", metadata("index", "2").put("document", "0").put("startIndex", "8"))
+                textSegment("one", metadata("index", "0").put("document", "0").put("start_index", "0")),
+                textSegment("two", metadata("index", "1").put("document", "0").put("start_index", "4")),
+                textSegment("three", metadata("index", "2").put("document", "0").put("start_index", "8"))
         );
     }
 
@@ -50,8 +50,8 @@ class DocumentByRegexSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment("one\ntwo", metadata("index", "0").put("document", "0").put("startIndex", "0")),
-                textSegment("three", metadata("index", "1").put("document", "0").put("startIndex", "8"))
+                textSegment("one\ntwo", metadata("index", "0").put("document", "0").put("start_index", "0")),
+                textSegment("three", metadata("index", "1").put("document", "0").put("start_index", "8"))
         );
     }
 
@@ -72,12 +72,12 @@ class DocumentByRegexSplitterTest {
         segments.forEach(segment ->
                 assertThat(segment.text().length()).isLessThanOrEqualTo(maxSegmentSize));
         assertThat(segments).containsExactly(
-                textSegment("This is a first", metadata("index", "0").put("document", "0").put("startIndex", "0")),
-                textSegment("line.", metadata("index", "1").put("document", "0").put("startIndex", "16")),
-                textSegment("This is a", metadata("index", "2").put("document", "0").put("startIndex", "22")),
-                textSegment("second line.", metadata("index", "3").put("document", "0").put("startIndex", "32")),
-                textSegment("This is a third", metadata("index", "4").put("document", "0").put("startIndex", "45")),
-                textSegment("line.", metadata("index", "5").put("document", "0").put("startIndex", "61"))
+                textSegment("This is a first", metadata("index", "0").put("document", "0").put("start_index", "0")),
+                textSegment("line.", metadata("index", "1").put("document", "0").put("start_index", "16")),
+                textSegment("This is a", metadata("index", "2").put("document", "0").put("start_index", "22")),
+                textSegment("second line.", metadata("index", "3").put("document", "0").put("start_index", "32")),
+                textSegment("This is a third", metadata("index", "4").put("document", "0").put("start_index", "45")),
+                textSegment("line.", metadata("index", "5").put("document", "0").put("start_index", "61"))
         );
     }
 }
