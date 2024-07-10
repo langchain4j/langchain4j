@@ -59,7 +59,7 @@ public class SearchApiClient {
         this.searchapiAPI = retrofit.create(SearchApiAPI.class);
     }
 
-    public SearchApiResponse search(final SearchApiRequest searchRequest) {
+    SearchApiResponse search(final SearchApiRequest searchRequest) {
         try {
         	final Response<SearchApiResponse> retrofitResponse = searchapiAPI
                     .search(apiKey, 

@@ -137,7 +137,7 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
         assertThat(finalResponse.text())
                 .as("At least the string result should be contains 'madrid' and 'tourist' ignoring case")
                 .containsIgnoringCase("Madrid")
-                .containsIgnoringCase("Royal Palace");
+                .containsIgnoringCase("tourist");
     }
 
     @Test
