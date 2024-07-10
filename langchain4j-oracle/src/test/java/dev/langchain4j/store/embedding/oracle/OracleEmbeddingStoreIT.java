@@ -32,10 +32,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Testcontainers
 public class OracleEmbeddingStoreIT {
-    @Container
-    private static final OracleContainer oracleContainer = new OracleContainer("gvenzl/oracle-free:23.4-slim-faststart")
-            .withUsername("testuser")
-            .withPassword(("testpwd"));
     private static OracleEmbeddingStore store;
     private static PoolDataSource dataSource;
     private static final String table = "vector_store";
@@ -59,13 +55,28 @@ public class OracleEmbeddingStoreIT {
 
     @BeforeAll
     static void setup() throws SQLException {
-        oracleContainer.start();
+
+        // Initialize dataSource
         dataSource = PoolDataSourceFactory.getPoolDataSource();
-        dataSource.setConnectionFactoryClassName("oracle.jdbc.pool.OracleDataSource");
-        dataSource.setConnectionPoolName("EMBEDDING_STORE_IT");
-        dataSource.setUser(oracleContainer.getUsername());
-        dataSource.setPassword(oracleContainer.getPassword());
-        dataSource.setURL(oracleContainer.getJdbcUrl());
+        dataSource.setConnectionFactoryClassName(
+            "oracle.jdbc.pool.OracleDataSource");
+        dataSource.setConnectionPoolName("mypool");
+
+        // If an external dataSource is not defined, use TestContainers
+        // jdbc:oracle:thin:[USER/PASSWORD]@//[HOST][:PORT]/SERVICE
+        if (System.getProperty("datasource.url") != null) {
+            dataSource.setURL(System.getProperty("datasource.url"));
+        } else {
+            OracleContainer oracleContainer = new OracleContainer(
+                "gvenzl/oracle-free:23.4-slim-faststart")
+                .withUsername("testuser")
+                .withPassword(("testpwd"));
+            oracleContainer.start();
+            dataSource.setUser(oracleContainer.getUsername());
+            dataSource.setPassword(oracleContainer.getPassword());
+            dataSource.setURL(oracleContainer.getJdbcUrl());
+        }
+
         store = OracleEmbeddingStore.builder()
             .dataSource(dataSource)
             .table(table)
