@@ -4,6 +4,8 @@ sidebar_position: 3
 
 # Azure OpenAI
 
+Azure OpenAI has a few language models (`gpt-35-turbo`, `gpt-4`, `gpt-4o`, etc.) that can be used for various natural language processing tasks.
+
 :::note
 If you are using Quarkus, please refer to the
 [Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai.html#_azure_openai).
@@ -156,44 +158,6 @@ langchain4j.azure-open-ai.streaming-chat-model.deployment-name=gpt-4o
 
 Similar to the `AzureOpenAiChatModel`, see above.
 
-## Creating AzureOpenAiEmbeddingModel
-
-### Plain Java
-```java
-EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
-        .endpoint("https://langchain4j.openai.azure.com/")
-        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .deploymentName("text-embedding-3-small")
-        .build();
-```
-
-### Spring Boot
-Add to the `application.properties`:
-```properties
-langchain4j.azure-open-ai.embedding-model.endpoint=https://langchain4j.openai.azure.com/
-langchain4j.azure-open-ai.embedding-model.api-key=${AZURE_OPENAI_KEY}
-langchain4j.azure-open-ai.embedding-model.deployment-name=text-embedding-3-small
-```
-
-## Creating AzureOpenAiImageModel
-
-### Plain Java
-```java
-ImageModel model = AzureOpenAiImageModel.builder()
-        .endpoint("https://langchain4j.openai.azure.com/")
-        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-        .deploymentName("dall-e-3")
-        .build();
-```
-
-### Spring Boot
-Add to the `application.properties`:
-```properties
-langchain4j.azure-open-ai.image-model.endpoint=https://langchain4j.openai.azure.com/
-langchain4j.azure-open-ai.image-model.api-key=${AZURE_OPENAI_KEY}
-langchain4j.azure-open-ai.image-model.deployment-name=dall-e-3
-```
-
 ## Creating AzureOpenAiTokenizer
 
 ### Plain Java
@@ -206,6 +170,11 @@ Tokenizer tokenizer = new AzureOpenAiTokenizer("gpt-4o");
 ### Spring Boot
 The `AzureOpenAiTokenizer` bean is created automatically.
 
+## APIs
+
+- `AzureOpenAiChatModel`
+- `AzureOpenAiTokenizer`
+- `AzureOpenAiStreamingChatModel`
 
 ## Examples
 
