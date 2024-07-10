@@ -14,7 +14,7 @@ import oracle.ucp.jdbc.PoolDataSourceFactory;
 import java.sql.SQLException;
 import java.util.List;
 
-public class OracleEmbeddingStoreSampleExternalContainer {
+public class OracleEmbeddingStoreSample {
 
     public static void main(String[] args) throws SQLException {
 
