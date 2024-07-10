@@ -137,7 +137,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		// See also:
 		// https://api.python.langchain.com/en/latest/_modules/langchain_community/utilities/searchapi.html#SearchApiAPIWrapper
 
-		String title = null, website = "https://www.searchapi.io/", description = null;
+		String title = null;
+		String website = DEFAULT_BASE_URL;
+		String description = null;
 
 		if (response.getAnswerBox() != null && !response.getAnswerBox().isEmpty()) {
 			title = (String) response.getAnswerBox().get("title");

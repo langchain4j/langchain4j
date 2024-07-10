@@ -14,9 +14,9 @@ import lombok.Setter;
 @Builder
 class SearchApiRequest {
 
-	/************************************************************************************************
+	/**
 	 * Mandatory parameters
-	 **********************************************************************************************/
+	 */
 
 	/* Search API key. */
 	private String apiKey;
@@ -27,9 +27,9 @@ class SearchApiRequest {
 	/* Search query. */
 	private String q;
 
-	/************************************************************************************************
+	/**
 	 * Optional parameters
-	 **********************************************************************************************/
+	 */
 
 	/*
 	 * Search device. Valid values: "desktop", "mobile" or "tablet". Defaults to
@@ -97,7 +97,7 @@ class SearchApiRequest {
 		final Map<String, Object> params = new HashMap<String, Object>();
 
 		if (isNotNullOrBlank(device))
-			params.put("device", getOrDefault(device, "desktop"));
+			params.put("device", device);
 		if (isNotNullOrBlank(location))
 			params.put("location", location);
 		if (isNotNullOrBlank(uule) && !params.containsKey("location"))
