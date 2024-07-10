@@ -1,13 +1,15 @@
 package dev.langchain4j.chain;
 
+import dev.langchain4j.service.AiServices;
+
 /**
  * Represents a chain step that takes an input and produces an output.
- * It is recommended to use {@code AiServices} from {@code dev.langchain4j:langchain4j} module instead,
- * as it is more powerful.
  *
  * @param <Input>  the input type
  * @param <Output> the output type
+ * @deprecated Please use {@link AiServices} instead.
  */
+@Deprecated
 @FunctionalInterface
 public interface Chain<Input, Output> {
 
