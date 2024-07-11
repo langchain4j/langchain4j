@@ -11,17 +11,14 @@ import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import lombok.Builder;
+import oracle.jdbc.OracleStatement;
 import oracle.jdbc.OracleType;
+import oracle.jdbc.OracleTypes;
 import oracle.sql.json.OracleJsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -47,14 +44,12 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private static final Logger log = LoggerFactory.getLogger(OracleEmbeddingStore.class);
     private static final Integer DEFAULT_DIMENSIONS = -1;
     private static final Integer DEFAULT_ACCURACY = -1;
-    private static final Integer DEFAULT_BATCH_SIZE = 50; // Oracle recommends a batch size between 50 and 100.
     private static final DistanceType DEFAULT_DISTANCE_TYPE = DistanceType.COSINE;
     private static final IndexType DEFAULT_INDEX_TYPE = IndexType.IVF;
 
     private final String table;
     private final DataSource dataSource;
     private final Integer accuracy;
-    private final Integer batchSize;
     private final DistanceType distanceType;
     private final IndexType indexType;
     private final Boolean normalizeVectors;
@@ -68,20 +63,23 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param table Vector table name.
      * @param dimension Embedding dimension.
      * @param accuracy Search accuracy. Not used unless specified.
-     * @param batchSize Batch size to use when adding bulk records. Defaults to 50, Oracle suggests a batch size of 50-100.
      * @param distanceType Distance type to use for similarity search. Defaults to COSINE.
      * @param indexType Index type, currently supports IVF. Defaults to IVF.
      * @param useIndex Whether to create an index on the table. Defaults to false.
      * @param createTable Whether a table will be created on embedding store creation. Defaults to true.
      * @param dropTableFirst Whether the table will be dropped on embedding store creation. Defaults to false.
-     * @param normalizeVectors Whether vectors are normalized. Defaults to false.
+     *
+     * @param normalizeVectors Whether vectors are normalized. Defaults to
+     * false. If set to true, then instances of <code>Embedding</code> that are
+     * provided as input to this <code>EmbeddingStore</code> may be modified
+     * by invocations of {@link Embedding#normalize()}.
+     *
      */
     @Builder
     public OracleEmbeddingStore(DataSource dataSource,
                                 String table,
                                 Integer dimension,
                                 Integer accuracy,
-                                Integer batchSize,
                                 DistanceType distanceType,
                                 IndexType indexType,
                                 Boolean useIndex,
@@ -92,7 +90,6 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.dataSource = ensureNotNull(dataSource, "dataSource");
         this.table = ensureNotBlank(table, "table");
         this.accuracy = getOrDefault(accuracy, DEFAULT_ACCURACY);
-        this.batchSize = getOrDefault(batchSize, DEFAULT_BATCH_SIZE);
         this.distanceType = getOrDefault(distanceType, DEFAULT_DISTANCE_TYPE);
         this.indexType = getOrDefault(indexType, DEFAULT_INDEX_TYPE);
         this.normalizeVectors = getOrDefault(normalizeVectors, false);
@@ -205,16 +202,17 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      */
     @Override
     public void removeAll(Collection<String> ids) {
-        String inClause = "(" + ids.stream().map(id -> "?")
-                .collect(Collectors.joining(",")) + ")";
-        String deleteQuery = String.format("delete from %s where id in %s", table, inClause);
+        try (
+            Connection connection = dataSource.getConnection();
+            PreparedStatement delete = connection.prepareStatement(
+                "DELETE FROM " + table + " WHERE id =?")) {
 
-        try (Connection connection = dataSource.getConnection(); PreparedStatement stmt = connection.prepareStatement(deleteQuery)) {
-            List<String> idList = new ArrayList<>(ids);
-            for (int i = 0; i < idList.size(); i++) {
-                stmt.setString(i+1, idList.get(i));
+            for (String s : ids) {
+              delete.setString(1, s);
+              delete.addBatch();
             }
-            stmt.executeUpdate();
+            delete.executeBatch();
+
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
@@ -252,17 +250,6 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
     }
 
-    /**
-     * Searches for the most similar (closest in the embedding space) {@link Embedding}s.
-     * <br>
-     * All search criteria are defined inside the {@link EmbeddingSearchRequest}.
-     * <br>
-     * {@link EmbeddingSearchRequest#filter()} can be used to filter by user/memory ID.
-     * Please note that not all {@link EmbeddingStore} implementations support {@link Filter}ing.
-     *
-     * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
-     * @return An {@link EmbeddingSearchResult} containing all found {@link Embedding}s.
-     */
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
         if (distanceType != DistanceType.COSINE && distanceType != DistanceType.DOT) {
@@ -286,28 +273,48 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                 ")\n" +
                 "where score >= ?\n" +
                 "%s", vectorDistanceClause(), table, filterClause, accuracyClause(maxResults));
-        try (Connection connection = dataSource.getConnection(); PreparedStatement stmt = connection.prepareStatement(searchQuery)) {
-            stmt.setObject(1, dataAdapter.toVECTOR(requestEmbedding, normalizeVectors), OracleType.VECTOR.getVendorTypeNumber());
-            stmt.setObject(2, minScore, OracleType.NUMBER.getVendorTypeNumber());
-            try (ResultSet rs = stmt.executeQuery()) {
+
+        try (
+            Connection connection = dataSource.getConnection();
+            PreparedStatement searchStatement = connection.prepareStatement(searchQuery)) {
+
+            if (normalizeVectors)
+                requestEmbedding.normalize();
+
+            // This defineColumnType call lets Oracle JDBC know that it is about to query a VECTOR column. This
+            // avoids an extra network request in which Oracle JDBC would have to send a VECTOR prefetch size before
+            // fetching row data. Using a 524,308 byte prefetch, which is the same as what Oracle JDBC uses internally.
+            searchStatement.unwrap(OracleStatement.class)
+                    .defineColumnType(4, OracleTypes.VECTOR_FLOAT32, 524308);
+
+            searchStatement.setFetchSize(maxResults);
+            searchStatement.setObject(1, requestEmbedding.vector(), OracleTypes.VECTOR_FLOAT32);
+            searchStatement.setObject(2, minScore, OracleTypes.NUMBER);
+            try (ResultSet rs = searchStatement.executeQuery()) {
+
                 while (rs.next()) {
                     String id = rs.getString("id");
-                    double[] embeddings = rs.getObject("embedding", double[].class);
-                    Embedding embedding = new Embedding(dataAdapter.toFloatArray(embeddings));
+                    float[] embeddings = rs.getObject("embedding", float[].class);
+
+                    Embedding embedding = new Embedding(embeddings);
                     String content = rs.getObject("content", String.class);
-                    double score = rs.getObject("score", BigDecimal.class).doubleValue();
+                    double score = rs.getDouble("score");
                     TextSegment textSegment = null;
+
                     if (isNotNullOrBlank(content)) {
                         Map<String, Object> metadata = dataAdapter.toMap(rs.getObject("metadata", OracleJsonObject.class));
                         textSegment = TextSegment.from(content, new Metadata(metadata));
                     }
+
                     matches.add(new EmbeddingMatch<>(score, id, embedding, textSegment));
                 }
+
+                return new EmbeddingSearchResult<>(matches);
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
         }
-        return new EmbeddingSearchResult<>(matches);
+
     }
 
     private String accuracyClause(int maxResults) {
@@ -344,31 +351,35 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                 "when matched then update set target.content = source.content, target.metadata = source.metadata, target.embedding = source.embedding\n" +
                 "when not matched then insert (target.id, target.content, target.metadata, target.embedding) values (source.id, source.content, source.metadata, source.embedding)",
                 table);
-        try (Connection connection = dataSource.getConnection(); PreparedStatement stmt = connection.prepareStatement(upsert)) {
+
+        try (
+            Connection connection = dataSource.getConnection();
+            PreparedStatement upsertStatement = connection.prepareStatement(upsert)) {
+
             for (int i = 0; i < ids.size(); i++) {
-                stmt.setString(1, ids.get(i));
+                upsertStatement.setString(1, ids.get(i));
+
                 if (segments != null && segments.get(i) != null) {
                     TextSegment textSegment = segments.get(i);
-                    stmt.setString(2, textSegment.text());
+                    upsertStatement.setString(2, textSegment.text());
                     OracleJsonObject ojson = dataAdapter.toJSON(textSegment.metadata().toMap());
-                    stmt.setObject(3, ojson, OracleType.JSON.getVendorTypeNumber());
+                    upsertStatement.setObject(3, ojson, OracleTypes.JSON);
                 } else {
-                    stmt.setString(2, "");
-                    stmt.setObject(3, dataAdapter.toJSON(null), OracleType.JSON.getVendorTypeNumber());
+                    upsertStatement.setNull(2, Types.VARCHAR);
+                    upsertStatement.setObject(3, dataAdapter.toJSON(null), OracleType.JSON.getVendorTypeNumber());
                 }
-                stmt.setObject(4, dataAdapter.toVECTOR(embeddings.get(i), normalizeVectors), OracleType.VECTOR.getVendorTypeNumber());
-                stmt.addBatch();
-                if (i % batchSize == batchSize - 1) {
-                    stmt.executeBatch();
-                }
+
+                Embedding embedding = embeddings.get(i);
+                if (normalizeVectors)
+                    embedding.normalize();
+
+                upsertStatement.setObject(4, embedding.vector(), OracleTypes.VECTOR);
+                upsertStatement.addBatch();
             }
-            // if any remaining batches, execute them
-            if (ids.size() % batchSize != 0) {
-                stmt.executeBatch();
-            }
-            stmt.executeBatch();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+
+            upsertStatement.executeBatch();
+        } catch (SQLException sqlException) {
+            throw new RuntimeException(sqlException);
         }
     }
 
@@ -380,29 +391,38 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * Creates the vector store table and index if specified.
+     *
      * @param dropTableFirst Whether to drop the table before creation.
      * @param createTable Whether to create the table.
      * @param useIndex Whether to create an index on the table.
      * @param dimension The dimension of the vector store embeddings.
      */
-    protected void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension) {
-        String query = "init";
-        try (Connection connection = dataSource.getConnection(); Statement stmt = connection.createStatement()) {
+    private void initTable(Boolean dropTableFirst, Boolean createTable, Boolean useIndex, Integer dimension) {
+        try (
+          Connection connection = dataSource.getConnection();
+          Statement statement = connection.createStatement()) {
+
             if (dropTableFirst) {
-                stmt.executeUpdate(String.format("drop table if exists %s purge", query));
+                statement.addBatch(
+                  String.format("drop table if exists %s purge", table));
             }
+
             if (createTable) {
-                stmt.executeUpdate(String.format("create table if not exists %s (\n" +
+                // The FLOAT32 dimension type of the embedding column aligns with the float[] storage type
+                // used by Embedding objects.
+                statement.addBatch(String.format(
+                        "create table if not exists %s (\n" +
                                 "id        varchar2(36) default sys_guid() primary key,\n" +
                                 "content   clob,\n" +
                                 "metadata  json,\n" +
-                                "embedding vector(%s,FLOAT64) annotations(Distance '%s', IndexType '%s'))",
+                                "embedding vector(%s, FLOAT32) annotations(Distance '%s', IndexType '%s'))",
                         table, getDimensionString(dimension), distanceType.name(), indexType.name()));
             }
+
             if (useIndex) {
                 switch (indexType) {
                     case IVF:
-                        stmt.executeUpdate(String.format("create vector index if not exists vector_index_%s on %s (embedding)\n" +
+                        statement.addBatch(String.format("create vector index if not exists vector_index_%s on %s (embedding)\n" +
                                 "organization neighbor partitions\n" +
                                 "distance %s\n" +
                                 "with target accuracy %d\n" +
@@ -421,8 +441,10 @@ public class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                      */
                 }
             }
+
+            statement.executeBatch();
         } catch (SQLException e) {
-            throw new RuntimeException(String.format("Could not connect to database: %s", query), e);
+            throw new RuntimeException("Failed to create database table", e);
         }
     }
 
