@@ -72,14 +72,14 @@ The following JSON elements appear to be mandatory in the response sent by Searc
 * `"pagination"`
 
 
-Mandatory JSON elements are present in every response while optional JSON elements (e.g. "inline_images", "inline_videos", "knowledge_graph", "answer_box", "top_stories" etc) are query-dependent. 
+Mandatory JSON elements are present in every response while optional JSON elements (e.g. `"inline_images"`, `"inline_videos"`, `"knowledge_graph"`, `"answer_box"`, `"top_stories"` etc) are query-dependent.
  
 The optional JSON elements appear in the response depending on the type of query (e.g. local business, online shopping, population fact etc) 
 or whether extra parameters are included in the search like "location".
  
 Note that these are also mandatory JSON elements:
- * "related_questions" 
- * "related_searches" 
+ * `"related_questions"`
+ * `"related_searches"`
 
 They are always included in the API response but are currently ignored since they are never used directly.
 
