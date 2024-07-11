@@ -35,4 +35,11 @@ public interface StreamingResponseHandler<T> {
      * @param error The error that occurred
      */
     void onError(Throwable error);
+
+    /**
+     * Has the streaming response been canceled
+     */
+    default boolean isCancelled() {
+        return false;
+    }
 }

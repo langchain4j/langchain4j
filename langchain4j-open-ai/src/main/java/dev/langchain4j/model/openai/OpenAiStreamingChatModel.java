@@ -1,6 +1,15 @@
 package dev.langchain4j.model.openai;
 
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+
 import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.ResponseHandle;
 import dev.ai4j.openai4j.chat.ChatCompletionChoice;
 import dev.ai4j.openai4j.chat.ChatCompletionRequest;
 import dev.ai4j.openai4j.chat.ChatCompletionResponse;
@@ -17,14 +26,6 @@ import dev.langchain4j.model.openai.spi.OpenAiStreamingChatModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
-
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Utils.*;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.*;
@@ -177,9 +178,15 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModel = new AtomicReference<>();
+        AtomicReference<ResponseHandle> responseHandle = new AtomicReference<>();
 
-        client.chatCompletion(request)
+        responseHandle.set(client.chatCompletion(request)
                 .onPartialResponse(partialResponse -> {
+                    if (handler.isCancelled()) {
+                        responseHandle.get().cancel();
+                        return;
+                    }
+
                     responseBuilder.append(partialResponse);
                     handle(partialResponse, handler);
 
@@ -239,7 +246,7 @@ public class OpenAiStreamingChatModel implements StreamingChatLanguageModel, Tok
 
                     handler.onError(error);
                 })
-                .execute();
+                .execute());
     }
 
     private Response<AiMessage> createResponse(OpenAiStreamingResponseBuilder responseBuilder,

@@ -1,6 +1,12 @@
 package dev.langchain4j.model.openai;
 
+import java.net.Proxy;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
 import dev.ai4j.openai4j.OpenAiClient;
+import dev.ai4j.openai4j.ResponseHandle;
 import dev.ai4j.openai4j.completion.CompletionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -10,10 +16,6 @@ import dev.langchain4j.model.language.TokenCountEstimator;
 import dev.langchain4j.model.openai.spi.OpenAiStreamingLanguageModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
-
-import java.net.Proxy;
-import java.time.Duration;
-import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openai.InternalOpenAiHelper.DEFAULT_USER_AGENT;
@@ -85,8 +87,15 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
         int inputTokenCount = tokenizer.estimateTokenCountInText(prompt);
         OpenAiStreamingResponseBuilder responseBuilder = new OpenAiStreamingResponseBuilder(inputTokenCount);
 
-        client.completion(request)
+        AtomicReference<ResponseHandle> responseHandle = new AtomicReference<>();
+
+        responseHandle.set(client.completion(request)
                 .onPartialResponse(partialResponse -> {
+                    if (handler.isCancelled()) {
+                        responseHandle.get().cancel();
+                        return;
+                    }
+
                     responseBuilder.append(partialResponse);
                     String token = partialResponse.text();
                     if (token != null) {
@@ -102,7 +111,7 @@ public class OpenAiStreamingLanguageModel implements StreamingLanguageModel, Tok
                     ));
                 })
                 .onError(handler::onError)
-                .execute();
+                .execute());
     }
 
     @Override
