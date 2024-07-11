@@ -16,13 +16,13 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>{your-version}</version> <!-- Specify your version here -->
+    <version>0.32.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jlama</artifactId>
-    <version>{your-version}</version>
+    <version>0.32.0</version>
 </dependency>
 
 <dependency>
@@ -148,3 +148,8 @@ Jlama does not support function calling (yet).
 
 ### JSON mode
 Jlama does not support JSON mode (yet). But you can always ask the model nicely to return JSON.
+
+
+## Examples
+
+- [Jlama Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/jlama-examples)

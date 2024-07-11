@@ -1,11 +1,12 @@
 ---
-sidebar_position: 16
+sidebar_position: 5
 ---
 
 # Zhipu AI
 
 - https://www.zhipuai.cn/
 - https://open.bigmodel.cn/
+
 
 ## Maven Dependency
 
@@ -19,9 +20,9 @@ sidebar_position: 16
 
 ## APIs
 
-- `ZhipuAiEmbeddingModel`
+- `ZhipuAiImageModel`
 
 
 ## Examples
 
-- [ZhipuAiEmbeddingModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-zhipu-ai/src/test/java/dev/langchain4j/model/zhipu/ZhipuAiEmbeddingModelIT.java)
+- [ZhipuAiImageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-zhipu-ai/src/test/java/dev/langchain4j/model/zhipu/ZhipuAiImageModelIT.java)

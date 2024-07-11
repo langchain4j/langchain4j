@@ -7,6 +7,7 @@ import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationO
 import com.alibaba.dashscope.aigc.multimodalconversation.MultiModalConversationResult;
 import com.alibaba.dashscope.common.Message;
 import com.alibaba.dashscope.common.MultiModalMessage;
+import com.alibaba.dashscope.common.Role;
 import com.alibaba.dashscope.tools.*;
 import com.alibaba.dashscope.utils.JsonUtils;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -18,6 +19,7 @@ import dev.langchain4j.data.message.*;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -26,18 +28,22 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 
-import static com.alibaba.dashscope.common.Role.*;
+import static dev.langchain4j.data.message.ChatMessageType.*;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.output.FinishReason.*;
 import static java.util.stream.Collectors.toList;
 
+@Slf4j
 class QwenHelper {
 
     static List<Message> toQwenMessages(List<ChatMessage> messages) {
-        return messages.stream()
+        return sanitizeMessages(messages)
+                .stream()
                 .map(QwenHelper::toQwenMessage)
                 .collect(toList());
     }
@@ -97,7 +103,7 @@ class QwenHelper {
     }
 
     static List<ToolCallBase> toolCallsFrom(ChatMessage message) {
-        if (message.type() == ChatMessageType.AI && ((AiMessage) message).hasToolExecutionRequests()) {
+        if (message.type() == AI && ((AiMessage) message).hasToolExecutionRequests()) {
             return toToolCalls(((AiMessage) message).toolExecutionRequests());
         }
         return null;
@@ -189,14 +195,14 @@ class QwenHelper {
     }
 
     static String roleFrom(ChatMessage message) {
-        if (message.type() == ChatMessageType.AI) {
-            return ASSISTANT.getValue();
-        } else if (message.type() == ChatMessageType.SYSTEM) {
-            return SYSTEM.getValue();
+        if (message.type() == AI) {
+            return Role.ASSISTANT.getValue();
+        } else if (message.type() == SYSTEM) {
+            return Role.SYSTEM.getValue();
         } else if (message.type() == ChatMessageType.TOOL_EXECUTION_RESULT) {
-            return TOOL.getValue();
+            return Role.TOOL.getValue();
         } else {
-            return USER.getValue();
+            return Role.USER.getValue();
         }
     }
 
@@ -401,5 +407,68 @@ class QwenHelper {
         callFunction.setArguments(toolExecutionRequest.arguments());
         toolCallFunction.setFunction(callFunction);
         return toolCallFunction;
+    }
+
+    static List<ChatMessage> sanitizeMessages(List<ChatMessage> messages) {
+        LinkedList<ChatMessage> sanitizedMessages = messages.stream()
+                .reduce(new LinkedList<>(), messageAccumulator(), messageCombiner());
+
+        // Ensure the last message is a user/tool_execution_result message
+        while(!sanitizedMessages.isEmpty() && !isInputMessageType(sanitizedMessages.getLast().type())) {
+            ChatMessage removedMessage = sanitizedMessages.removeLast();
+            log.warn("The last message should be a user/tool_execution_result message, but found: {}", removedMessage);
+        }
+
+        return sanitizedMessages;
+    }
+
+    private static BiFunction<LinkedList<ChatMessage>, ChatMessage, LinkedList<ChatMessage>> messageAccumulator() {
+        return (acc, message) -> {
+            ChatMessageType type = message.type();
+            if (acc.isEmpty()) {
+                // Ensure the first message is a system message or a user message.
+                if (type == SYSTEM || type == USER) {
+                    acc.add(message);
+                } else {
+                    log.warn("The first message should be a system message or a user message, but found: {}", message);
+                }
+                return acc;
+            }
+
+            if (type == SYSTEM) {
+                // Ensure the system message is the first message.
+                log.warn("The system message should be the first message. Drop existed messages: {}", acc);
+                acc.clear();
+                acc.add(message);
+                return acc;
+            }
+
+            ChatMessageType lastType = acc.getLast().type();
+            if (lastType == SYSTEM && type != USER) {
+                // The first non-system message must be a user message.
+                log.warn("The first non-system message must be a user message, but found: {}", message);
+                return acc;
+            }
+
+            if (isInputMessageType(type) == isInputMessageType(lastType)) {
+                // The list must be user/tool_execution_result and ai alternating messages.
+                // Use the newest one when duplicated.
+                ChatMessage removedMessage = acc.removeLast();
+                log.warn("User/Tool-execution-result messages and AI messages should alternate. Drop duplicated message: {}", removedMessage);
+            }
+
+            acc.add(message);
+            return acc;
+        };
+    }
+
+    private static BinaryOperator<LinkedList<ChatMessage>> messageCombiner() {
+        return (acc1, acc2) -> {
+            throw new UnsupportedOperationException("Parallel stream not supported");
+        };
+    }
+
+    private static boolean isInputMessageType(ChatMessageType messageType) {
+        return messageType == USER || messageType == TOOL_EXECUTION_RESULT;
     }
 }
