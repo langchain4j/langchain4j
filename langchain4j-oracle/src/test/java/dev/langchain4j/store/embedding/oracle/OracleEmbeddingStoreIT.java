@@ -94,7 +94,6 @@ public class OracleEmbeddingStoreIT {
         OracleEmbeddingStore embeddingStore = OracleEmbeddingStore.builder()
                 .table(tableName)
                 .dataSource(dataSource)
-                .batchSize(2)
                 .dimension(384)
                 .useIndex(true)
                 .createTable(true)
