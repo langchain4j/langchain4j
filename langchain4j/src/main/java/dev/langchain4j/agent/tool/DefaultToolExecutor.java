@@ -194,10 +194,6 @@ public class DefaultToolExecutor implements ToolExecutor {
             // TODO: Consider full type coverage.
         }
 
-        // TODO: Consider full type coverage.
-        // throw new IllegalArgumentException(String.format(
-        //         "Unsupported parameter type: %s :: <%s>", parameterType, argument));
-
         String result  = Json.toJson(argument);
         return Json.fromJson(result, parameterType);
     }
