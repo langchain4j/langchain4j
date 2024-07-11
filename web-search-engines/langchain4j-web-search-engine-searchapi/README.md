@@ -1,5 +1,5 @@
 # SearchApi 
-This module allows [SearchApi](https://www.searchapi.io/) to be used as a `WebSearchEngine` or as a `Tool` for function calling.
+This module allows [SearchApi](https://www.searchapi.io/) to be used as a [`WebSearchEngine`](src/main/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchEngine.java) or as a `Tool` for function calling.
 
 ## Design 
 The default engine used by the current implementation is the [Google Search engine](https://www.searchapi.io/docs/google). 
@@ -9,11 +9,11 @@ The SearchApi API supports not only Google Search but 30+ other APIs including Y
 The current implementation is easy to adapt for use with other engines because all engines use the same HTTP GET request. 
 
 The only difference between engines are: 
-* the request parameters they accept and;
+* the request parameters they accept (via [`SearchApiRequest`](src/main/java/dev/langchain4j/web/search/searchapi/SearchApiRequest.java)) and;
 * the response JSON returned by each engine (since they accept different parameters). 
 
 
-To allow developers decide on how they'd like each engine's response to be parsed, the `SearchApiResponse` class exposes the raw JSON returned by SearchApi.
+To allow developers decide on how they'd like each engine's response to be parsed, the [`SearchApiResponse`](src/main/java/dev/langchain4j/web/search/searchapi/SearchApiResponse.java) class exposes the raw JSON returned by SearchApi.
 
 
 ## Illustrative Example
