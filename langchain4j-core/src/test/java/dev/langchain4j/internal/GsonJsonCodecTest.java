@@ -75,8 +75,7 @@ class GsonJsonCodecTest implements WithAssertions {
         {
             Map<Object, Object> map = codec.fromJson("{\"a\": [1, 2]}", Map.class);
 
-            // TODO: Langchain4j: is ok to have now either long or double ? It fixes other issues.
-            assertThat(map).containsExactly(MapEntry.entry("a", asList(1L, 2L)));
+            assertThat(map).containsExactly(MapEntry.entry("a", asList(1.0, 2.0)));
         }
     }
 

@@ -16,7 +16,6 @@ class GsonJsonCodec implements Json.JsonCodec {
 
     private static final Gson GSON = new GsonBuilder()
         .setPrettyPrinting()
-        .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
         .registerTypeAdapter(
                 LocalDate.class,
                 (JsonSerializer<LocalDate>) (localDate, type, context) ->
