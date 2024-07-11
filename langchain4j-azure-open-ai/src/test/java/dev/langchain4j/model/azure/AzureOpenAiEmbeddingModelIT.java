@@ -16,15 +16,16 @@ import java.util.List;
 
 import static dev.langchain4j.model.azure.AzureOpenAiEmbeddingModelName.TEXT_EMBEDDING_ADA_002;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
-public class AzureOpenAiEmbeddingModelIT {
+class AzureOpenAiEmbeddingModelIT {
 
     Logger logger = LoggerFactory.getLogger(AzureOpenAiEmbeddingModelIT.class);
 
     EmbeddingModel model = AzureOpenAiEmbeddingModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("text-embedding-ada-002")
+            .deploymentName("text-embedding-ada-002-2")
             .tokenizer(new AzureOpenAiTokenizer(TEXT_EMBEDDING_ADA_002))
             .logRequestsAndResponses(true)
             .build();
@@ -71,7 +72,8 @@ public class AzureOpenAiEmbeddingModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiEmbeddingModelName.class)
+    @EnumSource(value = AzureOpenAiEmbeddingModelName.class,
+            mode = EXCLUDE, names = {"TEXT_EMBEDDING_ADA_002_2", "TEXT_EMBEDDING_3_SMALL", "TEXT_EMBEDDING_3_SMALL_1", "TEXT_EMBEDDING_3_LARGE", "TEXT_EMBEDDING_ADA_002", "TEXT_EMBEDDING_ADA_002_1"})
     void should_support_all_string_model_names(AzureOpenAiEmbeddingModelName modelName) {
 
         // given
@@ -90,5 +92,10 @@ public class AzureOpenAiEmbeddingModelIT {
 
         // then
         assertThat(response.content().vector()).isNotEmpty();
+    }
+
+    @Test
+    void should_return_correct_dimension() {
+        assertThat(model.dimension()).isEqualTo(1536);
     }
 }

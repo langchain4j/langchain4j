@@ -1,5 +1,4 @@
 ---
-id: supported-language-models
 title: Comparison Table of all supported Language Models
 hide_title: false
 sidebar_position: 0
@@ -15,6 +14,7 @@ sidebar_position: 0
 | [Google Vertex AI Gemini](/integrations/language-models/google-gemini) | ✅                                          | ✅                         | ✅            |                                                         |        |
 | [Google Vertex AI PaLM 2](/integrations/language-models/google-palm)   |                                            |                           |              |                                                         | ✅      |
 | [Hugging Face](/integrations/language-models/hugging-face)             |                                            |                           |              |                                                         |        |
+| [Jlama](/integrations/language-models/jlama)                           | ✅                                          |                           |              | ✅                                                       | ✅      |
 | [LocalAI](/integrations/language-models/local-ai)                      | ✅                                          | ✅                         |              | ✅                                                       |        |
 | [Mistral AI](/integrations/language-models/mistral-ai)                 | ✅                                          | ✅                         |              |                                                         |        |
 | [Ollama](/integrations/language-models/ollama)                         | ✅                                          |                           | ✅            | ✅                                                       |        |

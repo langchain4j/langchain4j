@@ -1,5 +1,4 @@
 ---
-id: spring-boot-integration
 sidebar_position: 27
 ---
 
@@ -15,7 +14,7 @@ To use one of the Spring Boot starters, first import the corresponding dependenc
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -49,7 +48,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 

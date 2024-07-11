@@ -5,7 +5,7 @@ import dev.ai4j.openai4j.embedding.EmbeddingRequest;
 import dev.ai4j.openai4j.embedding.EmbeddingResponse;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
 import dev.langchain4j.model.localai.spi.LocalAiEmbeddingModelBuilderFactory;
 import dev.langchain4j.model.output.Response;
 import lombok.Builder;
@@ -22,7 +22,7 @@ import static java.util.stream.Collectors.toList;
 /**
  * See <a href="https://localai.io/features/embeddings/">LocalAI documentation</a> for more details.
  */
-public class LocalAiEmbeddingModel implements EmbeddingModel {
+public class LocalAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     private final OpenAiClient client;
     private final String modelName;

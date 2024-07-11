@@ -1,5 +1,4 @@
 ---
-id: rag
 sidebar_position: 8
 ---
 
@@ -97,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 

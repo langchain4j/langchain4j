@@ -1,5 +1,4 @@
 ---
-id: structured-data-extraction
 sidebar_position: 11
 ---
 
