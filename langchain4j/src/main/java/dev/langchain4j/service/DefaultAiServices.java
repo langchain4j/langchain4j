@@ -28,10 +28,11 @@ import static dev.langchain4j.exception.IllegalConfigurationException.illegalCon
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
-import static dev.langchain4j.service.ServiceOutputParser.outputFormatInstructions;
-import static dev.langchain4j.service.ServiceOutputParser.parse;
+
 
 class DefaultAiServices<T> extends AiServices<T> {
+
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser(new DefaultOutputParserFactory());
 
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
@@ -117,7 +118,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 returnType = Class.forName(typeArg.getTypeName());
                             }
                         }
-                        String outputFormatInstructions = outputFormatInstructions(returnType);
+                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
                         String text = userMessage.singleText() + outputFormatInstructions;
                         if (isNotNullOrBlank(userMessage.name())) {
                             userMessage = UserMessage.from(userMessage.name(), text);
@@ -197,7 +198,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        Object parsedResponse = parse(response, returnType);
+                        Object parsedResponse = serviceOutputParser.parse(response, returnType);
 
                         if (isReturnTypeResult) {
                             return Result.builder()
@@ -372,8 +373,12 @@ class DefaultAiServices<T> extends AiServices<T> {
         return messageTemplate;
     }
 
-    private static String getResourceText(Class<?> clazz, String name) {
-        return getText(clazz.getResourceAsStream(name));
+    private static String getResourceText(Class<?> clazz, String resource) {
+        InputStream inputStream = clazz.getResourceAsStream(resource);
+        if (inputStream == null) {
+            inputStream = clazz.getResourceAsStream("/" + resource);
+        }
+        return getText(inputStream);
     }
 
     private static String getText(InputStream inputStream) {

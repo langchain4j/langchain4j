@@ -8,7 +8,38 @@ LangChain4j provides a few popular local embedding models packaged as maven depe
 They are powered by [ONNX runtime](https://onnxruntime.ai/docs/get-started/with-java.html)
 and are running in the same java process.
 
+By default, embedding is parallelized using all available CPU cores.
+Embedding using GPU is not supported yet.
+
 Each model is provided in 2 flavours: original and quantized (has a `-q` suffix in maven artifact name and `Quantized` in the class name).
+
+For example:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+    <version>0.32.0</version>
+</dependency>
+```
+```java
+EmbeddingModel embeddingModel = new AllMiniLmL6V2EmbeddingModel();
+Response<Embedding> response = embeddingModel.embed("test");
+Embedding embedding = response.content();
+```
+
+Or quantized:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
+    <version>0.32.0</version>
+</dependency>
+```
+```java
+EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
+Response<Embedding> response = embeddingModel.embed("test");
+Embedding embedding = response.content();
+```
 
 The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j-embeddings).
 
@@ -22,6 +53,23 @@ Information on how to convert models into ONNX format can be found [here](https:
 
 Many models already converted to ONNX format are available [here](https://huggingface.co/Xenova).
 
+Example of using custom embedding model:
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-embeddings</artifactId>
+    <version>0.32.0</version>
+</dependency>
+```
+```java
+String pathToModel = "/home/langchain4j/model.onnx";
+String pathToTokenizer = "/home/langchain4j/tokenizer.json";
+PoolingMode poolingMode = PoolingMode.MEAN;
+EmbeddingModel embeddingModel = new OnnxEmbeddingModel(pathToModel, pathToTokenizer, poolingMode);
+
+Response<Embedding> response = embeddingModel.embed("test");
+Embedding embedding = response.content();
+```
 
 ## Examples
 

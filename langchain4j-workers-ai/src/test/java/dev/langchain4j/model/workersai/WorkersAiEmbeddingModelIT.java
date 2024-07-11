@@ -14,7 +14,7 @@ import java.util.List;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
-class WorkerAIEmbeddingModelIT {
+class WorkersAiEmbeddingModelIT {
 
     static WorkersAiEmbeddingModel embeddingModel;
 
