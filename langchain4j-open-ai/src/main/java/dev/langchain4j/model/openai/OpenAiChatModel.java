@@ -116,6 +116,13 @@ public class OpenAiChatModel implements ChatLanguageModel, TokenCountEstimator {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
     }
 
+    /**
+     * Shuts down the used client
+     */
+    public void shutdown() {
+        client.shutdown();
+    }
+
     public String modelName() {
         return modelName;
     }
