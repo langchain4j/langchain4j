@@ -8,6 +8,9 @@ LangChain4j provides a few popular local embedding models packaged as maven depe
 They are powered by [ONNX runtime](https://onnxruntime.ai/docs/get-started/with-java.html)
 and are running in the same java process.
 
+By default, embedding is parallelized using all available CPU cores.
+Embedding using GPU is not supported yet.
+
 Each model is provided in 2 flavours: original and quantized (has a `-q` suffix in maven artifact name and `Quantized` in the class name).
 
 For example:
