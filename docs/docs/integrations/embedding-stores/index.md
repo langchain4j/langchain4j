@@ -4,11 +4,11 @@ hide_title: false
 sidebar_position: 0
 ---
 
-| Provider                                                                              | Storing Metadata | Filtering by Metadata | Removing Embeddings |
+| Embedding Store                                                                       | Storing Metadata | Filtering by Metadata | Removing Embeddings |
 |---------------------------------------------------------------------------------------|------------------|-----------------------|---------------------|
 | [In-memory](/integrations/embedding-stores/in-memory)                                 | ✅                | ✅                     | ✅                   |
-| [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                | ✅                      | ✅                    |
-| [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                | ✅                        |                     |
+| [Astra DB](/integrations/embedding-stores/astra-db)                                   | ✅                |                       |                     |
+| [Azure AI Search](/integrations/embedding-stores/azure-ai-search)                     | ✅                | ✅                     |                     |
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                       |                     |
 | [Azure CosmosDB NoSQL](/integrations/embedding-stores/azure-cosmos-nosql)             | ✅                |                       |                     |
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                       |                     |
