@@ -88,7 +88,7 @@ class CohereEmbeddingModelIT {
 
         List<TextSegment> segments = new ArrayList<>();
         for (int i = 0; i < 97; i++) {
-            segments.add(TextSegment.from("text segment " + i));
+            segments.add(TextSegment.from("text"));
         }
 
         // when
@@ -96,6 +96,10 @@ class CohereEmbeddingModelIT {
 
         // then
         assertThat(response.content()).hasSize(97);
+
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(97);
+        assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(97);
 
     }
 }
