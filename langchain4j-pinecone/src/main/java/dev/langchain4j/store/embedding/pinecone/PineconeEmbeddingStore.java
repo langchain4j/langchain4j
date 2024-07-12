@@ -68,7 +68,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
 
         // create serverless index if not exist
         if (Boolean.TRUE.equals(createIndex) && !isIndexExist(client, index)) {
-            indexParam.createIndex(client);
+            indexParam.createIndex(client, index);
         }
         this.index = client.getIndexConnection(index);
     }

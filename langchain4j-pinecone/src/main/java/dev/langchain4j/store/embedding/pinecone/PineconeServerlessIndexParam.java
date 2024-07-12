@@ -7,23 +7,19 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 public class PineconeServerlessIndexParam implements PineconeIndexParam {
 
-    private final String index;
     private final Integer dimension;
     private final String cloud;
     private final String region;
     private final String metrics;
 
-    PineconeServerlessIndexParam(String index,
-                                 Integer dimension,
+    PineconeServerlessIndexParam(Integer dimension,
                                  String cloud,
                                  String region,
                                  String metrics) {
-        index = ensureNotNull(index, "index");
         cloud = ensureNotNull(cloud, "cloud");
         region = ensureNotNull(region, "region");
         ensureNotNull(dimension, "dimension");
 
-        this.index = index;
         this.dimension = dimension;
         this.cloud = cloud;
         this.region = region;
@@ -31,47 +27,22 @@ public class PineconeServerlessIndexParam implements PineconeIndexParam {
     }
 
     @Override
-    public void createIndex(Pinecone pinecone) {
+    public void createIndex(Pinecone pinecone, String index) {
         ensureNotNull(pinecone, "pinecone");
+        ensureNotNull(index, "index");
         pinecone.createServerlessIndex(index, metrics, dimension, cloud, region);
     }
 
-    public String getIndex() {
-        return index;
-    }
-
-    public Integer getDimension() {
-        return dimension;
-    }
-
-    public String getCloud() {
-        return cloud;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public String getMetrics() {
-        return metrics;
-    }
-
-    public Builder builder() {
+    public static Builder builder() {
         return new Builder();
     }
 
     public static class Builder {
 
-        private String index;
         private Integer dimension;
         private String cloud;
         private String region;
         private String metrics;
-
-        public Builder index(String index) {
-            this.index = index;
-            return this;
-        }
 
         public Builder dimension(Integer dimension) {
             this.dimension = dimension;
@@ -94,7 +65,7 @@ public class PineconeServerlessIndexParam implements PineconeIndexParam {
         }
 
         public PineconeServerlessIndexParam build() {
-            return new PineconeServerlessIndexParam(index, dimension, cloud, region, metrics);
+            return new PineconeServerlessIndexParam(dimension, cloud, region, metrics);
         }
     }
 }

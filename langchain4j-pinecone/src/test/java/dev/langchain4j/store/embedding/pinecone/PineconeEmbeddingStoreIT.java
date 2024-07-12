@@ -17,12 +17,14 @@ class PineconeEmbeddingStoreIT extends EmbeddingStoreIT {
 
     EmbeddingStore<TextSegment> embeddingStore = PineconeEmbeddingStore.builder()
             .apiKey(System.getenv("PINECONE_API_KEY"))
-            .cloud("AWS")
-            .region("us-east-1")
             .index("test")
             .nameSpace(randomUUID())
-            .dimension(embeddingModel.dimension())
             .createIndex(true)
+            .indexParam(PineconeServerlessIndexParam.builder()
+                    .cloud("AWS")
+                    .region("us-east-1")
+                    .dimension(embeddingModel.dimension())
+                    .build())
             .build();
 
     @Override
