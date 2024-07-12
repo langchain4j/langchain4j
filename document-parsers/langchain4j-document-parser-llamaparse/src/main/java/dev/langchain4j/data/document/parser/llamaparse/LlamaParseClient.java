@@ -35,9 +35,9 @@ public class LlamaParseClient {
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
                 .callTimeout(getOrDefault(timeout, ofSeconds(30)))
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout);
+                .connectTimeout(getOrDefault(timeout, ofSeconds(30)))
+                .readTimeout(getOrDefault(timeout, ofSeconds(30)))
+                .writeTimeout(getOrDefault(timeout, ofSeconds(30)));
 
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
