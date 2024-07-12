@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.toList;
@@ -12,6 +13,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.filter.Filter;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +26,8 @@ import java.util.Map;
 public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final ChromaClient chromaClient;
-    private final String collectionId;
+    private String collectionId;
+    private final String collectionName;
 
     /**
      * Initializes a new instance of ChromaEmbeddingStore with the specified parameters.
@@ -34,13 +37,15 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
      */
     public ChromaEmbeddingStore(String baseUrl, String collectionName, Duration timeout) {
-        collectionName = getOrDefault(collectionName, "default");
+        this.collectionName = getOrDefault(collectionName, "default");
 
         this.chromaClient = new ChromaClient(baseUrl, getOrDefault(timeout, ofSeconds(5)));
 
-        Collection collection = chromaClient.collection(collectionName);
+        Collection collection = chromaClient.collection(this.collectionName);
         if (collection == null) {
-            Collection createdCollection = chromaClient.createCollection(new CreateCollectionRequest(collectionName));
+            Collection createdCollection = chromaClient.createCollection(
+                new CreateCollectionRequest(this.collectionName)
+            );
             collectionId = createdCollection.id();
         } else {
             collectionId = collection.id();
@@ -142,7 +147,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             .metadatas(
                 textSegments == null
                     ? null
-                    : textSegments.stream().map(TextSegment::metadata).map(Metadata::asMap).collect(toList())
+                    : textSegments.stream().map(TextSegment::metadata).map(Metadata::toMap).collect(toList())
             )
             .documents(textSegments == null ? null : textSegments.stream().map(TextSegment::text).collect(toList()))
             .build();
@@ -172,6 +177,31 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         chromaClient.deleteEmbeddings(collectionId, request);
     }
 
+    @Override
+    public void removeAll(Filter filter) {
+        ensureNotNull(filter, "filter");
+        DeleteEmbeddingsRequest request = DeleteEmbeddingsRequest
+            .builder()
+            .where(ChromaMetadataFilterMapper.map(filter))
+            .build();
+        chromaClient.deleteEmbeddings(collectionId, request);
+    }
+
+    @Override
+    public void removeAll() {
+        //        DeleteEmbeddingsRequest request = DeleteEmbeddingsRequest
+        //            .builder()
+        //            //            .where(ChromaMetadataFilterMapper.map(new IsNotEqualTo("a", "a")))
+        //            .build();
+        //        chromaClient.deleteEmbeddings(collectionId, request);
+        chromaClient.deleteCollection(collectionName);
+
+        // TODO centralize it
+
+        Collection createdCollection = chromaClient.createCollection(new CreateCollectionRequest(this.collectionName));
+        collectionId = createdCollection.id();
+    }
+
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
         List<EmbeddingMatch<TextSegment>> embeddingMatches = new ArrayList<>();
 
@@ -199,7 +229,7 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private static TextSegment toTextSegment(QueryResponse queryResponse, int i) {
         String text = queryResponse.documents().get(0).get(i);
-        Map<String, String> metadata = queryResponse.metadatas().get(0).get(i);
+        Map<String, Object> metadata = queryResponse.metadatas().get(0).get(i);
         return text == null ? null : TextSegment.from(text, metadata == null ? new Metadata() : new Metadata(metadata));
     }
 }

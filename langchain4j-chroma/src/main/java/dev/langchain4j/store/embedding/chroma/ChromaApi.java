@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.List;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Headers;
 import retrofit2.http.POST;
@@ -31,4 +32,8 @@ interface ChromaApi {
         @Path("collection_id") String collectionId,
         @Body DeleteEmbeddingsRequest embedding
     );
+
+    @DELETE("/api/v1/collections/{collection_name}")
+    @Headers({ "Content-Type: application/json" })
+    Call<Collection> deleteCollection(@Path("collection_name") String collectionName);
 }

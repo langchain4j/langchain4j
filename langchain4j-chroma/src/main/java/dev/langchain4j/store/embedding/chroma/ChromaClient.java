@@ -105,6 +105,14 @@ class ChromaClient {
         }
     }
 
+    void deleteCollection(String collectionName) {
+        try {
+            chromaApi.deleteCollection(collectionName).execute();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static RuntimeException toException(Response<?> response) throws IOException {
         int code = response.code();
         String body = response.errorBody().string();
