@@ -21,8 +21,6 @@ import java.util.*;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.metadataToStruct;
 import static dev.langchain4j.store.embedding.pinecone.PineconeHelper.structToMetadata;
 import static io.pinecone.commons.IndexInterface.buildUpsertVectorWithUnsignedIndices;
@@ -48,24 +46,20 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
      * Creates an instance of PineconeEmbeddingStore.
      *
      * @param apiKey          The Pinecone API key.
-     * @param cloud           The cloud (e.g., "AWS").
-     * @param region          The region (e.g., "us-east-1").
      * @param index           The name of the index (e.g., "test").
      * @param nameSpace       (Optional) Namespace. If not provided, "default" will be used.
      * @param metadataTextKey (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
-     * @param dimension       (Optional) The dimension of embedding aims to create index. If not provided, will not create index
      * @param createIndex     (Optional) Whether to create index or not. If not provided "false" will be used
-     * @param environment     (Deprecated) Please use cloud and region
-     * @param projectId       (Deprecated) Please use cloud and region
+     * @param indexParam      (Optional) Parameters to create Index, see {@link PineconeServerlessIndexParam} and {@link PineconePodIndexParam}
+     * @param environment     (Deprecated) Please use indexParam.
+     * @param projectId       (Deprecated) Please use indexParam.
      */
     public PineconeEmbeddingStore(String apiKey,
-                                  String cloud,
-                                  String region,
                                   String index,
                                   String nameSpace,
                                   String metadataTextKey,
-                                  Integer dimension,
                                   Boolean createIndex,
+                                  PineconeIndexParam indexParam,
                                   String environment,
                                   String projectId) {
         Pinecone client = new Pinecone.Builder(apiKey).build();
@@ -73,12 +67,8 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.metadataTextKey = metadataTextKey == null ? DEFAULT_METADATA_TEXT_KEY : metadataTextKey;
 
         // create serverless index if not exist
-        if (Boolean.TRUE.equals(createIndex) && index != null && !isIndexExist(client, index)) {
-            index = ensureNotBlank(index, "index");
-            ensureNotNull(dimension, "dimension");
-            cloud = ensureNotBlank(cloud, "cloud");
-            region = ensureNotBlank(region, "region");
-            client.createServerlessIndex(index, "cosine", dimension, cloud, region);
+        if (Boolean.TRUE.equals(createIndex) && !isIndexExist(client, index)) {
+            indexParam.createIndex(client);
         }
         this.index = client.getIndexConnection(index);
     }
@@ -213,13 +203,11 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
     public static class Builder {
 
         private String apiKey;
-        private String cloud;
-        private String region;
         private String index;
         private String nameSpace;
         private String metadataTextKey;
-        private Integer dimension;
         private Boolean createIndex;
+        private PineconeIndexParam indexParam;
         @Deprecated
         private String environment;
         @Deprecated
@@ -230,22 +218,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
          */
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
-            return this;
-        }
-
-        /**
-         * @param cloud The cloud (e.g., "AWS").
-         */
-        public Builder cloud(String cloud) {
-            this.cloud = cloud;
-            return this;
-        }
-
-        /**
-         * @param region The region (e.g. "us-east-1")
-         */
-        public Builder region(String region) {
-            this.region = region;
             return this;
         }
 
@@ -274,14 +246,6 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * @param dimension (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
-         */
-        public Builder dimension(Integer dimension) {
-            this.dimension = dimension;
-            return this;
-        }
-
-        /**
          * @param createIndex (Optional) The key to find the text in the metadata. If not provided, "text_segment" will be used.
          */
         public Builder createIndex(Boolean createIndex) {
@@ -289,10 +253,14 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder indexParam(PineconeIndexParam indexParam) {
+            this.indexParam = indexParam;
+            return this;
+        }
+
         /**
          * @param environment The environment (e.g., "northamerica-northeast1-gcp").
          */
-        @Deprecated
         public Builder environment(String environment) {
             this.environment = environment;
             return this;
@@ -309,7 +277,7 @@ public class PineconeEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         public PineconeEmbeddingStore build() {
-            return new PineconeEmbeddingStore(apiKey, cloud, region, index, nameSpace, metadataTextKey, dimension, createIndex, environment, projectId);
+            return new PineconeEmbeddingStore(apiKey, index, nameSpace, metadataTextKey, createIndex, indexParam, environment, projectId);
         }
     }
 }
