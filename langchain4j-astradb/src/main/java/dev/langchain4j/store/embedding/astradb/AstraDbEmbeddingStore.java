@@ -70,11 +70,11 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Initialization of the store with an EXISTING collection.
      *
-     * @param client
+     * @param collection
      *      astra db collection client
      */
-    public AstraDbEmbeddingStore(@NonNull Collection<Document> client) {
-        this(client, 20, 8);
+    public AstraDbEmbeddingStore(@NonNull Collection<Document> collection) {
+        this(collection, 20, 8);
     }
 
     /**

@@ -1,10 +1,16 @@
 package dev.langchain4j.store.embedding.filter;
 
 import dev.langchain4j.data.document.Metadata;
-import dev.langchain4j.store.embedding.filter.comparison.*;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThanOrEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsIn;
+import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
+import dev.langchain4j.store.embedding.filter.comparison.IsLessThanOrEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
+import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
