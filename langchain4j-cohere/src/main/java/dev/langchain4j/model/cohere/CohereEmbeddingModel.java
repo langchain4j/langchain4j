@@ -103,7 +103,7 @@ public class CohereEmbeddingModel extends DimensionAwareEmbeddingModel {
                 .collect(toList());
     }
 
-    private static TokenUsage getTokenUsage(EmbedResponse response) {
+    private static Integer getTokenUsage(EmbedResponse response) {
         if (response.getMeta() != null
                 && response.getMeta().getBilledUnits() != null
                 && response.getMeta().getBilledUnits().getInputTokens() != null) {
