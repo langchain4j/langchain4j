@@ -3,10 +3,7 @@ package dev.langchain4j.model.azure;
 import com.azure.ai.openai.OpenAIAsyncClient;
 import com.azure.ai.openai.OpenAIClient;
 import com.azure.ai.openai.OpenAIServiceVersion;
-import com.azure.ai.openai.models.ChatRequestMessage;
-import com.azure.ai.openai.models.ChatRequestUserMessage;
-import com.azure.ai.openai.models.CompletionsFinishReason;
-import com.azure.ai.openai.models.FunctionDefinition;
+import com.azure.ai.openai.models.*;
 import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
@@ -20,6 +17,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 class InternalAzureOpenAiHelperTest {
@@ -33,7 +31,7 @@ class InternalAzureOpenAiHelperTest {
         Integer maxRetries = 5;
         boolean logRequestsAndResponses = true;
 
-        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses);
+        OpenAIClient client = InternalAzureOpenAiHelper.setupSyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null);
 
         assertThat(client).isNotNull();
     }
@@ -47,7 +45,7 @@ class InternalAzureOpenAiHelperTest {
         Integer maxRetries = 5;
         boolean logRequestsAndResponses = true;
 
-        OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses);
+        OpenAIAsyncClient client = InternalAzureOpenAiHelper.setupAsyncClient(endpoint, serviceVersion, apiKey, timeout, maxRetries, null, logRequestsAndResponses, null);
 
         assertThat(client).isNotNull();
     }
@@ -83,7 +81,7 @@ class InternalAzureOpenAiHelperTest {
     }
 
     @Test
-    void toFunctionsShouldReturnCorrectFunctions() {
+    void toToolDefinitionsShouldReturnCorrectToolDefinition() {
         Collection<ToolSpecification> toolSpecifications = new ArrayList<>();
         toolSpecifications.add(ToolSpecification.builder()
                 .name("test-tool")
@@ -91,10 +89,11 @@ class InternalAzureOpenAiHelperTest {
                 .parameters(ToolParameters.builder().build())
                 .build());
 
-        List<FunctionDefinition> functions = InternalAzureOpenAiHelper.toFunctions(toolSpecifications);
+        List<ChatCompletionsToolDefinition> tools = InternalAzureOpenAiHelper.toToolDefinitions(toolSpecifications);
 
-        assertThat(functions).hasSize(toolSpecifications.size());
-        assertThat(functions.get(0).getName()).isEqualTo(toolSpecifications.iterator().next().name());
+        assertEquals(toolSpecifications.size(), tools.size());
+        assertInstanceOf(ChatCompletionsFunctionToolDefinition.class, tools.get(0));
+        assertEquals(toolSpecifications.iterator().next().name(), ((ChatCompletionsFunctionToolDefinition) tools.get(0)).getFunction().getName());
     }
 
     @Test

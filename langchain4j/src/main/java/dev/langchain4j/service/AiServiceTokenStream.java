@@ -5,11 +5,13 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.emptyList;
 
 public class AiServiceTokenStream implements TokenStream {
 
@@ -81,6 +83,7 @@ public class AiServiceTokenStream implements TokenStream {
                     tokenHandler,
                     completionHandler,
                     errorHandler,
+                    initTemporaryMemory(context, messagesToSend),
                     new TokenUsage()
             );
 
@@ -88,6 +91,14 @@ public class AiServiceTokenStream implements TokenStream {
                 context.streamingChatModel.generate(messagesToSend, context.toolSpecifications, handler);
             } else {
                 context.streamingChatModel.generate(messagesToSend, handler);
+            }
+        }
+
+        private List<ChatMessage> initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
+            if (context.hasChatMemory()) {
+                return emptyList();
+            } else {
+                return new ArrayList<>(messagesToSend);
             }
         }
     }

@@ -1,36 +1,36 @@
 package dev.langchain4j.model.zhipu.chat;
 
-import com.google.gson.annotations.SerializedName;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
 import static java.util.Arrays.asList;
 import static java.util.Collections.unmodifiableList;
 
 
-@ToString
-@EqualsAndHashCode
+@Data
+@JsonInclude(NON_NULL)
+@JsonNaming(SnakeCaseStrategy.class)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public final class ChatCompletionRequest {
-    private final String model;
-    private final List<Message> messages;
-    @SerializedName("request_id")
-    private final String requestId;
-    @SerializedName("do_sample")
-    private final String doSample;
-    private final Boolean stream;
-    private final Double temperature;
-    @SerializedName("top_p")
-    private final Double topP;
-    @SerializedName("max_tokens")
-    private final Integer maxTokens;
-    private final List<String> stop;
-    private final List<Tool> tools;
-    @SerializedName("tool_choice")
-    private final Object toolChoice;
+    private String model;
+    private List<Message> messages;
+    private String requestId;
+    private String doSample;
+    private Boolean stream;
+    private Double temperature;
+    private Double topP;
+    private Integer maxTokens;
+    private List<String> stop;
+    private List<Tool> tools;
+    private Object toolChoice;
 
     private ChatCompletionRequest(Builder builder) {
         this.model = builder.model;
@@ -48,42 +48,6 @@ public final class ChatCompletionRequest {
 
     public static Builder builder() {
         return new Builder();
-    }
-
-    public String model() {
-        return model;
-    }
-
-    public List<Message> messages() {
-        return messages;
-    }
-
-    public Double temperature() {
-        return temperature;
-    }
-
-    public Double topP() {
-        return topP;
-    }
-
-    public Boolean stream() {
-        return stream;
-    }
-
-    public List<String> stop() {
-        return stop;
-    }
-
-    public Integer maxTokens() {
-        return maxTokens;
-    }
-
-    public List<Tool> tools() {
-        return tools;
-    }
-
-    public Object toolChoice() {
-        return toolChoice;
     }
 
     public static final class Builder {

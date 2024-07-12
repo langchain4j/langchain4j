@@ -4,7 +4,7 @@ public class LongOutputParser implements OutputParser<Long> {
 
     @Override
     public Long parse(String string) {
-        return Long.parseLong(string);
+        return Long.parseLong(string.trim());
     }
 
     @Override

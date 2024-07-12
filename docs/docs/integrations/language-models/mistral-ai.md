@@ -1,11 +1,11 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # MistralAI
 [MistralAI Documentation](https://docs.mistral.ai/)
 
-### Project setup
+## Project setup
 
 To install langchain4j to your project, add the following dependency:
 
@@ -16,23 +16,23 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>{your-version}</version> <!-- Specify your version here -->
+    <version>0.32.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>{your-version}</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:{your-version}'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:{your-version}'
+implementation 'dev.langchain4j:langchain4j:0.32.0'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:0.32.0'
 ```
-#### API Key setup
+### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
 
 ```java
@@ -47,16 +47,21 @@ SET MISTRAL_AI_API_KEY=your-api-key #For Windows OS
 ```
 More details on how to get your MistralAI API key can be found [here](https://docs.mistral.ai/#api-access)
 
-#### Model Selection
+### Model Selection
 You can use `MistralAiChatModelName.class` enum class to found appropriate model names for your use case.
 MistralAI updated a new selection and classification of models according to performance and cost trade-offs.
 
-Here a list of available models:
-- open-mistral-7b (aka mistral-tiny-2312)
-- open-mixtral-8x7b (aka mistral-small-2312)
-- mistral-small-latest (aka mistral-small-2402)
-- mistral-medium-latest (aka mistral-medium-2312)
-- mistral-large-latest (aka mistral-large-2402)
+| Model  name                  | Deployment or available from                                                                                                                  | Description                                                                                                                                                                                                                                        |
+|------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| open-mistral-7b              | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>The first dense model released by Mistral AI, <br/> perfect for experimentation, <br/> customization, and quick iteration. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MISTRAL_7B`                  |
+| open-mixtral-8x7b            | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>Ideal to handle multi-languages operations, <br/> code generationand fine-tuned.<br/> Excellent cost/performance trade-offs. <br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MIXTRAL_8x7B`                   |
+| open-mixtral-8x22b           | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).<br/>- Hugging Face.<br/>- Self-hosted (On-premise, IaaS, docker, local). | **OpenSource**<br/>It has all Mixtral-8x7B capabilities plus strong maths <br/> and coding natively capable of function calling <br/><br/>Max tokens 64K.<br/><br/>Java Enum<br/>`MistralAiChatModelName.OPEN_MIXTRAL_8X22B`                                 |
+| mistral-small-latest         | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Suitable for simple tasks that one can do in bulk <br/>(Classification, Customer Support, or Text Generation).<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_SMALL_LATEST`                               |
+| mistral-medium-latest        | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Ideal for intermediate tasks that require moderate <br/> reasoning (Data extraction, Summarizing, <br/>Writing emails, Writing descriptions.<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_MEDIUM_LATEST`              |
+| mistral-large-latest         | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Ideal for complex tasks that require large reasoning <br/> capabilities or are highly specialized <br/>(Text Generation, Code Generation, RAG, or Agents).<br/><br/>Max tokens 32K<br/><br/>Java Enum<br/>`MistralAiChatModelName.MISTRAL_LARGE_LATEST` |
+| mistral-embed                | - Mistral AI La Plateforme.<br/>- Cloud platforms (Azure, AWS, GCP).                                                                          | **Commercial**<br/>Converts text into numerical vectors of <br/> embeddings in 1024 dimensions. <br/>Embedding models enable retrieval and RAG applications.<br/><br/>Max tokens 8K<br/><br/>Java Enum<br/>`MistralAiEmbeddingModelName.MISTRAL_EMBED`                     |
+
+`@Deprecated` models:
 - mistral-tiny (`@Deprecated`)
 - mistral-small (`@Deprecated`)
 - mistral-medium (`@Deprecated`)
@@ -145,6 +150,18 @@ In [Set Model Parameters](/tutorials/model-parameters) you will learn how to set
 ### Function Calling
 Function calling allows Mistral chat models ([synchronous](#synchronous) and [streaming](#streaming)) to connect to external tools. For example, you can call a `Tool` to get the payment transaction status as shown in the Mistral AI function calling [tutorial](https://docs.mistral.ai/guides/function-calling/).
 
+<details>
+<summary>What are the supported mistral models?</summary>
+
+:::note
+Currently, function calling is available for the following models:
+
+- Mistral Small `MistralAiChatModelName.MISTRAL_SMALL_LATEST`
+- Mistral Large `MistralAiChatModelName.MISTRAL_LARGE_LATEST`
+- Mixtral 8x22B `MistralAiChatModelName.OPEN_MIXTRAL_8X22B`
+:::
+</details>
+
 #### 1. Define a `Tool` class and how get the payment data
 
 Let's assume you have a dataset of payment transaction like this. In real applications you should inject a database source or REST API client to get the data.
@@ -190,7 +207,7 @@ private String getPaymentData(String transactionId, String data) {
     }
 }
 ```
-It uses a `@Tool` annotation to define the function description and `@P` annotation to define the parameter description of the package `dev.langchain4j.agent.tool.*`.
+It uses a `@Tool` annotation to define the function description and `@P` annotation to define the parameter description of the package `dev.langchain4j.agent.tool.*`. More info [here](/tutorials/tools#high-level-tool-api)
 
 #### 2. Define an interface as an `agent` to send chat messages.
 
@@ -221,7 +238,7 @@ public class PaymentDataAssistantApp {
 
     ChatLanguageModel mistralAiModel = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
-            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST)
+            .modelName(MistralAiChatModelName.MISTRAL_LARGE_LATEST) // Also you can use MistralAiChatModelName.OPEN_MIXTRAL_8X22B as open source model
             .logRequests(true)
             .logResponses(true)
             .build();
@@ -250,8 +267,109 @@ and expect an answer like this:
 ```shell
 The status of transaction T1005 is Pending. The payment date is October 8, 2021.
 ```
+### JSON mode
+You can also use the JSON mode to get the response in JSON format. To do this, you need to set the `responseFormat` parameter to `json_object` or the java enum `MistralAiResponseFormatType.JSON_OBJECT`  in the `MistralAiChatModel` builder OR `MistralAiStreamingChatModel` builder.
+
+Syncronous example:
+
+```java
+ChatLanguageModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
+                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+                .build();
+
+String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+String json = model.generate(userMessage);
+
+System.out.println(json); // {"transactionId":"T123","status":"paid"}
+```
+
+Streaming example:
+
+```java
+StreamingChatLanguageModel streamingModel = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY")) // Please use your own Mistral AI API key
+                .responseFormat(MistralAiResponseFormatType.JSON_OBJECT)
+                .build();
+
+String userMessage = "Return JSON with two fields: transactionId and status with the values T123 and paid.";
+
+CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+streamingModel.generate(userMessage, new StreamingResponseHandler() {
+    @Override
+    public void onNext(String token) {
+        System.out.print(token);
+    }
+
+    @Override
+    public void onComplete(Response<AiMessage> response) {
+        futureResponse.complete(response);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        futureResponse.completeExceptionally(error);
+    }
+});
+
+String json = futureResponse.get().content().text();
+
+System.out.println(json); // {"transactionId":"T123","status":"paid"}
+```                
+
+### Guardrailing
+Guardrails are a way to limit the behavior of the model to prevent it from generating harmful or unwanted content. You can set optionally `safePrompt` parameter in the `MistralAiChatModel` builder or `MistralAiStreamingChatModel` builder.
+
+Syncronous example:
+
+```java
+ChatLanguageModel model = MistralAiChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .safePrompt(true)
+                .build();
+
+String userMessage = "What is the best French cheese?";
+String response = model.generate(userMessage);
+```
+
+Streaming example:
+
+```java
+StreamingChatLanguageModel streamingModel = MistralAiStreamingChatModel.builder()
+                .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+                .safePrompt(true)
+                .build();
+
+String userMessage = "What is the best French cheese?";
+
+CompletableFuture<Response<AiMessage>> futureResponse = new CompletableFuture<>();
+
+streamingModel.generate(userMessage, new StreamingResponseHandler() {
+    @Override
+    public void onNext(String token) {
+        System.out.print(token);
+    }
+
+    @Override
+    public void onComplete(Response<AiMessage> response) {
+        futureResponse.complete(response);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        futureResponse.completeExceptionally(error);
+    }
+});
+
+futureResponse.join();
+```
+Toggling the safe prompt will prepend your messages with the following `@SystemMessage`:
+
+```plaintext
+Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
+```
 
 
-### More examples
-If you want to check more MistralAI examples, you can find them in the [langchain4j-examples/mistral-ai-examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples) project.
-
+## Examples
+- [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

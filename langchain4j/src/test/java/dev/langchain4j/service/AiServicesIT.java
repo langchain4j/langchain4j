@@ -8,6 +8,7 @@ import dev.langchain4j.model.input.structured.StructuredPrompt;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.model.openai.OpenAiModerationModel;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.output.structured.Description;
 import lombok.Builder;
 import lombok.ToString;
@@ -152,9 +153,10 @@ public class AiServicesIT {
         POSITIVE, NEUTRAL, NEGATIVE
     }
 
+
     interface SentimentAnalyzer {
 
-        @UserMessage("Analyze sentiment of {{it}}")
+        @UserMessage("Analyze sentiment of:\n|||{{it}}|||")
         Sentiment analyzeSentimentOf(String text);
     }
 
@@ -171,8 +173,49 @@ public class AiServicesIT {
         assertThat(sentiment).isEqualTo(POSITIVE);
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Analyze sentiment of " + customerReview + "\n" +
-                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")));
+                "Analyze sentiment of:\n|||" + customerReview + "|||\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "POSITIVE\n" +
+                        "NEUTRAL\n" +
+                        "NEGATIVE")));
+    }
+
+    public enum Weather {
+        @Description("A clear day with bright sunlight and few or no clouds")
+        SUNNY,
+        @Description("The sky is covered with clouds with no rain, often creating a gray and overcast appearance")
+        CLOUDY,
+        @Description("Precipitation in the form of rain, with cloudy skies and wet conditions")
+        RAINY,
+        @Description("Snowfall occurs, covering the ground in white and creating cold, wintry conditions")
+        SNOWY
+    }
+
+    interface WeatherForecastAnalyzer {
+
+        @UserMessage("Analyze weather forecast for:\n|||{{it}}|||")
+        Weather analyzeWeatherForecast(String forecast);
+    }
+
+    @Test
+    void test_extract_enum_with_description() {
+
+        WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatLanguageModel);
+
+        String weatherForecast = "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
+
+        Weather weather = weatherForecastAnalyzer.analyzeWeatherForecast(weatherForecast);
+        System.out.println(weather);
+
+        assertThat(weather).isEqualTo(Weather.RAINY);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze weather forecast for:\n" +
+                "|||" + weatherForecast + "|||\n" +
+                "You must answer strictly with one of these enums:\n" +
+                "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
+                "CLOUDY - The sky is covered with clouds with no rain, often creating a gray and overcast appearance\n" +
+                "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
+                "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions")));
     }
 
 
@@ -299,6 +342,12 @@ public class AiServicesIT {
         @UserMessage(fromResource = "chefs-prompt-based-on-ingredients.txt")
         Recipe createRecipeFromUsingResource(String... ingredients);
 
+        @UserMessage(fromResource = "chefs-prompt-based-on-ingredients-in-root.txt")
+        Recipe createRecipeFromUsingResourceInRoot(String... ingredients);
+
+        @UserMessage(fromResource = "subdirectory/chefs-prompt-based-on-ingredients-in-subdirectory.txt")
+        Recipe createRecipeFromUsingResourceInSubdirectory(String... ingredients);
+
         Recipe createRecipeFrom(CreateRecipePrompt prompt);
 
         @SystemMessage("You are very {{character}} chef")
@@ -337,6 +386,52 @@ public class AiServicesIT {
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")));
+    }
+
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource_in_root() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResourceInRoot("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")));
+    }
+
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource_in_subdirectory() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResourceInSubdirectory("cucumber", "tomato", "feta", "onion", "olives");
         System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();
@@ -609,5 +704,92 @@ public class AiServicesIT {
 
         verify(chatLanguageModel).generate(singletonList(userMessage(message)));
         verify(moderationModel).moderate(singletonList(userMessage(message)));
+    }
+
+
+    interface AssistantReturningResult {
+
+        Result<String> chat(String userMessage);
+    }
+
+    @Test
+    void should_return_result() {
+
+        // given
+        AssistantReturningResult assistant = AiServices.create(AssistantReturningResult.class, chatLanguageModel);
+
+        String userMessage = "What is the capital of Germany?";
+
+        // when
+        Result<String> result = assistant.chat(userMessage);
+
+        // then
+        assertThat(result.content()).containsIgnoringCase("Berlin");
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage).isNotNull();
+        assertThat(tokenUsage.inputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.outputTokenCount()).isGreaterThan(0);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        assertThat(result.sources()).isNull();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(userMessage)));
+    }
+
+
+    interface AssistantReturningResultWithPojo {
+
+        Result<Booking> answer(String query);
+    }
+
+    static class Booking {
+
+        String userId;
+        String bookingId;
+    }
+
+    @Test
+    void should_use_content_retriever_and_return_sources_inside_result_with_pojo() {
+
+        // given
+        AssistantReturningResultWithPojo assistant = AiServices.create(AssistantReturningResultWithPojo.class, chatLanguageModel);
+
+        // when
+        Result<Booking> result = assistant.answer("Give me an example of a booking");
+
+        // then
+        Booking booking = result.content();
+        assertThat(booking.userId).isNotBlank();
+        assertThat(booking.bookingId).isNotBlank();
+
+        assertThat(result.tokenUsage()).isNotNull();
+        assertThat(result.sources()).isNull();
+
+        verify(chatLanguageModel).generate(singletonList(
+                userMessage("Give me an example of a booking\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"userId\": (type: string),\n" +
+                        "\"bookingId\": (type: string)\n" +
+                        "}")
+        ));
+    }
+
+
+    interface InvalidAssistantWithResult {
+
+        Result answerWithNoGenericType(String query);
+    }
+
+    @Test
+    void should_throw_exception_when_retrieve_sources_and_generic_type_is_not_set() {
+
+        // when-then
+        assertThatThrownBy(() ->
+                AiServices.create(InvalidAssistantWithResult.class, chatLanguageModel))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
+                        "parameterized with a type, for example: Result<String> or Result<MyCustomPojo>");
     }
 }

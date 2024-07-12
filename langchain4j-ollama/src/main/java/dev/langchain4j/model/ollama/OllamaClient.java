@@ -6,6 +6,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -29,6 +30,7 @@ import static com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.lang.Boolean.TRUE;
 
+@Slf4j
 class OllamaClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
@@ -36,16 +38,26 @@ class OllamaClient {
             .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
+    private final boolean logStreamingResponses;
 
     @Builder
     public OllamaClient(String baseUrl,
                         Duration timeout,
+                        Boolean logRequests, Boolean logResponses, Boolean logStreamingResponses,
                         Map<String, String> customHeaders) {
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
+        if (logRequests != null && logRequests) {
+            okHttpClientBuilder.addInterceptor(new OllamaRequestLoggingInterceptor());
+        }
+        if (logResponses != null && logResponses) {
+            okHttpClientBuilder.addInterceptor(new OllamaResponseLoggingInterceptor());
+        }
+        this.logStreamingResponses = logStreamingResponses != null && logStreamingResponses;
+
         // add custom header interceptor
         if (customHeaders != null && !customHeaders.isEmpty()) {
             okHttpClientBuilder.addInterceptor(new GenericHeadersInterceptor(customHeaders));
@@ -102,8 +114,12 @@ class OllamaClient {
                         byte[] bytes = new byte[1024];
                         int len = inputStream.read(bytes);
                         String partialResponse = new String(bytes, 0, len);
+                      
+                        if (logStreamingResponses) {
+                            log.debug("Streaming partial response: {}", partialResponse);
+                        }
+                      
                         CompletionResponse completionResponse = OBJECT_MAPPER.readValue(partialResponse, CompletionResponse.class);
-
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
 
@@ -141,8 +157,12 @@ class OllamaClient {
                         StringBuilder contentBuilder = new StringBuilder();
                         while (true) {
                             String partialResponse = reader.readLine();
+                          
+                            if (logStreamingResponses) {
+                                log.debug("Streaming partial response: {}", partialResponse);
+                            }
+                          
                             ChatResponse chatResponse = OBJECT_MAPPER.readValue(partialResponse, ChatResponse.class);
-
                             String content = chatResponse.getMessage().getContent();
                             contentBuilder.append(content);
                             handler.onNext(content);

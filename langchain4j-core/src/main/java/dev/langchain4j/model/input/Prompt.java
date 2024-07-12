@@ -46,6 +46,14 @@ public class Prompt {
     }
 
     /**
+     * Convert this prompt to a UserMessage with specified userName.
+     * @return the UserMessage.
+     */
+    public UserMessage toUserMessage(String userName) {
+        return userMessage(userName, text);
+    }
+
+    /**
      * Convert this prompt to a UserMessage.
      * @return the UserMessage.
      */

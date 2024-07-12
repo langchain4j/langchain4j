@@ -25,6 +25,8 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
             .baseUrl(ollama.getEndpoint())
             .modelName(TINY_DOLPHIN_MODEL)
             .temperature(0.0)
+            .logRequests(true)
+            .logResponses(true)
             .build();
 
     @Test

@@ -4,6 +4,8 @@ import com.azure.ai.openai.models.ImageGenerationResponseFormat;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.model.output.Response;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,6 +15,7 @@ import java.nio.file.Path;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 public class AzureOpenAiImageModelIT {
 
@@ -24,7 +27,7 @@ public class AzureOpenAiImageModelIT {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("dall-e-3")
+                .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(true)
                 .build();
 
@@ -48,7 +51,7 @@ public class AzureOpenAiImageModelIT {
         AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
                 .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-                .deploymentName("dall-e-3")
+                .deploymentName("dall-e-3-30")
                 .logRequestsAndResponses(false) // The image is big, so we don't want to log it by default
                 .responseFormat(ImageGenerationResponseFormat.BASE64.toString())
                 .build();
@@ -70,5 +73,31 @@ public class AzureOpenAiImageModelIT {
 
         assertThat(image.revisedPrompt()).isNotNull();
         logger.info("The revised prompt is: {}", image.revisedPrompt());
+    }
+
+    @ParameterizedTest(name = "Testing model {0}")
+    @EnumSource(value = AzureOpenAiImageModelName.class, mode = EXCLUDE, names = "DALL_E_3")
+    void should_support_all_string_model_names(AzureOpenAiImageModelName modelName) {
+
+        // given
+        String modelNameString = modelName.toString();
+
+        AzureOpenAiImageModel model = AzureOpenAiImageModel.builder()
+                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+                .deploymentName(modelNameString)
+                .logRequestsAndResponses(true)
+                .build();
+
+        // when
+        Response<Image> response = model.generate("A coffee mug in Paris, France");
+        logger.info(response.toString());
+
+        // then
+        Image image = response.content();
+        assertThat(image).isNotNull();
+        assertThat(image.url()).isNotNull();
+        assertThat(image.base64Data()).isNull();
+        assertThat(image.revisedPrompt()).isNotNull();
     }
 }

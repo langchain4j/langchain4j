@@ -13,7 +13,7 @@ sidebar_position: 2
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic</artifactId>
-    <version>0.30.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -81,7 +81,7 @@ Anthropic documentation on tools can be found [here](https://docs.anthropic.com/
 
 ## Quarkus
 
-TODO
+See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
 
 ## Spring Boot
 
@@ -90,7 +90,7 @@ Import Spring Boot starter for Anthropic:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-anthropic-spring-boot-starter</artifactId>
-    <version>0.30.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -103,3 +103,10 @@ Configure `AnthropicStreamingChatModel` bean:
 ```
 langchain4j.anthropic.streaming-chat-model.api-key = ${ANTHROPIC_API_KEY}
 ```
+
+
+## Examples
+
+- [AnthropicChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicChatModelTest.java)
+- [AnthropicStreamingChatModelTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicStreamingChatModelTest.java)
+- [AnthropicToolsTest](https://github.com/langchain4j/langchain4j-examples/blob/main/anthropic-examples/src/main/java/AnthropicToolsTest.java)

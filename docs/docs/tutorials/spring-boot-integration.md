@@ -14,7 +14,7 @@ To use one of the Spring Boot starters, first import the corresponding dependenc
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.30.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -28,7 +28,23 @@ The complete list of supported properties can be found
 [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-open-ai-spring-boot-starter/src/main/java/dev/langchain4j/openai/spring/AutoConfig.java).
 
 In this case, an instance of `OpenAiChatModel` (an implementation of a `ChatLanguageModel`) will be automatically created,
-and you can autowire it where needed.
+and you can autowire it where needed:
+```java
+@RestController
+public class ChatController {
+
+    ChatLanguageModel chatLanguageModel;
+
+    public ChatController(ChatLanguageModel chatLanguageModel) {
+        this.chatLanguageModel = chatLanguageModel;
+    }
+
+    @GetMapping("/chat")
+    public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
+        return chatLanguageModel.generate(message);
+    }
+}
+```
 
 If you need an instance of a `StreamingChatLanguageModel`,
 use the `streaming-chat-model` instead of the `chat-model` properties:
@@ -48,7 +64,7 @@ import `langchain4j-spring-boot-starter`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-spring-boot-starter</artifactId>
-    <version>0.30.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -85,9 +101,9 @@ class AssistantController {
 More details [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-spring-boot-starter/src/main/java/dev/langchain4j/service/spring/AiService.java).
 
 
-## Supported Spring Boot Versions
+## Supported versions
 
-Spring Boot 2 and 3 are supported.
+LangChain4j Spring Boot integration requires Java 17 and Spring Boot 3.2.
 
 ## Examples
 - [Low-level Spring Boot example](https://github.com/langchain4j/langchain4j-examples/blob/main/spring-boot-example/src/main/java/dev/langchain4j/example/lowlevel/ChatLanguageModelController.java) using [ChatLanguageModel API](/tutorials/chat-and-language-models)

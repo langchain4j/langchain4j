@@ -4,8 +4,8 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import software.amazon.awssdk.regions.Region;
 
 import java.util.Collections;
@@ -13,10 +13,10 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class BedrockEmbeddingIT {
+@EnabledIfEnvironmentVariable(named = "AWS_SECRET_ACCESS_KEY", matches = ".+")
+class BedrockEmbeddingIT {
 
     @Test
-    @Disabled("To run this test, you must have provide your own access key, secret, region")
     void testBedrockTitanChatModel() {
 
         BedrockTitanEmbeddingModel embeddingModel = BedrockTitanEmbeddingModel
@@ -45,6 +45,7 @@ public class BedrockEmbeddingIT {
         assertThat(tokenUsage.totalTokenCount()).isEqualTo(1);
 
         assertThat(response.finishReason()).isNull();
-    }
 
+        assertThat(embeddingModel.dimension()).isEqualTo(1536);
+    }
 }

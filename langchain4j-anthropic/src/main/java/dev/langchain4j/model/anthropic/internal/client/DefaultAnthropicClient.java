@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static dev.langchain4j.internal.Utils.*;
@@ -125,6 +126,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         EventSourceListener eventSourceListener = new EventSourceListener() {
 
+            private final ReentrantLock lock = new ReentrantLock();
             final List<String> contents = synchronizedList(new ArrayList<>());
             volatile StringBuffer currentContentBuilder = new StringBuffer();
 
@@ -133,12 +135,22 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             volatile String stopReason;
 
-            private synchronized StringBuffer currentContentBuilder() {
-                return currentContentBuilder;
+            private StringBuffer currentContentBuilder() {
+                lock.lock();
+                try {
+                    return currentContentBuilder;
+                } finally {
+                    lock.unlock();
+                }
             }
 
-            private synchronized void setCurrentContentBuilder(StringBuffer stringBuffer) {
-                currentContentBuilder = stringBuffer;
+            private void setCurrentContentBuilder(StringBuffer stringBuffer) {
+                lock.lock();
+                try {
+                    currentContentBuilder = stringBuffer;
+                } finally {
+                    lock.unlock();
+                }
             }
 
             @Override

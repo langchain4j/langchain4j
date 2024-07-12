@@ -29,7 +29,12 @@ public class QwenTestHelper {
                 Arguments.of(QwenModelName.QWEN1_5_7B_CHAT),
                 Arguments.of(QwenModelName.QWEN1_5_14B_CHAT),
                 Arguments.of(QwenModelName.QWEN1_5_32B_CHAT),
-                Arguments.of(QwenModelName.QWEN1_5_72B_CHAT)
+                Arguments.of(QwenModelName.QWEN1_5_72B_CHAT),
+                Arguments.of(QwenModelName.QWEN2_0_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_1_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_7B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_72B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_57B_A14B_INSTRUCT)
         );
     }
 
@@ -45,7 +50,18 @@ public class QwenTestHelper {
                 Arguments.of(QwenModelName.QWEN1_5_7B_CHAT),
                 Arguments.of(QwenModelName.QWEN1_5_14B_CHAT),
                 Arguments.of(QwenModelName.QWEN1_5_32B_CHAT),
-                Arguments.of(QwenModelName.QWEN1_5_72B_CHAT)
+                Arguments.of(QwenModelName.QWEN1_5_72B_CHAT),
+                Arguments.of(QwenModelName.QWEN2_0_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_1_5B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_7B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_72B_INSTRUCT),
+                Arguments.of(QwenModelName.QWEN2_57B_A14B_INSTRUCT)
+        );
+    }
+
+    public static Stream<Arguments> functionCallChatModelNameProvider() {
+        return Stream.of(
+                Arguments.of(QwenModelName.QWEN_MAX)
         );
     }
 

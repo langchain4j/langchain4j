@@ -1,5 +1,8 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -10,8 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
-
 class DefaultToolExecutorTest implements WithAssertions {
     @Test
     public void tesT_hasNoFractionalPart() {
@@ -21,7 +22,7 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThat(DefaultToolExecutor.hasNoFractionalPart(-3.5)).isFalse();
     }
 
-    public enum ExampleEnum { A, B, C }
+    public enum ExampleEnum {A, B, C}
 
     @SuppressWarnings("unused")
     public void example(
@@ -41,7 +42,8 @@ class DefaultToolExecutorTest implements WithAssertions {
             ExampleEnum enumP,
             boolean booleanP,
             Boolean BooleanP
-    ) {}
+    ) {
+    }
 
     @Test
     public void test_prepareArguments() throws Exception {
@@ -65,7 +67,7 @@ class DefaultToolExecutorTest implements WithAssertions {
                 ExampleEnum.class,
                 boolean.class,
                 Boolean.class
-                );
+        );
 
         Map<String, Object> arguments = new HashMap<>();
         arguments.put("arg1", 1.0);
@@ -116,11 +118,21 @@ class DefaultToolExecutorTest implements WithAssertions {
         }
     }
 
+    @AllArgsConstructor
+    @EqualsAndHashCode
+    static class Person {
+
+        String name;
+        int age;
+    }
+
     @Test
     public void test_coerceArgument() {
-        // Pass-through unhandled types.
-        Object sentinel = new Object();
-        assertThat(coerceArgument(sentinel, "arg", Object.class)).isSameAs(sentinel);
+
+        Map<String, Object> personMap = new HashMap<>();
+        personMap.put("name", "Klaus");
+        personMap.put("age", 42);
+        assertThat(coerceArgument(personMap, "arg", Person.class)).isEqualTo(new Person("Klaus", 42));
 
         assertThat(coerceArgument("abc", "arg", String.class)).isEqualTo("abc");
 
@@ -215,5 +227,65 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> coerceArgument("abc", "arg", BigInteger.class))
                 .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
+    }
+
+    private static class TestTool {
+
+        @Tool
+        public int addOne(int num) {
+            return num + 1;
+        }
+    }
+
+    @Test
+    public void should_execute_tool_by_method_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor =
+                new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    public void should_execute_tool_with_execution_request() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    public void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("unknownMethod")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), request))
+                .withMessageContaining("Method 'unknownMethod' is not found in object");
+
+    }
+
+    @Test
+    public void should_not_execute_tool_with_null_execution_request() throws NoSuchMethodException {
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
+
     }
 }

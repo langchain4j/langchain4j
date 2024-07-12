@@ -10,9 +10,14 @@ import java.util.List;
 /**
  * Represents a store for the {@link ChatMemory} state.
  * Allows for flexibility in terms of where and how chat memory is stored.
- * Currently, the only implementation available is {@link InMemoryChatMemoryStore}. We are in the process of adding
- * ready implementations for popular stores like SQL DBs, document stores, etc.
+ * <br>
+ * <br>
+ * Currently, the only implementation available is {@link InMemoryChatMemoryStore}.
+ * Over time, out-of-the-box implementations will be added for popular stores like SQL databases, document stores, etc.
  * In the meantime, you can implement this interface to connect to any storage of your choice.
+ * <br>
+ * <br>
+ * More documentation can be found <a href="https://docs.langchain4j.dev/tutorials/chat-memory">here</a>.
  */
 public interface ChatMemoryStore {
 
