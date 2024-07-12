@@ -9,14 +9,14 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,28 +28,46 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@Testcontainers
 class ElasticsearchEmbeddingStoreRemoveIT {
 
-    @Container
-    private static final ElasticsearchContainer elasticsearch =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.9.0")
-                    .withEnv("xpack.security.enabled", "false");
+    static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
-            .serverUrl(elasticsearch.getHttpHostAddress())
-            .indexName(randomUUID())
-            .build();
+            .restClient(elasticsearchClientHelper.restClient)
+                .indexName(randomUUID())
+                .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
+    String indexName;
+
+    @BeforeAll
+    static void startServices() {
+        elasticsearchClientHelper.startServices();
+        assertThat(elasticsearchClientHelper.restClient).isNotNull();
+        assertThat(elasticsearchClientHelper.client).isNotNull();
+    }
+
+    @AfterAll
+    static void stopServices() throws IOException {
+        elasticsearchClientHelper.stopServices();
+    }
+
     @BeforeEach
-    void beforeEach() {
-        embeddingStore.removeAll();
-        EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
-                .queryEmbedding(embeddingModel.embed("empty").content())
+    void createEmbeddingStore() throws IOException {
+        indexName = randomUUID();
+        elasticsearchClientHelper.removeDataStore(indexName);
+        embeddingStore = ElasticsearchEmbeddingStore.builder()
+                .restClient(elasticsearchClientHelper.restClient)
+                .indexName(indexName)
                 .build();
-        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(0));
+    }
+
+    @AfterEach
+    void removeDataStore() throws IOException {
+        // We remove the indices in case we were running with a local test instance
+        // we don't keep dirty things around
+        elasticsearchClientHelper.removeDataStore(indexName);
     }
 
     @Test
