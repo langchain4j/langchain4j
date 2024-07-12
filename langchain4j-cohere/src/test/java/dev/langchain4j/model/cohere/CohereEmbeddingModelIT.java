@@ -101,5 +101,6 @@ class CohereEmbeddingModelIT {
         assertThat(response.tokenUsage().outputTokenCount()).isEqualTo(0);
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(97);
 
+        assertThat(response.finishReason()).isNull();
     }
 }
