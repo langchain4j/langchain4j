@@ -87,7 +87,6 @@ public class LlamaParseClient {
                 throw toException(response);
             }
         } catch (Exception e) {
-            log.error("Error getting json result from the job {}", jobId);
             throw new RuntimeException(e);
         }
     }
