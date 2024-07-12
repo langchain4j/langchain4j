@@ -51,7 +51,6 @@ public class SchemaHelper {
      * @return a fully built schema
      */
     public static Schema fromClass(Class<?> theClass) {
-        System.out.println("theClass = " + theClass);
         if (CharSequence.class.isAssignableFrom(theClass) ||
             Character.class.isAssignableFrom(theClass) ||
             char.class.isAssignableFrom(theClass)) {
