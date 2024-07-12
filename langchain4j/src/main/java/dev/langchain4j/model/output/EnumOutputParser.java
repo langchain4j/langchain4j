@@ -9,8 +9,6 @@ import java.util.Optional;
 @SuppressWarnings("rawtypes")
 public class EnumOutputParser implements OutputParser<Enum> {
 
-    private static final boolean PRETTY = false;
-
     private final Class<? extends Enum> enumClass;
 
     public EnumOutputParser(Class<? extends Enum> enumClass) {
