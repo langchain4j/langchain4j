@@ -37,7 +37,7 @@ interface LlmaParseApi {
 
     @GET("job/{job_id}/result/json")
     @Headers({"accept: application/json"})
-    Call<ResponseBody> jsonResult(@Path("job_id") String job_id);
+    Call<ResponseBody> jsonResult(@Path("job_id") String jobId);
 
     @GET("job/{job_id}/result/markdown")
     @Headers({"accept: application/json"})
