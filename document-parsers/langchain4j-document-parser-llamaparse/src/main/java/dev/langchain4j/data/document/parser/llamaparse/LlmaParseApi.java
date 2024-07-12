@@ -32,7 +32,7 @@ interface LlmaParseApi {
 
     @POST("upload")
     @Multipart
-    @Headers({"accept: application/json", "accept: application/json"})
+    @Headers({"accept: application/json"})
     Call<LlamaParseResponse> upload(@Part MultipartBody.Part file, @Part MultipartBody.Part parsingInstructions);
 
     @GET("job/{job_id}/result/json")
