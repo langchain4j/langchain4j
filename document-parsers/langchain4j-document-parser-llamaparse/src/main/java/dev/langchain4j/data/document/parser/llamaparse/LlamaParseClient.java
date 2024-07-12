@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static java.time.Duration.ofSeconds;
 
 @Slf4j
 public class LlamaParseClient {
@@ -25,13 +27,11 @@ public class LlamaParseClient {
             .create();
 
     private final LlmaParseApi llmaParseApi;
-    private String apiKey;
 
     @Builder
     public LlamaParseClient(String baseUrl,
                             Duration timeout,
                             String apiKey) {
-        this.apiKey = apiKey;
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .addInterceptor(new ApiKeyInsertingInterceptor(apiKey))
                 .callTimeout(getOrDefault(timeout, ofSeconds(30)))
