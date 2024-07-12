@@ -71,7 +71,7 @@ public class ElasticsearchKnnEmbeddingStore extends AbstractElasticsearchEmbeddi
                         .index(indexName)
                         .size(embeddingSearchRequest.maxResults())
                         .query(q -> q.knn(knn))
-                        .minScore(embeddingSearchRequest.minScore() + 1)
+                        .minScore(embeddingSearchRequest.minScore())
                 , Document.class);
     }
 }
