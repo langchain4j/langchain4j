@@ -130,7 +130,6 @@ public class LlamaParseClient {
                 throw toException(response);
             }
         } catch (Exception e) {
-            log.error("Error getting image result from the job {}", jobId);
             throw new RuntimeException(e);
         }
     }
