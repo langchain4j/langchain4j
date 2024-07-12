@@ -69,7 +69,7 @@ public class ServiceOutputParser {
 
         if (returnType.isEnum()) {
             String formatInstructions = new EnumOutputParser(returnType.asSubclass(Enum.class)).formatInstructions();
-            return "\nYou must answer strictly in the following format: " + formatInstructions;
+            return "\nYou must answer strictly with " + formatInstructions;
         }
 
         Optional<OutputParser<?>> outputParser = outputParserFactory.get(returnType);
