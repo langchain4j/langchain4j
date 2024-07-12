@@ -153,9 +153,10 @@ public class AiServicesIT {
         POSITIVE, NEUTRAL, NEGATIVE
     }
 
+
     interface SentimentAnalyzer {
 
-        @UserMessage("Analyze sentiment of {{it}}")
+        @UserMessage("Analyze sentiment of:\n|||{{it}}|||")
         Sentiment analyzeSentimentOf(String text);
     }
 
@@ -172,8 +173,49 @@ public class AiServicesIT {
         assertThat(sentiment).isEqualTo(POSITIVE);
 
         verify(chatLanguageModel).generate(singletonList(userMessage(
-                "Analyze sentiment of " + customerReview + "\n" +
-                        "You must answer strictly in the following format: one of [POSITIVE, NEUTRAL, NEGATIVE]")));
+                "Analyze sentiment of:\n|||" + customerReview + "|||\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "POSITIVE\n" +
+                        "NEUTRAL\n" +
+                        "NEGATIVE")));
+    }
+
+    public enum Weather {
+        @Description("A clear day with bright sunlight and few or no clouds")
+        SUNNY,
+        @Description("The sky is covered with clouds with no rain, often creating a gray and overcast appearance")
+        CLOUDY,
+        @Description("Precipitation in the form of rain, with cloudy skies and wet conditions")
+        RAINY,
+        @Description("Snowfall occurs, covering the ground in white and creating cold, wintry conditions")
+        SNOWY
+    }
+
+    interface WeatherForecastAnalyzer {
+
+        @UserMessage("Analyze weather forecast for:\n|||{{it}}|||")
+        Weather analyzeWeatherForecast(String forecast);
+    }
+
+    @Test
+    void test_extract_enum_with_description() {
+
+        WeatherForecastAnalyzer weatherForecastAnalyzer = AiServices.create(WeatherForecastAnalyzer.class, chatLanguageModel);
+
+        String weatherForecast = "It will be cloudy and mostly rainy. No more rain early in the day but the sky remains overcast. Afternoon it is mostly cloudy. The sun will not be visible. The forecast has a moderate, 40% chance of Precipitation. Temperatures peaking at 17 °C.";
+
+        Weather weather = weatherForecastAnalyzer.analyzeWeatherForecast(weatherForecast);
+        System.out.println(weather);
+
+        assertThat(weather).isEqualTo(Weather.RAINY);
+
+        verify(chatLanguageModel).generate(singletonList(userMessage("Analyze weather forecast for:\n" +
+                "|||" + weatherForecast + "|||\n" +
+                "You must answer strictly with one of these enums:\n" +
+                "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
+                "CLOUDY - The sky is covered with clouds with no rain, often creating a gray and overcast appearance\n" +
+                "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
+                "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions")));
     }
 
 
