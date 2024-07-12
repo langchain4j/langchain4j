@@ -12,24 +12,6 @@ import retrofit2.http.Path;
 
 interface LlmaParseApi {
 
-    enum JOB_STATUS {
-        PENDING("PENDING"),
-        SUCCESS("SUCCESS"),
-        ERROR("ERROR"),
-        CANCELED("CANCELED");
-
-        private String value;
-        JOB_STATUS(String value) {
-            this.value = value;
-        }
-
-        String value() {
-            return this.value;
-        }
-    }
-
-    final String baseUrl = "https://api.cloud.llamaindex.ai/api/parsing/";
-
     @POST("upload")
     @Multipart
     @Headers({"accept: application/json"})

@@ -19,18 +19,14 @@ import static org.awaitility.Awaitility.with;
 @Slf4j
 public class LlamaParseClientIT {
 
-    private static String API_KEY;
-
     @Test
     void shouldParseUploadAndGetMarkdown() {
-        API_KEY = System.getenv("LLAMA_PARSE_API_KEY");
+        String API_KEY = System.getenv("LLAMA_PARSE_API_KEY");
 
         assertThat(API_KEY).isNotNull().isNotBlank();
 
         LlamaParseClient client = LlamaParseClient.builder()
                 .apiKey(API_KEY)
-                .baseUrl(LlmaParseApi.baseUrl)
-                .timeout(Duration.ofSeconds(5))
                 .build();
 
         Path path = toPath("files/sample.pdf");
@@ -42,7 +38,7 @@ public class LlamaParseClientIT {
         String status = responseBody.status;
 
         assertThat(JOB_ID).isNotBlank();
-        assertThat(status).isEqualTo(LlmaParseApi.JOB_STATUS.SUCCESS.value());
+        assertThat(status).isEqualTo("SUCCESS");
 
         log.debug("Waiting for parsing...");
         with()
@@ -50,7 +46,7 @@ public class LlamaParseClientIT {
                 .await("check success status")
                 .atMost(Duration.ofSeconds(60))
                 .untilAsserted(() -> assertThat(client.jobStatus(JOB_ID).status)
-                        .isEqualTo(LlmaParseApi.JOB_STATUS.SUCCESS.value()));
+                        .isEqualTo("SUCCESS"));
 
         log.debug("Getting markdown result...");
         LlamaParseMarkdownResponse response = client.markdownResult(JOB_ID);
