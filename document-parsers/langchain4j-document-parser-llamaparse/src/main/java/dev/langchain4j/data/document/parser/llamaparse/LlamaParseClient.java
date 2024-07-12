@@ -124,7 +124,7 @@ public class LlamaParseClient {
         try {
             retrofit2.Response<ResponseBody> response =
                     llmaParseApi.imageResult(jobId, imageName).execute();
-            if (response != null && response.isSuccessful()) {
+            if (response.isSuccessful()) {
                 return response.body();
             } else {
                 throw toException(response);
