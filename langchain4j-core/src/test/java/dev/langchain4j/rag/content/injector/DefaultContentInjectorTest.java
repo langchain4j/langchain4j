@@ -150,12 +150,12 @@ class DefaultContentInjectorTest {
         TextSegment segment1 = TextSegment.from(
                 "Bananas are awesome!",
                 Metadata.from("source", "trust me bro")
-                        .add("date", "today")
+                        .put("date", "today")
         );
         TextSegment segment2 = TextSegment.from(
                 "Bananas are healthy!",
                 Metadata.from("source", "my doctor")
-                        .add("reliability", "100%")
+                        .put("reliability", "100%")
         );
         List<Content> contents = asList(Content.from(segment1), Content.from(segment2));
 

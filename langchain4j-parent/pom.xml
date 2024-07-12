@@ -6,7 +6,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>0.32.0-SNAPSHOT</version>
+    <version>0.33.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -19,11 +19,11 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1714382357</project.build.outputTimestamp>
         <openai4j.version>0.17.0</openai4j.version>
-        <azure-ai-openai.version>1.0.0-beta.8</azure-ai-openai.version>
-        <azure-ai-search.version>11.6.5</azure-ai-search.version>
+        <azure-ai-openai.version>1.0.0-beta.10</azure-ai-openai.version>
+        <azure-ai-search.version>11.6.6</azure-ai-search.version>
         <azure.storage-blob.version>12.26.1</azure.storage-blob.version>
         <azure.storage-common.version>12.25.1</azure.storage-common.version>
-        <azure.identity.version>1.12.1</azure.identity.version>
+        <azure.identity.version>1.13.0</azure.identity.version>
         <retrofit.version>2.9.0</retrofit.version>
         <okhttp.version>4.12.0</okhttp.version>
         <jtokkit.version>1.0.0</jtokkit.version>

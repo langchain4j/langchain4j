@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import com.azure.ai.openai.models.ChatCompletionsJsonResponseFormat;
+import com.azure.core.exception.HttpResponseException;
 import com.azure.core.util.BinaryData;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,9 +10,17 @@ import dev.langchain4j.agent.tool.ToolParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
+import dev.langchain4j.model.chat.listener.ChatModelRequest;
+import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.chat.listener.ChatModelResponse;
+import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
+import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.data.Percentage;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -23,11 +32,15 @@ import java.util.*;
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.INTEGER;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
+import static dev.langchain4j.model.azure.AzureOpenAiChatModelName.GPT_4_O;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Fail.fail;
 import static org.assertj.core.data.Percentage.withPercentage;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class AzureOpenAiChatModelIT {
 
@@ -71,7 +84,8 @@ public class AzureOpenAiChatModelIT {
     void should_generate_answer_and_return_token_usage_and_finish_reason_length(String deploymentName, String gptVersion) {
 
         ChatLanguageModel model = AzureOpenAiChatModel.builder()
-                .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+                .endpoint(System.getenv("AZURE_OPENAI" +
+                        "_ENDPOINT"))
                 .apiKey(System.getenv("AZURE_OPENAI_KEY"))
                 .deploymentName(deploymentName)
                 .tokenizer(new AzureOpenAiTokenizer(gptVersion))
@@ -320,6 +334,130 @@ public class AzureOpenAiChatModelIT {
 
         // then
         assertThat(response.content().text()).isNotBlank();
+    }
+
+    @ParameterizedTest(name = "Deployment name {0}")
+    @CsvSource({
+            "gpt-4o"
+    })
+    void should_listen_request_and_response(String deploymentName) {
+
+        // given
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<ChatModelResponse> responseReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                responseReference.set(responseContext.response());
+                assertThat(responseContext.request()).isSameAs(requestReference.get());
+                assertThat(responseContext.attributes().get("id")).isEqualTo("12345");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                fail("onError() must not be called");
+            }
+        };
+
+        double temperature = 0.7;
+        double topP = 1.0;
+        int maxTokens = 7;
+
+        AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
+            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+            .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+            .deploymentName(deploymentName)
+            .topP(topP)
+            .temperature(temperature)
+            .maxTokens(maxTokens)
+            .logRequestsAndResponses(true)
+            .listeners(singletonList(listener))
+            .build();
+
+        UserMessage userMessage = UserMessage.from("hello");
+
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+            .name("add")
+            .addParameter("a", INTEGER)
+            .addParameter("b", INTEGER)
+            .build();
+
+        // when
+        AiMessage aiMessage = model.generate(singletonList(userMessage), singletonList(toolSpecification)).content();
+
+        // then
+        ChatModelRequest request = requestReference.get();
+        assertThat(request.model()).isEqualTo(deploymentName);
+        assertThat(request.temperature()).isEqualTo(temperature);
+        assertThat(request.topP()).isEqualTo(topP);
+        assertThat(request.maxTokens()).isEqualTo(maxTokens);
+        assertThat(request.messages()).containsExactly(userMessage);
+        assertThat(request.toolSpecifications()).containsExactly(toolSpecification);
+
+        ChatModelResponse response = responseReference.get();
+        assertThat(response.id()).isNotBlank();
+        assertThat(response.model()).isNotBlank();
+        assertThat(response.tokenUsage().inputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().outputTokenCount()).isGreaterThan(0);
+        assertThat(response.tokenUsage().totalTokenCount()).isGreaterThan(0);
+        assertThat(response.finishReason()).isNotNull();
+        assertThat(response.aiMessage()).isEqualTo(aiMessage);
+    }
+
+    @Test
+    void should_listen_error() {
+
+        // given
+        String wrongApiKey = "banana";
+
+        AtomicReference<ChatModelRequest> requestReference = new AtomicReference<>();
+        AtomicReference<Throwable> errorReference = new AtomicReference<>();
+
+        ChatModelListener listener = new ChatModelListener() {
+
+            @Override
+            public void onRequest(ChatModelRequestContext requestContext) {
+                requestReference.set(requestContext.request());
+                requestContext.attributes().put("id", "12345");
+            }
+
+            @Override
+            public void onResponse(ChatModelResponseContext responseContext) {
+                fail("onResponse() must not be called");
+            }
+
+            @Override
+            public void onError(ChatModelErrorContext errorContext) {
+                errorReference.set(errorContext.error());
+                assertThat(errorContext.request()).isSameAs(requestReference.get());
+                assertThat(errorContext.partialResponse()).isNull();
+                assertThat(errorContext.attributes().get("id")).isEqualTo("12345");
+            }
+        };
+
+        AzureOpenAiChatModel model = AzureOpenAiChatModel.builder()
+            .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+            .apiKey(wrongApiKey)
+            .maxRetries(0)
+            .logRequestsAndResponses(true)
+            .listeners(singletonList(listener))
+            .build();
+
+        String userMessage = "this message will fail";
+        model.generate(userMessage);
+
+        // then
+        Throwable throwable = errorReference.get();
+        assertThat(throwable).isInstanceOf(HttpResponseException.class);
+        assertThat(throwable).hasMessageContaining("Access denied due to invalid subscription key or wrong API endpoint");
     }
 
     private static ToolParameters getToolParameters() {

@@ -53,8 +53,8 @@ public class AzureBlobStorageDocumentLoaderIT {
         Document document = loader.loadDocument(TEST_CONTAINER, TEST_BLOB, parser);
 
         assertThat(document.text()).isEqualTo(TEST_CONTENT);
-        assertThat(document.metadata().asMap()).hasSize(4);
-        assertThat(document.metadata("source")).endsWith("/test-file.txt");
+        assertThat(document.metadata().toMap()).hasSize(4);
+        assertThat(document.metadata().getString("source")).endsWith("/test-file.txt");
     }
 
     @Test
@@ -65,12 +65,12 @@ public class AzureBlobStorageDocumentLoaderIT {
         assertThat(documents).hasSize(2);
 
         assertThat(documents.get(0).text()).isEqualTo(TEST_CONTENT_2);
-        assertThat(documents.get(0).metadata().asMap()).hasSize(4);
-        assertThat(documents.get(0).metadata("source")).endsWith("/test-directory/test-file-2.txt");
+        assertThat(documents.get(0).metadata().toMap()).hasSize(4);
+        assertThat(documents.get(0).metadata().getString("source")).endsWith("/test-directory/test-file-2.txt");
 
         assertThat(documents.get(1).text()).isEqualTo(TEST_CONTENT);
-        assertThat(documents.get(1).metadata().asMap()).hasSize(4);
-        assertThat(documents.get(1).metadata("source")).endsWith("/test-file.txt");
+        assertThat(documents.get(1).metadata().toMap()).hasSize(4);
+        assertThat(documents.get(1).metadata().getString("source")).endsWith("/test-file.txt");
     }
 
     @AfterEach

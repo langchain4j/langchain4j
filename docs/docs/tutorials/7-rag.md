@@ -38,7 +38,7 @@ We plan to expand the RAG toolbox to include full-text and hybrid search in the 
 
 
 ## RAG Stages
-THe RAG process is divided into 2 distinct stages: indexing and retrieval.
+The RAG process is divided into 2 distinct stages: indexing and retrieval.
 LangChain4j provides tools for both stages.
 
 ### Indexing
@@ -96,7 +96,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -442,6 +442,7 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 - `EmbeddingModel.embed(String)` embeds the given text
 - `EmbeddingModel.embed(TextSegment)` embeds the given `TextSegment`
 - `EmbeddingModel.embedAll(List<TextSegment>)` embeds all the given `TextSegment`
+- `EmbeddingModel.dimension()` returns the dimension of the `Embedding` produced by this model
 </details>
 
 
@@ -449,7 +450,7 @@ Currently supported embedding models can be found [here](/category/embedding-mod
 The `EmbeddingStore` interface represents a store for `Embedding`s, also known as vector database.
 It allows for the storage and efficient search of similar (close in the embedding space) `Embedding`s.
 
-Currently supported embedding stores can be found [here](/category/embedding-stores).
+Currently supported embedding stores can be found [here](/integrations/embedding-stores).
 
 `EmbeddingStore` can store `Embedding`s alone or together with the corresponding `TextSegment`:
 - It can store only `Embedding`, by ID. Original embedded data can be stored elsewhere and correlated using the ID.
@@ -553,32 +554,194 @@ In the meantime, please read [this](https://github.com/langchain4j/langchain4j/p
 
 
 ### Retrieval Augmentor
-More details are coming soon.
 
+`RetrievalAugmentor` is an entry point into the RAG pipeline.
+It is responsible for augmenting a `ChatMessage` with relevant `Content`s
+retrieved from various sources.
+
+An instance of a `RetrievalAugmentor` can be specified during the creation of an [AI Service](/tutorials/ai-services):
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+    ...
+    .retrievalAugmentor(retrievalAugmentor)
+    .build();
+```
+Every time an AI Service is invoked, the specified `RetrievalAugmentor`
+will be called to augment the current `UserMessage`.
+
+You can use the default implementation of a `RetrievalAugmentor`
+(described below) or implement a custom one.
 
 ### Default Retrieval Augmentor
-More details are coming soon.
 
+LangChain4j provides an out-of-the-box implementation of the `RetrievalAugmentor` interface:
+`DefaultRetrievalAugmentor`, which should be suitable for the majority of RAG use cases.
+It was inspired by [this article](https://blog.langchain.dev/deconstructing-rag)
+and [this paper](https://arxiv.org/abs/2312.10997).
+It is recommended to review these resources for a better understanding of the concept.
+
+### Query
+`Query` represents a user query in the RAG pipeline.
+It contains the text of the query and query metadata.
+
+#### Query Metadata
+The `Metadata` inside the `Query` contains information that might be useful in various components
+of the RAG pipeline, for example:
+- `Metadata.userMessage()` - the original `UserMessage` that should be augmented
+- `Metadata.chatMemoryId()` - the value of a `@MemoryId`-annotated method parameter. More details [here](/tutorials/ai-services/#chat-memory). This can be used to identify the user and apply access restrictions or filters during the retrieval.
+- `Metadata.chatMemory()` - all previous `ChatMessage`s. This can help to understand the context in which the `Query` was asked.
 
 ### Query Transformer
-More details are coming soon.
+`QueryTransformer` transforms the given `Query` into one or multiple `Query`s.
+The goal is to enhance retrieval quality by modifying or expanding the original `Query`.
 
+Some known approaches to improve retrieval include:
+- Query compression
+- Query expansion
+- Query re-writing
+- Step-back prompting
+- Hypothetical document embeddings (HyDE)
 
-### Query Router
-More details are coming soon.
+More details can be found [here](https://blog.langchain.dev/query-transformations/).
 
+#### Default Query Transformer
+`DefaultQueryTransformer` is the default implementation used in `DefaultRetrievalAugmentor`.
+It does not make any modifications to the `Query`, it just passes it through.
+
+#### Compressing Query Transformer
+`CompressingQueryTransformer` uses an LLM to compress the given `Query`
+and previous conversation into a standalone `Query`.
+This is useful when the user might ask follow-up questions that refer to information
+in previous questions or answers.
+
+Here is an example:
+```
+User: Tell me about John Doe
+AI: John Doe was a ...
+User: Where did he live?
+```
+The query `Where did he live?` by itself would not be able to retrieve the needed information
+because there is no explicit reference to John Doe, making it unclear who `he` refers to.
+
+When using `CompressingQueryTransformer`, the LLM will read the entire conversation
+and transform `Where did he live?` into `Where did John Doe live?`.
+
+#### Expanding Query Transformer
+`ExpandingQueryTransformer` uses an LLM to expand the given `Query` into multiple `Query`s.
+This is useful because LLM can rephrase and reformulate `Query` in various ways,
+which will help to retrieve more relevant content.
+
+### Content
+`Content` represents the content relevant to the user `Query`.
+Currently, it is limited to text content (i.e., `TextSegment`),
+but in the future it may support other modalities (e.g., images, audio, video, etc.).
 
 ### Content Retriever
-More details are coming soon.
+`ContentRetriever` retrieves `Content`s from an underlying data source using a given `Query`.
+The underlying data source can be virtually anything:
+- Embedding store
+- Full-text search engine
+- Hybrid of vector and full-text search
+- Web Search Engine
+- Knowledge graph
+- SQL database
+- etc.
 
+#### Embedding Store Content Retriever
+`EmbeddingStoreContentRetriever` retrieves relevant `Content` from the `EmbeddingStore` using
+the `EmbeddingModel` to embed the `Query`.
+
+Here is an example:
+```java
+EmbeddingStore embeddingStore = ...
+EmbeddingModel embeddingModel = ...
+
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .maxResults(3)
+     // maxResults can also be specified dynamically depending on the query
+    .dynamicMaxResults(query -> 3)
+    .minScore(0.75)
+     // minScore can also be specified dynamically depending on the query
+    .dynamicMinScore(query -> 0.75)
+    .filter(metadataKey("userId").isEqualTo("12345"))
+    // filter can also be specified dynamically depending on the query
+    .dynamicFilter(query -> {
+        String userId = getUserId(query.metadata().chatMemoryId());
+        return metadataKey("userId").isEqualTo(userId);
+    })
+    .build();
+```
+
+#### Web Search Content Retriever
+`WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.
+
+There are currently 2 implementations of the `WebSearchEngine` interface:
+- `GoogleCustomWebSearchEngine` in the `langchain4j-web-search-engine-google-custom` module
+- `TavilyWebSearchEngine` in the `langchain4j-web-search-engine-tavily` module
+
+Here is an example:
+```java
+WebSearchEngine googleSearchEngine = GoogleCustomWebSearchEngine.builder()
+        .apiKey(System.getenv("GOOGLE_API_KEY"))
+        .csi(System.getenv("GOOGLE_SEARCH_ENGINE_ID"))
+        .build();
+
+ContentRetriever contentRetriever = WebSearchContentRetriever.builder()
+        .webSearchEngine(googleSearchEngine)
+        .maxResults(3)
+        .build();
+```
+Complete example can be found [here](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_08_Advanced_RAG_Web_Search_Example.java).
+
+#### SQL Database Content Retriever
+`SqlDatabaseContentRetriever` is an experimental implementation of the `ContentRetriever`
+that can be found in the `langchain4j-experimental-sql` module.
+
+It uses the `DataSource` and an LLM to generate and execute SQL queries
+for given natural language `Query`.
+
+See javadoc of the `SqlDatabaseContentRetriever` for more information.
+
+Here is an [example](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_10_Advanced_RAG_SQL_Database_Retreiver_Example.java).
+
+#### Azure AI Search Content Retriever
+`AzureAiSearchContentRetriever` can be found in the `langchain4j-azure-ai-search` module.
+
+#### Neo4j Content Retriever
+`Neo4jContentRetriever` can be found in the `langchain4j-neo4j` module.
+
+### Query Router
+`QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
+
+#### Default Query Router
+`DefaultQueryRouter` is the default implementation used in `DefaultRetrievalAugmentor`.
+It routes each `Query` to all configured `ContentRetriever`s.
+
+#### Language Model Query Router
+`LanguageModelQueryRouter` uses the LLM to decide where to route the given `Query`.
 
 ### Content Aggregator
 More details are coming soon.
 
+#### Default Content Aggregator
+`DefaultContentAggregator`
+
+More details are coming soon.
+
+#### Re-Ranking Content Aggregator
+`ReRankingContentAggregator`
+
+More details are coming soon.
 
 ### Content Injector
 More details are coming soon.
 
+#### Default Content Injector
+`DefaultContentInjector`
+
+More details are coming soon.
 
 ## Examples
 
@@ -588,8 +751,10 @@ More details are coming soon.
 - [Advanced RAG with Query Routing](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_02_Advanced_RAG_with_Query_Routing_Example.java)
 - [Advanced RAG with Re-Ranking](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_03_Advanced_RAG_with_ReRanking_Example.java)
 - [Advanced RAG with Including Metadata](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_04_Advanced_RAG_with_Metadata_Example.java)
+- [Advanced RAG with Metadata Filtering](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_05_Advanced_RAG_with_Metadata_Filtering_Examples.java)
 - [Advanced RAG with multiple Retrievers](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_07_Advanced_RAG_Multiple_Retrievers_Example.java)
+- [Advanced RAG with Web Search](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_08_Advanced_RAG_Web_Search_Example.java)
+- [Advanced RAG with SQL Database](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_10_Advanced_RAG_SQL_Database_Retreiver_Example.java)
 - [Skipping Retrieval](https://github.com/langchain4j/langchain4j-examples/blob/main/rag-examples/src/main/java/_3_advanced/_06_Advanced_RAG_Skip_Retrieval_Example.java)
 - [RAG + Tools](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentApplicationTest.java)
 - [Loading Documents](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/DocumentLoaderExamples.java)
-- [ConversationalRetrievalChain](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ChatWithDocumentsExamples.java)

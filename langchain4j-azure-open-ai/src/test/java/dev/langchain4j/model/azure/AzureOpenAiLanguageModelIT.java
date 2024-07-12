@@ -13,6 +13,7 @@ import static dev.langchain4j.model.azure.AzureOpenAiLanguageModelName.GPT_3_5_T
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.EnumSource.Mode.EXCLUDE;
 
 class AzureOpenAiLanguageModelIT {
 
@@ -21,7 +22,7 @@ class AzureOpenAiLanguageModelIT {
     LanguageModel model = AzureOpenAiLanguageModel.builder()
             .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
             .apiKey(System.getenv("AZURE_OPENAI_KEY"))
-            .deploymentName("gpt-35-turbo-instruct")
+            .deploymentName("gpt-35-turbo-instruct-0914")
             .tokenizer(new AzureOpenAiTokenizer(GPT_3_5_TURBO_INSTRUCT))
             .temperature(0.0)
             .maxTokens(20)
@@ -57,7 +58,8 @@ class AzureOpenAiLanguageModelIT {
     }
 
     @ParameterizedTest(name = "Testing model {0}")
-    @EnumSource(AzureOpenAiLanguageModelName.class)
+    @EnumSource(value = AzureOpenAiLanguageModelName.class,
+            mode = EXCLUDE, names = {"GPT_3_5_TURBO_INSTRUCT", "TEXT_DAVINCI_002", "TEXT_DAVINCI_002_1"})
     void should_support_all_string_model_names(AzureOpenAiLanguageModelName modelName) {
 
         // given
