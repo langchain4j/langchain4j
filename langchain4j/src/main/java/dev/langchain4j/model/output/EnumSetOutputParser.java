@@ -1,5 +1,6 @@
 package dev.langchain4j.model.output;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,7 +16,9 @@ public class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
     @Override
     public Set<Enum> parse(String text) {
         List<String> stringsList = asList(text.split("\n"));
-        return stringsList.stream().map(enumOutputParser::parse).collect(Collectors.toSet());
+        return stringsList.stream()
+                .map(enumOutputParser::parse)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
 
