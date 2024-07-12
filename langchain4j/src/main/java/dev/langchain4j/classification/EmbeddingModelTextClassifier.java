@@ -1,6 +1,7 @@
 package dev.langchain4j.classification;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
@@ -97,9 +98,11 @@ public class EmbeddingModelTextClassifier<E extends Enum<E>> implements TextClas
 
         this.exampleEmbeddingsByLabel = new HashMap<>();
         examplesByLabel.forEach((label, examples) ->
-                exampleEmbeddingsByLabel.put(label, examples.stream()
-                        .map(example -> embeddingModel.embed(example).content())
-                        .collect(toList()))
+                exampleEmbeddingsByLabel.put(label, embeddingModel.embedAll(
+                    examples.stream()
+                        .map(TextSegment::from)
+                        .collect(toList())).content()
+                )
         );
 
         this.maxResults = ensureGreaterThanZero(maxResults, "maxResults");

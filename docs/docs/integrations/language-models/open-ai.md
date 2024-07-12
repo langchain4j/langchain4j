@@ -21,7 +21,7 @@ If you are using Quarkus, please refer to the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -30,7 +30,7 @@ If you are using Quarkus, please refer to the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -211,3 +211,7 @@ Tokenizer tokenizer = new OpenAiTokenizer("gpt-3.5-turbo");
 
 ### Spring Boot
 The `OpenAiTokenizer` bean is created automatically.
+
+
+## Examples
+- [OpenAI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/open-ai-examples/src/main/java)
