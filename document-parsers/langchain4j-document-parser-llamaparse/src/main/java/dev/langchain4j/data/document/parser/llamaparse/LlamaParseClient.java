@@ -73,7 +73,6 @@ public class LlamaParseClient {
                 throw toException(retrofitResponse);
             }
         } catch (Exception ex) {
-            log.error("Error uploading file");
             throw new RuntimeException(ex);
         }
     }
