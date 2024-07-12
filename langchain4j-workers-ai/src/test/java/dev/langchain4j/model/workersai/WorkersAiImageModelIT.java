@@ -17,7 +17,7 @@ import java.util.Base64;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
-class WorkerAiImageModelIT {
+class WorkersAiImageModelIT {
 
     static WorkersAiImageModel imageModel;
 

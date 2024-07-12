@@ -342,6 +342,12 @@ public class AiServicesIT {
         @UserMessage(fromResource = "chefs-prompt-based-on-ingredients.txt")
         Recipe createRecipeFromUsingResource(String... ingredients);
 
+        @UserMessage(fromResource = "chefs-prompt-based-on-ingredients-in-root.txt")
+        Recipe createRecipeFromUsingResourceInRoot(String... ingredients);
+
+        @UserMessage(fromResource = "subdirectory/chefs-prompt-based-on-ingredients-in-subdirectory.txt")
+        Recipe createRecipeFromUsingResourceInSubdirectory(String... ingredients);
+
         Recipe createRecipeFrom(CreateRecipePrompt prompt);
 
         @SystemMessage("You are very {{character}} chef")
@@ -380,6 +386,52 @@ public class AiServicesIT {
         Chef chef = AiServices.create(Chef.class, chatLanguageModel);
 
         Recipe recipe = chef.createRecipeFromUsingResource("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")));
+    }
+
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource_in_root() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResourceInRoot("cucumber", "tomato", "feta", "onion", "olives");
+        System.out.println(recipe);
+
+        assertThat(recipe.title).isNotBlank();
+        assertThat(recipe.description).isNotBlank();
+        assertThat(recipe.steps).isNotEmpty();
+        assertThat(recipe.preparationTimeMinutes).isPositive();
+
+        verify(chatLanguageModel).generate(singletonList(userMessage(
+                "Create recipe using only [cucumber, tomato, feta, onion, olives]\n" +
+                        "You must answer strictly in the following JSON format: {\n" +
+                        "\"title\": (type: string),\n" +
+                        "\"description\": (type: string),\n" +
+                        "\"steps\": (each step should be described in 4 words, steps should rhyme; type: array of string),\n" +
+                        "\"preparationTimeMinutes\": (type: integer)\n" +
+                        "}")));
+    }
+
+    @Test
+    void test_create_recipe_from_list_of_ingredients_using_resource_in_subdirectory() {
+
+        Chef chef = AiServices.create(Chef.class, chatLanguageModel);
+
+        Recipe recipe = chef.createRecipeFromUsingResourceInSubdirectory("cucumber", "tomato", "feta", "onion", "olives");
         System.out.println(recipe);
 
         assertThat(recipe.title).isNotBlank();

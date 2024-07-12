@@ -17,7 +17,8 @@ import static dev.langchain4j.model.zhipu.chat.Role.USER;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class UserMessage implements Message {
 
-    private final Role role = USER;
+    @Builder.Default
+    private Role role = USER;
     private String content;
     private String name;
 

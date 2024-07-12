@@ -1,5 +1,5 @@
 ---
-sidebar_position: 10
+sidebar_position: 11
 ---
 
 # MistralAI
@@ -16,21 +16,21 @@ For Maven project `pom.xml`
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-mistral-ai</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
 For Gradle project `build.gradle`
 
 ```groovy
-implementation 'dev.langchain4j:langchain4j:0.31.0'
-implementation 'dev.langchain4j:langchain4j-mistral-ai:0.31.0'
+implementation 'dev.langchain4j:langchain4j:0.32.0'
+implementation 'dev.langchain4j:langchain4j-mistral-ai:0.32.0'
 ```
 ### API Key setup
 Add your MistralAI API key to your project, you can create a class ```ApiKeys.java``` with the following code
@@ -370,6 +370,6 @@ Toggling the safe prompt will prepend your messages with the following `@SystemM
 Always assist with care, respect, and truth. Respond with utmost utility yet securely. Avoid harmful, unethical, prejudiced, or negative content. Ensure replies promote fairness and positivity.
 ```
 
-### More examples
-If you want to check more MistralAI examples, you can find them in the [langchain4j-examples/mistral-ai-examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples) project.
 
+## Examples
+- [Mistral AI Examples](https://github.com/langchain4j/langchain4j-examples/tree/main/mistral-ai-examples/src/main/java)

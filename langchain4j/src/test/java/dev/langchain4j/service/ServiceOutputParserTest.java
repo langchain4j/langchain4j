@@ -2,6 +2,9 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.*;
+import org.junit.jupiter.api.BeforeEach;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.output.*;
 import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,6 +23,10 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;

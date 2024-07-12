@@ -1,20 +1,30 @@
 ---
-sidebar_position: 14
+sidebar_position: 15
 ---
 
 # Cloudflare Workers AI
 
 https://developers.cloudflare.com/workers-ai/
 
+
+## Maven Dependency
+
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-workers-ai</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
-## Workers AI Models
+
+## APIs
 
 - `WorkersAiChatModel`
 - `WorkersAiLanguageModel`
+
+
+## Examples
+
+- [WorkerAIChatModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-workers-ai/src/test/java/dev/langchain4j/model/workersai/WorkerAIChatModelIT.java)
+- [WorkerAILanguageModelIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-workers-ai/src/test/java/dev/langchain4j/model/workersai/WorkerAILanguageModelIT.java)

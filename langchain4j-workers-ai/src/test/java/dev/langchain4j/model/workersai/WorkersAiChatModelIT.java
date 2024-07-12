@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_API_KEY", matches = ".*")
 @EnabledIfEnvironmentVariable(named = "WORKERS_AI_ACCOUNT_ID", matches = ".*")
-class WorkerAIChatModelIT {
+class WorkersAiChatModelIT {
 
     static WorkersAiChatModel chatModel;
 

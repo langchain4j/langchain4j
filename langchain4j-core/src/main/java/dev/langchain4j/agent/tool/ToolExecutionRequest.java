@@ -5,7 +5,7 @@ import java.util.Objects;
 import static dev.langchain4j.internal.Utils.quoted;
 
 /**
- * Represents a request to execute a tool.
+ * Represents an LLM-generated request to execute a tool.
  */
 public class ToolExecutionRequest {
     private final String id;

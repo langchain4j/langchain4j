@@ -11,8 +11,8 @@
 
 
 ## Issue
-<!-- Please paste the link to the issue this PR is addressing. For example: https://github.com/langchain4j/langchain4j/issues/1012 -->
-
+<!-- Please specify the ID of the issue this PR is addressing. For example: "Closes #1234" -->
+Closes #
 
 ## Change
 <!-- Please describe the changes you made. -->
