@@ -42,7 +42,7 @@ public class LlamaParseClient {
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(getOrDefault(baseUrl, "https://api.cloud.llamaindex.ai/api/parsing/"))
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
