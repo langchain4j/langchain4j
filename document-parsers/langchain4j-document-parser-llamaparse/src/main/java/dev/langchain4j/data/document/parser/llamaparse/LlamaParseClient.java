@@ -109,7 +109,7 @@ public class LlamaParseClient {
         try {
             retrofit2.Response<LlamaParseTextResponse> response =
                     llmaParseApi.textResult(jobId).execute();
-            if (response != null && response.isSuccessful()) {
+            if (response.isSuccessful()) {
                 return response.body();
             } else {
                 throw toException(response);
