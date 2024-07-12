@@ -117,6 +117,8 @@ public class AstraDbChatMessage {
                             .collect(Collectors.toList());
                 }
                 break;
+            case TOOL_EXECUTION_RESULT:
+                throw new IllegalArgumentException("Tool execution result is not supported in AstraDB");
             default:
                 throw new IllegalArgumentException("Unknown message type: " + chatMessage.type());
         }
