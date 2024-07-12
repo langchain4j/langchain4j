@@ -17,7 +17,8 @@ import static dev.langchain4j.model.zhipu.chat.Role.TOOL;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public final class ToolMessage implements Message {
 
-    private final Role role = TOOL;
+    @Builder.Default
+    private Role role = TOOL;
     private String toolCallId;
     private String content;
 
