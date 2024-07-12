@@ -120,7 +120,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
 		metadata.put("position", String.valueOf(result.getPosition()));
 		metadata.put("source", result.getSource());
-		metadata.put("thumbnail", result.getThumbnail());
+		metadata.put("thumbnail", (result.getThumbnail() != null) ? result.getThumbnail() : "");
 		return metadata;
 	}
 
@@ -174,7 +174,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		}
 
 		if (title != null && website != null) {
-			OrganicResult result = new OrganicResult();
+			final OrganicResult result = new OrganicResult();
 			result.setPosition(0);
 			result.setSource("inline");
 			results.add(0, WebSearchOrganicResult.from(title, URI.create(website), description, null,
