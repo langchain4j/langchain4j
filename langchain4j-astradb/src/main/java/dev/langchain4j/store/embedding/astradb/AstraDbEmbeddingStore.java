@@ -80,21 +80,21 @@ public class AstraDbEmbeddingStore implements EmbeddingStore<TextSegment> {
     /**
      * Initialization of the store with an EXISTING collection.
      *
-     * @param client
-     *      astra db collection client
+     * @param collection
+     *      astra db collection collection
      * @param itemsPerChunk
      *     size of 1 chunk in between 1 and 20
      * @param concurrentThreads
      *      concurrent threads
      */
-    public AstraDbEmbeddingStore(@NonNull Collection<Document> client, int itemsPerChunk, int concurrentThreads) {
+    public AstraDbEmbeddingStore(@NonNull Collection<Document> collection, int itemsPerChunk, int concurrentThreads) {
         if (itemsPerChunk>100 || itemsPerChunk<1) {
             throw new IllegalArgumentException("'itemsPerChunk' should be in between 1 and 20");
         }
         if (concurrentThreads<1) {
             throw new IllegalArgumentException("'concurrentThreads' should be at least 1");
         }
-        this.astraDBCollection = client;
+        this.astraDBCollection = collection;
         this.itemsPerChunk     = itemsPerChunk;
         this.concurrentThreads = concurrentThreads;
     }

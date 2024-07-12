@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import lombok.Data;
 import lombok.Getter;
@@ -101,7 +102,7 @@ public class AstraDbChatMessage {
             break;
             case USER:
                 UserMessage userMessage = (UserMessage) chatMessage;
-                this.name     = userMessage.name();
+                this.name  = userMessage.name();
                 if (userMessage.contents() != null) {
                     this.contents = userMessage.contents()
                             .stream()
@@ -118,7 +119,10 @@ public class AstraDbChatMessage {
                 }
                 break;
             case TOOL_EXECUTION_RESULT:
-                throw new IllegalArgumentException("Tool execution result is not supported in AstraDB");
+                ToolExecutionResultMessage tes = (ToolExecutionResultMessage) chatMessage;
+                this.name = tes.id() + tes.toolName();
+                this.text = tes.text();
+            break;
             default:
                 throw new IllegalArgumentException("Unknown message type: " + chatMessage.type());
         }
@@ -156,6 +160,17 @@ public class AstraDbChatMessage {
                     return new AiMessage(text, request);
                 }
                 return new AiMessage(text);
+            case TOOL_EXECUTION_RESULT:
+                if (this.toolExecutionRequests != null) {
+                    List<dev.langchain4j.agent.tool.ToolExecutionRequest> request = this.toolExecutionRequests
+                            .stream().map(ToolExecutionRequest::asLc4j)
+                            .collect(Collectors.toList());
+                    if (!request.isEmpty()) {
+                        dev.langchain4j.agent.tool.ToolExecutionRequest tool = request.get(0);
+                        return new ToolExecutionResultMessage(tool.id(), tool.name(), text);
+                    }
+                }
+                return new ToolExecutionResultMessage(null, null, text);
             default:
                 throw new IllegalArgumentException("Unknown message type: " + messageType);
         }
