@@ -146,7 +146,6 @@ public class LlamaParseClient {
             }
 
         } catch (Exception ex) {
-            log.error("Error getting job {} status", jobId);
             throw new RuntimeException(ex);
         }
     }
