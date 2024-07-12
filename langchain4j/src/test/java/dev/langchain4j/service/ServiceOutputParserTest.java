@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.*;
+import dev.langchain4j.model.output.structured.Description;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
@@ -19,7 +20,6 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -55,7 +55,7 @@ class ServiceOutputParserTest {
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02"), LocalDate.class, LocalDateOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("11:38:00"), LocalTime.class, LocalTimeOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02T11:38:00"), LocalDateTime.class, LocalDateTimeOutputParser.class);
-        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage(WEATHER.SUNNY.name()), WEATHER.class, EnumOutputParser.class);
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage(Weather.SUNNY.name()), Weather.class, EnumOutputParser.class);
     }
 
     private void testWhetherProperOutputParserWasCalled(AiMessage aiMessage, Class<?> returnType, Class<?> expectedOutputParserType) {
@@ -87,10 +87,21 @@ class ServiceOutputParserTest {
      * Output format instructions tests
      ********************************************************************************************/
 
-    enum WEATHER {
+    public enum Weather {
         SUNNY,
         CLOUDY,
         RAINY,
+        SNOWY
+    }
+
+    public enum WeatherWithDescription {
+        @Description("A clear day with bright sunlight and few or no clouds")
+        SUNNY,
+        @Description("The sky is covered with clouds, often creating a gray and overcast appearance")
+        CLOUDY,
+        @Description("Precipitation in the form of rain, with cloudy skies and wet conditions")
+        RAINY,
+        @Description("Snowfall occurs, covering the ground in white and creating cold, wintry conditions")
         SNOWY
     }
 
@@ -98,6 +109,32 @@ class ServiceOutputParserTest {
         private String firstName;
         private String lastName;
         private LocalDate birthDate;
+    }
+
+    @Test
+    void outputFormatInstructions_Enum() {
+        String formatInstructions = sut.outputFormatInstructions(Weather.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "SUNNY\n" +
+                        "CLOUDY\n" +
+                        "RAINY\n" +
+                        "SNOWY");
+    }
+
+    @Test
+    void outputFormatInstructions_EnumWithDescriptions() {
+        String formatInstructions = sut.outputFormatInstructions(WeatherWithDescription.class);
+
+        assertThat(formatInstructions).isEqualTo(
+                "\n" +
+                        "You must answer strictly with one of these enums:\n" +
+                        "SUNNY - A clear day with bright sunlight and few or no clouds\n" +
+                        "CLOUDY - The sky is covered with clouds, often creating a gray and overcast appearance\n" +
+                        "RAINY - Precipitation in the form of rain, with cloudy skies and wet conditions\n" +
+                        "SNOWY - Snowfall occurs, covering the ground in white and creating cold, wintry conditions");
     }
 
     @Test
