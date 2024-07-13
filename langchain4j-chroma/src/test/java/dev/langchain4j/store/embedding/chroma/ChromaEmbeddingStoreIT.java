@@ -21,6 +21,8 @@ class ChromaEmbeddingStoreIT extends EmbeddingStoreIT {
         .builder()
         .baseUrl(chroma.getEndpoint())
         .collectionName(randomUUID())
+        .logRequests(true)
+        .logResponses(true)
         .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();

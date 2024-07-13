@@ -35,18 +35,29 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
      * @param baseUrl        The base URL of the Chroma service.
      * @param collectionName The name of the collection in the Chroma service. If not specified, "default" will be used.
      * @param timeout        The timeout duration for the Chroma client. If not specified, 5 seconds will be used.
+     * @param logRequests    If true, requests to the Chroma service are logged.
+     * @param logResponses   If true, responses from the Chroma service are logged.
      */
-    public ChromaEmbeddingStore(String baseUrl, String collectionName, Duration timeout) {
+    public ChromaEmbeddingStore(
+        String baseUrl,
+        String collectionName,
+        Duration timeout,
+        boolean logRequests,
+        boolean logResponses
+    ) {
         this.collectionName = getOrDefault(collectionName, "default");
 
-        this.chromaClient = new ChromaClient(baseUrl, getOrDefault(timeout, ofSeconds(5)));
+        this.chromaClient =
+            new ChromaClient.Builder()
+                .baseUrl(baseUrl)
+                .timeout(getOrDefault(timeout, ofSeconds(5)))
+                .logRequests(logRequests)
+                .logResponses(logResponses)
+                .build();
 
         Collection collection = chromaClient.collection(this.collectionName);
         if (collection == null) {
-            Collection createdCollection = chromaClient.createCollection(
-                new CreateCollectionRequest(this.collectionName)
-            );
-            collectionId = createdCollection.id();
+            createCollection();
         } else {
             collectionId = collection.id();
         }
@@ -61,6 +72,8 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String baseUrl;
         private String collectionName;
         private Duration timeout;
+        private boolean logRequests;
+        private boolean logResponses;
 
         /**
          * @param baseUrl The base URL of the Chroma service.
@@ -89,8 +102,24 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        public Builder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
         public ChromaEmbeddingStore build() {
-            return new ChromaEmbeddingStore(this.baseUrl, this.collectionName, this.timeout);
+            return new ChromaEmbeddingStore(
+                this.baseUrl,
+                this.collectionName,
+                this.timeout,
+                this.logRequests,
+                this.logResponses
+            );
         }
     }
 
@@ -173,33 +202,25 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(java.util.Collection<String> ids) {
         ensureNotEmpty(ids, "ids");
-        DeleteEmbeddingsRequest request = DeleteEmbeddingsRequest.builder().ids(new ArrayList<>(ids)).build();
-        chromaClient.deleteEmbeddings(collectionId, request);
+        chromaClient.deleteEmbeddings(
+            collectionId,
+            DeleteEmbeddingsRequest.builder().ids(new ArrayList<>(ids)).build()
+        );
     }
 
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        DeleteEmbeddingsRequest request = DeleteEmbeddingsRequest
-            .builder()
-            .where(ChromaMetadataFilterMapper.map(filter))
-            .build();
-        chromaClient.deleteEmbeddings(collectionId, request);
+        chromaClient.deleteEmbeddings(
+            collectionId,
+            DeleteEmbeddingsRequest.builder().where(ChromaMetadataFilterMapper.map(filter)).build()
+        );
     }
 
     @Override
     public void removeAll() {
-        //        DeleteEmbeddingsRequest request = DeleteEmbeddingsRequest
-        //            .builder()
-        //            //            .where(ChromaMetadataFilterMapper.map(new IsNotEqualTo("a", "a")))
-        //            .build();
-        //        chromaClient.deleteEmbeddings(collectionId, request);
         chromaClient.deleteCollection(collectionName);
-
-        // TODO centralize it
-
-        Collection createdCollection = chromaClient.createCollection(new CreateCollectionRequest(this.collectionName));
-        collectionId = createdCollection.id();
+        createCollection();
     }
 
     private static List<EmbeddingMatch<TextSegment>> toEmbeddingMatches(QueryResponse queryResponse) {
@@ -231,5 +252,9 @@ public class ChromaEmbeddingStore implements EmbeddingStore<TextSegment> {
         String text = queryResponse.documents().get(0).get(i);
         Map<String, Object> metadata = queryResponse.metadatas().get(0).get(i);
         return text == null ? null : TextSegment.from(text, metadata == null ? new Metadata() : new Metadata(metadata));
+    }
+
+    private void createCollection() {
+        collectionId = chromaClient.createCollection(new CreateCollectionRequest(this.collectionName)).id();
     }
 }

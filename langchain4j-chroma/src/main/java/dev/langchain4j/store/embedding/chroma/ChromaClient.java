@@ -16,25 +16,61 @@ class ChromaClient {
 
     private final ChromaApi chromaApi;
 
-    ChromaClient(String baseUrl, Duration timeout) {
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-            .callTimeout(timeout)
-            .connectTimeout(timeout)
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .addInterceptor(new ChromaRequestLoggingInterceptor()) // TODO add "if"
-            .addInterceptor(new ChromaResponseLoggingInterceptor()) // TODO add "if"
-            .build();
+    private ChromaClient(Builder builder) {
+        OkHttpClient.Builder httpClientBuilder = new OkHttpClient.Builder()
+            .callTimeout(builder.timeout)
+            .connectTimeout(builder.timeout)
+            .readTimeout(builder.timeout)
+            .writeTimeout(builder.timeout);
+
+        if (builder.logRequests) {
+            httpClientBuilder.addInterceptor(new ChromaRequestLoggingInterceptor());
+        }
+        if (builder.logResponses) {
+            httpClientBuilder.addInterceptor(new ChromaResponseLoggingInterceptor());
+        }
 
         Gson gson = new GsonBuilder().setFieldNamingPolicy(LOWER_CASE_WITH_UNDERSCORES).create();
 
         Retrofit retrofit = new Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .client(okHttpClient)
+            .baseUrl(builder.baseUrl)
+            .client(httpClientBuilder.build())
             .addConverterFactory(GsonConverterFactory.create(gson))
             .build();
 
         this.chromaApi = retrofit.create(ChromaApi.class);
+    }
+
+    public static class Builder {
+
+        private String baseUrl;
+        private Duration timeout;
+        private boolean logRequests;
+        private boolean logResponses;
+
+        public Builder baseUrl(String baseUrl) {
+            this.baseUrl = baseUrl;
+            return this;
+        }
+
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
+            return this;
+        }
+
+        public Builder logRequests(boolean logRequests) {
+            this.logRequests = logRequests;
+            return this;
+        }
+
+        public Builder logResponses(boolean logResponses) {
+            this.logResponses = logResponses;
+            return this;
+        }
+
+        public ChromaClient build() {
+            return new ChromaClient(this);
+        }
     }
 
     Collection createCollection(CreateCollectionRequest createCollectionRequest) {
@@ -95,9 +131,7 @@ class ChromaClient {
             Response<List<String>> retrofitResponse = chromaApi
                 .deleteEmbeddings(collectionId, deleteEmbeddingsRequest)
                 .execute();
-            if (retrofitResponse.isSuccessful()) {
-                // TODO do it right
-            } else {
+            if (!retrofitResponse.isSuccessful()) {
                 throw toException(retrofitResponse);
             }
         } catch (IOException e) {
