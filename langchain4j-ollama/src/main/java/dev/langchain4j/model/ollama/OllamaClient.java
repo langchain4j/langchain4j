@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import static com.fasterxml.jackson.databind.PropertyNamingStrategies.SNAKE_CASE;
 import static com.fasterxml.jackson.databind.SerializationFeature.INDENT_OUTPUT;
 import static java.lang.Boolean.TRUE;
 
@@ -34,7 +33,6 @@ import static java.lang.Boolean.TRUE;
 class OllamaClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
-            .setPropertyNamingStrategy(SNAKE_CASE)
             .enable(INDENT_OUTPUT);
 
     private final OllamaApi ollamaApi;
@@ -114,11 +112,11 @@ class OllamaClient {
                         byte[] bytes = new byte[1024];
                         int len = inputStream.read(bytes);
                         String partialResponse = new String(bytes, 0, len);
-                      
+
                         if (logStreamingResponses) {
                             log.debug("Streaming partial response: {}", partialResponse);
                         }
-                      
+
                         CompletionResponse completionResponse = OBJECT_MAPPER.readValue(partialResponse, CompletionResponse.class);
                         contentBuilder.append(completionResponse.getResponse());
                         handler.onNext(completionResponse.getResponse());
@@ -157,11 +155,11 @@ class OllamaClient {
                         StringBuilder contentBuilder = new StringBuilder();
                         while (true) {
                             String partialResponse = reader.readLine();
-                          
+
                             if (logStreamingResponses) {
                                 log.debug("Streaming partial response: {}", partialResponse);
                             }
-                          
+
                             ChatResponse chatResponse = OBJECT_MAPPER.readValue(partialResponse, ChatResponse.class);
                             String content = chatResponse.getMessage().getContent();
                             contentBuilder.append(content);
