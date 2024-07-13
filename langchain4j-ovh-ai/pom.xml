@@ -89,18 +89,6 @@
 
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <configuration>
-                    <skipTests>${skipOvhAIITs}</skipTests>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
     <licenses>
         <license>
             <name>Apache-2.0</name>
