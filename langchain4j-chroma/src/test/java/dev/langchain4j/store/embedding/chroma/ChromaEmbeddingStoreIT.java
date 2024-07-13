@@ -15,7 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 class ChromaEmbeddingStoreIT extends EmbeddingStoreIT {
 
     @Container
-    private static final ChromaDBContainer chroma = new ChromaDBContainer("ghcr.io/chroma-core/chroma:0.5.2");
+    private static final ChromaDBContainer chroma = new ChromaDBContainer("chromadb/chroma:0.5.2");
 
     EmbeddingStore<TextSegment> embeddingStore = ChromaEmbeddingStore
         .builder()
