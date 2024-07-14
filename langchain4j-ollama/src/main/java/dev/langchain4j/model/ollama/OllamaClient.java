@@ -65,7 +65,7 @@ class OllamaClient {
         OkHttpClient okHttpClient = okHttpClientBuilder.build();
 
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(baseUrl)
+                .baseUrl(baseUrl.endsWith("/") ? baseUrl : baseUrl + "/")
                 .client(okHttpClient)
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
