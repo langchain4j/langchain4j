@@ -46,7 +46,9 @@ class DefaultToolExecutorTest implements WithAssertions {
             Short ShortP,
             ExampleEnum enumP,
             boolean booleanP,
-            Boolean BooleanP
+            Boolean BooleanP,
+            double double2P,
+            Double Double2P
     ) {
     }
 
@@ -71,7 +73,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 Short.class,
                 ExampleEnum.class,
                 boolean.class,
-                Boolean.class
+                Boolean.class,
+                double.class,
+                Double.class
         );
 
         Map<String, Object> arguments = new HashMap<>();
@@ -90,6 +94,8 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg13", "A");
         arguments.put("arg14", true);
         arguments.put("arg15", Boolean.FALSE);
+        arguments.put("arg16", "1.1");
+        arguments.put("arg17", "2.2");
 
         Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
 
@@ -109,7 +115,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 (short) 12,
                 ExampleEnum.A,
                 true,
-                false
+                false,
+                1.1,
+                2.2
         );
 
         {

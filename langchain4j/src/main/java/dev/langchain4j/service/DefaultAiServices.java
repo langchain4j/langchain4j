@@ -33,6 +33,8 @@ import static dev.langchain4j.service.output.ServiceOutputParser.parse;
 
 class DefaultAiServices<T> extends AiServices<T> {
 
+    private final ServiceOutputParser serviceOutputParser = new ServiceOutputParser(new DefaultOutputParserFactory());
+
     private static final int MAX_SEQUENTIAL_TOOL_EXECUTIONS = 10;
 
     DefaultAiServices(AiServiceContext context) {
@@ -117,7 +119,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 returnType = Class.forName(typeArg.getTypeName());
                             }
                         }
-                        String outputFormatInstructions = outputFormatInstructions(returnType);
+                        String outputFormatInstructions = serviceOutputParser.outputFormatInstructions(returnType);
                         String text = userMessage.singleText() + outputFormatInstructions;
                         if (isNotNullOrBlank(userMessage.name())) {
                             userMessage = UserMessage.from(userMessage.name(), text);
@@ -197,7 +199,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                         }
 
                         response = Response.from(response.content(), tokenUsageAccumulator, response.finishReason());
-                        Object parsedResponse = parse(response, returnType);
+                        Object parsedResponse = serviceOutputParser.parse(response, returnType);
 
                         if (isReturnTypeResult) {
                             return Result.builder()

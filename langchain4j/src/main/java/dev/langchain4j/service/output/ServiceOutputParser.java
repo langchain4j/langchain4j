@@ -9,11 +9,6 @@ import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.*;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
@@ -22,41 +17,13 @@ import static java.util.Arrays.asList;
 
 public class ServiceOutputParser {
 
-    private static final Map<Class<?>, OutputParser<?>> OUTPUT_PARSERS = new HashMap<>();
+    OutputParserFactory outputParserFactory;
 
-    static {
-        OUTPUT_PARSERS.put(boolean.class, new BooleanOutputParser());
-        OUTPUT_PARSERS.put(Boolean.class, new BooleanOutputParser());
-
-        OUTPUT_PARSERS.put(byte.class, new ByteOutputParser());
-        OUTPUT_PARSERS.put(Byte.class, new ByteOutputParser());
-
-        OUTPUT_PARSERS.put(short.class, new ShortOutputParser());
-        OUTPUT_PARSERS.put(Short.class, new ShortOutputParser());
-
-        OUTPUT_PARSERS.put(int.class, new IntOutputParser());
-        OUTPUT_PARSERS.put(Integer.class, new IntOutputParser());
-
-        OUTPUT_PARSERS.put(long.class, new LongOutputParser());
-        OUTPUT_PARSERS.put(Long.class, new LongOutputParser());
-
-        OUTPUT_PARSERS.put(BigInteger.class, new BigIntegerOutputParser());
-
-        OUTPUT_PARSERS.put(float.class, new FloatOutputParser());
-        OUTPUT_PARSERS.put(Float.class, new FloatOutputParser());
-
-        OUTPUT_PARSERS.put(double.class, new DoubleOutputParser());
-        OUTPUT_PARSERS.put(Double.class, new DoubleOutputParser());
-
-        OUTPUT_PARSERS.put(BigDecimal.class, new BigDecimalOutputParser());
-
-        OUTPUT_PARSERS.put(Date.class, new DateOutputParser());
-        OUTPUT_PARSERS.put(LocalDate.class, new LocalDateOutputParser());
-        OUTPUT_PARSERS.put(LocalTime.class, new LocalTimeOutputParser());
-        OUTPUT_PARSERS.put(LocalDateTime.class, new LocalDateTimeOutputParser());
+    public ServiceOutputParser(OutputParserFactory outputParserFactory) {
+        this.outputParserFactory = outputParserFactory;
     }
 
-    public static Object parse(Response<AiMessage> response, Class<?> returnType) {
+    public Object parse(Response<AiMessage> response, Class<?> returnType) {
 
         if (returnType == Response.class) {
             return response;
@@ -72,9 +39,9 @@ public class ServiceOutputParser {
             return text;
         }
 
-        OutputParser<?> outputParser = OUTPUT_PARSERS.get(returnType);
-        if (outputParser != null) {
-            return outputParser.parse(text);
+        Optional<OutputParser<?>> optionalOutputParser = outputParserFactory.get(returnType);
+        if (optionalOutputParser.isPresent()) {
+            return optionalOutputParser.get().parse(text);
         }
 
         if (returnType == List.class) {
@@ -88,7 +55,7 @@ public class ServiceOutputParser {
         return Json.fromJson(text, returnType);
     }
 
-    public static String outputFormatInstructions(Class<?> returnType) {
+    public String outputFormatInstructions(Class<?> returnType) {
 
         if (returnType == String.class
                 || returnType == AiMessage.class
@@ -103,12 +70,12 @@ public class ServiceOutputParser {
 
         if (returnType.isEnum()) {
             String formatInstructions = new EnumOutputParser(returnType.asSubclass(Enum.class)).formatInstructions();
-            return "\nYou must answer strictly in the following format: " + formatInstructions;
+            return "\nYou must answer strictly with " + formatInstructions;
         }
 
-        OutputParser<?> outputParser = OUTPUT_PARSERS.get(returnType);
-        if (outputParser != null) {
-            String formatInstructions = outputParser.formatInstructions();
+        Optional<OutputParser<?>> outputParser = outputParserFactory.get(returnType);
+        if (outputParser.isPresent()) {
+            String formatInstructions = outputParser.get().formatInstructions();
             return "\nYou must answer strictly in the following format: " + formatInstructions;
         }
 
