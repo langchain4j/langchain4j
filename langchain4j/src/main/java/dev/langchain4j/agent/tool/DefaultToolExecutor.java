@@ -10,6 +10,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 
@@ -185,6 +186,15 @@ public class DefaultToolExecutor implements ToolExecutor {
                     getNonFractionalDoubleValue(argument, parameterName, parameterType)).toBigInteger();
         }
 
+        if (parameterType.isArray() && argument instanceof Collection) {
+            Class<?> type = parameterType.getComponentType();
+            if (type == String.class) {
+                return ((Collection<String>) argument).toArray(new String[0]);
+            }
+            // TODO: Consider full type coverage.
+        }
+
+
         String result  = Json.toJson(argument);
         return Json.fromJson(result, parameterType);
     }
@@ -194,6 +204,13 @@ public class DefaultToolExecutor implements ToolExecutor {
             String parameterName,
             Class<?> parameterType
     ) {
+        if (argument instanceof String) {
+            try {
+                return Double.parseDouble(argument.toString());
+            } catch (Exception e) {
+                // nothing, will be handled with bellow code
+            }
+        }
         if (!(argument instanceof Number)) {
             throw new IllegalArgumentException(String.format(
                     "Argument \"%s\" is not convertable to %s, got %s: <%s>",
