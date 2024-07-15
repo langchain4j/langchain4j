@@ -20,6 +20,7 @@ import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
 import dev.langchain4j.web.search.searchapi.result.OrganicResult;
 import lombok.Builder;
+import lombok.Getter;
 
 /**
  * Represents SearchApi Search API as a {@code WebSearchEngine}. See more
@@ -54,35 +55,19 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		ensureNotNull(webSearchRequest, "webSearchRequest");
 
 		final SearchApiRequest.SearchApiRequestBuilder requestBuilder = SearchApiRequest.builder();
-
-		requestBuilder.q(webSearchRequest.searchTerms()).safe(webSearchRequest.safeSearch())
+		final Locale locale = new Locale(webSearchRequest.language());
+		requestBuilder.q(webSearchRequest.searchTerms())
+		        .safe(webSearchRequest.safeSearch())
 				.num(getOrDefault(webSearchRequest.maxResults(), DEFAULT_MAX_RESULTS)) // maxResults should default to 5
-				.page(webSearchRequest.startPage());
+				.page(webSearchRequest.startPage())
+				.hl(locale.hl)
+				.gl(locale.gl);
+        final SearchApiRequest request = requestBuilder.build();
 
-		/**
-		 * {@link WebSearchRequest#language} is in a composite string "en-us" but
-		 * SearchApi splits them into 2 individual strings. See
-		 * https://github.com/dewitt/opensearch/blob/master/opensearch-1-1-draft-6.md#the-language-element
-		 */
-		String hl = null, gl = null;
-		if (isNotNullOrBlank(webSearchRequest.language())) {
-			final String lang[] = webSearchRequest.language().split("-");
-			if (lang.length == 2) {
-				hl = lang[0];
-				gl = lang[1];
+        // conduct the search
+        final SearchApiResponse searchapiResponse = searchapiClient.search(request);
 
-				if (isNotNullOrBlank(hl))
-					requestBuilder.hl(hl);
-				if (isNotNullOrBlank(gl))
-					requestBuilder.gl(gl);
-			}
-		}
-		final SearchApiRequest request = requestBuilder.build();
-
-		// conduct the search
-		final SearchApiResponse searchapiResponse = searchapiClient.search(request);
-
-		final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
+        final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
 				.map(result -> WebSearchOrganicResult.from(result.getTitle(), URI.create(result.getLink()),
 						result.getSnippet() != null ? result.getSnippet() : result.getDisplayedLink(), // for the first
 																										// few runs of
@@ -111,8 +96,8 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, results);
 	}
 
-	public static SearchApiWebSearchEngineBuilder withApiKey(final String apiKey) {
-		return builder().apiKey(apiKey);
+	public static SearchApiWebSearchEngine withApiKey(final String apiKey) {
+		return builder().apiKey(apiKey).build();
 	}
 
 	private static Map<String, String> toResultMetadataMap(final OrganicResult result) {
@@ -120,7 +105,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
 		metadata.put("position", String.valueOf(result.getPosition()));
 		metadata.put("source", result.getSource());
-		metadata.put("thumbnail", (result.getThumbnail() != null) ? result.getThumbnail() : "");
+		metadata.put("thumbnail", getOrDefault(result.getThumbnail(), ""));
 		return metadata;
 	}
 
@@ -179,6 +164,31 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 			result.setSource("inline");
 			results.add(0, WebSearchOrganicResult.from(title, URI.create(website), description, null,
 					toResultMetadataMap(result)));
+		}
+	}
+
+    @Getter
+	static class Locale {
+		private final String hl;
+		private final String gl;
+		/**
+		 * {@link WebSearchRequest#language} is in a composite string "en-us" for a locale but
+		 * SearchApi splits them into 2 individual strings.
+		 * See https://github.com/dewitt/opensearch/blob/master/opensearch-1-1-draft-6.md#the-language-element
+		 */
+		Locale(String language) {
+			String hl = null;
+			String gl = null;
+			if (isNotNullOrBlank(language)) {
+				language = (language.indexOf("_") != -1) ? language.replace("_", "-"): language;
+				final String lang[] = language.split("-");
+				if (lang.length == 2) {
+					hl = lang[0].trim().toLowerCase();
+					gl = lang[1].trim().toLowerCase();
+				}
+			}
+			this.hl = getOrDefault(hl, "en");
+			this.gl = getOrDefault(gl, "us");
 		}
 	}
 }

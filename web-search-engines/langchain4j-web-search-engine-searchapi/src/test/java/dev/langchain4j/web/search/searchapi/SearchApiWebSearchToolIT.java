@@ -23,13 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
 class SearchApiWebSearchToolIT extends WebSearchToolIT {
-		
-	static final boolean logRequests = true;
 
-    WebSearchEngine webSearchEngine = SearchApiWebSearchEngine
-    		.withApiKey(System.getenv(DEFAULT_ENV_VAR))
-    		.logRequests(logRequests)
-    		.build();
+    static final boolean logRequests = true;
+
+    WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(DEFAULT_ENV_VAR));
 
     ChatLanguageModel chatModel = OpenAiChatModel.builder()
             .apiKey(System.getenv("OPENAI_API_KEY"))
@@ -51,10 +48,10 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
     @Test
     void should_execute_google_tool_with_chatLanguageModel_to_give_a_final_response(){
         // given
-        webSearchEngine = SearchApiWebSearchEngine
-        		.withApiKey(System.getenv(DEFAULT_ENV_VAR))
-        		.logRequests(logRequests)
-        		.build();
+        webSearchEngine = SearchApiWebSearchEngine.builder()
+                .apiKey(System.getenv(DEFAULT_ENV_VAR))
+                .logRequests(logRequests)
+                .build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(webSearchEngine);
         List<ToolSpecification> tools = ToolSpecifications.toolSpecificationsFrom(webSearchTool);
@@ -97,8 +94,8 @@ class SearchApiWebSearchToolIT extends WebSearchToolIT {
     @Test
     void should_execute_google_tool_with_chatLanguageModel_to_summary_response_in_images() {
         // given
-        webSearchEngine = SearchApiWebSearchEngine
-        		.withApiKey(System.getenv(DEFAULT_ENV_VAR))
+        webSearchEngine = SearchApiWebSearchEngine.builder()
+                .apiKey(System.getenv(DEFAULT_ENV_VAR))
                 .logRequests(logRequests)
                 .build();
 

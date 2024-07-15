@@ -21,7 +21,8 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 
 	private static final boolean logRequests = false;
 
-	protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv(DEFAULT_ENV_VAR))
+	protected WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
+			.apiKey(System.getenv(DEFAULT_ENV_VAR))
 			.logRequests(logRequests).build();
 
 	@Test

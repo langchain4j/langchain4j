@@ -16,8 +16,8 @@ import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFA
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
 class SearchApiWebSearchContentRetrieverIT extends WebSearchContentRetrieverIT {
 
-    WebSearchEngine webSearchEngine = SearchApiWebSearchEngine
-    		.withApiKey(System.getenv(DEFAULT_ENV_VAR))
+    WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
+            .apiKey(System.getenv(DEFAULT_ENV_VAR))
             .logRequests(true)
             .build();
 
