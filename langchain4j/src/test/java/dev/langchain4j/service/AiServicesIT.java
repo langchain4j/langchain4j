@@ -21,11 +21,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Arrays;
 import java.util.List;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
+import static dev.langchain4j.service.AiServicesIT.Ingredient.*;
+import static dev.langchain4j.service.AiServicesIT.IssueCategory.*;
 import static dev.langchain4j.service.AiServicesIT.Sentiment.POSITIVE;
 import static java.time.Month.JULY;
 import static java.util.Arrays.asList;
@@ -77,7 +80,7 @@ public class AiServicesIT {
         String sentence = "I have ten eggs in my basket and three in my pocket.";
 
         int count = eggCounter.count(sentence);
-        System.out.println(count);
+        assertThat(count).isEqualTo(13);
 
         verify(chatLanguageModel).generate(singletonList(userMessage("Count number of 'egg' mentions in this sentence:\n" +
                 "|||I have ten eggs in my basket and three in my pocket.|||\n" +
@@ -258,7 +261,7 @@ public class AiServicesIT {
         String recipe = "Just mix some salt, pepper and oil in the bowl. That will be a basis for...";
 
         List<Ingredient> ingredients = ingredientsExtractor.extractIngredients(recipe);
-        System.out.println(ingredients);
+        assertThat(ingredients).isEqualTo(Arrays.asList(SALT, PEPPER, OIL));
 
         verify(chatLanguageModel).generate(singletonList(userMessage("Analyze the following recipe:\n" +
                 "|||" + recipe + "|||\n" +
@@ -305,7 +308,7 @@ public class AiServicesIT {
                 "friendly staff and enjoyable breakfast buffet, these issues significantly impacted our stay.";
 
         List<IssueCategory> issueCategories = hotelReviewIssueAnalyzer.analyzeReview(review);
-        System.out.println(issueCategories); // [MAINTENANCE_ISSUE, SERVICE_ISSUE, COMFORT_ISSUE, OVERALL_EXPERIENCE_ISSUE]
+        assertThat(issueCategories).isEqualTo(Arrays.asList(MAINTENANCE_ISSUE, SERVICE_ISSUE, COMFORT_ISSUE, OVERALL_EXPERIENCE_ISSUE));
 
         verify(chatLanguageModel).generate(singletonList(userMessage("Please analyse the following review: |||" + review + "|||\n" +
                 "You must answer strictly with zero or more of these enums on a separate line:\n" +
