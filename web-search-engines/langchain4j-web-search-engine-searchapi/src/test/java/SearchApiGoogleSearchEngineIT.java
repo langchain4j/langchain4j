@@ -87,4 +87,26 @@ class SearchApiGoogleSearchEngineIT {
         List<WebSearchOrganicResult> results = webSearchResults.results();
         assertThat(results).hasSizeLessThanOrEqualTo(3);
     }
+
+    @Test
+    void should_have_total_results_greater_than_1000() {
+        // given
+        SearchApiWebSearchEngine searchEngine = SearchApiWebSearchEngine.builder()
+                .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+                .build();
+
+        // when
+        Map<String, Object> additionalParams = new HashMap<>();
+        additionalParams.put("num", "15");
+        additionalParams.put("page", "1");
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("What is Artificial Intelligence?")
+                .additionalParams(additionalParams)
+                .build();
+        WebSearchResults webSearchResults = searchEngine.search(request);
+
+        // then
+        Long totalResults = webSearchResults.searchInformation().totalResults();
+        assertThat(totalResults).isGreaterThan(1000);
+    }
 }

@@ -21,6 +21,11 @@ class SearchApiWebSearchResponse {
      */
     private Pagination pagination;
 
+    /**
+     * May or may not be present
+     */
+    private SearchInformation searchInformation;
+
 }
 
 @Getter
@@ -46,5 +51,12 @@ class SearchParameters {
 
     private String engine;
     private String q;
+}
+
+@Getter
+@Builder
+class SearchInformation {
+
+    private Long totalResults;
 }
 

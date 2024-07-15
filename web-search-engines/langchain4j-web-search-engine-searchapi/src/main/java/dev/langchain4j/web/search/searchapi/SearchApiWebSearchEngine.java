@@ -9,7 +9,6 @@ import lombok.Builder;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,10 +67,10 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
     private WebSearchResults toWebSearchResults(SearchApiWebSearchResponse response) {
         List<OrganicResult> organicResults = response.getOrganicResults();
-        Integer totalResults = organicResults.size();
+        Long totalResults = toTotalResults(response);
         Map<String, Object> searchInformationMetadata = toSearchInformationMetadata(response);
         WebSearchInformationResult searchInformation = WebSearchInformationResult.from(
-                totalResults.longValue(),
+                totalResults,
                 getCurrentPage(response.getPagination()),
                 searchInformationMetadata
         );
@@ -80,6 +79,13 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 searchMetadata,
                 searchInformation,
                 toWebSearchOrganicResults(organicResults));
+    }
+
+    private Long toTotalResults(SearchApiWebSearchResponse response) {
+        SearchInformation searchInformation = response.getSearchInformation();
+        return searchInformation != null && searchInformation.getTotalResults() != null
+                ? searchInformation.getTotalResults()
+                : response.getOrganicResults().size();
     }
 
     private Map<String, Object> toSearchInformationMetadata(SearchApiWebSearchResponse response) {
