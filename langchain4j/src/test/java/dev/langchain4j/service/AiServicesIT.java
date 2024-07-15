@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -918,7 +919,7 @@ public class AiServicesIT {
     }
 
     @Test
-    void should_throw_exception_when_retrieve_list_and_generic_type_is_not_set() {
+    void should_throw_exception_when_retrieving_list_and_generic_type_is_not_set() {
 
         // when-then
         assertThatThrownBy(() ->
@@ -930,11 +931,11 @@ public class AiServicesIT {
 
     interface InvalidAssistantWithSet {
 
-        List answerWithNoGenericType(String query);
+        Set answerWithNoGenericType(String query);
     }
 
     @Test
-    void should_throw_exception_when_retrieve_set_and_generic_type_is_not_set() {
+    void should_throw_exception_when_retrieving_set_and_generic_type_is_not_set() {
 
         // when-then
         assertThatThrownBy(() ->
