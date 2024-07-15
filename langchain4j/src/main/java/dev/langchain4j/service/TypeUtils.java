@@ -19,7 +19,7 @@ public class TypeUtils {
         }
 
         if (type instanceof Class<?>) {
-            return (Class<?>)type;
+            return (Class<?>) type;
         } else if (type instanceof ParameterizedType) {
             return (Class<?>) ((ParameterizedType) type).getRawType();
         } else {
@@ -70,9 +70,9 @@ public class TypeUtils {
         return typeArguments;
     }
 
+
     /**
      * <p>Ensures that no wildcard and/or parametrized types are being used as service method return type.</p>
-     * <br/>
      * <p>For example - such (service) method return types will pass:</p>
      * <ul>
      * <li>String</li>
@@ -82,7 +82,7 @@ public class TypeUtils {
      * <li>Result&lt;String&gt;</li>
      * <li>Result&lt;MyCustomPojo&gt;</li>
      * <li>Result&lt;List&lt;MyCustomPojo&gt;&gt;</li>
-     *</ul>
+     * </ul>
      * ... and there are few examples that will fail:
      * <ul>
      * <li>List&lt;?&gt;</li>
@@ -92,6 +92,9 @@ public class TypeUtils {
      * <li>Result&lt;T&gt;</li>
      * <li>Result&lt;List&lt;T&gt;&gt;</li>
      * </ul>*
+     *
+     * @param methodName the method name
+     * @param type the return type
      */
     public static void validateReturnTypesAreProperlyParametrized(String methodName, Type type) {
         TypeUtils.validateReturnTypesAreProperlyParametrized(methodName, type, new ArrayList<>());
