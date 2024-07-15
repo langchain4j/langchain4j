@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class OllamaApiIT {
@@ -36,6 +37,7 @@ public class OllamaApiIT {
                 if ("/api/chat".equals(recordedRequest.getPath()) || "/additional/api/chat".equals(recordedRequest.getPath())) {
                     ChatResponse chatResponse = ChatResponse.builder()
                             .done(true)
+                            .message(Message.builder().content(recordedRequest.getRequestUrl() != null ? recordedRequest.getRequestUrl().toString().replace("127.0.0.1", "localhost") : null).build())
                             .build();
                     return mockResponse.setResponseCode(200).setBody(GSON.toJson(chatResponse));
                 } else {
@@ -58,6 +60,7 @@ public class OllamaApiIT {
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
         assertTrue(chatResponse.getDone());
+        assertEquals("http://localhost:" + mockWebServer.getPort() + "/api/chat", chatResponse.getMessage().getContent());
     }
 
     @Test
@@ -71,6 +74,7 @@ public class OllamaApiIT {
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
         assertTrue(chatResponse.getDone());
+        assertEquals("http://localhost:" + mockWebServer.getPort() + "/api/chat", chatResponse.getMessage().getContent());
     }
 
     @Test
@@ -84,6 +88,7 @@ public class OllamaApiIT {
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
         assertTrue(chatResponse.getDone());
+        assertEquals("http://localhost:" + mockWebServer.getPort() + "/additional/api/chat", chatResponse.getMessage().getContent());
     }
 
     @Test
@@ -97,6 +102,7 @@ public class OllamaApiIT {
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
         assertTrue(chatResponse.getDone());
+        assertEquals("http://localhost:" + mockWebServer.getPort() + "/additional/api/chat", chatResponse.getMessage().getContent());
     }
 
     @AfterAll
