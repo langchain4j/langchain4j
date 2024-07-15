@@ -247,8 +247,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
-        SQLFilter sqlFilter = SQLFilter.from(filter);
-        String whereClause = "WHERE" + sqlFilter.asSQLCondition();
+        SQLFilter sqlFilter = SQLFilter.fromFilter(filter);
+        String whereClause = "WHERE" + sqlFilter.getSQL();
         try (Connection connection = dataSource.getConnection();
              PreparedStatement delete = connection.prepareStatement("DELETE FROM " + tableName + whereClause)
         ) {
@@ -275,7 +275,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
 
         Filter filter = request.filter();
-        final SQLFilter sqlFilter = filter == null ? null : SQLFilter.from(filter);
+        final SQLFilter sqlFilter = filter == null ? null : SQLFilter.fromFilter(filter);
 
         int maxResults = request.maxResults();
         double minScore = request.minScore();
@@ -286,7 +286,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                              + " FROM " + tableName
                              + (sqlFilter == null
                                 ? ""
-                                : " WHERE " + sqlFilter.asSQLCondition(id -> "JSON_VALUE(metadata, '$." + id + "')"))
+                                : " WHERE " + sqlFilter.getSQL(id -> "JSON_VALUE(metadata, '$." + id + "')"))
                              + " ORDER BY distance"
                              + " FETCH FIRST " + request.maxResults() + " ROWS ONLY")
         ) {

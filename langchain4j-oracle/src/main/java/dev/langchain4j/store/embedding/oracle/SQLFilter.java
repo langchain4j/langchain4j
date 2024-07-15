@@ -1,30 +1,25 @@
 package dev.langchain4j.store.embedding.oracle;
 
 import dev.langchain4j.store.embedding.filter.Filter;
-import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotEqualTo;
-import dev.langchain4j.store.embedding.filter.comparison.IsNotIn;
-import dev.langchain4j.store.embedding.filter.logical.And;
-import dev.langchain4j.store.embedding.filter.logical.Not;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.util.Collection;
-import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * <p>
- * A SQL expression which evaluates to a boolean result. This interface mirrors that of the {@link Filter} interface.
- * Where a <code>Filter</code> evaluates a boolean result in Java, a <code>SQLFilter</code> does so in SQL.
+ * A SQL expression which evaluates to a boolean result. This interface is used generate SQL expressions that perform
+ * the operation of a {@link Filter} interface. This allows filtering operations to occur in the database, rather than
+ * locally via {@link Filter#test(Object)}.
  * </p><p>
- * This interface is designed to interoperate with the JDBC API. The String returned by {@link #asSQLCondition()} can be
+ * This interface is designed to interoperate with the JDBC API. The String returned by {@link #getSQL()} can be
  * embedded within SQL that is passed to {@link Connection#prepareStatement(String)}. The String may include "?"
  * parameter markers. Parameter values are set when the <code>PreparedStatement</code> is passed to
- * {@link #setParameters(PreparedStatement, int)}.
+ * {@link #setParameters(PreparedStatement, int)}. The use of parameter markers can offer a performance benefit when the
+ * same SQL is repeatedly executed, only with different parameter values. A JDBC driver may cache the statement for
+ * reuse, and the database may avoid parsing of the same SQL statement
  * </p>
  */
 public interface SQLFilter {
@@ -42,7 +37,7 @@ public interface SQLFilter {
      * <pre>{@code
      * ResultSet example(Connection connection) {
      *   Filter filter = IsEqualTo("x", 9);
-     *   SQLFilter sqlFilter = SQLIsEqualTo(filter);
+     *   SQLFilter sqlFilter = SQLFilter.fromFilter(filter);
      *
      *   // Prepare: "SELECT y FROM example WHERE x = ?"
      *   PreparedStatement preparedStatement = connection.prepareStatement(
@@ -61,14 +56,14 @@ public interface SQLFilter {
      *
      * @return SQL filtering expression. Not null.
      */
-    String asSQLCondition(UnaryOperator<String> identifierOperator);
+    String getSQL(UnaryOperator<String> identifierOperator);
 
-    default String asSQLCondition() {
-       return asSQLCondition(UnaryOperator.identity());
+    default String getSQL() {
+       return getSQL(UnaryOperator.identity());
     }
 
     /**
-     * Sets the value of any parameter markers in the SQL expression returned by {@link #asSQLCondition()}.
+     * Sets the value of any parameter markers in the SQL expression returned by {@link #getSQL()}.
      *
      * @param preparedStatement Statement to set with a value. Not null.
      * @param parameterIndex Index to set with a value.
@@ -82,181 +77,23 @@ public interface SQLFilter {
     /**
      * Returns a SQL filter that evaluates to the same result as a <code>Filter</code>.
      *
+     * @param filter Filter to map into a SQLFilter. May be null.
      *
-     * @param filter Filter to map into a SQLFilter. Not null.
+     * @return The equivalent SQLFilter, or null if the input <code>Filter</code> is null.
      *
-     * @return The equivalent SQLFilter. Not null.
-     *
-     * @throws IllegalArgumentException If the Filter is not recognized, or null.
+     * @throws IllegalArgumentException If the Filter is not recognized.
      */
-    static SQLFilter from(Filter filter) {
-        if (filter instanceof IsEqualTo) {
-            return new SQLIsEqualTo((IsEqualTo) filter);
-        }
-        else if (filter instanceof IsNotEqualTo) {
-            return new SQLIsNotEqualTo((IsNotEqualTo) filter);
-        }
-        else if (filter instanceof IsNotIn) {
-            return new SQLIsNotIn((IsNotIn) filter);
-        }
-        else if (filter instanceof And) {
-            return new SQLAnd((And)filter);
-        }
-        else if (filter instanceof Not) {
-            return new SQLNot((Not)filter);
-        }
-        throw new IllegalArgumentException("Unrecognized filter: " + filter);
+    static SQLFilter fromFilter(Filter filter) {
+
+        if (filter == null)
+            return null;
+
+        Function<? super Filter, ? extends SQLFilter> function = SQLFilters.FILTER_MAP.get(filter.getClass());
+
+        if (function == null)
+            throw new IllegalArgumentException("Unrecognized filter: " + filter);
+
+        return function.apply(filter);
     }
 
-    class SQLIsEqualTo implements SQLFilter {
-
-        private final String key;
-        private final Object comparisonValue;
-
-        public SQLIsEqualTo(IsEqualTo isEqualTo) {
-            this(isEqualTo.key(), isEqualTo.comparisonValue());
-        }
-
-        public SQLIsEqualTo(String key, Object comparisonValue) {
-            this.key = key;
-            this.comparisonValue = comparisonValue;
-        }
-
-        @Override
-        public String asSQLCondition(UnaryOperator<String> identifierOperator) {
-            // A conditional expression in SQL my result in TRUE, FALSE, or NULL. The NVL function maps NULL to FALSE.
-            return "NVL(" + identifierOperator.apply(key) + " = ?, FALSE)";
-        }
-
-        @Override
-        public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
-            preparedStatement.setObject(parameterIndex, toJdbcObject(comparisonValue));
-            return 1;
-        }
-    }
-
-    class SQLAnd implements SQLFilter {
-
-        private final SQLFilter left;
-
-        private final SQLFilter right;
-
-        public SQLAnd(And and) {
-            this(from(and.left()), from(and.right()));
-        }
-
-        public SQLAnd(SQLFilter left, SQLFilter right) {
-            this.left = left;
-            this.right = right;
-        }
-
-        @Override
-        public String asSQLCondition(UnaryOperator<String> identifierOperator) {
-            return "(" + left.asSQLCondition(identifierOperator)
-                    + " AND " + right.asSQLCondition(identifierOperator) + ")";
-        }
-
-        @Override
-        public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
-            int leftCount = left.setParameters(preparedStatement, parameterIndex);
-            int rightCount = right.setParameters(preparedStatement, parameterIndex + leftCount);
-            return leftCount + rightCount;
-        }
-    }
-
-    class SQLNot implements SQLFilter {
-
-        private final SQLFilter expression;
-
-        public SQLNot(Not not) {
-            this(from(not.expression()));
-        }
-
-        public SQLNot(SQLFilter expression) {
-            this.expression = expression;
-        }
-
-        @Override
-        public String asSQLCondition(UnaryOperator<String> identifierOperator) {
-            return "NOT(" + expression.asSQLCondition(identifierOperator) + ")";
-        }
-
-        @Override
-        public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
-            return expression.setParameters(preparedStatement, parameterIndex);
-        }
-    }
-
-    class SQLIsNotEqualTo implements SQLFilter {
-
-        private final String key;
-
-        private final Object comparisonValue;
-
-        public SQLIsNotEqualTo(IsNotEqualTo isNotEqualTo) {
-            this.key = isNotEqualTo.key();
-            this.comparisonValue = isNotEqualTo.comparisonValue();
-        }
-
-        @Override
-        public String asSQLCondition(UnaryOperator<String> identifierOperator) {
-            // A SQL not-equals operator, "<>", will result in NULL if either the key or value are NULL. Instances
-            // of IsNotEqual do not permit a null comparisonValue. So if the <> operator results in NULL, then the key
-            // has a null value. A null value is not equal to a non-null value in Java, so the NVL function maps NULL to
-            // TRUE.
-            return "NVL(" + identifierOperator.apply(key) + " <> ?, TRUE)";
-        }
-
-        @Override
-        public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
-            preparedStatement.setObject(parameterIndex, toJdbcObject(comparisonValue));
-            return 1;
-        }
-    }
-
-    class SQLIsNotIn implements SQLFilter {
-
-        private final String key;
-        private final Collection<?> comparisonValues;
-
-        public SQLIsNotIn(IsNotIn isNotIn) {
-            this(isNotIn.key(), isNotIn.comparisonValues());
-        }
-
-        public SQLIsNotIn(String key, Collection<?> comparisonValues) {
-            this.key = key;
-            this.comparisonValues = comparisonValues;
-        }
-
-        @Override
-        public String asSQLCondition(UnaryOperator<String> identifierOperator) {
-            return "NVL(" + identifierOperator.apply(key) + " NOT IN ("
-                    + Stream.generate(() -> "?")
-                        .limit(comparisonValues.size())
-                        .collect(Collectors.joining(", "))
-                    + "), TRUE)";
-        }
-
-        @Override
-        public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
-            for (Object object : comparisonValues) {
-                preparedStatement.setObject(parameterIndex++, toJdbcObject(object));
-            }
-            return comparisonValues.size();
-        }
-    }
-
-    /**
-     * Converts an object into one that can be passed to {@link PreparedStatement#setObject(int, Object)}. JDBC drivers
-     * are only required to support object types listed in the JDBC Specification.
-     *
-     * @param object
-     * @return
-     */
-    static Object toJdbcObject(Object object) {
-        if (object instanceof UUID)
-            return object.toString();
-
-        return object;
-    }
 }
