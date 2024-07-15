@@ -9,7 +9,7 @@ class AddEmbeddingsRequest {
     private final List<String> ids;
     private final List<float[]> embeddings;
     private final List<String> documents;
-    private final List<Map<String, String>> metadatas;
+    private final List<Map<String, Object>> metadatas;
 
     public AddEmbeddingsRequest(Builder builder) {
         this.ids = builder.ids;
@@ -27,7 +27,7 @@ class AddEmbeddingsRequest {
         private List<String> ids = new ArrayList<>();
         private List<float[]> embeddings = new ArrayList<>();
         private List<String> documents = new ArrayList<>();
-        private List<Map<String, String>> metadatas = new ArrayList<>();
+        private List<Map<String, Object>> metadatas = new ArrayList<>();
 
         public Builder ids(List<String> ids) {
             if (ids != null) {
@@ -50,7 +50,7 @@ class AddEmbeddingsRequest {
             return this;
         }
 
-        public Builder metadatas(List<Map<String, String>> metadatas) {
+        public Builder metadatas(List<Map<String, Object>> metadatas) {
             if (metadatas != null) {
                 this.metadatas = metadatas;
             }

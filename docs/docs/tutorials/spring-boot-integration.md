@@ -8,7 +8,8 @@ sidebar_position: 27
 
 LangChain4j provides [Spring Boot starters](https://github.com/langchain4j/langchain4j-spring) for popular integrations.
 
-To use one of the Spring Boot starters, first import the corresponding dependency:
+To use one of the Spring Boot starters, first import the corresponding dependency.
+For OpenAI, for example:
 
 ```xml
 <dependency>
@@ -24,11 +25,27 @@ langchain4j.open-ai.chat-model.api-key=${OPENAI_API_KEY}
 ...
 ```
 
-The complete list of supported properties can be found
+The complete list of supported OpenAI properties can be found
 [here](https://github.com/langchain4j/langchain4j-spring/blob/main/langchain4j-open-ai-spring-boot-starter/src/main/java/dev/langchain4j/openai/spring/AutoConfig.java).
 
 In this case, an instance of `OpenAiChatModel` (an implementation of a `ChatLanguageModel`) will be automatically created,
-and you can autowire it where needed.
+and you can autowire it where needed:
+```java
+@RestController
+public class ChatController {
+
+    ChatLanguageModel chatLanguageModel;
+
+    public ChatController(ChatLanguageModel chatLanguageModel) {
+        this.chatLanguageModel = chatLanguageModel;
+    }
+
+    @GetMapping("/chat")
+    public String model(@RequestParam(value = "message", defaultValue = "Hello") String message) {
+        return chatLanguageModel.generate(message);
+    }
+}
+```
 
 If you need an instance of a `StreamingChatLanguageModel`,
 use the `streaming-chat-model` instead of the `chat-model` properties:
