@@ -71,28 +71,27 @@ public class TypeUtils {
     }
 
     /**
-     * Ensures that no wildcard and/or parametrized types are being used as service method return type.
-     *
-     * For example - such (service) method return types will pass:
-     * String
-     * MyCustomPojo
-     * List<MyCustomPojo>
-     * Set<MyCustomPojo>
-     * Result<String>
-     * Result<MyCustomPojo>
-     * Result<List<MyCustomPojo>>
-     *
+     * <p>Ensures that no wildcard and/or parametrized types are being used as service method return type.</p>
+     * <br/>
+     * <p>For example - such (service) method return types will pass:</p>
+     * <ul>
+     * <li>String</li>
+     * <li>MyCustomPojo</li>
+     * <li>List&lt;MyCustomPojo&gt;</li>
+     * <li>Set&lt;MyCustomPojo&gt;</li>
+     * <li>Result&lt;String&gt;</li>
+     * <li>Result&lt;MyCustomPojo&gt;</li>
+     * <li>Result&lt;List&lt;MyCustomPojo&gt;&gt;</li>
+     *</ul>
      * ... and there are few examples that will fail:
-     * List<?>
-     * Result<?>
-     * Result<List<?>>
-     * List<T>
-     * Result<T>
-     * Result<List<T>>
-     *
-     * Looking ad the tests in:
-     * dev.langchain4j.service.TypeUtilsTest
-     * ... is highly recommended.
+     * <ul>
+     * <li>List&lt;?&gt;</li>
+     * <li>Result&lt;?&gt;</li>
+     * <li>Result&lt;List&lt;?&gt;&gt;</li>
+     * <li>List&lt;T&gt;</li>
+     * <li>Result&lt;T&gt;</li>
+     * <li>Result&lt;List&lt;T&gt;&gt;</li>
+     * </ul>*
      */
     public static void validateReturnTypesAreProperlyParametrized(String methodName, Type type) {
         TypeUtils.validateReturnTypesAreProperlyParametrized(methodName, type, new ArrayList<>());
