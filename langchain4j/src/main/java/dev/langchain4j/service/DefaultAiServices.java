@@ -73,7 +73,7 @@ class DefaultAiServices<T> extends AiServices<T> {
             if (method.getReturnType() == Result.class ||
                 method.getReturnType() == List.class ||
                 method.getReturnType() == Set.class) {
-                recursivelyValidateResultReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
+                TypeUtils.validateReturnTypesAreProperlyParametrized(method.getName(), method.getGenericReturnType());
             }
         }
 

@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
@@ -880,68 +879,4 @@ public class AiServicesIT {
         ));
     }
 
-
-    interface InvalidAssistantWithResult {
-
-        Result answerWithNoGenericType(String query);
-    }
-
-    @Test
-    void should_throw_exception_when_retrieve_sources_and_generic_type_is_not_set() {
-
-        // when-then
-        assertThatThrownBy(() ->
-                AiServices.create(InvalidAssistantWithResult.class, chatLanguageModel))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
-                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
-    }
-
-    interface InvalidAssistantWithResultAndList {
-
-        Result<List> answerWithNoGenericType(String query);
-    }
-
-    @Test
-    void should_throw_exception_when_retrieve_result_and_list_and_generic_type_is_not_set() {
-
-        // when-then
-        assertThatThrownBy(() ->
-                AiServices.create(InvalidAssistantWithResultAndList.class, chatLanguageModel))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
-                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
-    }
-
-    interface InvalidAssistantWithList {
-
-        List answerWithNoGenericType(String query);
-    }
-
-    @Test
-    void should_throw_exception_when_retrieving_list_and_generic_type_is_not_set() {
-
-        // when-then
-        assertThatThrownBy(() ->
-                AiServices.create(InvalidAssistantWithList.class, chatLanguageModel))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
-                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
-    }
-
-    interface InvalidAssistantWithSet {
-
-        Set answerWithNoGenericType(String query);
-    }
-
-    @Test
-    void should_throw_exception_when_retrieving_set_and_generic_type_is_not_set() {
-
-        // when-then
-        assertThatThrownBy(() ->
-                AiServices.create(InvalidAssistantWithSet.class, chatLanguageModel))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The return type 'Result' of the method 'answerWithNoGenericType' must be " +
-                        "parameterized with a concrete type, for example: Result<String> or Result<MyCustomPojo>");
-    }
 }

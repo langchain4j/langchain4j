@@ -2,9 +2,16 @@ package dev.langchain4j.service;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+import static java.util.stream.Collectors.toList;
 
 public class TypeUtils {
-
 
     public static Class<?> getRawClass(Type type) {
         if (type == null) {
@@ -62,4 +69,95 @@ public class TypeUtils {
         }
         return typeArguments;
     }
+
+    /**
+     * Ensures that no wildcard and/or parametrized types are being used as service method return type.
+     *
+     * For example - such (service) method return types will pass:
+     * String
+     * MyCustomPojo
+     * List<MyCustomPojo>
+     * Set<MyCustomPojo>
+     * Result<String>
+     * Result<MyCustomPojo>
+     * Result<List<MyCustomPojo>>
+     *
+     * ... and there are few examples that will fail:
+     * List<?>
+     * Result<?>
+     * Result<List<?>>
+     * List<T>
+     * Result<T>
+     * Result<List<T>>
+     *
+     * Looking ad the tests in:
+     * dev.langchain4j.service.TypeUtilsTest
+     * ... is highly recommended.
+     */
+    public static void validateReturnTypesAreProperlyParametrized(String methodName, Type type) {
+        TypeUtils.validateReturnTypesAreProperlyParametrized(methodName, type, new ArrayList<>());
+    }
+
+    private static void validateReturnTypesAreProperlyParametrized(String methodName, Type type, List<Type> typeChain) {
+        if (type instanceof ParameterizedType) {
+            // Recursively check all parametrized types
+            ParameterizedType parameterizedType = (ParameterizedType) type;
+            for (Type actualTypeArgument : parameterizedType.getActualTypeArguments()) {
+                typeChain.add(parameterizedType);
+                validateReturnTypesAreProperlyParametrized(methodName, actualTypeArgument, typeChain);
+            }
+        } else if (type instanceof WildcardType) {
+            // Wildcard usage: Result<?> ask(String question)
+            typeChain.add(type);
+            throw genericNotProperlySpecifiedException(methodName, typeChain);
+        } else if (type instanceof TypeVariable) {
+            // Type variable: Result<T> ask(String question)
+            typeChain.add(type);
+            throw genericNotProperlySpecifiedException(methodName, typeChain);
+        } else if (type instanceof Class<?>) {
+            Class<?> clazz = (Class<?>) type;
+            if (clazz.getTypeParameters().length > 0) {
+                //  Raw type:  Result ask(String question)
+                typeChain.add(type);
+                throw genericNotProperlySpecifiedException(methodName, typeChain);
+            }
+        }
+    }
+
+    private static IllegalArgumentException genericNotProperlySpecifiedException(String methodName, List<Type> typeChain) {
+
+        String actualDeclaration = getActualDeclaration(typeChain);
+        String exampleStringDeclaration = getExemplarDeclaration(typeChain, "String");
+        String examplePojoDeclaration = getExemplarDeclaration(typeChain, "MyCustomPojo");
+
+        return illegalArgument("The return type '%s' of the method '%s' must be parameterized with a concrete type, " +
+                "for example: %s or %s", actualDeclaration, methodName, exampleStringDeclaration, examplePojoDeclaration);
+    }
+
+    private static String getActualDeclaration(List<Type> typeChain) {
+        StringBuilder actualDeclaration = new StringBuilder(typeChain.stream().map(type -> {
+            if (type instanceof WildcardType) {
+                return "?";
+            } else if (type instanceof TypeVariable) {
+                return type.getTypeName();
+            } else {
+                return TypeUtils.getRawClass(type).getSimpleName();
+            }
+        }).collect(Collectors.joining("<")));
+        for (int i = 0; i < typeChain.size() - 1; i++) {
+            actualDeclaration.append(">");
+        }
+        return actualDeclaration.toString();
+    }
+
+    private static String getExemplarDeclaration(List<Type> typeChain, String forType) {
+        List<Type> rawTypesOnly = typeChain.stream().filter(type -> !(type instanceof WildcardType || type instanceof TypeVariable)).collect(toList());
+        StringBuilder declarationExample = new StringBuilder(rawTypesOnly.stream().map(type -> TypeUtils.getRawClass(type).getSimpleName()).collect(Collectors.joining("<")));
+        declarationExample.append("<").append(forType);
+        for (int i = 0; i < rawTypesOnly.size(); i++) {
+            declarationExample.append(">");
+        }
+        return declarationExample.toString();
+    }
+
 }

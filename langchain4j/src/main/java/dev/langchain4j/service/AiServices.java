@@ -24,7 +24,7 @@ import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.retriever.Retriever;
 import dev.langchain4j.spi.services.AiServicesFactory;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -33,7 +33,6 @@ import java.util.function.Function;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 import static java.util.Arrays.asList;
@@ -441,33 +440,6 @@ public abstract class AiServices<T> {
         if (context.chatModel == null && context.streamingChatModel == null) {
             throw illegalConfiguration("Please specify either chatLanguageModel or streamingChatLanguageModel");
         }
-    }
-
-    protected void recursivelyValidateResultReturnTypesAreProperlyParametrized(String methodName, Type type) {
-        if (type instanceof ParameterizedType) {
-            // Recursively check all parametrized types
-            ParameterizedType parameterizedType = (ParameterizedType) type;
-            for (Type actualTypeArgument : parameterizedType.getActualTypeArguments()) {
-                recursivelyValidateResultReturnTypesAreProperlyParametrized(methodName, actualTypeArgument);
-            }
-        } else if (type instanceof WildcardType) {
-            // Wildcard usage: Result<?> ask(String question)
-            throw genericNotProperlySpecifiedException(methodName);
-        } else if (type instanceof TypeVariable) {
-            // Type variable: Result<T> ask(String question)
-            throw genericNotProperlySpecifiedException(methodName);
-        } else if (type instanceof Class<?>) {
-            Class<?> clazz = (Class<?>) type;
-            if (clazz.getTypeParameters().length > 0) {
-               //  Raw type:  Result ask(String question)
-               throw genericNotProperlySpecifiedException(methodName);
-            }
-        }
-    }
-
-    private static IllegalArgumentException genericNotProperlySpecifiedException(String methodName) {
-        return illegalArgument("The return type 'Result' of the method '%s' must be parameterized with a concrete type, " +
-                "for example: Result<String> or Result<MyCustomPojo>", methodName);
     }
 
     public static List<ChatMessage> removeToolMessages(List<ChatMessage> messages) {
