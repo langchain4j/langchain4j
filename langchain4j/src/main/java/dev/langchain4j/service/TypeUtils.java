@@ -25,13 +25,7 @@ public class TypeUtils {
             return false;
         }
 
-        if (type instanceof Class<?>) {
-            return type.equals(rawClass);
-        } else if (type instanceof ParameterizedType) {
-            return ((ParameterizedType) type).getRawType().equals(rawClass);
-        }
-
-        return false;
+        return rawClass.equals(getRawClass(type));
     }
 
     public static Class<?> resolveFirstGenericParameterClass(Type returnType) {
