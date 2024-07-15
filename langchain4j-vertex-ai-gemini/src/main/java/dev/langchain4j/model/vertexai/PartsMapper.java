@@ -5,8 +5,10 @@ import com.google.cloud.vertexai.api.Part;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
@@ -14,6 +16,8 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.video.Video;
 
 import java.net.URI;
 import java.util.Base64;
@@ -35,6 +39,8 @@ class PartsMapper {
     private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
 
     static {
+        // see image requirements
+        // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/image-understanding#image-requirements
         EXTENSION_TO_MIME_TYPE.put("avif", "image/avif");
         EXTENSION_TO_MIME_TYPE.put("bmp", "image/bmp");
         EXTENSION_TO_MIME_TYPE.put("gif", "image/gif");
@@ -46,6 +52,33 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("tif", "image/tiff");
         EXTENSION_TO_MIME_TYPE.put("tiff", "image/tiff");
         EXTENSION_TO_MIME_TYPE.put("webp", "image/webp");
+
+        // see audio requirements
+        // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/audio-understanding
+        EXTENSION_TO_MIME_TYPE.put("mp3", "audio/mp3");
+        EXTENSION_TO_MIME_TYPE.put("mp4", "audio/mp4");
+        EXTENSION_TO_MIME_TYPE.put("wav", "audio/wav");
+        EXTENSION_TO_MIME_TYPE.put("aac", "audio/aac");
+        EXTENSION_TO_MIME_TYPE.put("flac", "audio/flac");
+        EXTENSION_TO_MIME_TYPE.put("mpa", "audio/m4a");
+        EXTENSION_TO_MIME_TYPE.put("mpeg", "audio/mpeg");
+        EXTENSION_TO_MIME_TYPE.put("mpga", "audio/mpga");
+        EXTENSION_TO_MIME_TYPE.put("opus", "audio/opus");
+        EXTENSION_TO_MIME_TYPE.put("pcm", "audio/pcm");
+        EXTENSION_TO_MIME_TYPE.put("webm", "audio/webm");
+
+        // see video requirements:
+        // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding
+        EXTENSION_TO_MIME_TYPE.put("video/mp4", "mp4");
+        EXTENSION_TO_MIME_TYPE.put("video/mpeg", "mpeg");
+        EXTENSION_TO_MIME_TYPE.put("video/mpg", "mpg");
+        EXTENSION_TO_MIME_TYPE.put("video/mpegps", "mpegps");
+        EXTENSION_TO_MIME_TYPE.put("video/mov", "mov");
+        EXTENSION_TO_MIME_TYPE.put("video/avi", "avi");
+        EXTENSION_TO_MIME_TYPE.put("video/x-flv", "flv");
+        EXTENSION_TO_MIME_TYPE.put("video/webm", "webm");
+        EXTENSION_TO_MIME_TYPE.put("video/wmv", "mmv");
+        EXTENSION_TO_MIME_TYPE.put("video/3gpp", "3gpp");
     }
 
     static List<Part> map(ChatMessage message) {
@@ -119,6 +152,10 @@ class PartsMapper {
             return map((TextContent) content);
         } else if (content instanceof ImageContent) {
             return map((ImageContent) content);
+        } else if (content instanceof AudioContent) {
+            return map((AudioContent) content);
+        } else if (content instanceof VideoContent) {
+            return map((VideoContent) content);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
@@ -141,6 +178,32 @@ class PartsMapper {
             }
         }
         return fromMimeTypeAndData(image.mimeType(), Base64.getDecoder().decode(image.base64Data()));
+    }
+
+    static Part map(AudioContent content) {
+        Audio audio = content.audio();
+        if (audio.url() != null) {
+            String mimeType = getOrDefault(audio.mimeType(), () -> detectMimeType(audio.url()));
+            if (audio.url().getScheme().equals("gs")) {
+                return fromMimeTypeAndData(mimeType, audio.url());
+            } else {
+                return fromMimeTypeAndData(mimeType, readBytes(audio.url().toString()));
+            }
+        }
+        return fromMimeTypeAndData(audio.mimeType(), Base64.getDecoder().decode(audio.base64Data()));
+    }
+
+    static Part map(VideoContent content) {
+        Video video = content.video();
+        if (video.url() != null) {
+            String mimeType = getOrDefault(video.mimeType(), () -> detectMimeType(video.url()));
+            if (video.url().getScheme().equals("gs")) {
+                return fromMimeTypeAndData(mimeType, video.url());
+            } else {
+                return fromMimeTypeAndData(mimeType, readBytes(video.url().toString()));
+            }
+        }
+        return fromMimeTypeAndData(video.mimeType(), Base64.getDecoder().decode(video.base64Data()));
     }
 
     static String detectMimeType(URI url) {

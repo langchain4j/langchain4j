@@ -36,6 +36,7 @@ import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -784,4 +785,53 @@ class VertexAiGeminiChatModelIT {
         // then
         assertThat(answer.content().hasToolExecutionRequests()).isEqualTo(false);
     }
+
+    @Test
+    void should_accept_audio_input() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("gs://cloud-samples-data/generative-ai/audio/pixel.mp3"),
+            TextContent.from("Give a summary of the audio")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("Pixel");
+    }
+
+    @Test
+    void should_accept_video_input() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        UserMessage msg = UserMessage.from(
+            AudioContent.from("gs://cloud-samples-data/video/animals.mp4"),
+            TextContent.from("What is in this video?")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("animal");
+    }
+
 }
