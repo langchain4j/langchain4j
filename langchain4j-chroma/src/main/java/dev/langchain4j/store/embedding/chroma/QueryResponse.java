@@ -8,7 +8,7 @@ class QueryResponse {
     private List<List<String>> ids;
     private List<List<List<Float>>> embeddings;
     private List<List<String>> documents;
-    private List<List<Map<String, String>>> metadatas;
+    private List<List<Map<String, Object>>> metadatas;
     private List<List<Double>> distances;
 
     public List<List<String>> ids() {
@@ -23,7 +23,7 @@ class QueryResponse {
         return documents;
     }
 
-    public List<List<Map<String, String>>> metadatas() {
+    public List<List<Map<String, Object>>> metadatas() {
         return metadatas;
     }
 
