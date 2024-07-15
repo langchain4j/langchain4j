@@ -42,7 +42,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
 		this.apiKey = ensureNotBlank(apiKey, "apiKey");
 		this.engine = getOrDefault(engine, DEFAULT_ENGINE);
-		this.logRequests = logRequests;
+		this.logRequests = getOrDefault(logRequests, false);
 
 		this.searchapiClient = SearchApiClient.builder().baseUrl(DEFAULT_BASE_URL).apiKey(this.apiKey)
 				.engine(this.engine).timeout(getOrDefault(timeout, ofSeconds(10))).logRequests(this.logRequests)
