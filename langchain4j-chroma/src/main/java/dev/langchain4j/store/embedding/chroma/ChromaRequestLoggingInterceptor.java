@@ -10,7 +10,7 @@ import okio.Buffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ChromaRequestLoggingInterceptor implements Interceptor {
+class ChromaRequestLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(ChromaRequestLoggingInterceptor.class);
 

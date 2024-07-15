@@ -10,7 +10,7 @@ import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ChromaResponseLoggingInterceptor implements Interceptor {
+class ChromaResponseLoggingInterceptor implements Interceptor {
 
     private static final Logger log = LoggerFactory.getLogger(ChromaResponseLoggingInterceptor.class);
 
@@ -28,22 +28,15 @@ public class ChromaResponseLoggingInterceptor implements Interceptor {
                 "Response:\n- status code: {}\n- headers: {}\n- body: {}",
                 response.code(),
                 getHeaders(response.headers()),
-                this.getBody(response)
+                getBody(response)
             );
         } catch (Exception e) {
             log.warn("Error while logging response: {}", e.getMessage());
         }
     }
 
-    private String getBody(Response response) throws IOException {
-        return isEventStream(response)
-            ? "[skipping response body due to streaming]"
-            : response.peekBody(Long.MAX_VALUE).string();
-    }
-
-    private static boolean isEventStream(Response response) {
-        String contentType = response.header("Content-Type");
-        return contentType != null && contentType.contains("event-stream");
+    private static String getBody(Response response) throws IOException {
+        return response.peekBody(Long.MAX_VALUE).string();
     }
 
     static String getHeaders(Headers headers) {

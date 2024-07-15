@@ -3,7 +3,7 @@ package dev.langchain4j.store.embedding.chroma;
 import java.util.List;
 import java.util.Map;
 
-public class DeleteEmbeddingsRequest {
+class DeleteEmbeddingsRequest {
 
     private final List<String> ids;
     private final Map<String, Object> where;
@@ -25,22 +25,22 @@ public class DeleteEmbeddingsRequest {
         return where;
     }
 
-    public static class Builder {
+    static class Builder {
 
         private List<String> ids;
         private Map<String, Object> where;
 
-        public Builder ids(List<String> ids) {
+        Builder ids(List<String> ids) {
             this.ids = ids;
             return this;
         }
 
-        public Builder where(Map<String, Object> where) {
+        Builder where(Map<String, Object> where) {
             this.where = where;
             return this;
         }
 
-        public DeleteEmbeddingsRequest build() {
+        DeleteEmbeddingsRequest build() {
             return new DeleteEmbeddingsRequest(this);
         }
     }
