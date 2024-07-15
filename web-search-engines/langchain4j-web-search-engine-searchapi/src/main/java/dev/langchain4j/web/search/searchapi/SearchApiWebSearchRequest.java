@@ -9,18 +9,18 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 @Getter
-class SearchApiRequest {
+class SearchApiWebSearchRequest {
 
-    private final SearchApiEngine engine;
+    private final String engine;
     private final String apiKey;
     private final String query;
     private final Map<String, Object> additionalParameters;
 
     @Builder
-    SearchApiRequest(SearchApiEngine engine,
-                            String apiKey,
-                            String query,
-                            Map<String, Object> additionalParameters) {
+    SearchApiWebSearchRequest(String engine,
+                              String apiKey,
+                              String query,
+                              Map<String, Object> additionalParameters) {
         this.engine = ensureNotNull(engine, "engine");
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.query = ensureNotBlank(query, "query");

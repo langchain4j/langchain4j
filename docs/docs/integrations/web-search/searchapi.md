@@ -56,7 +56,7 @@ public class SearchApiTool {
     public static void main(String[] args) {
         SearchApiWebSearchEngine searchEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(SEARCHAPI_API_KEY)
-                .engine(SearchApiEngine.GOOGLE_SEARCH)
+                .engine("google")
                 .build();
         ChatLanguageModel chatModel = OpenAiChatModel.builder()
                 .apiKey(OPENAI_API_KEY)

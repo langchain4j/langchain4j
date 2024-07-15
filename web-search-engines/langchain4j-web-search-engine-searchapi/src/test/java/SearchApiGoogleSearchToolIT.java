@@ -12,7 +12,6 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchTool;
 import dev.langchain4j.web.search.WebSearchToolIT;
-import dev.langchain4j.web.search.searchapi.SearchApiEngine;
 import dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -25,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".*")
 class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
 
+    public static final String GOOGLE_ENGINE = "google";
     private static final String SYSTEM_MSG = "You are a web search support agent. If there is any event that has not happened yet, you MUST use a web search tool to look up the information on the web. Include the source link in your final response. Do not say that you have not the capability to browse the web in real time";
 
     WebSearchEngine searchApiEngine = SearchApiWebSearchEngine.withApiKey(System.getenv("SEARCHAPI_API_KEY"));
@@ -45,7 +45,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         // given
         searchApiEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(System.getenv("SEARCHAPI_API_KEY"))
-                .engine(SearchApiEngine.GOOGLE_SEARCH)
+                .engine(GOOGLE_ENGINE)
                 .build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(searchApiEngine);
@@ -77,7 +77,6 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         messages.add(toolExecutionResultMessage);
 
         AiMessage finalResponse = chatLanguageModel().generate(messages).content();
-        System.out.println(finalResponse.text());
 
         // then
         assertThat(finalResponse.text())
@@ -91,7 +90,7 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         // given
         searchApiEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(System.getenv("SEARCHAPI_API_KEY"))
-                .engine(SearchApiEngine.GOOGLE_SEARCH)
+                .engine(GOOGLE_ENGINE)
                 .build();
 
         WebSearchTool webSearchTool = WebSearchTool.from(searchApiEngine);
@@ -123,7 +122,6 @@ class SearchApiGoogleSearchToolIT extends WebSearchToolIT {
         messages.add(toolExecutionResultMessage);
 
         AiMessage finalResponse = chatLanguageModel().generate(messages).content();
-        System.out.println(finalResponse.text());
 
         // then
         assertThat(finalResponse.text())

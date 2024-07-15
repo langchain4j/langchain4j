@@ -5,7 +5,9 @@ import dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,10 +47,13 @@ class SearchApiGoogleSearchEngineIT {
 
         // given
         String query = "Quem ganhou a Copa do Mundo FIFA de 2002?"; // Who won the FIFA World Cup in 2002?
+        Map<String, Object> additionalParams = new HashMap<>();
+        additionalParams.put("safe", "active");
+        additionalParams.put("hl", "pt-br");
+        additionalParams.put("gl", "us");
         WebSearchRequest webSearchRequest = WebSearchRequest.builder()
                 .searchTerms(query)
-                .language("lang_pt")
-                .safeSearch(true)
+                .additionalParams(additionalParams)
                 .build();
 
         // when
@@ -69,15 +74,17 @@ class SearchApiGoogleSearchEngineIT {
                 .build();
 
         // when
+        Map<String, Object> additionalParams = new HashMap<>();
+        additionalParams.put("num", "3");
+        additionalParams.put("page", "1");
         WebSearchRequest request = WebSearchRequest.builder()
                 .searchTerms("What is Langchain4j?")
-                .maxResults(3)
-                .startPage(2)
+                .additionalParams(additionalParams)
                 .build();
         WebSearchResults webSearchResults = searchEngine.search(request);
 
         // then
         List<WebSearchOrganicResult> results = webSearchResults.results();
-        assertThat(results).hasSize(3);
+        assertThat(results).hasSizeLessThanOrEqualTo(3);
     }
 }

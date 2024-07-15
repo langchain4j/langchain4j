@@ -26,8 +26,7 @@ class SearchApiClient {
     private final Retrofit retrofitBase;
 
     @Builder
-    SearchApiClient(String baseUrl,
-                           Duration timeout) {
+    SearchApiClient(String baseUrl, Duration timeout) {
         OkHttpClient.Builder okHttpClientBuilder = new OkHttpClient.Builder()
                 .callTimeout(timeout)
                 .connectTimeout(timeout)
@@ -40,34 +39,21 @@ class SearchApiClient {
                 .build();
     }
 
-    SearchApiResponse search(SearchApiRequest request) {
+    SearchApiWebSearchResponse search(SearchApiWebSearchRequest request) {
         Map<String, Object> finalParameters = new HashMap<>(request.getAdditionalParameters());
-        SearchApiEngine engine = request.getEngine();
-        finalParameters.put("engine", engine.getValue());
+        finalParameters.put("engine", request.getEngine());
         finalParameters.put("q", request.getQuery());
         String bearerToken = "Bearer " + request.getApiKey();
-        return searchByEngine(finalParameters, bearerToken, engine);
-    }
-
-    private SearchApiResponse searchByEngine(Map<String, Object> finalParameters,
-                                             String bearerToken,
-                                             SearchApiEngine engine) {
+        SearchApiWebSearchApi api = retrofitBase.create(SearchApiWebSearchApi.class);
         try {
-            switch (engine) {
-                case GOOGLE_SEARCH:
-                    SearchApiGoogleSearchApi api = retrofitBase.create(SearchApiGoogleSearchApi.class);
-                    Response<SearchApiGoogleSearchResponse> response = api.search(finalParameters, bearerToken)
-                            .execute();
-                    return getBody(response);
-                default:
-                    throw new RuntimeException("Invalid engine");
-            }
+            Response<SearchApiWebSearchResponse> response = api.search(finalParameters, bearerToken).execute();
+            return getBody(response);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private <T extends SearchApiResponse> T getBody(Response<T> response) throws IOException {
+    private SearchApiWebSearchResponse getBody(Response<SearchApiWebSearchResponse> response) throws IOException {
         if (response.isSuccessful()) {
             return response.body();
         } else {
