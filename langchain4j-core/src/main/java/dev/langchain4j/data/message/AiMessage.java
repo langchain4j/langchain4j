@@ -18,7 +18,7 @@ import static java.util.Arrays.asList;
  */
 public class AiMessage implements ChatMessage {
 
-    private final String text;
+    private String text;
     private final List<ToolExecutionRequest> toolExecutionRequests;
 
     /**
@@ -59,6 +59,15 @@ public class AiMessage implements ChatMessage {
      */
     public String text() {
         return text;
+    }
+
+    /**
+     * Update the text of the message.
+     * Useful to update dynamic variables
+     */
+    // TODO: Discuss with langchain the best approach
+    public void updateText(String newText) {
+        this.text = newText;
     }
 
     /**

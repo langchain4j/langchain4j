@@ -13,14 +13,22 @@
     <artifactId>langchain4j-ollama</artifactId>
     <name>LangChain4j :: Integration :: Ollama</name>
 
+    <description>Requires Java 17</description>
+
     <properties>
         <skipOllamaITs>false</skipOllamaITs>
+        <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
         </dependency>
 
         <dependency>
@@ -45,8 +53,14 @@
         </dependency>
 
         <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter-engine</artifactId>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -103,6 +117,17 @@
                 <configuration>
                     <skipTests>${skipOllamaITs}</skipTests>
                 </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

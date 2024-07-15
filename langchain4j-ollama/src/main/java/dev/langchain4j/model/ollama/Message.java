@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class Message {
+public class Message {
 
     private Role role;
     private String content;

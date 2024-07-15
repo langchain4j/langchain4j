@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class CompletionRequest {
+public class CompletionRequest {
 
     private String model;
     private String system;

@@ -194,7 +194,6 @@ public class DefaultToolExecutor implements ToolExecutor {
             // TODO: Consider full type coverage.
         }
 
-
         String result  = Json.toJson(argument);
         return Json.fromJson(result, parameterType);
     }

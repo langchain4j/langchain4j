@@ -16,7 +16,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-class Options {
+public class Options {
 
     private Double temperature;
     private Integer topK;

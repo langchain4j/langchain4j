@@ -11,8 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ToolExecutionRequestUtilTest implements WithAssertions {
     @Test
@@ -63,12 +62,12 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         assertThat(ToolExecutionRequestUtil.argumentsAsMap(request.arguments()))
               .containsKey("key");
 
-        assertTrue(ToolExecutionRequestUtil.argument(request, "key") instanceof ArrayList);
+        assertInstanceOf(ArrayList.class, ToolExecutionRequestUtil.argument(request, "key"));
 
         List<Object> keys = ToolExecutionRequestUtil.argument(request, "key");
 
         keys.forEach(key -> {
-            assertTrue(key instanceof LinkedTreeMap);
+            assertInstanceOf(LinkedTreeMap.class, key);
             assertTrue(((LinkedTreeMap<?, ?>) key).containsKey("foo"));
             assertTrue(((LinkedTreeMap<?, ?>) key).containsKey("qux"));
             assertThat(((LinkedTreeMap<?, ?>) key).get("foo")).isEqualTo("bar");
