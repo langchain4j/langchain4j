@@ -45,7 +45,7 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
         elasticsearchClientHelper.stopServices();
     }
 
-    abstract EmbeddingStore<TextSegment> internalCreateEmbeddingStore(String indexName);
+    abstract EmbeddingStore<TextSegment> internalCreateEmbeddingStore(String indexName) throws IOException;
 
     @BeforeEach
     void createEmbeddingStore() throws IOException {
