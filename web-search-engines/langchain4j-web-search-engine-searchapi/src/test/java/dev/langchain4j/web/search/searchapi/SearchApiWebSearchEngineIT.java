@@ -1,8 +1,10 @@
 package dev.langchain4j.web.search.searchapi;
 
 import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFAULT_ENGINE;
+import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -124,6 +126,114 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 		});
 	}
 
+	@Test
+	void customize_bing_search_parameters() {
+		// given
+		SearchApiWebSearchEngine searchapiWebSearchEngine = new SearchApiWebSearchEngine(System.getenv(DEFAULT_ENV_VAR), "bing") {
+			@Override
+			protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
+				request.getParams().put("device", "tablet");
+				request.getParams().put("language", "en");
+				request.getParams().put("safe_search", "strict");
+				request.getParams().put("num", "10");
+				request.getParams().put("page", "1");
+			}
+		};
+
+		// when
+		WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
+
+		// then
+		assertThat(webSearchResults.searchInformation().totalResults()).isPositive();
+		assertThat(webSearchResults.searchInformation().pageNumber()).isEqualTo(1);
+
+		// then
+		WebSearchInformationResult searchParams = webSearchResults.searchInformation();
+		assertThat(searchParams.metadata()).containsEntry("engine", "bing");
+		assertThat(searchParams.metadata()).containsEntry("q", "chatgpt");
+		assertThat(searchParams.metadata()).containsEntry("device", "tablet");
+		assertThat(searchParams.metadata()).containsEntry("language", "en");
+		assertThat(searchParams.metadata()).containsEntry("safe_search", "strict");
+		assertThat(searchParams.metadata()).containsEntry("page", "1");
+
+		// then
+		Map<String, Object> searchMetadata = webSearchResults.searchMetadata();
+		assertThat(searchMetadata).containsKey("id");
+		assertThat(searchMetadata.get("id")).isNotNull();
+		assertThat(searchMetadata).containsKey("created_at");
+		assertThat(searchMetadata.get("created_at")).isNotNull();
+		assertThat(searchMetadata).containsKey("request_url");
+		assertThat(searchMetadata.get("request_url")).isNotNull();
+
+		// then
+		List<WebSearchOrganicResult> results = webSearchResults.results();
+		
+		assertThat(results).isNotEmpty();
+
+		results.forEach(result -> {
+			assertThat(result.title()).isNotBlank();
+			assertThat(result.url()).isNotNull();
+			assertThat(result.snippet()).isNotBlank();
+			assertThat(result.content()).isNull();
+			assertThat(result.metadata()).isNotNull();
+		});
+	}
+
+	@Test
+	void customize_baidu_search_parameters() {
+		// given
+		SearchApiWebSearchEngine searchapiWebSearchEngine = new SearchApiWebSearchEngine(
+				System.getenv(DEFAULT_ENV_VAR), 
+				"baidu", 
+				Duration.ofSeconds(20), 
+				true) {
+			
+			@Override
+			protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
+				request.getParams().put("ct", "0");
+				request.getParams().put("num", "5");
+				request.getParams().put("page", "1");
+			}
+		};
+
+		// when
+		WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
+
+		// then
+		assertThat(webSearchResults.searchInformation().totalResults()).isPositive();
+		assertThat(webSearchResults.searchInformation().pageNumber()).isEqualTo(1);
+
+		// then
+		WebSearchInformationResult searchParams = webSearchResults.searchInformation();
+		assertThat(searchParams.metadata()).containsEntry("engine", "baidu");
+		assertThat(searchParams.metadata()).containsEntry("q", "chatgpt");
+		assertThat(searchParams.metadata()).containsEntry("ct", "0");
+		assertThat(searchParams.metadata()).containsEntry("num", "5");
+		assertThat(searchParams.metadata()).containsEntry("page", "1");
+
+		// then
+		Map<String, Object> searchMetadata = webSearchResults.searchMetadata();
+		assertThat(searchMetadata).containsKey("id");
+		assertThat(searchMetadata.get("id")).isNotNull();
+		assertThat(searchMetadata).containsKey("created_at");
+		assertThat(searchMetadata.get("created_at")).isNotNull();
+		assertThat(searchMetadata).containsKey("request_url");
+		assertThat(searchMetadata.get("request_url")).isNotNull();
+
+		// then
+		List<WebSearchOrganicResult> results = webSearchResults.results();
+		
+		assertThat(results).isNotEmpty(); System.out.println("###### " + results);
+
+		results.forEach(result -> {
+			assertThat(result.title()).isNotBlank();
+			assertThat(result.url()).isNotNull();
+			assertThat(result.snippet()).isNotNull();
+			assertThat(result.content()).isNull();
+			assertThat(result.metadata()).isNotNull();
+		});
+	}
+	
 //	@Test
 //	void customize_youtube_transcripts_parameters() {
 //		// given

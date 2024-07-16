@@ -9,7 +9,6 @@ import static java.util.stream.Collectors.toList;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,6 +117,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	 * @param webSearchRequest
 	 */
 	protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
+		
 		if (DEFAULT_ENGINE.equalsIgnoreCase(this.engine)) {
 			final Map<String, Object> params = addDefaultSearchParameters(request);
 			final Locale locale = new Locale(webSearchRequest.language());
@@ -139,7 +139,11 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      */
 	@SuppressWarnings("unchecked")
 	protected void customizeSearchResults(final SearchApiResponse response, final List<WebSearchOrganicResult> results) {
-		// searchapi.io may include 1 or more optional JSON elements in the response
+		
+		if (!DEFAULT_ENGINE.equalsIgnoreCase(this.engine)) {
+			return;
+		}
+		// For the Google Search engine, searchapi.io may include 1 or more optional JSON elements in the response
 		// that directly answers the search query in the "knowledge_graph",
 		// "answer_box", etc
 		// such optional elements counts toward the "num" parameter. For instance, if
