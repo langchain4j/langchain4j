@@ -32,10 +32,10 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	public static final String DEFAULT_ENGINE = "google";
 	private static final Integer DEFAULT_MAX_RESULTS = 5;
 
-	private final String apiKey;
-	private final String engine;
-	private final SearchApiClient searchapiClient;
-	private final Boolean logRequests;
+	protected final String apiKey;
+	protected final String engine;
+	protected final SearchApiClient searchapiClient;
+	protected final Boolean logRequests;
 
 	@Builder
 	public SearchApiWebSearchEngine(final String apiKey, final String engine, final Duration timeout,
@@ -55,14 +55,16 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		ensureNotNull(webSearchRequest, "webSearchRequest");
 
 		final SearchApiRequest.SearchApiRequestBuilder requestBuilder = SearchApiRequest.builder();
-		final Locale locale = new Locale(webSearchRequest.language());
+		
 		requestBuilder.q(webSearchRequest.searchTerms())
 		        .safe(webSearchRequest.safeSearch())
 				.num(getOrDefault(webSearchRequest.maxResults(), DEFAULT_MAX_RESULTS)) // maxResults should default to 5
-				.page(webSearchRequest.startPage())
-				.hl(locale.hl)
-				.gl(locale.gl);
+				.page(webSearchRequest.startPage());
+		
         final SearchApiRequest request = requestBuilder.build();
+
+		// future search engines must call this method to customize the search parameters
+        customizeSearchRequest(webSearchRequest, request);
 
         // conduct the search
         final SearchApiResponse searchapiResponse = searchapiClient.search(request);
@@ -76,7 +78,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
 		// if the search query has a direct answer, append it to the top of the organic
 		// results
-		appendAnswerToResults(searchapiResponse, results);
+		customizeSearchResults(searchapiResponse, results);
 
 		final Long totalResults = Double
 				.valueOf(searchapiResponse.getSearchInformation().get("total_results").toString()).longValue();
@@ -90,21 +92,40 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		searchapiResponse.getSearchMetadata().putAll(searchapiResponse.getSearchInformation());
 		return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, results);
 	}
-
-	public static SearchApiWebSearchEngine withApiKey(final String apiKey) {
-		return builder().apiKey(apiKey).build();
+	
+	/**
+	 * This life cycle method is always called before a search is performed by <code>WebSearchEngine#search</code>
+	 * 
+	 * Future search engines must call this method to customize the search request parameters. 
+	 * Subclasses should use this method to pass additional key-value pairs to <code>SearchApiRequest#params</code>.
+	 * These additional key-value pairs will be appended to the search query as custom parameters.
+	 * 
+	 * @param webSearchRequest
+	 * @param request
+	 */
+	protected void customizeSearchRequest(final WebSearchRequest webSearchRequest, final SearchApiRequest request) {
+		if (DEFAULT_ENGINE.equalsIgnoreCase(this.engine)) {
+			final Map<String, Object> params = addDefaultSearchParameters(request);
+			final Locale locale = new Locale(webSearchRequest.language());
+	        params.put("hl", locale.hl);
+	        params.put("gl", locale.gl);
+			request.setParams(params);
+		}
 	}
 
-	private static Map<String, String> toResultMetadataMap(final OrganicResult result) {
-		final Map<String, String> metadata = new HashMap<>();
-
-		metadata.put("position", String.valueOf(result.getPosition()));
-		return metadata;
-	}
-
+    /**
+     * This life cycle method is always called after a search is performed by <code>WebSearchEngine#search</code> 
+     * but before the results are returned to the caller.
+     * 
+     * Future search engines must call this method to customize the search results. 
+	 * Subclasses should use this method to apply transformations to the <code>List<WebSearchOrganicResult> results<code> 
+	 * prior to it being sent to the caller.
+     * 
+     * @param response
+     * @param results
+     */
 	@SuppressWarnings("unchecked")
-	private static void appendAnswerToResults(final SearchApiResponse response,
-			final List<WebSearchOrganicResult> results) {
+	protected void customizeSearchResults(final SearchApiResponse response, final List<WebSearchOrganicResult> results) {
 		// searchapi.io may include 1 or more optional JSON elements in the response
 		// that directly answers the search query in the "knowledge_graph",
 		// "answer_box", etc
@@ -159,6 +180,39 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 					toResultMetadataMap(result)));
 		}
 	}
+	
+	public static SearchApiWebSearchEngine withApiKey(final String apiKey) {
+		return builder().apiKey(apiKey).build();
+	}
+
+	private static Map<String, String> toResultMetadataMap(final OrganicResult result) {
+		final Map<String, String> metadata = new HashMap<>();
+
+		metadata.put("position", String.valueOf(result.getPosition()));
+		return metadata;
+	}
+	
+    /**
+     * Returns a map of key-value pairs representing optional parameters for the Google search engine.
+     *
+     * @return A map containing the optional parameters and their values.
+     */
+    private Map<String, Object> addDefaultSearchParameters(final SearchApiRequest request) {
+    	Map<String, Object> params = request.getParams();
+    	if (params == null) {
+    		params = new HashMap<String, Object>();
+    	}
+
+        if (request.getSafe())
+            params.put("safe", "active");
+        if (GoogleSearchApiRequest.isValidInteger(request.getNum()))
+            params.put("num", request.getNum());
+        if (GoogleSearchApiRequest.isValidInteger(request.getPage()))
+            params.put("page", request.getPage());
+
+        return params;
+    }
+    
 
     @Getter
 	static class Locale {

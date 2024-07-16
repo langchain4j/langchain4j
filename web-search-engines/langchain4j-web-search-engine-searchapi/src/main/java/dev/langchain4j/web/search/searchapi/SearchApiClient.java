@@ -51,7 +51,7 @@ public class SearchApiClient {
 	SearchApiResponse search(final SearchApiRequest searchRequest) {
 		try {
 			final Response<SearchApiResponse> retrofitResponse = searchapiAPI
-					.search(apiKey, engine, searchRequest.getQ(), searchRequest.getOptionalParameters()).execute();
+					.search(apiKey, engine, searchRequest.getQ(), searchRequest.getParams()).execute();
 			if (retrofitResponse.isSuccessful()) {
 				return retrofitResponse.body();
 			} else {
