@@ -76,10 +76,4 @@ class SearchApiRequest {
      * The results page to fetch. Defaults to 1.
      */
     protected Integer page;
-    
-    /**
-     * Functional interface to allow customization of search request parameters;
-     */
-    protected Consumer<Map<String, Object>> customizeParameters;
-
 }

@@ -77,7 +77,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 	}
 	
 	@Test
-	void customize_google_search_parameters() {
+	void customize_google_search_parameters1() {
 		// given
 		SearchApiWebSearchEngine searchapiWebSearchEngine = new SearchApiWebSearchEngine(System.getenv(DEFAULT_ENV_VAR), DEFAULT_ENGINE) {
 			@Override
@@ -126,6 +126,58 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 		});
 	}
 
+	@Test
+	void customize_google_search_parameters2() {
+		// given
+		SearchApiWebSearchEngine searchapiWebSearchEngine = new SearchApiWebSearchEngine(
+				System.getenv(DEFAULT_ENV_VAR), 
+				DEFAULT_ENGINE,
+				Duration.ofSeconds(10), 
+				true,
+				(params) -> {
+					params.put("device", "mobile");
+					params.put("google_domain", "google.co.uk");
+					params.put("safe", "off");
+				}
+		);
+
+		// when
+		WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
+
+		// then
+		assertThat(webSearchResults.searchInformation().totalResults()).isPositive();
+		assertThat(webSearchResults.searchInformation().pageNumber()).isEqualTo(1);
+
+		// then
+		WebSearchInformationResult searchParams = webSearchResults.searchInformation();
+		assertThat(searchParams.metadata()).containsEntry("engine", DEFAULT_ENGINE);
+		assertThat(searchParams.metadata()).containsEntry("q", "chatgpt");
+		assertThat(searchParams.metadata()).containsEntry("google_domain", "google.co.uk");
+		assertThat(searchParams.metadata()).containsEntry("device", "mobile");
+		assertThat(searchParams.metadata()).containsEntry("safe", "off");
+		assertThat(searchParams.metadata()).containsEntry("page", "1");
+
+		// then
+		Map<String, Object> searchMetadata = webSearchResults.searchMetadata();
+		assertThat(searchMetadata).containsKey("id");
+		assertThat(searchMetadata.get("id")).isNotNull();
+		assertThat(searchMetadata).containsKey("created_at");
+		assertThat(searchMetadata.get("created_at")).isNotNull();
+		assertThat(searchMetadata).containsKey("request_url");
+		assertThat(searchMetadata.get("request_url")).isNotNull();
+
+		// then
+		List<WebSearchOrganicResult> results = webSearchResults.results();
+
+		results.forEach(result -> {
+			assertThat(result.title()).isNotBlank();
+			assertThat(result.url()).isNotNull();
+			assertThat(result.snippet()).isNotBlank();
+			assertThat(result.content()).isNull();
+			assertThat(result.metadata()).isNotNull();
+		});
+	}
+	
 	@Test
 	void customize_bing_search_parameters() {
 		// given
@@ -186,7 +238,8 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 				System.getenv(DEFAULT_ENV_VAR), 
 				"baidu", 
 				Duration.ofSeconds(20), 
-				true) {
+				true, 
+				null) {
 			
 			@Override
 			protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {

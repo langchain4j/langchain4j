@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchInformationResult;
@@ -35,14 +36,20 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	protected final String engine;
 	protected final SearchApiClient searchapiClient;
 	protected final Boolean logRequests;
+	
+    /**
+     * Functional interface to allow customization of request parameters prior to a search request;
+     */
+	protected final Consumer<Map<String, Object>> customizeParametersFunc;
 
 	@Builder
 	public SearchApiWebSearchEngine(final String apiKey, final String engine, final Duration timeout,
-			final Boolean logRequests) {
+			final Boolean logRequests, final Consumer<Map<String, Object>> customizeParametersFunc) {
 
 		this.apiKey = ensureNotBlank(apiKey, "apiKey");
 		this.engine = getOrDefault(engine, DEFAULT_ENGINE);
 		this.logRequests = getOrDefault(logRequests, false);
+		this.customizeParametersFunc = customizeParametersFunc;
 
 		this.searchapiClient = SearchApiClient.builder().baseUrl(DEFAULT_BASE_URL).apiKey(this.apiKey)
 				.engine(this.engine).timeout(getOrDefault(timeout, ofSeconds(30))).logRequests(this.logRequests)
@@ -50,8 +57,12 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	}
 	
 	public SearchApiWebSearchEngine(final String apiKey, final String engine) {
-		this(apiKey, engine, null, false);
+		this(apiKey, engine, null, false, null);
 	}
+	
+	public SearchApiWebSearchEngine(final String apiKey, final String engine, final Consumer<Map<String, Object>> customizeParametersFunc) {
+		this(apiKey, engine, null, false, customizeParametersFunc);
+	}	
 
 	@Override
 	public WebSearchResults search(final WebSearchRequest webSearchRequest) {
@@ -66,23 +77,19 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		
         final SearchApiRequest request = requestBuilder.build();
 
-		// future search engines must call this method to customize the search parameters
+		// future search engines must either: 
+        // 1. call this method to customize the search parameters
         customizeSearchRequest(request, webSearchRequest);
+        
+        // 2. or use the functional interface
+        if (customizeParametersFunc != null) {
+        	customizeParametersFunc.accept(request.getParams());
+        }
 
         // conduct the search
         final SearchApiResponse searchapiResponse = searchapiClient.search(request);
-
-//        final List<OrganicResult> organicResults = searchapiResponse.getOrganicResults();
-//        if (organicResults == null) {
-//        	// there is an issuing parsing the results, so abort early
-//        	final WebSearchInformationResult result = WebSearchInformationResult.from(
-//    				Long.valueOf(0),
-//    				0,
-//    				searchapiResponse.getSearchParameters());
-//        	return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, Collections.emptyList());	
-//        }
         
-        // otherwise continue normally
+        // structure the results
         final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
 				.map(result -> WebSearchOrganicResult.from(result.getTitle(), URI.create(result.getLink()),
 						getOrDefault(result.getSnippet(), ""), // for the first few runs of the query I tried, "snippet" was null
