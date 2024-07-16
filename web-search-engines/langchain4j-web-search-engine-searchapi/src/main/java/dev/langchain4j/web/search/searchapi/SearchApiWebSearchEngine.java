@@ -90,17 +90,17 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 toWebSearchOrganicResults(organicResults));
     }
 
-    private void addToMetadata(Map<String, Object> searchInformationMetadata, Map<String, Object> pagination) {
-        if (pagination != null) {
-            searchInformationMetadata.putAll(pagination);
-        }
-    }
-
     private Integer getCurrentPage(Map<String, Object> pagination) {
         if (pagination != null && pagination.containsKey("current")) {
             return ((Double) pagination.get("current")).intValue();
         }
         return null;
+    }
+
+    private void addToMetadata(Map<String, Object> searchInformationMetadata, Map<String, Object> pagination) {
+        if (pagination != null) {
+            searchInformationMetadata.putAll(pagination);
+        }
     }
 
     private List<WebSearchOrganicResult> toWebSearchOrganicResults(List<OrganicResult> organicResults) {
