@@ -132,7 +132,7 @@ The following web search engine have been tested and are used in the linked Usag
 
 
 
-## Full Example
+## OpenAI Usage Example
 
 ```java
 // Partially adapted from: 
