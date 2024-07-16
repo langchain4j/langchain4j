@@ -32,9 +32,9 @@ To perform a web search using the default search engine (Google Search):
 ```java
 
 WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
-        .apiKey(System.getenv("SEARCHAPI_API_KEY"))
-        .logRequests(true)
-        .build();
+    .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+    .logRequests(true)
+    .build();
 
 WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
@@ -42,11 +42,11 @@ WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 You can also use the `SearchApiWebSearchEngine()` constructor directly. This code is equivalent to the snippet above:
 ```java
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
-		System.getenv("SEARCHAPI_API_KEY"), 
-		"google",
-		Duration.ofSeconds(30), 
-		true,
-		null);
+    System.getenv("SEARCHAPI_API_KEY"), 
+    "google",
+    Duration.ofSeconds(30), 
+    true,
+    null);
 
 WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
@@ -71,39 +71,39 @@ Each snippet sets the:
 * `safe` to `active` to turn on safe search (defaults to `off`).
 
  
-### 1st Style: Consumer Function
+#### 1st Style: Consumer Function
 ```java
 
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
-		System.getenv("SEARCHAPI_API_KEY"), 
-		"google",
-		Duration.ofSeconds(30), 
-		true,
-		(params) -> {
-			params.put("device", "mobile");
-			params.put("google_domain", "google.co.uk");
-			params.put("safe", "active");
-		}
+    System.getenv("SEARCHAPI_API_KEY"), 
+    "google",
+    Duration.ofSeconds(30), 
+    true,
+    (params) -> {
+    	params.put("device", "mobile");
+    	params.put("google_domain", "google.co.uk");
+    	params.put("safe", "active");
+    }
 );
 
 WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
 
 
-### 2nd Style: Anonymous Subclass
+#### 2nd Style: Anonymous Subclass
 ```java
 
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(System.getenv("SEARCHAPI_API_KEY"), "google") {
 		
-		@Override
-		protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
-			super.customizeSearchRequest(request, webSearchRequest);
-			
-			request.getParams().put("device", "mobile");
-			request.getParams().put("google_domain", "google.co.uk");
-			request.getParams().put("safe", "active");
-		}
-	};
+    @Override
+    protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
+    	super.customizeSearchRequest(request, webSearchRequest);
+    	
+    	request.getParams().put("device", "mobile");
+    	request.getParams().put("google_domain", "google.co.uk");
+    	request.getParams().put("safe", "active");
+    }
+    };
 		
 WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
 ```
@@ -181,7 +181,7 @@ public class SearchWithToolsExample {
 
 Any search engine on SearchApi that returns an `organic_results` array with each element containing a `title`, `link` and `snippet` is supported. 
 
-Search engines that return `organic_results` in this format includes:
+Search engines that return `organic_results` in this format include:
 * `google`
 * `bing` 
 * `baidu` 
