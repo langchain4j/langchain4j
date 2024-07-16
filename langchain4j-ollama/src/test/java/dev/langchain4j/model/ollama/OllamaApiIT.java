@@ -15,8 +15,7 @@ import java.io.IOException;
 import java.time.Duration;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class OllamaApiIT {
 
@@ -27,26 +26,32 @@ public class OllamaApiIT {
             .create();
 
     @BeforeAll
-    public static void init() throws IOException{
+    public static void init() throws IOException {
         mockWebServer = new MockWebServer();
         Dispatcher dispatcher = new Dispatcher() {
-            @NotNull
             @Override
-            public MockResponse dispatch(@NotNull RecordedRequest recordedRequest) throws InterruptedException {
-                MockResponse mockResponse = new MockResponse();
-                if ("/api/chat".equals(recordedRequest.getPath()) || "/additional/api/chat".equals(recordedRequest.getPath())) {
-                    ChatResponse chatResponse = ChatResponse.builder()
-                            .done(true)
-                            .message(Message.builder().content(recordedRequest.getRequestUrl() != null ? recordedRequest.getRequestUrl().toString().replace("127.0.0.1", "localhost") : null).build())
-                            .build();
-                    return mockResponse.setResponseCode(200).setBody(GSON.toJson(chatResponse));
-                } else {
-                    return mockResponse.setResponseCode(404);
-                }
+            public MockResponse dispatch(RecordedRequest recordedRequest) {
+
+                Message message = Message.builder()
+                        .content(recordedRequest.getRequestUrl().toString())
+                        .build();
+
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .message(message)
+                        .build();
+
+                return new MockResponse()
+                        .setResponseCode(200)
+                        .setBody(GSON.toJson(chatResponse));
             }
         };
         mockWebServer.setDispatcher(dispatcher);
         mockWebServer.start();
+    }
+
+    @AfterAll
+    public static void afterAll() throws IOException {
+        mockWebServer.close();
     }
 
     @Test
@@ -59,8 +64,8 @@ public class OllamaApiIT {
                 .build();
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
-        assertTrue(chatResponse.getDone());
-        assertEquals("http://localhost:" + mockWebServer.getPort() + "/api/chat", chatResponse.getMessage().getContent());
+
+        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/api/chat");
     }
 
     @Test
@@ -73,8 +78,9 @@ public class OllamaApiIT {
                 .build();
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
-        assertTrue(chatResponse.getDone());
-        assertEquals("http://localhost:" + mockWebServer.getPort() + "/api/chat", chatResponse.getMessage().getContent());
+
+        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/api/chat");
+
     }
 
     @Test
@@ -87,8 +93,8 @@ public class OllamaApiIT {
                 .build();
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
-        assertTrue(chatResponse.getDone());
-        assertEquals("http://localhost:" + mockWebServer.getPort() + "/additional/api/chat", chatResponse.getMessage().getContent());
+
+        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/additional/api/chat");
     }
 
     @Test
@@ -101,12 +107,7 @@ public class OllamaApiIT {
                 .build();
 
         ChatResponse chatResponse = ollamaClient.chat(ChatRequest.builder().build());
-        assertTrue(chatResponse.getDone());
-        assertEquals("http://localhost:" + mockWebServer.getPort() + "/additional/api/chat", chatResponse.getMessage().getContent());
-    }
 
-    @AfterAll
-    public static void afterAll() throws IOException {
-        mockWebServer.close();
+        assertThat(chatResponse.getMessage().getContent()).endsWith(mockWebServer.getPort() + "/additional/api/chat");
     }
 }
