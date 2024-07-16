@@ -13,7 +13,7 @@
 
     <artifactId>langchain4j-oracle</artifactId>
     <name>LangChain4j :: Integration :: Oracle</name>
-    <description>Oracle JDBC Implementation</description>
+    <description>Oracle Database Embedding Store</description>
 
     <properties>
         <jdbc.version>23.4.0.24.05</jdbc.version>
@@ -33,13 +33,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.oracle.database.jdbc</groupId>
-            <artifactId>ucp</artifactId>
-            <version>${jdbc.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
             <classifier>tests</classifier>
@@ -48,19 +41,12 @@
         </dependency>
 
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- junit-jupiter-params should be declared explicitly
-                to run parameterized tests inherited from EmbeddingStore*IT-->
+        <!-- EmbeddingStoreIT tests use parameters -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>

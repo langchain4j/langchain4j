@@ -21,6 +21,8 @@ import java.util.logging.Logger;
  */
 public class TestDataSource implements DataSource {
 
+    // static OracleContainer ORACLE_CONTAINER = new OracleContainer("gvenzl/oracle-free:23.4-slim-faststart");
+
     private final DataSource dataSource;
 
     private final BlockingQueue<SharedConnection> pooledConnections = new ArrayBlockingQueue<>(1);
