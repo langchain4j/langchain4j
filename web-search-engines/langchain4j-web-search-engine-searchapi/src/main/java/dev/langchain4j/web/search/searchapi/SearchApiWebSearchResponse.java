@@ -22,11 +22,6 @@ class SearchApiWebSearchResponse {
      */
     private Map<String, Object> pagination;
 
-    /**
-     * May or may not be present
-     */
-    private Map<String, Object> searchInformation;
-
 }
 
 @Getter
