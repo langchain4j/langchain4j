@@ -194,29 +194,51 @@ ChatLanguageModel model = OpenAiChatModel.builder()
 
 Now let's take a look at some examples.
 
-### `Enum` and `boolean` as return types
+### `boolean` as return type
+
 ```java
-enum Sentiment {
-    POSITIVE, NEUTRAL, NEGATIVE
-}
-
 interface SentimentAnalyzer {
-
-    @UserMessage("Analyze sentiment of {{it}}")
-    Sentiment analyzeSentimentOf(String text);
 
     @UserMessage("Does {{it}} has a positive sentiment?")
     boolean isPositive(String text);
+
 }
 
 SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-Sentiment sentiment = sentimentAnalyzer.analyzeSentimentOf("This is great!");
-// POSITIVE
-
 boolean positive = sentimentAnalyzer.isPositive("It's awful!");
 // false
 ```
+
+### `Enum` as return type
+```java
+public enum TicketPriority {
+    @Description("Critical issues such as payment gateway failures or security breaches.")
+    CRITICAL,
+    @Description("High-priority issues like major feature malfunctions or widespread outages.")
+    HIGH,
+    @Description("Low-priority issues such as minor bugs or cosmetic problems.")
+    LOW
+}
+
+interface TicketAnalyzer {
+    
+    @UserMessage("Analyzing the issue to determine its priority: |||{{it}}|||")
+    TicketPriority analyzeIssue(String issueDescription);
+}
+
+TicketAnalyzer ticketAnalyzer = AiServices.create(TicketAnalyzer.class, model);
+
+TicketPriority ticketPriority = ticketAnalyzer.analyzeIssue("The main payment gateway is down, and customers cannot process transactions.");
+// CRITICAL
+```
+
+:::note
+`List` or `Set` of `enum` return types are also supported.
+:::
+
+:::note
+`@Description` annotation is optional. It's suggested to be used when `enum` names are not self-explanatory.
 
 ### Custom POJO as a return type
 ```java
