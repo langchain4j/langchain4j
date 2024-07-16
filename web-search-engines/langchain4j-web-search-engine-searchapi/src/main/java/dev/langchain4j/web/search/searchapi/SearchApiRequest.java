@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
+import java.util.function.Consumer;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -25,19 +26,10 @@ import lombok.Setter;
  * <p>
  * Optional parameters:
  * <ul>
- *    <li>{@link #device} - The device type for the search context.</li>
- *    <li>{@link #location} - The geographic location from where the search should originate.</li>
- *    <li>{@link #uule} - An alternative to the location parameter.</li>
- *    <li>{@link #googleDomain} - The Google domain for the search.</li>
- *    <li>{@link #hl} - The language code for the search interface.</li>
- *    <li>{@link #gl} - The country code for the search language.</li>
  *    <li>{@link #safe} - The safe search setting.</li>
- *    <li>{@link #filter} - The filter for duplicate content and host crowding.</li>
  *    <li>{@link #num} - The number of results to display per page.</li>
  *    <li>{@link #page} - The results page to fetch.</li>
  * </ul>
- * Note that <code>hl</code> & <code>gl</code> default to <code>hl="en"</code> and <code>gl="us"</code>.
- * When concatenated they become the locale string "en-us".
  * </p>
  */
 @Getter
@@ -47,7 +39,7 @@ class SearchApiRequest {
 
     // Mandatory parameters
 
-    /**
+	/**
      * The API key for authentication with the Search API.
      */
     private String apiKey;
@@ -67,13 +59,13 @@ class SearchApiRequest {
     /**
      * A map containing the optional parameters and their values.
      */
-    protected Map<String, Object> params;
+    protected final Map<String, Object> params = new HashMap<>();
 
     /**
      * The safe search setting.
      * Valid values: "active" or "off". Defaults to "off".
      */
-    protected Boolean safe;
+    protected boolean safe;
 
     /**
      * The number of results to display per page.
@@ -84,5 +76,10 @@ class SearchApiRequest {
      * The results page to fetch. Defaults to 1.
      */
     protected Integer page;
+    
+    /**
+     * Functional interface to allow customization of search request parameters;
+     */
+    protected Consumer<Map<String, Object>> customizeParameters;
 
 }

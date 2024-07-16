@@ -14,7 +14,7 @@ import dev.langchain4j.web.search.WebSearchToolIT;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
-import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFAULT_ENV_VAR;
+import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngineIT.DEFAULT_ENV_VAR;
 
 import java.util.ArrayList;
 import java.util.List;

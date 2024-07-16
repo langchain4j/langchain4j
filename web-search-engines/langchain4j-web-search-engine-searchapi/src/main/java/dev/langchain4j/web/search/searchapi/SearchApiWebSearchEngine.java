@@ -9,6 +9,7 @@ import static java.util.stream.Collectors.toList;
 
 import java.net.URI;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,6 @@ import lombok.Getter;
  * details <a href="https://www.searchapi.io/docs/google">here</a>.
  */
 public class SearchApiWebSearchEngine implements WebSearchEngine {
-	public static final String DEFAULT_ENV_VAR = "SEARCHAPI_API_KEY";
 	public static final String DEFAULT_BASE_URL = "https://www.searchapi.io";
 	public static final String DEFAULT_ENGINE = "google";
 	private static final Integer DEFAULT_MAX_RESULTS = 5;
@@ -46,8 +46,12 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		this.logRequests = getOrDefault(logRequests, false);
 
 		this.searchapiClient = SearchApiClient.builder().baseUrl(DEFAULT_BASE_URL).apiKey(this.apiKey)
-				.engine(this.engine).timeout(getOrDefault(timeout, ofSeconds(10))).logRequests(this.logRequests)
+				.engine(this.engine).timeout(getOrDefault(timeout, ofSeconds(30))).logRequests(this.logRequests)
 				.build();
+	}
+	
+	public SearchApiWebSearchEngine(final String apiKey, final String engine) {
+		this(apiKey, engine, null, false);
 	}
 
 	@Override
@@ -64,11 +68,22 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         final SearchApiRequest request = requestBuilder.build();
 
 		// future search engines must call this method to customize the search parameters
-        customizeSearchRequest(webSearchRequest, request);
+        customizeSearchRequest(request, webSearchRequest);
 
         // conduct the search
         final SearchApiResponse searchapiResponse = searchapiClient.search(request);
 
+//        final List<OrganicResult> organicResults = searchapiResponse.getOrganicResults();
+//        if (organicResults == null) {
+//        	// there is an issuing parsing the results, so abort early
+//        	final WebSearchInformationResult result = WebSearchInformationResult.from(
+//    				Long.valueOf(0),
+//    				0,
+//    				searchapiResponse.getSearchParameters());
+//        	return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, Collections.emptyList());	
+//        }
+        
+        // otherwise continue normally
         final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
 				.map(result -> WebSearchOrganicResult.from(result.getTitle(), URI.create(result.getLink()),
 						getOrDefault(result.getSnippet(), ""), // for the first few runs of the query I tried, "snippet" was null
@@ -76,20 +91,19 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 						toResultMetadataMap(result)))
 				.collect(toList());
 
-		// if the search query has a direct answer, append it to the top of the organic
-		// results
+		// if the search query has a direct answer, append it to the top of the organic results
 		customizeSearchResults(searchapiResponse, results);
 
-		final Long totalResults = Double
-				.valueOf(searchapiResponse.getSearchInformation().get("total_results").toString()).longValue();
+//		final Long totalResults = Double
+//				.valueOf(searchapiResponse.getSearchInformation().get("total_results").toString()).longValue();
 		final WebSearchInformationResult result = WebSearchInformationResult.from(
-				getOrDefault(totalResults, Long.valueOf(results.size())),
+//				getOrDefault(totalResults, Long.valueOf(results.size())),
+				Long.valueOf(results.size()),
 				getOrDefault(searchapiResponse.getPagination().getCurrent(), 1),
 				searchapiResponse.getSearchParameters());
 
-		// merge the "search_information" JSON element with the "search_metadata" JSON
-		// element
-		searchapiResponse.getSearchMetadata().putAll(searchapiResponse.getSearchInformation());
+		// merge the "search_information" JSON element with the "search_metadata" JSON element, if present
+//		searchapiResponse.getSearchMetadata().putAll(searchapiResponse.getSearchInformation());
 		return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, results);
 	}
 	
@@ -100,16 +114,15 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	 * Subclasses should use this method to pass additional key-value pairs to <code>SearchApiRequest#params</code>.
 	 * These additional key-value pairs will be appended to the search query as custom parameters.
 	 * 
-	 * @param webSearchRequest
 	 * @param request
+	 * @param webSearchRequest
 	 */
-	protected void customizeSearchRequest(final WebSearchRequest webSearchRequest, final SearchApiRequest request) {
+	protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
 		if (DEFAULT_ENGINE.equalsIgnoreCase(this.engine)) {
 			final Map<String, Object> params = addDefaultSearchParameters(request);
 			final Locale locale = new Locale(webSearchRequest.language());
 	        params.put("hl", locale.hl);
 	        params.put("gl", locale.gl);
-			request.setParams(params);
 		}
 	}
 
@@ -198,24 +211,36 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      * @return A map containing the optional parameters and their values.
      */
     private Map<String, Object> addDefaultSearchParameters(final SearchApiRequest request) {
-    	Map<String, Object> params = request.getParams();
-    	if (params == null) {
-    		params = new HashMap<String, Object>();
-    	}
+    	final Map<String, Object> params = request.getParams();
 
-        if (request.getSafe())
+        if (request.isSafe())
             params.put("safe", "active");
-        if (GoogleSearchApiRequest.isValidInteger(request.getNum()))
+        if (isValidInteger(request.getNum()))
             params.put("num", request.getNum());
-        if (GoogleSearchApiRequest.isValidInteger(request.getPage()))
+        if (isValidInteger(request.getPage()))
             params.put("page", request.getPage());
 
         return params;
     }
     
-
+    /**
+     * Checks if the given Integer value is valid (not null and non-negative).
+     *
+     * @param value The Integer value to check.
+     * @return true if the value is valid, false otherwise.
+     */
+    public static boolean isValidInteger(final Integer value) {
+        return value != null && value.intValue() >= 0;
+    }
+    
     @Getter
 	static class Locale {
+        /**
+         * 
+         * Note that <code>hl</code> & <code>gl</code> default to <code>hl="en"</code> and <code>gl="us"</code>.
+         * When concatenated they become the locale string "en-us".
+         *
+         */    	
 		private final String hl;
 		private final String gl;
 		/**

@@ -17,7 +17,6 @@ public class SearchApiResponse {
 	/** Mandatory JSON elements */
 	private Map<String, Object> searchMetadata;
 	private Map<String, Object> searchParameters;
-	private Map<String, Object> searchInformation;
 	private List<OrganicResult> organicResults;
 
 	/** Optional JSON elements */
