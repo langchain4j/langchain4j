@@ -82,6 +82,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         );
         Map<String, Object> searchMetadata = getOrDefault(response.getSearchParameters(), new HashMap<>());
         addToMetadata(searchMetadata, response.getPagination());
+        addToMetadata(searchMetadata, response.getSearchInformation());
         return WebSearchResults.from(
                 searchMetadata,
                 searchInformation,
