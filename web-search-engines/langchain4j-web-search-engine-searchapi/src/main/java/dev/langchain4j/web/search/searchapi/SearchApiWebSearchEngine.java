@@ -69,12 +69,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
         final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
 				.map(result -> WebSearchOrganicResult.from(result.getTitle(), URI.create(result.getLink()),
-						result.getSnippet() != null ? result.getSnippet() : result.getDisplayedLink(), // for the first
-																										// few runs of
-																										// the query I
-																										// tried,
-																										// "snippet" is
-																										// somehow null
+						getOrDefault(result.getSnippet(), ""), // for the first few runs of the query I tried, "snippet" was null
 						null, // searchapi does not return "content"
 						toResultMetadataMap(result)))
 				.collect(toList());
@@ -104,8 +99,6 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 		final Map<String, String> metadata = new HashMap<>();
 
 		metadata.put("position", String.valueOf(result.getPosition()));
-		metadata.put("source", result.getSource());
-		metadata.put("thumbnail", getOrDefault(result.getThumbnail(), ""));
 		return metadata;
 	}
 
