@@ -1,5 +1,14 @@
 package dev.langchain4j.model.ollama;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import dev.langchain4j.data.message.AiMessage;
@@ -17,15 +26,6 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
 import static com.google.gson.FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES;
 import static java.lang.Boolean.TRUE;
@@ -104,10 +104,17 @@ class OllamaClient {
     }
 
     public void streamingCompletion(CompletionRequest request, StreamingResponseHandler<String> handler) {
-        ollamaApi.streamingCompletion(request).enqueue(new Callback<ResponseBody>() {
+        Call<ResponseBody> call = ollamaApi.streamingCompletion(request);
+
+        call.enqueue(new Callback<ResponseBody>() {
 
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
+                if (handler.isCancelled()) {
+                    call.cancel();
+                    return;
+                }
+
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
                     StringBuilder contentBuilder = new StringBuilder();
                     while (true) {
@@ -146,10 +153,17 @@ class OllamaClient {
     }
 
     public void streamingChat(ChatRequest request, StreamingResponseHandler<AiMessage> handler) {
-        ollamaApi.streamingChat(request).enqueue(new Callback<ResponseBody>() {
+        Call<ResponseBody> call = ollamaApi.streamingChat(request);
+
+        call.enqueue(new Callback<ResponseBody>() {
 
             @Override
             public void onResponse(Call<ResponseBody> call, retrofit2.Response<ResponseBody> retrofitResponse) {
+                if (handler.isCancelled()) {
+                    call.cancel();
+                    return;
+                }
+
                 try (InputStream inputStream = retrofitResponse.body().byteStream()) {
                     try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
                         StringBuilder contentBuilder = new StringBuilder();
