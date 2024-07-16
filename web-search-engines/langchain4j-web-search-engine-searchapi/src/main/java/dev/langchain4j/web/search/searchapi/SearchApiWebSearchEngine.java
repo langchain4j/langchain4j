@@ -97,9 +97,9 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         return null;
     }
 
-    private void addToMetadata(Map<String, Object> searchInformationMetadata, Map<String, Object> pagination) {
-        if (pagination != null) {
-            searchInformationMetadata.putAll(pagination);
+    private void addToMetadata(Map<String, Object> metadata, Map<String, Object> dataToAdd) {
+        if (dataToAdd != null) {
+            metadata.putAll(dataToAdd);
         }
     }
 
