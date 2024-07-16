@@ -4,9 +4,11 @@ sidebar_position: 1
 
 # SearchApi
 
-A wrapper around the SearchApi. This tool is handy when you need to answer questions about current events.
+[SearchApi](https://www.searchapi.io/) is a real-time SERP API. You can use it to perform searches in Google, Google News, Bing, Bing News, Baidu, Google Scholar, or any other engine that returns organic results.
 
-## Add dependencies
+## Usage
+
+### Dependencies setup
 
 Add the following dependencies to your project's `pom.xml`:
 ```xml
@@ -23,9 +25,7 @@ or project's `build.gradle`:
 implementation 'dev.langchain4j:langchain4j-web-search-engine-searchapi:{your-version}'
 ```
 
-### Try out an example code:
-
-[An Example of using SearchApi web search as a tool]()
+### Example code:
 
 ```java
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -54,9 +54,15 @@ public class SearchApiTool {
     private static final String OPENAI_API_KEY = "YOUR_OPENAI_KEY";
 
     public static void main(String[] args) {
+        Map<String, Object> optionalParameters = new HashMap<>();
+        optionalParameters.put("gl", "us");
+        optionalParameters.put("hl", "en");
+        optionalParameters.put("google_domain", "google.com");
+        
         SearchApiWebSearchEngine searchEngine = SearchApiWebSearchEngine.builder()
                 .apiKey(SEARCHAPI_API_KEY)
                 .engine("google")
+                .optionalParameters(optionalParameters)
                 .build();
         ChatLanguageModel chatModel = OpenAiChatModel.builder()
                 .apiKey(OPENAI_API_KEY)
@@ -95,7 +101,9 @@ public class SearchApiTool {
 | SearchApi Engine                                          | Available |
 |-----------------------------------------------------------|-----------|
 | [Google Web Search](https://www.searchapi.io/docs/google) | ✅         |
+| [Google News](https://www.searchapi.io/docs/google-news)  | ✅         |
+| [Bing](https://www.searchapi.io/docs/bing)                | ✅         |
+| [Bing News](https://www.searchapi.io/docs/bing-news)      | ✅         |
+| [Baidu](https://www.searchapi.io/docs/baidu)              | ✅         |
 
-### References
-
-[SearchApi website](https://www.searchapi.io)
+Other engines that return the `organic_results` array and the organic result has `title`, `link`, and `snippet` is supported by this library even if not listed above.

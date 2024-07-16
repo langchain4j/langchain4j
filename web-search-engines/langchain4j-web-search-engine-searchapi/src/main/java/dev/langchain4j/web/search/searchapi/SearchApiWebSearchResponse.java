@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Builder
@@ -14,17 +15,17 @@ class SearchApiWebSearchResponse {
     /**
      * Always present in a successful response
      */
-    private SearchParameters searchParameters;
+    private Map<String, Object> searchParameters;
 
     /**
      * May or may not be present
      */
-    private Pagination pagination;
+    private Map<String, Object> pagination;
 
     /**
      * May or may not be present
      */
-    private SearchInformation searchInformation;
+    private Map<String, Object> searchInformation;
 
 }
 
@@ -34,29 +35,9 @@ class OrganicResult {
 
     private String title;
     private String link;
+
+    /**
+     * May or may not be present
+     */
     private String snippet;
 }
-
-@Getter
-@Builder
-class Pagination {
-
-    private Integer current;
-    private String next;
-}
-
-@Getter
-@Builder
-class SearchParameters {
-
-    private String engine;
-    private String q;
-}
-
-@Getter
-@Builder
-class SearchInformation {
-
-    private Long totalResults;
-}
-

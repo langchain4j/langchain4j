@@ -12,7 +12,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @EnabledIfEnvironmentVariable(named = "SEARCHAPI_API_KEY", matches = ".+")
-class SearchApiGoogleSearchEngineIT {
+class SearchApiWebSearchEngineIT {
 
     @Test
     void should_search() {

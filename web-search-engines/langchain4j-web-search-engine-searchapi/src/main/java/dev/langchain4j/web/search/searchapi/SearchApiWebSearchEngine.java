@@ -31,22 +31,28 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     private final String apiKey;
     private final String engine;
     private final SearchApiClient client;
+    private final Map<String, Object> optionalParameters;
 
     /**
-     * @param apiKey  the Search API key for accessing their API
-     * @param timeout the timeout duration for API requests
-     *                <p>
-     *                Default value is 30 seconds.
-     * @param engine  the engine used by Search API to execute the search
-     *                <p>
-     *                Default engine is Google Search.
+     * @param apiKey             the Search API key for accessing their API
+     * @param timeout            the timeout duration for API requests
+     *                           <p>
+     *                           Default value is 30 seconds.
+     * @param engine             the engine used by Search API to execute the search
+     *                           <p>
+     *                           Default engine is Google Search.
+     * @param optionalParameters optional parameters to be passed on every request of this the engine, they can be overridden by the WebSearchRequest additional parameters for matching keys
+     *                           <p>
+     *                           Check <a href="https://www.searchapi.io">Search API</a> for more information on available parameters for each engine
      */
     @Builder
     public SearchApiWebSearchEngine(String apiKey,
                                     Duration timeout,
-                                    String engine) {
+                                    String engine,
+                                    Map<String, Object> optionalParameters) {
         this.apiKey = ensureNotBlank(apiKey, "apiKey");
         this.engine = getOrDefault(engine, DEFAULT_ENGINE);
+        this.optionalParameters = getOrDefault(optionalParameters, new HashMap<>());
         this.client = SearchApiClient.builder()
                 .baseUrl(BASE_URL)
                 .timeout(getOrDefault(timeout, ofSeconds(30)))
@@ -59,7 +65,8 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 .apiKey(apiKey)
                 .engine(engine)
                 .query(webSearchRequest.searchTerms())
-                .additionalParameters(webSearchRequest.additionalParams())
+                .optionalParameters(optionalParameters)
+                .additionalRequestParameters(webSearchRequest.additionalParams())
                 .build();
         SearchApiWebSearchResponse response = client.search(request);
         return toWebSearchResults(response);
@@ -67,49 +74,32 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 
     private WebSearchResults toWebSearchResults(SearchApiWebSearchResponse response) {
         List<OrganicResult> organicResults = response.getOrganicResults();
-        Long totalResults = toTotalResults(response);
-        Map<String, Object> searchInformationMetadata = toSearchInformationMetadata(response);
+        Map<String, Object> searchInformationMetadata = getOrDefault(response.getSearchInformation(), new HashMap<>());
+        addToSearchInformationMetadata(searchInformationMetadata, response.getPagination());
+        Long totalResults = ((Integer) organicResults.size()).longValue(); // not ideal, but it may not be present in the response and is required not null by WebSearchInformationResult
         WebSearchInformationResult searchInformation = WebSearchInformationResult.from(
                 totalResults,
                 getCurrentPage(response.getPagination()),
                 searchInformationMetadata
         );
-        Map<String, Object> searchMetadata = toSearchMetadata(response);
+        Map<String, Object> searchMetadata = getOrDefault(response.getSearchParameters(), new HashMap<>());
         return WebSearchResults.from(
                 searchMetadata,
                 searchInformation,
                 toWebSearchOrganicResults(organicResults));
     }
 
-    private Long toTotalResults(SearchApiWebSearchResponse response) {
-        SearchInformation searchInformation = response.getSearchInformation();
-        return searchInformation != null && searchInformation.getTotalResults() != null
-                ? searchInformation.getTotalResults()
-                : response.getOrganicResults().size();
-    }
-
-    private Map<String, Object> toSearchInformationMetadata(SearchApiWebSearchResponse response) {
-        Map<String, Object> metadata = new HashMap<>();
-        Pagination pagination = response.getPagination();
+    private void addToSearchInformationMetadata(Map<String, Object> searchInformationMetadata, Map<String, Object> pagination) {
         if (pagination != null) {
-            metadata.put("current", pagination.getCurrent());
-            metadata.put("next", pagination.getNext());
+            searchInformationMetadata.putAll(pagination);
         }
-        return metadata;
     }
 
-    private Integer getCurrentPage(Pagination pagination) {
-        return pagination != null ? pagination.getCurrent() : null;
-    }
-
-    private Map<String, Object> toSearchMetadata(SearchApiWebSearchResponse response) {
-        Map<String, Object> metadata = new HashMap<>();
-        SearchParameters searchParameters = response.getSearchParameters();
-        if (searchParameters != null) {
-            metadata.put("engine", searchParameters.getEngine());
-            metadata.put("q", searchParameters.getQ());
+    private Integer getCurrentPage(Map<String, Object> pagination) {
+        if (pagination != null && pagination.containsKey("current")) {
+            return ((Double) pagination.get("current")).intValue();
         }
-        return metadata;
+        return null;
     }
 
     private List<WebSearchOrganicResult> toWebSearchOrganicResults(List<OrganicResult> organicResults) {
@@ -117,7 +107,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 .map(result -> WebSearchOrganicResult.from(
                         result.getTitle(),
                         URI.create(result.getLink()),
-                        result.getSnippet(),
+                        getOrDefault(result.getSnippet(), ""),
                         null,  // by default google custom search api does not return content
                         null
                 ))

@@ -41,7 +41,7 @@ class SearchApiClient {
     }
 
     SearchApiWebSearchResponse search(SearchApiWebSearchRequest request) {
-        Map<String, Object> finalParameters = new HashMap<>(request.getAdditionalParameters());
+        Map<String, Object> finalParameters = new HashMap<>(request.getFinalOptionalParameters());
         finalParameters.put("engine", request.getEngine());
         finalParameters.put("q", request.getQuery());
         String bearerToken = "Bearer " + request.getApiKey();
