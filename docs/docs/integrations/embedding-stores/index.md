@@ -12,7 +12,7 @@ sidebar_position: 0
 | [Azure CosmosDB Mongo vCore](/integrations/embedding-stores/azure-cosmos-mongo-vcore) | ✅                |                       |                     |
 | [Azure CosmosDB NoSQL](/integrations/embedding-stores/azure-cosmos-nosql)             | ✅                |                       |                     |
 | [Cassandra](/integrations/embedding-stores/cassandra)                                 | ✅                |                       |                     |
-| [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                |                       |                     |
+| [Chroma](/integrations/embedding-stores/chroma)                                       | ✅                |                       | ✅                   |
 | [Elasticsearch](/integrations/embedding-stores/elasticsearch)                         | ✅                | ✅                     | ✅                   |
 | [Infinispan](/integrations/embedding-stores/infinispan)                               | ✅                |                       |                     |
 | [Milvus](/integrations/embedding-stores/milvus)                                       | ✅                | ✅                     | ✅                   |

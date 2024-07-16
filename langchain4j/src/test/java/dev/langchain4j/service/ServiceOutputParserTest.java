@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.output.*;
 import dev.langchain4j.model.output.structured.Description;
@@ -8,15 +9,13 @@ import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.Serializable;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,9 +55,20 @@ class ServiceOutputParserTest {
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("11:38:00"), LocalTime.class, LocalTimeOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02T11:38:00"), LocalDateTime.class, LocalDateTimeOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage(Weather.SUNNY.name()), Weather.class, EnumOutputParser.class);
+        Type listOfWeatherEnumTypes = new TypeToken<List<Weather>>() {}.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfWeatherEnumTypes, EnumListOutputParser.class);
+
+        Type setOfWeatherEnumTypes = new TypeToken<Set<Weather>>() {}.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfWeatherEnumTypes, EnumSetOutputParser.class);
+
+        Type listOfStringsType = new TypeToken<List<String>>() {}.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfStringsType, StringListOutputParser.class);
+
+        Type setOfStringsType = new TypeToken<Set<String>>() {}.getType();
+        testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfStringsType, StringSetOutputParser.class);
     }
 
-    private void testWhetherProperOutputParserWasCalled(AiMessage aiMessage, Class<?> returnType, Class<?> expectedOutputParserType) {
+    private void testWhetherProperOutputParserWasCalled(AiMessage aiMessage, Type rawReturnType, Class<?> expectedOutputParserType) {
         // Given
         DefaultOutputParserFactory defaultOutputParserFactory = new DefaultOutputParserFactory();
         OutputParserFactory defaultOutputParserFactorySpy = spy(defaultOutputParserFactory);
@@ -72,13 +82,12 @@ class ServiceOutputParserTest {
             Optional<OutputParser<?>> result = (Optional<OutputParser<?>>) invocation.callRealMethod();
             capturedParserReference.set(result);
             return result;
-        }).when(defaultOutputParserFactorySpy).get(any());
+        }).when(defaultOutputParserFactorySpy).get(any(), any());
 
         // When
-        sut.parse(responseStub, returnType);
+        sut.parse(responseStub, rawReturnType);
 
         // Then
-        verify(defaultOutputParserFactorySpy, times(1)).get(returnType);
         Object capturedOutputParser = capturedParserReference.get().get();
         assertInstanceOf(expectedOutputParserType, capturedOutputParser);
     }

@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequest;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
+import dev.langchain4j.model.zhipu.chat.ChatCompletionModel;
 import dev.langchain4j.model.zhipu.chat.ChatCompletionRequest;
 import dev.langchain4j.model.zhipu.chat.ToolChoiceMode;
 import dev.langchain4j.model.zhipu.spi.ZhipuAiStreamingChatModelBuilderFactory;
@@ -22,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
 import static dev.langchain4j.model.zhipu.chat.ChatCompletionModel.GLM_4;
@@ -125,6 +127,17 @@ public class ZhipuAiStreamingChatModel implements StreamingChatLanguageModel {
     public static class ZhipuAiStreamingChatModelBuilder {
         public ZhipuAiStreamingChatModelBuilder() {
 
+        }
+
+        public ZhipuAiStreamingChatModelBuilder model(ChatCompletionModel model) {
+            this.model = model.toString();
+            return this;
+        }
+
+        public ZhipuAiStreamingChatModelBuilder model(String model) {
+            ensureNotBlank(model, "model");
+            this.model = model;
+            return this;
         }
     }
 }
