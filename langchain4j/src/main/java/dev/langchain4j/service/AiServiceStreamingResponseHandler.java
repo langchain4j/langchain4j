@@ -1,5 +1,10 @@
 package dev.langchain4j.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import dev.langchain4j.AbortController;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolExecutor;
 import dev.langchain4j.data.message.AiMessage;
@@ -10,10 +15,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -35,13 +36,16 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
     private final List<ChatMessage> temporaryMemory;
     private final TokenUsage tokenUsage;
 
+    private final AbortController abortController;
+
     AiServiceStreamingResponseHandler(AiServiceContext context,
                                       Object memoryId,
                                       Consumer<String> tokenHandler,
                                       Consumer<Response<AiMessage>> completionHandler,
                                       Consumer<Throwable> errorHandler,
                                       List<ChatMessage> temporaryMemory,
-                                      TokenUsage tokenUsage) {
+                                      TokenUsage tokenUsage,
+                                      AbortController abortController) {
         this.context = ensureNotNull(context, "context");
         this.memoryId = ensureNotNull(memoryId, "memoryId");
 
@@ -51,6 +55,7 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
 
         this.temporaryMemory = new ArrayList<>(temporaryMemory);
         this.tokenUsage = ensureNotNull(tokenUsage, "tokenUsage");
+        this.abortController = abortController;
     }
 
     @Override
@@ -85,7 +90,8 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
                             completionHandler,
                             errorHandler,
                             temporaryMemory,
-                            TokenUsage.sum(tokenUsage, response.tokenUsage())
+                            TokenUsage.sum(tokenUsage, response.tokenUsage()),
+                            abortController
                     )
             );
         } else {
@@ -125,5 +131,13 @@ class AiServiceStreamingResponseHandler implements StreamingResponseHandler<AiMe
         } else {
             log.warn("Ignored error", error);
         }
+    }
+
+    @Override
+    public boolean isCancelled() {
+        if (abortController == null) {
+            return false;
+        }
+        return abortController.isAborted();
     }
 }

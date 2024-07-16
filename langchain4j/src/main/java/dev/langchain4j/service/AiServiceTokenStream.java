@@ -1,13 +1,14 @@
 package dev.langchain4j.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import dev.langchain4j.AbortController;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -75,16 +76,16 @@ public class AiServiceTokenStream implements TokenStream {
         }
 
         @Override
-        public void start() {
-
+        public void start(AbortController abortController) {
             AiServiceStreamingResponseHandler handler = new AiServiceStreamingResponseHandler(
-                    context,
-                    memoryId,
-                    tokenHandler,
-                    completionHandler,
-                    errorHandler,
-                    initTemporaryMemory(context, messagesToSend),
-                    new TokenUsage()
+                context,
+                memoryId,
+                tokenHandler,
+                completionHandler,
+                errorHandler,
+                initTemporaryMemory(context, messagesToSend),
+                new TokenUsage(),
+                abortController
             );
 
             if (context.toolSpecifications != null) {
