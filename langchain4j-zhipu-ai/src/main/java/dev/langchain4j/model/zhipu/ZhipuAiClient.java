@@ -1,5 +1,9 @@
 package dev.langchain4j.model.zhipu;
 
+import java.io.IOException;
+import java.time.Duration;
+import java.util.List;
+
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Utils;
@@ -25,10 +29,6 @@ import okhttp3.sse.EventSourceListener;
 import okhttp3.sse.EventSources;
 import org.jetbrains.annotations.NotNull;
 import retrofit2.Retrofit;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.List;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.zhipu.DefaultZhipuAiHelper.*;
@@ -126,6 +126,11 @@ public class ZhipuAiClient {
 
             @Override
             public void onEvent(@NotNull EventSource eventSource, String id, String type, @NotNull String data) {
+                if (handler.isCancelled()) {
+                    eventSource.cancel();
+                    return;
+                }
+
                 if (logResponses) {
                     log.debug("onEvent() {}", data);
                 }
