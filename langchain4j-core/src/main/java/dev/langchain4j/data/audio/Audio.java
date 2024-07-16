@@ -69,7 +69,7 @@ public class Audio {
 
     @Override
     public String toString() {
-        return "audio {" +
+        return "Audio {" +
             " url = " + quoted(url) +
             ", base64Data = " + quoted(base64Data) +
             ", mimeType = " + quoted(mimeType) +
