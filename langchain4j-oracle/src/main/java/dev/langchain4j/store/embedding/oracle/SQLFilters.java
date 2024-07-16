@@ -43,14 +43,22 @@ final class SQLFilters {
         map.put(Or.class, filter -> new SQLLogicalFilter((Or) filter));
         map.put(Not.class, filter -> new SQLNot((Not)filter));
 
-        // New SQLFilter implementations defined in this class should be added to the map
-
         FILTER_MAP = Collections.unmodifiableMap(map);
     }
 
     /**
-     * A SQL filter that compares a key to a value. Calls to {@link #getSQL()} return a SQL expression of
-     * the following form: "{key} {operator} ?". For example: "name = ?", or "age >= ?".
+     * <p>
+     * A SQL filter that compares a key to a value. Calls to {@link ##asSQLExpression(UnaryOperator)} return a SQL
+     * expression of the following form:
+     * </p><pre>
+     * {key} {operator} ?
+     * </pre><p>
+     * Examples:
+     * </p><ul><li>
+     * name = ?
+     * </li><li>
+     * age >= ?
+     * </li></ul>
      */
     private static class SQLComparisonFilter implements SQLFilter {
 
@@ -117,9 +125,9 @@ final class SQLFilters {
         }
 
         @Override
-        public String getSQL(UnaryOperator<String> idFunction) {
+        public String asSQLExpression(UnaryOperator<String> idMapper) {
             // In cases where the operator results in NULL, the NVL function maps NULL to the nullResult.
-            return "NVL(" + idFunction.apply(key) + " " + operator + " ?, " + isNullTrue + ")";
+            return "NVL(" + idMapper.apply(key) + " " + operator + " ?, " + isNullTrue + ")";
         }
 
         @Override
@@ -130,9 +138,18 @@ final class SQLFilters {
     }
 
     /**
-     * A SQL filter that combines the result of two other filters. Calls to {@link #getSQL()} return a SQL expression of
-     * the following form: "({left} {AND|OR} {right})". For example: "(name = ? OR age >= ?)", or
-     * "(name IN (?, ?, ?) OR age > ?)".
+     * <p>
+     * A SQL filter that combines the result of two other filters. Calls to {@link #asSQLExpression(UnaryOperator)}
+     * return a SQL expression of the following form:
+     * </p><pre>
+     * ({left} {AND|OR} {right})
+     * </pre><p>
+     * Examples:
+     * </p><ul><li>
+     * (name = ? OR age >= ?)
+     * </li><li>
+     * (name IN (?, ?, ?) OR age > ?)
+     * </li></ul>
      */
     private static class SQLLogicalFilter implements SQLFilter {
 
@@ -164,10 +181,10 @@ final class SQLFilters {
         }
 
         @Override
-        public String getSQL(UnaryOperator<String> identifierOperator) {
-            return "(" + left.getSQL(identifierOperator)
+        public String asSQLExpression(UnaryOperator<String> idMapper) {
+            return "(" + left.asSQLExpression(idMapper)
                     + " " + operator + " "
-                    + right.getSQL(identifierOperator) + ")";
+                    + right.asSQLExpression(idMapper) + ")";
         }
 
         @Override
@@ -179,8 +196,20 @@ final class SQLFilters {
     }
 
     /**
-     * A SQL filter that negates the result of another filter. Calls to {@link #getSQL()} return a SQL expression of
-     * the following form: "NOT({filter})". For example: "NOT(name = ?)", or "NOT(age > ? AND age < ?)".
+     * <p>
+     * A SQL filter that negates the result of another filter. Calls to {@link #asSQLExpression(UnaryOperator)} return a
+     * SQL expression of the following form:
+     * </p><pre>
+     * NOT({filter})
+     * </pre><p>
+     * Examples:
+     * <ul><li>
+     * NOT(name = ?)
+     * </li><li>
+     * NOT(age > ? AND age < ?)
+     * </li></ul>
+     * </p>
+     *
      */
     private static class SQLNot implements SQLFilter {
 
@@ -192,8 +221,8 @@ final class SQLFilters {
         }
 
         @Override
-        public String getSQL(UnaryOperator<String> identifierOperator) {
-            return "NOT(" + expression.getSQL(identifierOperator) + ")";
+        public String asSQLExpression(UnaryOperator<String> idMapper) {
+            return "NOT(" + expression.asSQLExpression(idMapper) + ")";
         }
 
         @Override
@@ -203,9 +232,19 @@ final class SQLFilters {
     }
 
     /**
-     * A SQL filter that checks if a key is in a set of values, or not. Calls to {@link #getSQL()} return a SQL
-     * expression of the following form: "{key} [NOT ]{IN}(?[,?]*)". For example: "name IN (?, ?, ?)", or
-     * "age NOT IN (?, ?)".
+     * <p>
+     * A SQL filter that checks if a key is in a set of values, or not. Calls to {@link #asSQLExpression(UnaryOperator)}
+     * return a SQL expression of the following form:
+     * </p><pre>
+     * {key} [NOT ]{IN}(?[,?]*)
+     * </pre><p>
+     * Examples:
+     * <ul><li>
+     * name IN (?, ?, ?)
+     * </li><li>
+     * age NOT IN (?, ?)
+     * </li>
+     * </ul>
      */
     private static class SQLInFilter implements SQLFilter {
 
@@ -233,9 +272,9 @@ final class SQLFilters {
         }
 
         @Override
-        public String getSQL(UnaryOperator<String> identifierOperator) {
+        public String asSQLExpression(UnaryOperator<String> idMapper) {
             // Example: "NVL(id IN (?,?,?), FALSE)"
-            return "NVL(" + identifierOperator.apply(key)
+            return "NVL(" + idMapper.apply(key)
                     + (isIn ? " IN " : " NOT IN ") + "("
                     + Stream.generate(() -> "?")
                         .limit(comparisonValues.size())

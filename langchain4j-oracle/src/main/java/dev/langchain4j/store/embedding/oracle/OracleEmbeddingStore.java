@@ -18,6 +18,7 @@ import javax.sql.DataSource;
 import java.sql.*;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.function.UnaryOperator;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -31,6 +32,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * </p>
  */
 public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
+
+    /**
+     * The mapping function for use with {@link SQLFilter#asSQLExpression(UnaryOperator)}. The identified value is extracted
+     * from the metadata JSON column by passing a JSON path expression to the JSON_VALUE function.
+     */
+    private static final UnaryOperator<String> METADATA_KEY_MAPPER = id -> "JSON_VALUE(metadata, '$." + id + "')";
 
     /** DataSource configured to connect with an Oracle Database. */
     private final DataSource dataSource;
@@ -226,7 +233,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public void removeAll(Collection<String> ids) {
-        ensureNotNull(ids, "ids");
+        ensureNotEmpty(ids, "ids");
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement delete = connection.prepareStatement(
@@ -247,10 +254,12 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     @Override
     public void removeAll(Filter filter) {
         ensureNotNull(filter, "filter");
+
         SQLFilter sqlFilter = SQLFilter.fromFilter(filter);
-        String whereClause = "WHERE" + sqlFilter.getSQL();
+
         try (Connection connection = dataSource.getConnection();
-             PreparedStatement delete = connection.prepareStatement("DELETE FROM " + tableName + whereClause)
+             PreparedStatement delete = connection.prepareStatement(
+                     "DELETE FROM " + tableName + sqlFilter.asWhereClause(METADATA_KEY_MAPPER))
         ) {
             sqlFilter.setParameters(delete, 1);
             delete.executeUpdate();
@@ -273,22 +282,19 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        ensureNotNull(request, "request");
 
-        Filter filter = request.filter();
-        final SQLFilter sqlFilter = filter == null ? null : SQLFilter.fromFilter(filter);
+        SQLFilter sqlFilter = SQLFilter.fromFilter(request.filter());
 
-        int maxResults = request.maxResults();
-        double minScore = request.minScore();
+        final int maxResults = request.maxResults();
 
         try (Connection connection = dataSource.getConnection();
              PreparedStatement query = connection.prepareStatement(
                      "SELECT VECTOR_DISTANCE(embedding, ?, COSINE) distance, id, embedding, content, metadata"
                              + " FROM " + tableName
-                             + (sqlFilter == null
-                                ? ""
-                                : " WHERE " + sqlFilter.getSQL(id -> "JSON_VALUE(metadata, '$." + id + "')"))
+                             + sqlFilter.asWhereClause(METADATA_KEY_MAPPER)
                              + " ORDER BY distance"
-                             + " FETCH FIRST " + request.maxResults() + " ROWS ONLY")
+                             + " FETCH FIRST " + maxResults + " ROWS ONLY")
         ) {
 
             // Calls to defineColumnType reduce the number of network requests. When Oracle JDBC knows that it is
@@ -305,11 +311,11 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
 
             query.setObject(1, request.queryEmbedding().vector(), OracleTypes.VECTOR_FLOAT32);
+            sqlFilter.setParameters(query, 2);
+
             query.setFetchSize(maxResults);
 
-            if (sqlFilter != null)
-                sqlFilter.setParameters(query, 2);
-
+            double minScore = request.minScore();
             List<EmbeddingMatch<TextSegment>> matches = new ArrayList<>(maxResults);
             try (ResultSet resultSet = query.executeQuery()) {
                 while (resultSet.next()) {

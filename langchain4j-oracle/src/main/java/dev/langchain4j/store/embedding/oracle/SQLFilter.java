@@ -14,7 +14,7 @@ import java.util.function.UnaryOperator;
  * the operation of a {@link Filter} interface. This allows filtering operations to occur in the database, rather than
  * locally via {@link Filter#test(Object)}.
  * </p><p>
- * This interface is designed to interoperate with the JDBC API. The String returned by {@link #getSQL()} can be
+ * This interface is designed to interoperate with the JDBC API. The String returned by {@link #asSQLExpression()} can be
  * embedded within SQL that is passed to {@link Connection#prepareStatement(String)}. The String may include "?"
  * parameter markers. Parameter values are set when the <code>PreparedStatement</code> is passed to
  * {@link #setParameters(PreparedStatement, int)}. The use of parameter markers can offer a performance benefit when the
@@ -26,8 +26,8 @@ public interface SQLFilter {
 
     /**
      * <p>
-     * Returns this filter as a SQL expression. The SQL expression returned by this method can appear within the WHERE
-     * clause of a SELECT query. The expression may contain "?" characters that a {@link PreparedStatement} will
+     * Returns this filter as a SQL conditional expression. The expression returned by this method can appear within the
+     * WHERE clause of a SELECT query. The expression may contain "?" characters that a {@link PreparedStatement} will
      * recognize as parameter markers. The values of any parameters are set when a <code>PreparedStatement</code> is
      * passed to the {@link #setParameters(PreparedStatement, int)} method of this filter.
      * </p><p>
@@ -52,18 +52,27 @@ public interface SQLFilter {
      * }</pre>
      * </p>
      *
-     * @param identifierOperator Namespace of any identifiers which appear in the filter. Not null.
+     * @param idMapper Function which maps {@link dev.langchain4j.data.document.Metadata} keys to SQL identifiers. Not
+     *                 null.
      *
-     * @return SQL filtering expression. Not null.
+     * @return SQL expression which evaluates to the result of this filter. Not null.
      */
-    String getSQL(UnaryOperator<String> identifierOperator);
+    String asSQLExpression(UnaryOperator<String> idMapper);
 
-    default String getSQL() {
-       return getSQL(UnaryOperator.identity());
+    /**
+     * Returns this SQL filter as a WHERE clause, or returns an empty string if this is the {@link #EMPTY} filter.
+     *
+     * @param idMapper Function which maps {@link dev.langchain4j.data.document.Metadata} keys to SQL identifiers. Not
+     *                 null.
+     *
+     * @return SQL expression that evaluates to the result of this filter. Not null.
+     */
+    default String asWhereClause(UnaryOperator<String> idMapper) {
+        return " WHERE " + asSQLExpression(idMapper);
     }
 
     /**
-     * Sets the value of any parameter markers in the SQL expression returned by {@link #getSQL()}.
+     * Sets the value of any parameter markers in the SQL expression returned by {@link #asSQLExpression()}.
      *
      * @param preparedStatement Statement to set with a value. Not null.
      * @param parameterIndex Index to set with a value.
@@ -79,14 +88,14 @@ public interface SQLFilter {
      *
      * @param filter Filter to map into a SQLFilter. May be null.
      *
-     * @return The equivalent SQLFilter, or null if the input <code>Filter</code> is null.
+     * @return The equivalent SQLFilter, which may be {@link #EMPTY} if the input <code>Filter</code> is null.
      *
      * @throws IllegalArgumentException If the Filter is not recognized.
      */
     static SQLFilter fromFilter(Filter filter) {
 
         if (filter == null)
-            return null;
+            return EMPTY;
 
         Function<? super Filter, ? extends SQLFilter> function = SQLFilters.FILTER_MAP.get(filter.getClass());
 
@@ -95,5 +104,23 @@ public interface SQLFilter {
 
         return function.apply(filter);
     }
+
+    SQLFilter EMPTY = new SQLFilter() {
+
+        @Override
+        public String asSQLExpression(UnaryOperator<String> idMapper) {
+            return "";
+        }
+
+        @Override
+        public int setParameters(PreparedStatement preparedStatement, int parameterIndex) throws SQLException {
+            return 0;
+        }
+
+        @Override
+        public String asWhereClause(UnaryOperator<String> idMapper) {
+            return "";
+        }
+    };
 
 }
