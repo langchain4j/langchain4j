@@ -234,20 +234,17 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 	@Test
 	void customize_baidu_search_parameters() {
 		// given
-		SearchApiWebSearchEngine searchapiWebSearchEngine = new SearchApiWebSearchEngine(
-				System.getenv(DEFAULT_ENV_VAR), 
-				"baidu", 
-				Duration.ofSeconds(20), 
-				true, 
-				null) {
-			
-			@Override
-			protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
-				request.getParams().put("ct", "0");
-				request.getParams().put("num", "5");
-				request.getParams().put("page", "1");
-			}
-		};
+		SearchApiWebSearchEngine searchapiWebSearchEngine = SearchApiWebSearchEngine.builder()
+				.apiKey(System.getenv(DEFAULT_ENV_VAR))
+				.engine("baidu")
+				.logRequests(true)
+				.customizeParametersFunc(
+						(params) -> {
+							params.put("ct", "0");
+							params.put("num", "5");
+							params.put("page", "1");
+						})
+				.build();
 
 		// when
 		WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
@@ -276,7 +273,7 @@ class SearchApiWebSearchEngineIT extends WebSearchEngineIT {
 		// then
 		List<WebSearchOrganicResult> results = webSearchResults.results();
 		
-		assertThat(results).isNotEmpty(); System.out.println("###### " + results);
+		assertThat(results).isNotEmpty();
 
 		results.forEach(result -> {
 			assertThat(result.title()).isNotBlank();

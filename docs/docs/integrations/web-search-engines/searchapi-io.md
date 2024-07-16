@@ -28,9 +28,23 @@ The current `$version` is: `0.33.0`.
 
 ## Usage
 
-To perform a web search using the default search engine (Google Search):
+To perform a web search using the default search engine: [Google Search API](https://www.searchapi.io/docs/google):
 ```java
 
+// use the one-liner convenience method
+WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv("SEARCHAPI_API_KEY"));
+
+WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
+```
+
+The only required property is an `apiKey`, the `WebSearchEngine` will use reasonable defaults for everything else.
+
+
+### Logging
+
+If you want to enable logging of requests and responses from SearchApi, you will need to set `logRequests` to `true` (defaults to `false`).
+```java
+// use the fluent interface aka method chaining
 WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
     .apiKey(System.getenv("SEARCHAPI_API_KEY"))
     .logRequests(true)
@@ -39,8 +53,10 @@ WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
 WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
 
+
 You can also use the `SearchApiWebSearchEngine()` constructor directly. This code is equivalent to the snippet above:
 ```java
+// use the constructor method
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
     System.getenv("SEARCHAPI_API_KEY"), 
     "google",
@@ -51,7 +67,22 @@ WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
 WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
 
-Without any customization, all searches default to the `google.com` domain. 
+
+
+## Customization
+
+Without any customization, all searches using a `SearchApiWebSearchEngine` instance defaults to the `google.com` domain.
+
+The `SearchApiWebSearchEngine` class offers two life cycle methods that can be used to customize search requests and search results:
+* `void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest);`
+* `void customizeSearchResults(final SearchApiResponse response, final List<WebSearchOrganicResult> results)`
+
+The `customizeSearchRequest()` method is called by `SearchApiWebSearchEngine` just before a search is performed. Overriding this method will allow you to customize the parameters of a search request.
+
+
+The `customizeSearchResults()` method is called by `SearchApiWebSearchEngine` just after a search is performed but before the results are sent back to the caller. Overriding this method will allow you to customize the search results (e.g. re-ordering of elements).
+
+
 
 To use a different Google domain or specify different parameters in a search, you have to customize the request parameters.
 
@@ -72,7 +103,7 @@ Each snippet sets the:
 * `safe` to `active` to turn on safe search (defaults to `off`).
 
  
-#### 1st Style: Consumer Function
+#### 1st Style: Consumer aka Functional Interface
 ```java
 
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
@@ -106,7 +137,7 @@ WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(System.getenv("SE
     }
 };
 		
-WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
+WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
 
 
@@ -126,10 +157,66 @@ For the full list of supported search engines, please refer to the [documentatio
 
 
 The following web search engine have been tested and are used in the linked Usage Examples:
-- `google` - [Google Search API](https://www.searchapi.io/docs/google)
-- `bing` - [Bing Search API](https://www.searchapi.io/docs/bing)
-- `baidu` - [Baidu Search API](https://www.searchapi.io/docs/baidu)
+- `google`
+- `bing`
+- `baidu`
 
+
+### Bing Search Engine
+
+* [Bing Search API](https://www.searchapi.io/docs/bing)
+
+This snippet illustrates how to create a `SearchApiWebSearchEngine` that uses the `bing` search engine:
+```java
+// uses an anonymous subclass
+SearchApiWebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(System.getenv("SEARCHAPI_API_KEY"), "bing") {
+    @Override
+    protected void customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest) {
+        request.getParams().put("device", "tablet");
+        request.getParams().put("language", "en");
+        request.getParams().put("safe_search", "strict");
+        request.getParams().put("num", "10");
+        request.getParams().put("page", "1");
+    }
+};
+
+
+```
+
+### Baidu Search Engine
+
+* [Baidu Search API](https://www.searchapi.io/docs/baidu)
+
+This example shows how to use `baidu` as a search engine with the language parameter (`ct`) [explicitly set](https://www.searchapi.io/docs/baidu#api-parameters-localization-ct) to `Simplified and Traditional Chinese`:
+```java
+// use the consumer functional interface
+SearchApiWebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
+        .apiKey(System.getenv("SEARCHAPI_API_KEY"))
+        .engine("baidu")
+        .logRequests(true)
+        .customizeParametersFunc(
+                (params) -> {
+                    params.put("ct", "0");
+                    params.put("num", "5");
+                    params.put("page", "1");
+                })
+        .build();
+
+WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
+List<WebSearchOrganicResult> results = webSearchResults.results();
+System.out.println(results);
+
+/*
+[WebSearchOrganicResult{title='ChatGPT: Optimizing Language Models for Dialogue 官方', url=https://openai.com/blog/chatgpt/, snippet='We’ve trained a model called ChatGPT which interacts in a conversational way. The dialogue format makes it possible for ChatGPT to answer...', content='null', metadata={position=1}}, 
+
+WebSearchOrganicResult{title='爆火的ChatGPT,被小学生打败了', url=https://baijiahao.baidu.com/s?id=1751463938792563285&wfr=spider&for=pc, snippet='虽说ChatGPT做小学考试题时表现得智商堪忧,但这不妨碍它在回答一些专业问题时地高水准发挥。数据科学公司Anaconda的创始人兼CEO Peter Wang亦给予了ChatGPT超高的评价:“我刚刚跟ChatGPT足足聊了2...', content='null', metadata={position=2}}, 
+
+WebSearchOrganicResult{title='chatgpt在哪里下载? - 知乎', url=https://www.zhihu.com/question/632952940/answer/3344265698, snippet='https://chat.openai.com/​chat.openai.com/ 通过官网，无论是手机、平板、电脑都可以直接使用Chat...', content='null', metadata={position=3}}, 
+
+WebSearchOrganicResult{title='ChatGPT国内如何使用!全网最全ChatGPT注册使用教程,GPT底...', url=https://www.bilibili.com/video/BV1GKa4eiEwF/, snippet='耗时2天半,给你们找到一个免费无限制使用的ChatGPT4.0网站,分享给有需要的人。 黑科技测评君 935 0 国内可免费无限制使用ChatGPt4.0网站,分享给有需要的人 黑科技差评...', content='null', metadata={position=4}}]
+
+*/        
+```
 
 
 ## OpenAI Usage Example

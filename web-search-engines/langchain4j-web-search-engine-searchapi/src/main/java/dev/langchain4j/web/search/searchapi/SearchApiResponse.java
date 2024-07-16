@@ -26,7 +26,6 @@ public class SearchApiResponse {
 	private Map<String, Object> knowledgeGraph;
 	private Map<String, Object> answerBox;
 
-	/** Mandatory JSON element */
 	private Pagination pagination;
 
 }

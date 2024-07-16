@@ -78,7 +78,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         final SearchApiRequest request = requestBuilder.build();
 
 		// future search engines must either: 
-        // 1. call this method to customize the search parameters
+        // 1. override this method to customize the search parameters
         customizeSearchRequest(request, webSearchRequest);
         
         // 2. or use the functional interface
