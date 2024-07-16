@@ -6,6 +6,7 @@ import dev.langchain4j.data.document.DocumentParser;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
+import java.util.Calendar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -21,7 +22,11 @@ class ApachePdfBoxDocumentParserTest {
         Document document = parser.parse(inputStream);
 
         assertThat(document.text()).isEqualToIgnoringWhitespace("test content");
-        assertThat(document.metadata().toMap()).isEmpty();
+        assertThat(document.metadata().toMap())
+                .containsEntry("Author", "ljuba")
+                .containsEntry("Creator", "WPS Writer")
+                .containsEntry("CreationDate", "D:20230608171011+15'10'")
+                .containsEntry("SourceModified", "D:20230608171011+15'10'");
     }
 
     @Test
