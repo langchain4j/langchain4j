@@ -23,7 +23,7 @@ class SearchApiClient {
             .setPrettyPrinting()
             .create();
 
-    private final Retrofit retrofitBase;
+    private final SearchApiWebSearchApi api;
 
     @Builder
     SearchApiClient(String baseUrl, Duration timeout) {
@@ -32,11 +32,12 @@ class SearchApiClient {
                 .connectTimeout(timeout)
                 .readTimeout(timeout)
                 .writeTimeout(timeout);
-        this.retrofitBase = new Retrofit.Builder()
+        Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(okHttpClientBuilder.build())
                 .addConverterFactory(GsonConverterFactory.create(GSON))
                 .build();
+        this.api = retrofit.create(SearchApiWebSearchApi.class);
     }
 
     SearchApiWebSearchResponse search(SearchApiWebSearchRequest request) {
@@ -44,7 +45,6 @@ class SearchApiClient {
         finalParameters.put("engine", request.getEngine());
         finalParameters.put("q", request.getQuery());
         String bearerToken = "Bearer " + request.getApiKey();
-        SearchApiWebSearchApi api = retrofitBase.create(SearchApiWebSearchApi.class);
         try {
             Response<SearchApiWebSearchResponse> response = api.search(finalParameters, bearerToken).execute();
             return getBody(response);

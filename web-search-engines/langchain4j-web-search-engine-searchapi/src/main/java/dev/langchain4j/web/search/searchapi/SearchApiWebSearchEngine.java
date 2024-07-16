@@ -36,7 +36,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
      * @param apiKey  the Search API key for accessing their API
      * @param timeout the timeout duration for API requests
      *                <p>
-     *                Default value is 10 seconds.
+     *                Default value is 30 seconds.
      * @param engine  the engine used by Search API to execute the search
      *                <p>
      *                Default engine is Google Search.
@@ -98,6 +98,10 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         return metadata;
     }
 
+    private Integer getCurrentPage(Pagination pagination) {
+        return pagination != null ? pagination.getCurrent() : null;
+    }
+
     private Map<String, Object> toSearchMetadata(SearchApiWebSearchResponse response) {
         Map<String, Object> metadata = new HashMap<>();
         SearchParameters searchParameters = response.getSearchParameters();
@@ -118,10 +122,6 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                         null
                 ))
                 .collect(Collectors.toList());
-    }
-
-    private Integer getCurrentPage(Pagination pagination) {
-        return pagination != null ? pagination.getCurrent() : null;
     }
 
     public static WebSearchEngine withApiKey(String apiKey) {
