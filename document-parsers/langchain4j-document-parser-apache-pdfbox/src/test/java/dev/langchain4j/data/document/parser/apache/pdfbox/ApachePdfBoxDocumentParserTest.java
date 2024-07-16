@@ -6,7 +6,6 @@ import dev.langchain4j.data.document.DocumentParser;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
-import java.util.Calendar;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
