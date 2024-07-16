@@ -51,15 +51,16 @@ WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
 WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 ```
 
+Without any customization, all searches default to the `google.com` domain. 
 
-Without any customization, all searches default to the `google.com` domain. To use a different Google domain or specify different parameters in a search, you have to customize the request parameters.
+To use a different Google domain or specify different parameters in a search, you have to customize the request parameters.
 
 
-### Customizing Parameters
+### Customizing Request Parameters
 
 There are two ways by which you can customize the request parameters prior to a search:
 * providing a [`java.util.function.Consumer`](https://docs.oracle.com/javase/8/docs/api/java/util/function/Consumer.html) function that will `accept(T)` a `T` of type `<Map<String, Object>> params` when you use the `SearchApiWebSearchEngine()` constructor or;
-* using an anonymous subclass that overrides the life cycle method `customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest)`.
+* using an anonymous subclass that overrides the life cycle method `SearchApiWebSearchEngine#customizeSearchRequest(final SearchApiRequest request, final WebSearchRequest webSearchRequest)`.
 
  
 
@@ -103,17 +104,40 @@ WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(System.getenv("SE
     	request.getParams().put("google_domain", "google.co.uk");
     	request.getParams().put("safe", "active");
     }
-    };
+};
 		
 WebSearchResults webSearchResults = searchapiWebSearchEngine.search("chatgpt");
 ```
+
+
+## Search Engines
+
+Any search engine on SearchApi that returns an `organic_results` array with each element containing a `title`, `link` and `snippet` is supported. 
+
+Search engines that return `organic_results` in this format include:
+* `google`
+* `bing` 
+* `baidu` 
+* `bing_news` 
+* `google_news` 
+* `google_scholar` etc
+
+For the full list of supported search engines, please refer to the [documentation](https://www.searchapi.io/docs/google).
+
+
+The following web search engine have been tested and are used in the linked Usage Examples:
+- `google` - [Google Search API](https://www.searchapi.io/docs/google)
+- `bing` - [Bing Search API](https://www.searchapi.io/docs/bing)
+- `baidu` - [Baidu Search API](https://www.searchapi.io/docs/baidu)
 
 
 
 ## Full Example
 
 ```java
-// Partially adapted from: https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java and: 
+// Partially adapted from: 
+// https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java 
+// and: 
 // https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchToolIT.java
 
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -177,28 +201,10 @@ public class SearchWithToolsExample {
 
 ```
 
-## Search Engines
 
-Any search engine on SearchApi that returns an `organic_results` array with each element containing a `title`, `link` and `snippet` is supported. 
+## Additional Usage Examples
 
-Search engines that return `organic_results` in this format include:
-* `google`
-* `bing` 
-* `baidu` 
-* `bing_news` 
-* `google_news` 
-* `google_scholar` etc
-
-For the full list of supported search engines, please refer to the [documentation](https://www.searchapi.io/docs/google).
-
-
-The following web search engine have been tested and are used in the linked examples in the next section:
-- `google` - [Google Search API](https://www.searchapi.io/docs/google)
-- `bing` - [Bing Search API](https://www.searchapi.io/docs/bing)
-- `baidu` - [Baidu Search API](https://www.searchapi.io/docs/baidu)
-
-
-## Examples
+These integration tests contain additional usage examples of how to use this module as a `WebSearchEngine` or as a `Tool`:
 
 - [SearchApiWebSearchEngineIT.java](https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchEngineIT.java)
 - [SearchApiWebSearchToolIT.java](https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchToolIT.java)
