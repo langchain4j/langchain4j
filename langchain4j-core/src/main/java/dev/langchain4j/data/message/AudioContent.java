@@ -121,10 +121,10 @@ public class AudioContent implements Content {
     /**
      * Create a new {@link AudioContent} from the given Audio.
      *
-     * @param Audio the Audio.
+     * @param audio the Audio.
      * @return the new {@link AudioContent}.
      */
     public static AudioContent from(Audio audio) {
-        return new AudioContent(Audio);
+        return new AudioContent(audio);
     }
 }

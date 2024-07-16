@@ -56,29 +56,26 @@ class PartsMapper {
         // see audio requirements
         // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/audio-understanding
         EXTENSION_TO_MIME_TYPE.put("mp3", "audio/mp3");
-        EXTENSION_TO_MIME_TYPE.put("mp4", "audio/mp4");
         EXTENSION_TO_MIME_TYPE.put("wav", "audio/wav");
         EXTENSION_TO_MIME_TYPE.put("aac", "audio/aac");
         EXTENSION_TO_MIME_TYPE.put("flac", "audio/flac");
         EXTENSION_TO_MIME_TYPE.put("mpa", "audio/m4a");
-        EXTENSION_TO_MIME_TYPE.put("mpeg", "audio/mpeg");
         EXTENSION_TO_MIME_TYPE.put("mpga", "audio/mpga");
         EXTENSION_TO_MIME_TYPE.put("opus", "audio/opus");
         EXTENSION_TO_MIME_TYPE.put("pcm", "audio/pcm");
-        EXTENSION_TO_MIME_TYPE.put("webm", "audio/webm");
 
         // see video requirements:
         // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/video-understanding
-        EXTENSION_TO_MIME_TYPE.put("video/mp4", "mp4");
-        EXTENSION_TO_MIME_TYPE.put("video/mpeg", "mpeg");
-        EXTENSION_TO_MIME_TYPE.put("video/mpg", "mpg");
-        EXTENSION_TO_MIME_TYPE.put("video/mpegps", "mpegps");
-        EXTENSION_TO_MIME_TYPE.put("video/mov", "mov");
-        EXTENSION_TO_MIME_TYPE.put("video/avi", "avi");
-        EXTENSION_TO_MIME_TYPE.put("video/x-flv", "flv");
-        EXTENSION_TO_MIME_TYPE.put("video/webm", "webm");
-        EXTENSION_TO_MIME_TYPE.put("video/wmv", "mmv");
-        EXTENSION_TO_MIME_TYPE.put("video/3gpp", "3gpp");
+        EXTENSION_TO_MIME_TYPE.put("mp4", "video/mp4");
+        EXTENSION_TO_MIME_TYPE.put("mpeg", "video/mpeg");
+        EXTENSION_TO_MIME_TYPE.put("mpg", "video/mpg");
+        EXTENSION_TO_MIME_TYPE.put("mpegps", "video/mpegps");
+        EXTENSION_TO_MIME_TYPE.put("mov", "video/mov");
+        EXTENSION_TO_MIME_TYPE.put("avi", "video/avi");
+        EXTENSION_TO_MIME_TYPE.put("flv", "video/x-flv");
+        EXTENSION_TO_MIME_TYPE.put("webm", "video/webm");
+        EXTENSION_TO_MIME_TYPE.put("mmv", "video/wmv");
+        EXTENSION_TO_MIME_TYPE.put("3gpp", "video/3gpp");
     }
 
     static List<Part> map(ChatMessage message) {
@@ -169,41 +166,29 @@ class PartsMapper {
 
     static Part map(ImageContent content) {
         Image image = content.image();
-        if (image.url() != null) {
-            String mimeType = getOrDefault(image.mimeType(), () -> detectMimeType(image.url()));
-            if (image.url().getScheme().equals("gs")) {
-                return fromMimeTypeAndData(mimeType, image.url());
-            } else {
-                return fromMimeTypeAndData(mimeType, readBytes(image.url().toString()));
-            }
-        }
-        return fromMimeTypeAndData(image.mimeType(), Base64.getDecoder().decode(image.base64Data()));
+        return getPart(image.url(), image.mimeType(), image.base64Data());
     }
 
     static Part map(AudioContent content) {
         Audio audio = content.audio();
-        if (audio.url() != null) {
-            String mimeType = getOrDefault(audio.mimeType(), () -> detectMimeType(audio.url()));
-            if (audio.url().getScheme().equals("gs")) {
-                return fromMimeTypeAndData(mimeType, audio.url());
-            } else {
-                return fromMimeTypeAndData(mimeType, readBytes(audio.url().toString()));
-            }
-        }
-        return fromMimeTypeAndData(audio.mimeType(), Base64.getDecoder().decode(audio.base64Data()));
+        return getPart(audio.url(), audio.mimeType(), audio.base64Data());
     }
 
     static Part map(VideoContent content) {
         Video video = content.video();
-        if (video.url() != null) {
-            String mimeType = getOrDefault(video.mimeType(), () -> detectMimeType(video.url()));
-            if (video.url().getScheme().equals("gs")) {
-                return fromMimeTypeAndData(mimeType, video.url());
+        return getPart(video.url(), video.mimeType(), video.base64Data());
+    }
+
+    private static Part getPart(URI url, String mimeType, String base64data) {
+        if (url != null) {
+            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
+            if (url.getScheme().equals("gs")) {
+                return fromMimeTypeAndData(effectiveMimeType, url);
             } else {
-                return fromMimeTypeAndData(mimeType, readBytes(video.url().toString()));
+                return fromMimeTypeAndData(effectiveMimeType, readBytes(url.toString()));
             }
         }
-        return fromMimeTypeAndData(video.mimeType(), Base64.getDecoder().decode(video.base64Data()));
+        return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
     }
 
     static String detectMimeType(URI url) {

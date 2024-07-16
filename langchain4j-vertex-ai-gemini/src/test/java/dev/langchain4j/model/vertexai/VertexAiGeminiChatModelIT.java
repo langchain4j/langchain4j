@@ -799,7 +799,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-            AudioContent.from("gs://cloud-samples-data/generative-ai/audio/pixel.mp3"),
+            AudioContent.from("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3"),
             TextContent.from("Give a summary of the audio")
         );
 

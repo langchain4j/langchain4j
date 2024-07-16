@@ -685,7 +685,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-            AudioContent.from("gs://cloud-samples-data/video/animals.mp4"),
+            AudioContent.from("https://storage.googleapis.com/cloud-samples-data/video/animals.mp4"),
             TextContent.from("What's in this video?")
         );
 
