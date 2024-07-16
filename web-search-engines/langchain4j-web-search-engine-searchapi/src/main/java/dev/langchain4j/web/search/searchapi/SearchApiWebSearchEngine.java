@@ -75,7 +75,6 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     private WebSearchResults toWebSearchResults(SearchApiWebSearchResponse response) {
         List<OrganicResult> organicResults = response.getOrganicResults();
         Map<String, Object> searchInformationMetadata = getOrDefault(response.getSearchInformation(), new HashMap<>());
-        addToSearchInformationMetadata(searchInformationMetadata, response.getPagination());
         Long totalResults = ((Integer) organicResults.size()).longValue(); // not ideal, but it may not be present in the response and is required not null by WebSearchInformationResult
         WebSearchInformationResult searchInformation = WebSearchInformationResult.from(
                 totalResults,
@@ -83,13 +82,15 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
                 searchInformationMetadata
         );
         Map<String, Object> searchMetadata = getOrDefault(response.getSearchParameters(), new HashMap<>());
+        addToMetadata(searchMetadata, response.getPagination());
+        addToMetadata(searchMetadata, searchInformationMetadata);
         return WebSearchResults.from(
                 searchMetadata,
                 searchInformation,
                 toWebSearchOrganicResults(organicResults));
     }
 
-    private void addToSearchInformationMetadata(Map<String, Object> searchInformationMetadata, Map<String, Object> pagination) {
+    private void addToMetadata(Map<String, Object> searchInformationMetadata, Map<String, Object> pagination) {
         if (pagination != null) {
             searchInformationMetadata.putAll(pagination);
         }
