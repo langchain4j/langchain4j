@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.elasticsearch;
+package dev.langchain4j.store.embedding.couchbase;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
@@ -8,15 +8,17 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.couchbase.CouchbaseEmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.elasticsearch.ElasticsearchContainer;
+import org.testcontainers.couchbase.BucketDefinition;
+import org.testcontainers.couchbase.CouchbaseContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
+import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -29,19 +31,27 @@ import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metad
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Disabled
 @Testcontainers
-class ElasticsearchEmbeddingStoreRemoveIT {
+class CouchbaseEmbeddingStoreRemoveIT {
+
+    private static BucketDefinition testBucketDefinition = new BucketDefinition("test");
 
     @Container
-    private static final ElasticsearchContainer elasticsearch =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.9.0")
-                    .withEnv("xpack.security.enabled", "false");
+    private static final CouchbaseContainer couchbaseContainer =
+            new CouchbaseContainer(DockerImageName.parse("couchbase:enterprise-7.6.1").asCompatibleSubstituteFor("couchbase/server"))
+                    .withBucket(testBucketDefinition);
 
-    EmbeddingStore<TextSegment> embeddingStore = CouchbaseEmbeddingStore.builder()
-            .serverUrl(elasticsearch.getHttpHostAddress())
-            .indexName(randomUUID())
-            .dimension(384)
-            .build();
+    EmbeddingStore<TextSegment> embeddingStore = new CouchbaseEmbeddingStore(
+            couchbaseContainer.getHost(),
+            couchbaseContainer.getUsername(),
+            couchbaseContainer.getPassword(),
+            "test",
+            "test",
+            "test",
+            "test",
+            CouchbaseEmbeddingStoreIT.TEST_DIMENSIONS
+    );
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

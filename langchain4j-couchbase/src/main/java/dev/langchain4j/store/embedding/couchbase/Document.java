@@ -12,7 +12,9 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 class Document {
+    private String id;
     private float[] vector;
     private String text;
     private Map<String, Object> metadata;
+    private double score;
 }

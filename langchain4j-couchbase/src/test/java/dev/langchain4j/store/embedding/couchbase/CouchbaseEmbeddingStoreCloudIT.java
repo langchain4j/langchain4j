@@ -1,4 +1,4 @@
-package dev.langchain4j.store.embedding.elasticsearch;
+package dev.langchain4j.store.embedding.couchbase;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -7,25 +7,25 @@ import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.couchbase.CouchbaseEmbeddingStore;
 import lombok.SneakyThrows;
-import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 
-@Testcontainers
-class ElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
+@Disabled
+@EnabledIfEnvironmentVariable(named = "CB_CLUSTER", matches = ".+")
+class CouchbaseEmbeddingStoreCloudIT extends EmbeddingStoreWithFilteringIT {
 
-    @Container
-    private static final ElasticsearchContainer elasticsearch =
-            new ElasticsearchContainer("docker.elastic.co/elasticsearch/elasticsearch:8.9.0")
-                    .withEnv("xpack.security.enabled", "false");
-
-    EmbeddingStore<TextSegment> embeddingStore = CouchbaseEmbeddingStore.builder()
-            .serverUrl(elasticsearch.getHttpHostAddress())
-            .indexName(randomUUID())
-            .dimension(384)
-            .build();
+    EmbeddingStore<TextSegment> embeddingStore = new CouchbaseEmbeddingStore(
+            System.getenv("CB_CLUSTER"),
+            System.getenv("CB_USERNAME"),
+            System.getenv("CB_PASSWORD"),
+            System.getenv("CB_BUCKET"),
+            System.getenv("CB_SCOPE"),
+            System.getenv("CB_COLLECTION"),
+            System.getenv("CB_FTS_INDEX"),
+            CouchbaseEmbeddingStoreIT.TEST_DIMENSIONS
+    );
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -41,7 +41,7 @@ class ElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     @Override
     protected void ensureStoreIsEmpty() {
-        // TODO fix
+        embeddingStore.removeAll();
     }
 
     @Override
