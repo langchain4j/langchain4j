@@ -30,6 +30,10 @@ The current `$version` is: `0.33.0`.
 
 To perform a web search using the default search engine: [Google Search API](https://www.searchapi.io/docs/google):
 ```java
+import dev.langchain4j.web.search.WebSearchEngine;
+import dev.langchain4j.web.search.WebSearchResults;
+import dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine;
+
 
 // use the one-liner convenience method
 WebSearchEngine webSearchEngine = SearchApiWebSearchEngine.withApiKey(System.getenv("SEARCHAPI_API_KEY"));
@@ -105,7 +109,7 @@ Each snippet sets the:
  
 #### 1st Style: Consumer aka Functional Interface
 ```java
-
+// use the Consumer functional interface
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(
     System.getenv("SEARCHAPI_API_KEY"), 
     "google",
@@ -124,7 +128,7 @@ WebSearchResults webSearchResults = webSearchEngine.search("chatgpt");
 
 #### 2nd Style: Anonymous Subclass
 ```java
-
+// uses an anonymous subclass
 WebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(System.getenv("SEARCHAPI_API_KEY"), "google") {
 		
     @Override
@@ -189,7 +193,7 @@ SearchApiWebSearchEngine webSearchEngine = new SearchApiWebSearchEngine(System.g
 
 This example shows how to use `baidu` as a search engine with the language parameter (`ct`) [explicitly set](https://www.searchapi.io/docs/baidu#api-parameters-localization-ct) to `Simplified and Traditional Chinese`:
 ```java
-// use the consumer functional interface
+// use the Consumer functional interface
 SearchApiWebSearchEngine webSearchEngine = SearchApiWebSearchEngine.builder()
         .apiKey(System.getenv("SEARCHAPI_API_KEY"))
         .engine("baidu")
@@ -225,7 +229,7 @@ WebSearchOrganicResult{title='ChatGPT国内如何使用!全网最全ChatGPT注�
 // Partially adapted from: 
 // https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithToolsExample.java 
 // and: 
-// https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchToolIT.java
+// https://github.com/langchain4j/langchain4j/blob/main/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchToolIT.java
 
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.agent.tool.ToolSpecifications;
@@ -293,6 +297,6 @@ public class SearchWithToolsExample {
 
 These integration tests contain additional usage examples of how to use this module as a `WebSearchEngine` or as a `Tool`:
 
-- [SearchApiWebSearchEngineIT.java](https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchEngineIT.java)
-- [SearchApiWebSearchToolIT.java](https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchToolIT.java)
-- [SearchApiWebSearchContentRetrieverIT.java](https://github.com/langchain4j/langchain4j/blob/feat/search-api/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchContentRetrieverIT.java)
+- [SearchApiWebSearchEngineIT.java](https://github.com/langchain4j/langchain4j/blob/main/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchEngineIT.java)
+- [SearchApiWebSearchToolIT.java](https://github.com/langchain4j/langchain4j/blob/main/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchToolIT.java)
+- [SearchApiWebSearchContentRetrieverIT.java](https://github.com/langchain4j/langchain4j/blob/main/web-search-engines/langchain4j-web-search-engine-searchapi/src/test/java/dev/langchain4j/web/search/searchapi/SearchApiWebSearchContentRetrieverIT.java)

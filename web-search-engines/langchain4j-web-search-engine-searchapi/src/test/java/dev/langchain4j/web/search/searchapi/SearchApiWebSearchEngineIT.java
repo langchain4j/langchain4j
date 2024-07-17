@@ -1,7 +1,6 @@
 package dev.langchain4j.web.search.searchapi;
 
 import static dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine.DEFAULT_ENGINE;
-import static java.time.Duration.ofSeconds;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
