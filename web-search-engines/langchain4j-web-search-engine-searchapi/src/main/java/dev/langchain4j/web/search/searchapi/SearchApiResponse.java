@@ -7,7 +7,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import dev.langchain4j.web.search.searchapi.result.OrganicResult;
-import dev.langchain4j.web.search.searchapi.result.Pagination;
 
 @Getter
 @Setter
@@ -26,6 +25,6 @@ public class SearchApiResponse {
 	private Map<String, Object> knowledgeGraph;
 	private Map<String, Object> answerBox;
 
-	private Pagination pagination;
+	private Map<String, Object> pagination;
 
 }

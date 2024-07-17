@@ -241,7 +241,7 @@ import dev.langchain4j.model.openai.OpenAiChatModelName;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.web.search.WebSearchEngine;
 import dev.langchain4j.web.search.WebSearchTool;
-import dev.langchain4j.web.search.WebSearchToolIT;
+import dev.langchain4j.web.search.searchapi.SearchApiWebSearchEngine;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 

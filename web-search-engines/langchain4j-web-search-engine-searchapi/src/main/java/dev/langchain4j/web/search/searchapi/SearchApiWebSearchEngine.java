@@ -38,7 +38,7 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	protected final Boolean logRequests;
 	
     /**
-     * Functional interface to allow customization of request parameters prior to a search request;
+     * Functional interface to allow customization of request parameters prior to a search request.
      */
 	protected final Consumer<Map<String, Object>> customizeParametersFunc;
 
@@ -68,28 +68,31 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 	public WebSearchResults search(final WebSearchRequest webSearchRequest) {
 		ensureNotNull(webSearchRequest, "webSearchRequest");
 
-		final SearchApiRequest.SearchApiRequestBuilder requestBuilder = SearchApiRequest.builder();
-		
-		requestBuilder.q(webSearchRequest.searchTerms())
+		final SearchApiRequest request = SearchApiRequest.builder()
+				.q(webSearchRequest.searchTerms())
 		        .safe(webSearchRequest.safeSearch())
-				.num(getOrDefault(webSearchRequest.maxResults(), DEFAULT_MAX_RESULTS)) // maxResults should default to 5
-				.page(webSearchRequest.startPage());
+				.num(getOrDefault(webSearchRequest.maxResults(), DEFAULT_MAX_RESULTS)) // max results should default to 5
+				.page(webSearchRequest.startPage())
+				.build();
 		
-        final SearchApiRequest request = requestBuilder.build();
+		// append any parameters included with a search
+		if (webSearchRequest.additionalParams() != null) {
+			request.getParams().putAll(webSearchRequest.additionalParams());
+		}
 
-		// future search engines must either: 
-        // 1. override this method to customize the search parameters
+		// current & future search engines must either:
+        // 1a. override this method to customize the search parameters
         customizeSearchRequest(request, webSearchRequest);
         
-        // 2. or use the functional interface
+        // 1b. or use the functional interface
         if (customizeParametersFunc != null) {
         	customizeParametersFunc.accept(request.getParams());
         }
 
-        // conduct the search
+        // 2. conduct the search
         final SearchApiResponse searchapiResponse = searchapiClient.search(request);
         
-        // structure the results
+        // 3. structure the results
         final List<WebSearchOrganicResult> results = searchapiResponse.getOrganicResults().stream()
 				.map(result -> WebSearchOrganicResult.from(result.getTitle(), URI.create(result.getLink()),
 						getOrDefault(result.getSnippet(), ""), // for the first few runs of the query I tried, "snippet" was null
@@ -97,19 +100,16 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
 						toResultMetadataMap(result)))
 				.collect(toList());
 
-		// if the search query has a direct answer, append it to the top of the organic results
+		// 4. if the search query has a direct answer, append it to the top of the organic results
 		customizeSearchResults(searchapiResponse, results);
 
-//		final Long totalResults = Double
-//				.valueOf(searchapiResponse.getSearchInformation().get("total_results").toString()).longValue();
+		final Double pageNumber = searchapiResponse.getPagination().containsKey("current") ? 
+				(Double)searchapiResponse.getPagination().get("current") : 1;
 		final WebSearchInformationResult result = WebSearchInformationResult.from(
-//				getOrDefault(totalResults, Long.valueOf(results.size())),
 				Long.valueOf(results.size()),
-				getOrDefault(searchapiResponse.getPagination().getCurrent(), 1),
+				pageNumber.intValue(),
 				searchapiResponse.getSearchParameters());
 
-		// merge the "search_information" JSON element with the "search_metadata" JSON element, if present
-//		searchapiResponse.getSearchMetadata().putAll(searchapiResponse.getSearchInformation());
 		return WebSearchResults.from(searchapiResponse.getSearchMetadata(), result, results);
 	}
 	
