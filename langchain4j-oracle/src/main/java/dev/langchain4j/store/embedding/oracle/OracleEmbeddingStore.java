@@ -119,7 +119,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * <p>
-     * Creates database tables, indexes, and any other schema objects needed to store embeddings. The schema objectsif it does not exist already.
+     * Creates database tables, indexes, and any other schema objects needed to store embeddings. Any existing schema
+     * objects are reused.
      * </p><p>
      * The table uses a VARCHAR(36) column as a primary key. This data type is chosen for consistency with other
      * embedding store implementations which accept {@link UUID#toString()} as an id.
@@ -144,10 +145,6 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
      * </p><p>
      * There are many parameters which can tune the index, but none are set for now. Later work may tune the index for
      * operations of a an embedding store.
-     * tuned operations values have these parameters set to any non-default values that would tuned for the specific
-     * workloads  when possible. Later work can also allow users to configure the {@link Builder} with a custom CREATE
-     * VECTOR INDEX command. This would allow complete control over the parameters, even allowing for HNSW type indexes
-     * in read-only cases.
      * </p><p>
      * The vector index uses a cosine distance.
      * </p>
@@ -383,7 +380,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
 
                     // Local filtering of the minScore. See note about ORA-06553 above.
                     if (score < request.minScore())
-                        continue;
+                        break; // Break, because results are ordered by ascending distances.
 
                     String id = resultSet.getString("id");
                     float[] embedding = resultSet.getObject("embedding", float[].class);
