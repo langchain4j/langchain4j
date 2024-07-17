@@ -452,6 +452,7 @@ RetrievalAugmentor retrievalAugmentor = DefaultRetrievalAugmentor.builder()
         .queryRouter(...)
         .contentAggregator(...)
         .contentInjector(...)
+        .executor(...)
         .build();
 
 Assistant assistant = AiServices.builder(Assistant.class)

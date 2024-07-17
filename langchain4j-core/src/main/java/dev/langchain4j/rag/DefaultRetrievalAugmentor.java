@@ -21,16 +21,14 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.Collections.*;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.concurrent.CompletableFuture.supplyAsync;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.*;
 
 /**
@@ -90,8 +88,11 @@ import static java.util.stream.Collectors.*;
  * Nonetheless, you are encouraged to use one of the advanced ready-to-use implementations or create a custom one.
  * <br>
  * <br>
- * By default, query routing and content retrieval are performed concurrently (for efficiency)
- * using {@link Executors#newCachedThreadPool()}, but you can provide a custom {@link Executor}.
+ * When there is only a single {@link Query} and a single {@link ContentRetriever},
+ * query routing and content retrieval are performed in the same thread.
+ * Otherwise, an {@link Executor} is used to parallelize the processing.
+ * By default, a modified (keepAliveTime is 1 second instead of 60 seconds) {@link Executors#newCachedThreadPool()}
+ * is used, but you can provide a custom {@link Executor} instance.
  *
  * @see DefaultQueryTransformer
  * @see DefaultQueryRouter
@@ -118,7 +119,15 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         this.queryRouter = ensureNotNull(queryRouter, "queryRouter");
         this.contentAggregator = getOrDefault(contentAggregator, DefaultContentAggregator::new);
         this.contentInjector = getOrDefault(contentInjector, DefaultContentInjector::new);
-        this.executor = getOrDefault(executor, Executors::newCachedThreadPool);
+        this.executor = getOrDefault(executor, DefaultRetrievalAugmentor::createDefaultExecutor);
+    }
+
+    private static ExecutorService createDefaultExecutor() {
+        return new ThreadPoolExecutor(
+                0, Integer.MAX_VALUE,
+                1, SECONDS,
+                new SynchronousQueue<>()
+        );
     }
 
     /**
@@ -142,20 +151,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
 
-        Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
-        queries.forEach(query -> {
-            CompletableFuture<Collection<List<Content>>> futureContents =
-                    supplyAsync(() -> {
-                                Collection<ContentRetriever> retrievers = queryRouter.route(query);
-                                log(query, retrievers);
-                                return retrievers;
-                            },
-                            executor
-                    ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
-            queryToFutureContents.put(query, futureContents);
-        });
-
-        Map<Query, Collection<List<Content>>> queryToContents = join(queryToFutureContents);
+        Map<Query, Collection<List<Content>>> queryToContents = retrieve(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
         log(queryToContents, contents);
@@ -167,6 +163,39 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 .chatMessage(augmentedChatMessage)
                 .contents(contents)
                 .build();
+    }
+
+    private Map<Query, Collection<List<Content>>> retrieve(Collection<Query> queries) {
+        if (queries.size() == 1) {
+            Query query = queries.iterator().next();
+            Collection<ContentRetriever> retrievers = queryRouter.route(query);
+            if (retrievers.size() == 1) {
+                ContentRetriever contentRetriever = retrievers.iterator().next();
+                List<Content> contents = contentRetriever.retrieve(query);
+                return singletonMap(query, singletonList(contents));
+            } else if (retrievers.size() > 1) {
+                Collection<List<Content>> contents = retrieveFromAll(retrievers, query).join();
+                return singletonMap(query, contents);
+            } else {
+                return emptyMap();
+            }
+        } else if (queries.size() > 1) {
+            Map<Query, CompletableFuture<Collection<List<Content>>>> queryToFutureContents = new ConcurrentHashMap<>();
+            queries.forEach(query -> {
+                CompletableFuture<Collection<List<Content>>> futureContents =
+                        supplyAsync(() -> {
+                                    Collection<ContentRetriever> retrievers = queryRouter.route(query);
+                                    log(query, retrievers);
+                                    return retrievers;
+                                },
+                                executor
+                        ).thenCompose(retrievers -> retrieveFromAll(retrievers, query));
+                queryToFutureContents.put(query, futureContents);
+            });
+            return join(queryToFutureContents);
+        } else {
+            return emptyMap();
+        }
     }
 
     private CompletableFuture<Collection<List<Content>>> retrieveFromAll(Collection<ContentRetriever> retrievers,
