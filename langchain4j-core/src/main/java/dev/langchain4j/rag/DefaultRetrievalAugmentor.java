@@ -151,7 +151,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
         Collection<Query> queries = queryTransformer.transform(originalQuery);
         logQueries(originalQuery, queries);
 
-        Map<Query, Collection<List<Content>>> queryToContents = retrieve(queries);
+        Map<Query, Collection<List<Content>>> queryToContents = process(queries);
 
         List<Content> contents = contentAggregator.aggregate(queryToContents);
         log(queryToContents, contents);
@@ -165,7 +165,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                 .build();
     }
 
-    private Map<Query, Collection<List<Content>>> retrieve(Collection<Query> queries) {
+    private Map<Query, Collection<List<Content>>> process(Collection<Query> queries) {
         if (queries.size() == 1) {
             Query query = queries.iterator().next();
             Collection<ContentRetriever> retrievers = queryRouter.route(query);
