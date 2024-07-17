@@ -22,6 +22,9 @@ class ElasticsearchKnnEmbeddingStoreIT extends AbstractElasticsearchEmbeddingSto
                             .properties("text", p -> p.text(t -> t))
                             .properties("vector", p -> p.denseVector(dv -> dv
                                     .indexOptions(dvio -> dvio
+                                            // TODO remove when upgrading the client from 8.14.3
+                                            // setting m and efConstruction is not needed but we have
+                                            // a bug in the client https://github.com/elastic/elasticsearch-java/issues/846
                                             .m(16)
                                             .efConstruction(100)
                                             // We must use float instead of the int8_hnsw default
