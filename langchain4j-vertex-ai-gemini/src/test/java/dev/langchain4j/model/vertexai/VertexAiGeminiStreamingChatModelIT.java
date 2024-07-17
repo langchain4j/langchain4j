@@ -726,4 +726,33 @@ class VertexAiGeminiStreamingChatModelIT {
         // then
         assertThat(handler.get().content().text()).containsAnyOf("finger", "hand");
     }
+
+
+    @Test
+    void should_accept_PDF_documents() {
+        // given
+        VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        File file = new File("src/test/resources/fingers.mp4");
+        assertThat(file).exists();
+
+        UserMessage msg = UserMessage.from(
+            RichFormatContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            TextContent.from("Provide a summary of the document")
+        );
+
+        // when
+        TestStreamingResponseHandler<AiMessage> handler = new TestStreamingResponseHandler<>();
+        model.generate(singletonList(msg), handler);
+
+        // then
+        assertThat(handler.get().content().text()).containsIgnoringCase("Gemini");
+    }
 }

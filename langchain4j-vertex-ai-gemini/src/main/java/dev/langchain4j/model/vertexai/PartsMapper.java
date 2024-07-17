@@ -12,11 +12,13 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.RichFormatContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.richformat.RichFormat;
 import dev.langchain4j.data.video.Video;
 
 import java.net.URI;
@@ -76,6 +78,10 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("webm", "video/webm");
         EXTENSION_TO_MIME_TYPE.put("mmv", "video/wmv");
         EXTENSION_TO_MIME_TYPE.put("3gpp", "video/3gpp");
+
+        // see document understanding:
+        // https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/document-understanding
+        EXTENSION_TO_MIME_TYPE.put("pdf", "application/pdf");
     }
 
     static List<Part> map(ChatMessage message) {
@@ -153,6 +159,8 @@ class PartsMapper {
             return map((AudioContent) content);
         } else if (content instanceof VideoContent) {
             return map((VideoContent) content);
+        } else if (content instanceof RichFormatContent) {
+            return map((RichFormatContent) content);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
@@ -177,6 +185,11 @@ class PartsMapper {
     static Part map(VideoContent content) {
         Video video = content.video();
         return getPart(video.url(), video.mimeType(), video.base64Data());
+    }
+
+    static Part map(RichFormatContent content) {
+        RichFormat richFormat = content.richFormat();
+        return getPart(richFormat.url(), richFormat.mimeType(), richFormat.base64Data());
     }
 
     private static Part getPart(URI url, String mimeType, String base64data) {

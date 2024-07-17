@@ -11,6 +11,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
+import dev.langchain4j.data.richformat.RichFormat;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.output.FinishReason;
@@ -861,5 +862,32 @@ class VertexAiGeminiChatModelIT {
 
         // then
         assertThat(response.content().text()).containsAnyOf("finger", "hand");
+    }
+
+    @Test
+    void should_accept_PDF_documents() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        File file = new File("src/test/resources/fingers.mp4");
+        assertThat(file).exists();
+
+        UserMessage msg = UserMessage.from(
+            RichFormatContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            TextContent.from("Provide a summary of the document")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsIgnoringCase("Gemini");
     }
 }
