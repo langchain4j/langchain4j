@@ -740,9 +740,6 @@ class VertexAiGeminiStreamingChatModelIT {
             .build();
 
         // when
-        File file = new File("src/test/resources/fingers.mp4");
-        assertThat(file).exists();
-
         UserMessage msg = UserMessage.from(
             RichFormatContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
             TextContent.from("Provide a summary of the document")
