@@ -10,7 +10,7 @@ sidebar_position: 1
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-bedrock</artifactId>
-    <version>0.31.0</version>
+    <version>0.32.0</version>
 </dependency>
 ```
 
@@ -18,6 +18,9 @@ sidebar_position: 1
 In order to use Amazon Bedrock models, you need to configure AWS credentials.
 One of the options is to set the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` environment variables.
 More information can be found [here](https://docs.aws.amazon.com/bedrock/latest/userguide/security-iam.html).
+
+## AI21 Models
+- `BedrockAI21LabsChatModel`
 
 ## Anthropic Models
 - `BedrockAnthropicMessageChatModel`: supports new Messages API
@@ -43,3 +46,9 @@ ChatLanguageModel model = BedrockAnthropicMessageChatModel.builder()
 ## Titan Models
 - `BedrockTitanChatModel`
 - `BedrockTitanEmbeddingModel`
+
+
+## Examples
+
+- [BedrockChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockChatModelExample.java)
+- [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/BedrockStreamingChatModelExample.java)

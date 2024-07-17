@@ -3,7 +3,6 @@ package dev.langchain4j.rag.content.retriever.azure.search;
 import com.azure.core.credential.AzureKeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.util.Context;
-import com.azure.search.documents.SearchDocument;
 import com.azure.search.documents.indexes.models.SearchIndex;
 import com.azure.search.documents.models.*;
 import com.azure.search.documents.util.SearchPagedIterable;
@@ -15,9 +14,11 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore;
 import dev.langchain4j.store.embedding.azure.search.AzureAiSearchRuntimeException;
 import dev.langchain4j.store.embedding.azure.search.Document;
+import dev.langchain4j.store.embedding.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +62,10 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private final double minScore;
 
+    private final Filter filter;
+
+    private final String searchFilter;
+
     public AzureAiSearchContentRetriever(String endpoint,
                                          AzureKeyCredential keyCredential,
                                          TokenCredential tokenCredential,
@@ -71,7 +76,9 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                          EmbeddingModel embeddingModel,
                                          int maxResults,
                                          double minScore,
-                                         AzureAiSearchQueryType azureAiSearchQueryType) {
+                                         AzureAiSearchQueryType azureAiSearchQueryType,
+                                         AzureAiSearchFilterMapper filterMapper,
+                                         Filter filter) {
         ensureNotNull(endpoint, "endpoint");
         ensureTrue((keyCredential != null && tokenCredential == null) || (keyCredential == null && tokenCredential != null), "either keyCredential or tokenCredential must be set");
 
@@ -88,21 +95,24 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         }
         if (keyCredential == null) {
             if (index == null) {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
             } else {
-                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName);
+                this.initialize(endpoint, null, tokenCredential, createOrUpdateIndex, 0, index, indexName, filterMapper);
             }
         } else {
             if (index == null) {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, dimensions, null, indexName, filterMapper);
             } else {
-                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName);
+                this.initialize(endpoint, keyCredential, null, createOrUpdateIndex, 0, index, indexName, filterMapper);
             }
         }
         this.embeddingModel = embeddingModel;
         this.azureAiSearchQueryType = azureAiSearchQueryType;
         this.maxResults = maxResults;
         this.minScore = minScore;
+        this.filter = filter;
+        this.searchFilter = this.filterMapper.map(filter);
+
     }
 
     /**
@@ -157,7 +167,14 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
     public List<Content> retrieve(Query query) {
         if (azureAiSearchQueryType == AzureAiSearchQueryType.VECTOR) {
             Embedding referenceEmbedding = embeddingModel.embed(query.text()).content();
-            List<EmbeddingMatch<TextSegment>> searchResult = super.findRelevant(referenceEmbedding, maxResults, minScore);
+            EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+                    .queryEmbedding(referenceEmbedding)
+                    .maxResults(maxResults)
+                    .minScore(minScore)
+                    .filter(filter)
+                    .build();
+
+            List<EmbeddingMatch<TextSegment>> searchResult = super.search(request).matches();
             return searchResult.stream()
                     .map(EmbeddingMatch::embedded)
                     .map(Content::from)
@@ -182,7 +199,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         SearchPagedIterable searchResults =
                 searchClient.search(content,
                         new SearchOptions()
-                                .setTop(maxResults),
+                                .setTop(maxResults)
+                                .setFilter(searchFilter),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.FULL_TEXT, minScore);
@@ -199,7 +217,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                 searchClient.search(content,
                         new SearchOptions()
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
-                                .setTop(maxResults),
+                                .setTop(maxResults)
+                                .setFilter(searchFilter),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID, minScore);
@@ -218,7 +237,8 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
                                 .setVectorSearchOptions(new VectorSearchOptions().setQueries(vectorizedQuery))
                                 .setSemanticSearchOptions(new SemanticSearchOptions().setSemanticConfigurationName(SEMANTIC_SEARCH_CONFIG_NAME))
                                 .setQueryType(com.azure.search.documents.models.QueryType.SEMANTIC)
-                                .setTop(maxResults),
+                                .setTop(maxResults)
+                                .setFilter(searchFilter),
                         Context.NONE);
 
         return mapResultsToContentList(searchResults, AzureAiSearchQueryType.HYBRID_WITH_RERANKING, minScore);
@@ -226,47 +246,11 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
 
     private List<Content> mapResultsToContentList(SearchPagedIterable searchResults, AzureAiSearchQueryType azureAiSearchQueryType, double minScore) {
         List<Content> result = new ArrayList<>();
-        for (SearchResult searchResult : searchResults) {
-            double score = fromAzureScoreToRelevanceScore(searchResult, azureAiSearchQueryType);
-            if (score < minScore) {
-                continue;
-            }
-            SearchDocument searchDocument = searchResult.getDocument(SearchDocument.class);
-            String embeddedContent = (String) searchDocument.get(DEFAULT_FIELD_CONTENT);
-            Content content = Content.from(embeddedContent);
+        getEmbeddingMatches(searchResults, minScore, azureAiSearchQueryType).forEach(embeddingMatch -> {
+            Content content = Content.from(embeddingMatch.embedded());
             result.add(content);
-        }
+        });
         return result;
-    }
-
-    /**
-     * Calculates LangChain4j's RelevanceScore from Azure AI Search's score, for the 4 types of search.
-     */
-    static double fromAzureScoreToRelevanceScore(SearchResult searchResult, AzureAiSearchQueryType azureAiSearchQueryType) {
-        if (azureAiSearchQueryType == AzureAiSearchQueryType.VECTOR) {
-            // Calculates LangChain4j's RelevanceScore from Azure AI Search's score.
-
-            //  Score in Azure AI Search is transformed into a cosine similarity as described here:
-            // https://learn.microsoft.com/en-us/azure/search/vector-search-ranking#scores-in-a-vector-search-results
-
-            // RelevanceScore in LangChain4j is a derivative of cosine similarity,
-            // but it compresses it into 0..1 range (instead of -1..1) for ease of use.
-            double score = searchResult.getScore();
-            return AbstractAzureAiSearchEmbeddingStore.fromAzureScoreToRelevanceScore(score);
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.FULL_TEXT) {
-            // Search score is into 0..1 range already
-            return searchResult.getScore();
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID) {
-            // Search score is into 0..1 range already
-            return searchResult.getScore();
-        } else if (azureAiSearchQueryType == AzureAiSearchQueryType.HYBRID_WITH_RERANKING) {
-            // Re-ranker score is into 0..4 range, so we need to divide the re-reranker score by 4 to fit in the 0..1 range.
-            // The re-ranker score is a separate result from the original search score.
-            // See https://azuresdkdocs.blob.core.windows.net/$web/java/azure-search-documents/11.6.2/com/azure/search/documents/models/SearchResult.html#getSemanticSearch()
-            return searchResult.getSemanticSearch().getRerankerScore() / 4.0;
-        } else {
-            throw new AzureAiSearchRuntimeException("Unknown Azure AI Search Query Type: " + azureAiSearchQueryType);
-        }
     }
 
     public static Builder builder() {
@@ -296,6 +280,10 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
         private double minScore = EmbeddingStoreContentRetriever.DEFAULT_MIN_SCORE.apply(null);
 
         private AzureAiSearchQueryType azureAiSearchQueryType;
+
+        private Filter filter;
+
+        private AzureAiSearchFilterMapper filterMapper;
 
         /**
          * Sets the Azure AI Search endpoint. This is a mandatory parameter.
@@ -421,9 +409,31 @@ public class AzureAiSearchContentRetriever extends AbstractAzureAiSearchEmbeddin
             return this;
         }
 
+        /**
+         * Sets the filter to be applied to the search query.
+         *
+         * @param filter The filter to be applied to the search query.
+         * @return builder
+         */
+        public Builder filter(Filter filter) {
+            this.filter = filter;
+            return this;
+        }
+
+        /**
+         * Sets the filter mapper to be used to map {@link Filter} objects to Azure AI Search filter strings.
+         *
+         * @param filterMapper The filter mapper to be used to map {@link Filter} objects to Azure AI Search filter strings.
+         * @return builder
+         */
+        public Builder filterMapper(AzureAiSearchFilterMapper filterMapper) {
+            this.filterMapper = filterMapper;
+            return this;
+        }
+
         public AzureAiSearchContentRetriever build() {
             return new AzureAiSearchContentRetriever(endpoint, keyCredential, tokenCredential, createOrUpdateIndex, dimensions, index,
-                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType);
+                    indexName, embeddingModel, maxResults, minScore, azureAiSearchQueryType, filterMapper, filter);
         }
     }
 }

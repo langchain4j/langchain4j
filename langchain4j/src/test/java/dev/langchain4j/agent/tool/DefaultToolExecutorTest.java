@@ -1,5 +1,6 @@
 package dev.langchain4j.agent.tool;
 
+import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import org.assertj.core.api.WithAssertions;
@@ -11,8 +12,6 @@ import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-
-import static dev.langchain4j.agent.tool.DefaultToolExecutor.coerceArgument;
 
 class DefaultToolExecutorTest implements WithAssertions {
     @Test
@@ -42,7 +41,9 @@ class DefaultToolExecutorTest implements WithAssertions {
             Short ShortP,
             ExampleEnum enumP,
             boolean booleanP,
-            Boolean BooleanP
+            Boolean BooleanP,
+            double double2P,
+            Double Double2P
     ) {
     }
 
@@ -67,7 +68,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 Short.class,
                 ExampleEnum.class,
                 boolean.class,
-                Boolean.class
+                Boolean.class,
+                double.class,
+                Double.class
         );
 
         Map<String, Object> arguments = new HashMap<>();
@@ -86,6 +89,8 @@ class DefaultToolExecutorTest implements WithAssertions {
         arguments.put("arg13", "A");
         arguments.put("arg14", true);
         arguments.put("arg15", Boolean.FALSE);
+        arguments.put("arg16", "1.1");
+        arguments.put("arg17", "2.2");
 
         Object[] args = DefaultToolExecutor.prepareArguments(method, arguments, memoryId);
 
@@ -105,7 +110,9 @@ class DefaultToolExecutorTest implements WithAssertions {
                 (short) 12,
                 ExampleEnum.A,
                 true,
-                false
+                false,
+                1.1,
+                2.2
         );
 
         {
@@ -228,5 +235,65 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> coerceArgument("abc", "arg", BigInteger.class))
                 .withMessageContaining("Argument \"arg\" is not convertable to java.math.BigInteger, got java.lang.String: <abc>");
+    }
+
+    private static class TestTool {
+
+        @Tool
+        public int addOne(int num) {
+            return num + 1;
+        }
+    }
+
+    @Test
+    public void should_execute_tool_by_method_name() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor =
+                new DefaultToolExecutor(new TestTool(), TestTool.class.getDeclaredMethod("addOne", int.class));
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    public void should_execute_tool_with_execution_request() {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("addOne")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new TestTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
+    @Test
+    public void should_not_execute_tool_with_wrong_execution_request() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("unknownMethod")
+                .arguments("{ \"arg0\": 2 }")
+                .build();
+
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), request))
+                .withMessageContaining("Method 'unknownMethod' is not found in object");
+
+    }
+
+    @Test
+    public void should_not_execute_tool_with_null_execution_request() throws NoSuchMethodException {
+        assertThatExceptionOfType(NullPointerException.class)
+                .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
+
     }
 }

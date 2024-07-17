@@ -1,9 +1,9 @@
 package dev.langchain4j.service;
 
-import dev.langchain4j.agent.tool.P;
-import dev.langchain4j.agent.tool.Tool;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.langchain4j.agent.tool.*;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
@@ -26,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import static dev.langchain4j.agent.tool.JsonSchemaProperty.description;
@@ -38,7 +39,9 @@ import static dev.langchain4j.service.AiServicesWithToolsIT.TemperatureUnit.Kelv
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.Collections.singletonMap;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -475,8 +478,6 @@ class AiServicesWithToolsIT {
 
     @ParameterizedTest
     @MethodSource("models")
-    @Disabled
-        // TODO fix: should automatically convert List<String> into String[]
     void should_use_tool_with_Array_of_Strings_parameter(ChatLanguageModel chatLanguageModel) {
 
         StringArrayProcessor stringArrayProcessor = spy(new StringArrayProcessor());
@@ -645,5 +646,43 @@ class AiServicesWithToolsIT {
         Response<AiMessage> response = assistant.chat("List names of 3 users where country is India");
 
         assertThat(response.content().text()).contains("Amar", "Akbar", "Antony");
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_use_programmatically_configured_tools(ChatLanguageModel chatLanguageModel) {
+
+        // given
+        ToolSpecification toolSpecification = ToolSpecification.builder()
+                .name("get_booking_details")
+                .description("Returns booking details")
+                .addParameter("bookingNumber", type("string"))
+                .build();
+
+        ToolExecutor toolExecutor = (toolExecutionRequest, memoryId) -> {
+            Map<String, Object> arguments = toMap(toolExecutionRequest.arguments());
+            assertThat(arguments).containsExactly(entry("bookingNumber", "123-456"));
+            return "Booking period: from 1 July 2027 to 10 July 2027";
+        };
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatLanguageModel(chatLanguageModel)
+                .tools(singletonMap(toolSpecification, toolExecutor))
+                .build();
+
+        // when
+        Response<AiMessage> response = assistant.chat("When does my booking 123-456 starts?");
+
+        // then
+        assertThat(response.content().text()).contains("2027");
+    }
+
+    private static Map<String, Object> toMap(String arguments) {
+        try {
+            return new ObjectMapper().readValue(arguments, new TypeReference<Map<String, Object>>() {
+            });
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

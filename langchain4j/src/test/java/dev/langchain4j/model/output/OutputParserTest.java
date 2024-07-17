@@ -1,5 +1,6 @@
 package dev.langchain4j.model.output;
 
+import dev.langchain4j.model.output.structured.Description;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -103,12 +104,41 @@ class OutputParserTest implements WithAssertions {
         A, B, C
     }
 
+    public enum EnumWithDescription {
+        @Description("Majority of keywords starting with A")
+        A,
+        @Description("Majority of keywords starting with B")
+        B,
+        @Description("Majority of keywords starting with C")
+        C
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void test_Enum_format_instruction() {
+        EnumOutputParser parser = new EnumOutputParser(Enum.class);
+        assertThat(parser.formatInstructions())
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n" +
+                        "A\n" +
+                        "B\n" +
+                        "C");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void test_Enum_with_description_format_instruction() {
+        EnumOutputParser parser = new EnumOutputParser(EnumWithDescription.class);
+        assertThat(parser.formatInstructions())
+                .isEqualTo("\nYou must answer strictly with one of these enums:\n" +
+                        "A - Majority of keywords starting with A\n" +
+                        "B - Majority of keywords starting with B\n" +
+                        "C - Majority of keywords starting with C");
+    }
+
     @Test
     @SuppressWarnings("unchecked")
     public void test_Enum() {
         EnumOutputParser parser = new EnumOutputParser(Enum.class);
-        assertThat(parser.formatInstructions())
-                .isEqualTo("one of [A, B, C]");
 
         assertThat(parser.parse("A"))
                 .isEqualTo(parser.parse(" A "))
