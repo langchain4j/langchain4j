@@ -22,6 +22,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -834,4 +836,30 @@ class VertexAiGeminiChatModelIT {
         assertThat(response.content().text()).containsIgnoringCase("animal");
     }
 
+    @Test
+    void should_accept_local_file() {
+        // given
+        VertexAiGeminiChatModel model = VertexAiGeminiChatModel.builder()
+            .project(System.getenv("GCP_PROJECT_ID"))
+            .location(System.getenv("GCP_LOCATION"))
+            .modelName(GEMINI_1_5_PRO)
+            .logRequests(true)
+            .logResponses(true)
+            .build();
+
+        // when
+        File file = new File("src/test/resources/fingers.mp4");
+        assertThat(file).exists();
+
+        UserMessage msg = UserMessage.from(
+            AudioContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+            TextContent.from("What's in this video?")
+        );
+
+        // when
+        Response<AiMessage> response = model.generate(singletonList(msg));
+
+        // then
+        assertThat(response.content().text()).containsAnyOf("finger", "hand");
+    }
 }
