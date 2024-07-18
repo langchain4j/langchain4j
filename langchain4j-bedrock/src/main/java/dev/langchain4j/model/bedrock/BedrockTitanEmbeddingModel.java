@@ -6,17 +6,28 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Bedrock Amazon Titan embedding model
+ * Bedrock Amazon Titan embedding model with support for both versions:
+ * <ul>
+ *     <li>amazon.titan-embed-text-v1</li>
+ *     <li>amazon.titan-embed-text-v2:0</li>
+ * </ul>
+ *
+ * @link https://docs.aws.amazon.com/bedrock/latest/userguide/titan-embedding-models.html
+ * @link https://aws.amazon.com/blogs/aws/amazon-titan-text-v2-now-available-in-amazon-bedrock-optimized-for-improving-rag/
+ * </ul>
  */
 @SuperBuilder
 @Getter
 public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<BedrockTitanEmbeddingResponse> {
-    private final static String MODEL_ID = "amazon.titan-embed-text-v1";
+    private final static String MODEL_V1_ID = "amazon.titan-embed-text-v1";
+    private final static String MODEL_V2_ID = "amazon.titan-embed-text-v2:0";
 
     @Builder.Default
     private final String model = Types.TitanEmbedTextV1.getValue();
@@ -26,12 +37,40 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
         return model;
     }
 
+    /**
+     * 1024 is default size of output vector for Titan Embedding model V2.
+     */
+    @Builder.Default
+    private final Integer dimensions = 1024;
+
+    /**
+     *  A flag indicating whether or not to normalize the output embeddings.
+     *  It defaults to true, which is optimal for RAG use cases.
+     */
+    @Builder.Default
+    private final Boolean normalize = true;
+
+
     @Override
     protected List<Map<String, Object>> getRequestParameters(List<TextSegment> textSegments) {
-        return textSegments.stream()
-                .map(TextSegment::text)
-                .map(text -> of("inputText", text))
-                .collect(Collectors.toList());
+        if (MODEL_V1_ID.equals(this.model)) {
+            return textSegments.stream()
+                    .map(TextSegment::text)
+                    .map(text -> of("inputText", text))
+                    .collect(Collectors.toList());
+        } else if (MODEL_V2_ID.equals(this.model)) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (TextSegment textSegment : textSegments) {
+                Map<String, Object> parameters = new HashMap<>();
+                parameters.put("inputText", textSegment.text());
+                parameters.put("dimensions", dimensions);
+                parameters.put("normalize", normalize);
+                result.add(parameters);
+            }
+            return result;
+        } else {
+            throw new IllegalArgumentException("Unsupported model: " + this.model);
+        }
     }
 
     @Override
@@ -41,7 +80,8 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
 
     @Getter
     public enum Types {
-        TitanEmbedTextV1("amazon.titan-embed-text-v1");
+        TitanEmbedTextV1("amazon.titan-embed-text-v1"),
+        TitanEmbedTextV2("amazon.titan-embed-text-v2:0");
 
         private final String value;
 
@@ -49,4 +89,5 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
             this.value = modelID;
         }
     }
+
 }
