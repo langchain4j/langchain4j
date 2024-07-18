@@ -174,7 +174,7 @@ Currently, AI Services support the following return types:
 - `byte`/`Byte`/`short`/`Short`/`int`/`Integer`/`BigInteger`/`long`/`Long`/`float`/`Float`/`double`/`Double`/`BigDecimal`
 - `Date`/`LocalDate`/`LocalTime`/`LocalDateTime`
 - `List<String>`/`Set<String>`, if you want to get the answer in the form of a list of bullet points
-- Any `Enum`, if you want to classify text, e.g. sentiment, user intent, etc.
+- Any `Enum`, `List<Enum>` and `Set<Enum>`, if you want to classify text, e.g. sentiment, user intent, etc.
 - Any custom POJO
 - `Result<T>`, if you need to access `TokenUsage` or sources (`Content`s retrieved during RAG), aside from `T`, which can be of any type listed above. For example: `Result<String>`, `Result<MyCustomPojo>`
 
@@ -206,41 +206,41 @@ interface SentimentAnalyzer {
 
 SentimentAnalyzer sentimentAnalyzer = AiServices.create(SentimentAnalyzer.class, model);
 
-boolean positive = sentimentAnalyzer.isPositive("It's awful!");
-// false
+boolean positive = sentimentAnalyzer.isPositive("It's wonderful!");
+// true
 ```
 
 ### `Enum` as return type
 ```java
-public enum TicketPriority {
+enum Priority {
+    
     @Description("Critical issues such as payment gateway failures or security breaches.")
     CRITICAL,
+    
     @Description("High-priority issues like major feature malfunctions or widespread outages.")
     HIGH,
+    
     @Description("Low-priority issues such as minor bugs or cosmetic problems.")
     LOW
 }
 
-interface TicketAnalyzer {
+interface PriorityAnalyzer {
     
     @UserMessage("Analyze the priority of the following issue: {{it}}")
-    TicketPriority analyzeIssue(String issueDescription);
+    Priority analyzePriority(String issueDescription);
 }
 
-TicketAnalyzer ticketAnalyzer = AiServices.create(TicketAnalyzer.class, model);
+PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, model);
 
-TicketPriority ticketPriority = ticketAnalyzer.analyzeIssue("The main payment gateway is down, and customers cannot process transactions.");
+Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
 // CRITICAL
 ```
 
 :::note
-`List` or `Set` of `enum` return types are also supported.
+`@Description` annotation is optional. It's suggested to be used when enum names are not self-explanatory.
 :::
 
-:::note
-`@Description` annotation is optional. It's suggested to be used when `enum` names are not self-explanatory.
-
-### Custom POJO as a return type
+### POJO as a return type
 ```java
 class Person {
     String firstName;
