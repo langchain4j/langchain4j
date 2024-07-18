@@ -56,9 +56,9 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchEmbeddingStore.class);
 
-    final ElasticsearchConfiguration configuration;
-    final ElasticsearchClient client;
-    final String indexName;
+    private final ElasticsearchConfiguration configuration;
+    private final ElasticsearchClient client;
+    private final String indexName;
 
     /**
      * Creates an instance of ElasticsearchEmbeddingStore.
@@ -124,13 +124,13 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
 
     public static class Builder {
 
-        String serverUrl;
-        String apiKey;
-        String userName;
-        String password;
-        RestClient restClient;
-        String indexName = "default";
-        ElasticsearchConfiguration configuration = new ElasticsearchConfigurationKnn();
+        private String serverUrl;
+        private String apiKey;
+        private String userName;
+        private String password;
+        private RestClient restClient;
+        private String indexName = "default";
+        private ElasticsearchConfiguration configuration = new ElasticsearchConfigurationKnn();
 
         /**
          * @param serverUrl Elasticsearch Server URL
@@ -197,7 +197,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             return this;
         }
 
-        ElasticsearchEmbeddingStore build() {
+        public ElasticsearchEmbeddingStore build() {
             if (restClient != null) {
                 return new ElasticsearchEmbeddingStore(configuration, restClient, indexName);
             } else {
@@ -251,7 +251,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             SearchResponse<Document> response = configuration.internalSearch(client, indexName, embeddingSearchRequest);
             log.trace("found [{}] results", response);
 
-            List<EmbeddingMatch<TextSegment>> results = toEmbeddingSearchResult(response);
+            List<EmbeddingMatch<TextSegment>> results = toMatches(response);
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
@@ -281,6 +281,56 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         // TODO Drop the index
         Query query = Query.of(q -> q.matchAll(m -> m));
         removeByQuery(query);
+    }
+
+    private void addInternal(String id, Embedding embedding, TextSegment embedded) {
+        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
+    }
+
+    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
+        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
+            log.info("[do not add empty embeddings to elasticsearch]");
+            return;
+        }
+        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
+        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
+
+        try {
+            bulkIndex(ids, embeddings, embedded);
+        } catch (IOException e) {
+            log.error("[ElasticSearch encounter I/O Exception]", e);
+            throw new ElasticsearchRequestFailedException(e.getMessage());
+        }
+    }
+
+    private void bulkIndex(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) throws IOException {
+        int size = ids.size();
+        log.debug("calling bulkIndex with [{}] elements", size);
+        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
+        for (int i = 0; i < size; i++) {
+            int finalI = i;
+            Document document = Document.builder()
+                    .vector(embeddings.get(i).vector())
+                    .text(embedded == null ? null : embedded.get(i).text())
+                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
+                    .build();
+            bulkBuilder.operations(op -> op.index(idx -> idx
+                    .index(indexName)
+                    .id(ids.get(finalI))
+                    .document(document)));
+        }
+
+        BulkResponse response = client.bulk(bulkBuilder.build());
+        if (response.errors()) {
+            log.warn("bulk done with [{}] errors", response.items().stream().filter(f -> f.error() != null).count());
+            for (BulkResponseItem item : response.items()) {
+                if (item.error() != null) {
+                    throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
+                }
+            }
+        } else {
+            log.debug("bulk done with [0] errors");
+        }
     }
 
     private void handleBulkResponseErrors(BulkResponse response) {
@@ -331,57 +381,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         handleBulkResponseErrors(response);
     }
 
-    private void addInternal(String id, Embedding embedding, TextSegment embedded) {
-        addAllInternal(singletonList(id), singletonList(embedding), embedded == null ? null : singletonList(embedded));
-    }
-
-    private void addAllInternal(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) {
-        if (isNullOrEmpty(ids) || isNullOrEmpty(embeddings)) {
-            log.info("[do not add empty embeddings to elasticsearch]");
-            return;
-        }
-        ensureTrue(ids.size() == embeddings.size(), "ids size is not equal to embeddings size");
-        ensureTrue(embedded == null || embeddings.size() == embedded.size(), "embeddings size is not equal to embedded size");
-
-        try {
-            bulk(ids, embeddings, embedded);
-        } catch (IOException e) {
-            log.error("[ElasticSearch encounter I/O Exception]", e);
-            throw new ElasticsearchRequestFailedException(e.getMessage());
-        }
-    }
-
-    private void bulk(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded) throws IOException {
-        int size = ids.size();
-        log.debug("calling bulk with [{}] elements", size);
-        BulkRequest.Builder bulkBuilder = new BulkRequest.Builder();
-        for (int i = 0; i < size; i++) {
-            int finalI = i;
-            Document document = Document.builder()
-                    .vector(embeddings.get(i).vector())
-                    .text(embedded == null ? null : embedded.get(i).text())
-                    .metadata(embedded == null ? null : embedded.get(i).metadata().toMap())
-                    .build();
-            bulkBuilder.operations(op -> op.index(idx -> idx
-                    .index(indexName)
-                    .id(ids.get(finalI))
-                    .document(document)));
-        }
-
-        BulkResponse response = client.bulk(bulkBuilder.build());
-        if (response.errors()) {
-            log.warn("bulk done with [{}] errors", response.items().stream().filter(f -> f.error() != null).count());
-            for (BulkResponseItem item : response.items()) {
-                if (item.error() != null) {
-                    throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
-                }
-            }
-        } else {
-            log.debug("bulk done with [0] errors");
-        }
-    }
-
-    private List<EmbeddingMatch<TextSegment>> toEmbeddingSearchResult(SearchResponse<Document> response) {
+    private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {
         return response.hits().hits().stream()
                 .map(hit -> Optional.ofNullable(hit.source())
                         .map(document -> new EmbeddingMatch<>(
