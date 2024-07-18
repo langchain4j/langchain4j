@@ -12,13 +12,13 @@ import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.RichFormatContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
-import dev.langchain4j.data.richformat.RichFormat;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 
 import java.net.URI;
@@ -159,8 +159,8 @@ class PartsMapper {
             return map((AudioContent) content);
         } else if (content instanceof VideoContent) {
             return map((VideoContent) content);
-        } else if (content instanceof RichFormatContent) {
-            return map((RichFormatContent) content);
+        } else if (content instanceof PdfFileContent) {
+            return map((PdfFileContent) content);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
@@ -187,9 +187,9 @@ class PartsMapper {
         return getPart(video.url(), video.mimeType(), video.base64Data());
     }
 
-    static Part map(RichFormatContent content) {
-        RichFormat richFormat = content.richFormat();
-        return getPart(richFormat.url(), richFormat.mimeType(), richFormat.base64Data());
+    static Part map(PdfFileContent content) {
+        PdfFile PdfFile = content.pdfFile();
+        return getPart(PdfFile.url(), PdfFile.mimeType(), PdfFile.base64Data());
     }
 
     private static Part getPart(URI url, String mimeType, String base64data) {

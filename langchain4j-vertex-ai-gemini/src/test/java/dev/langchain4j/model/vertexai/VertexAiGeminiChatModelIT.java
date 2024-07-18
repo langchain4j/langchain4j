@@ -11,10 +11,8 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.*;
-import dev.langchain4j.data.richformat.RichFormat;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatLanguageModel;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.AiServices;
@@ -877,7 +875,7 @@ class VertexAiGeminiChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-            RichFormatContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+            PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
             TextContent.from("Provide a summary of the document")
         );
 

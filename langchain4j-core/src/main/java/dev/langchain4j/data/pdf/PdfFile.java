@@ -1,20 +1,20 @@
-package dev.langchain4j.data.richformat;
+package dev.langchain4j.data.pdf;
 
 import java.net.URI;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
-public class RichFormat {
+public class PdfFile {
     private final URI url;
     private final String base64Data;
     private final String mimeType;
 
     /**
-     * Create a new {@link RichFormat} from the Builder.
+     * Create a new {@link PdfFile} from the Builder.
      * @param builder the builder.
      */
-    private RichFormat(Builder builder) {
+    private PdfFile(Builder builder) {
         this.url = builder.url;
         this.base64Data = builder.base64Data;
         this.mimeType = builder.mimeType;
@@ -29,8 +29,8 @@ public class RichFormat {
     }
 
     /**
-     * Get the url of the rich format document.
-     * @return the url of the rich format document, or null if not set.
+     * Get the url of the PDF.
+     * @return the url of the PDF, or null if not set.
      */
     public URI url() {
         return url;
@@ -56,7 +56,7 @@ public class RichFormat {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        RichFormat that = (RichFormat) o;
+        PdfFile that = (PdfFile) o;
         return Objects.equals(this.url, that.url)
             && Objects.equals(this.base64Data, that.base64Data)
             && Objects.equals(this.mimeType, that.mimeType);
@@ -69,7 +69,7 @@ public class RichFormat {
 
     @Override
     public String toString() {
-        return "RichFormat {" +
+        return "PdfFile {" +
             " url = " + quoted(url) +
             ", base64Data = " + quoted(base64Data) +
             ", mimeType = " + quoted(mimeType) +
@@ -77,7 +77,7 @@ public class RichFormat {
     }
 
     /**
-     * Builder for {@link RichFormat}.
+     * Builder for {@link PdfFile}.
      */
     public static class Builder {
 
@@ -91,8 +91,8 @@ public class RichFormat {
         public Builder() {}
 
         /**
-         * Set the url of the rich format document.
-         * @param url the url of the rich format document.
+         * Set the url of the PDF document.
+         * @param url the url of the PDF document.
          * @return {@code this}
          */
         public Builder url(URI url) {
@@ -101,8 +101,8 @@ public class RichFormat {
         }
 
         /**
-         * Set the url of the rich format document.
-         * @param url the url of the rich format document.
+         * Set the url of the PDF document.
+         * @param url the url of the PDF document.
          * @return {@code this}
          */
         public Builder url(String url) {
@@ -110,8 +110,8 @@ public class RichFormat {
         }
 
         /**
-         * Set the base64 data of the rich format document.
-         * @param base64Data the base64 data of the rich format document.
+         * Set the base64 data of the PDF document.
+         * @param base64Data the base64 data of the PDF document.
          * @return {@code this}
          */
         public Builder base64Data(String base64Data) {
@@ -120,8 +120,8 @@ public class RichFormat {
         }
 
         /**
-         * Set the mime type of the rich format document.
-         * @param mimeType the mime type of the rich format document.
+         * Set the mime type of the PDF document.
+         * @param mimeType the mime type of the PDF document.
          * @return {@code this}
          */
         public Builder mimeType(String mimeType) {
@@ -130,11 +130,11 @@ public class RichFormat {
         }
 
         /**
-         * Build the {@link RichFormat}.
-         * @return the {@link RichFormat}.
+         * Build the {@link PdfFile}.
+         * @return the {@link PdfFile}.
          */
-        public RichFormat build() {
-            return new RichFormat(this);
+        public PdfFile build() {
+            return new PdfFile(this);
         }
     }
 }

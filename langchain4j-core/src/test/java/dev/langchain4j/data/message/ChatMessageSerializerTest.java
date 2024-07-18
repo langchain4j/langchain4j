@@ -61,8 +61,8 @@ class ChatMessageSerializerTest {
                         "{\"contents\":[{\"video\":{\"base64Data\":\"bXA0\",\"mimeType\":\"video/mp4\"},\"type\":\"VIDEO\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
-                        UserMessage.from(RichFormatContent.from("cGRm", "application/pdf")),
-                        "{\"contents\":[{\"richFormat\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"RICH_FORMAT\"}],\"type\":\"USER\"}"
+                        UserMessage.from(PdfFileContent.from("cGRm", "application/pdf")),
+                        "{\"contents\":[{\"pdfFile\":{\"base64Data\":\"cGRm\",\"mimeType\":\"application/pdf\"},\"type\":\"PDF\"}],\"type\":\"USER\"}"
                 ),
                 Arguments.of(
                         AiMessage.from("hello"),

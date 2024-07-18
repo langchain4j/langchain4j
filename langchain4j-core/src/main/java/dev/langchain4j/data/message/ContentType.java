@@ -22,9 +22,9 @@ public enum ContentType {
      */
     VIDEO(VideoContent.class),
     /**
-     * Rich format content, like PDF documents or office-like documents.
+     * PDF file content.
      */
-    RICH_FORMAT(RichFormatContent.class);
+    PDF(PdfFileContent.class);
 
     private final Class<? extends Content> contentClass;
 

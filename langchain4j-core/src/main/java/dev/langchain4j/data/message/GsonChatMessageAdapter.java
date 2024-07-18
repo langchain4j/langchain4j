@@ -12,7 +12,7 @@ class GsonChatMessageAdapter implements JsonDeserializer<ChatMessage>, JsonSeria
             .registerTypeAdapter(ImageContent.class, new GsonContentAdapter())
             .registerTypeAdapter(AudioContent.class, new GsonContentAdapter())
             .registerTypeAdapter(VideoContent.class, new GsonContentAdapter())
-            .registerTypeAdapter(RichFormatContent.class, new GsonContentAdapter())
+            .registerTypeAdapter(PdfFileContent.class, new GsonContentAdapter())
             .create();
 
     private static final String CHAT_MESSAGE_TYPE = "type"; // do not change, will break backward compatibility!
