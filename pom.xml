@@ -51,7 +51,7 @@
         <module>langchain4j-milvus</module>
         <module>langchain4j-mongodb-atlas</module>
         <module>langchain4j-neo4j</module>
-        <module>langchain4j-oracle</module>
+        <module>langchain4j-oracle-database</module>
         <module>langchain4j-opensearch</module>
         <module>langchain4j-pgvector</module>
         <module>langchain4j-pinecone</module>
