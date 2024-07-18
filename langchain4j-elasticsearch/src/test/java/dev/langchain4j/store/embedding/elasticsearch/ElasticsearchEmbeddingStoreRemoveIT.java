@@ -8,7 +8,7 @@ import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
 import org.junit.jupiter.api.*;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
@@ -16,23 +16,25 @@ import org.testcontainers.shaded.org.awaitility.core.ThrowingRunnable;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class ElasticsearchEmbeddingStoreRemoveIT {
+/**
+ * TODO add some methods like "EmbeddingStoreWithRemovalIT#wait_for_ready()"
+ * so we can remove the "specialized" implementations
+ */
+class ElasticsearchEmbeddingStoreRemoveIT extends EmbeddingStoreWithRemovalIT {
 
     static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     EmbeddingStore<TextSegment> embeddingStore = ElasticsearchEmbeddingStore.builder()
             .restClient(elasticsearchClientHelper.restClient)
-                .indexName(randomUUID())
-                .build();
+            .indexName(randomUUID())
+            .build();
 
     EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
@@ -67,8 +69,18 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         elasticsearchClientHelper.removeDataStore(indexName);
     }
 
+    @Override
+    protected EmbeddingStore<TextSegment> embeddingStore() {
+        return embeddingStore;
+    }
+
+    @Override
+    protected EmbeddingModel embeddingModel() {
+        return embeddingModel;
+    }
+
     @Test
-    void remove_non_existing_datastore() throws IOException {
+    void should_not_fail_to_remove_non_existing_datastore() throws IOException {
         // given
         // Nothing
 
@@ -80,7 +92,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_all() throws IOException {
+    void should_remove_all() throws IOException {
         // given
         Embedding embedding = embeddingModel.embed("hello").content();
         Embedding embedding2 = embeddingModel.embed("hello2").content();
@@ -103,7 +115,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_by_id() {
+    void should_remove_by_id() {
         // given
         Embedding embedding = embeddingModel.embed("hello").content();
         Embedding embedding2 = embeddingModel.embed("hello2").content();
@@ -130,7 +142,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_all_by_ids() {
+    void should_remove_all_by_ids() {
         // given
         Embedding embedding = embeddingModel.embed("hello").content();
         Embedding embedding2 = embeddingModel.embed("hello2").content();
@@ -157,14 +169,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_all_by_ids_null() {
-        assertThatThrownBy(() -> embeddingStore.removeAll((Collection<String>) null))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("ids cannot be null or empty");
-    }
-
-    @Test
-    void remove_all_by_filter() {
+    void should_remove_all_by_filter() {
         // given
         Metadata metadata = Metadata.metadata("id", "1");
         TextSegment segment = TextSegment.from("matching", metadata);
@@ -197,7 +202,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_all_by_filter_not_matching() {
+    void should_remove_all_by_filter_not_matching() {
         // given
         Embedding embedding = embeddingModel.embed("hello").content();
         Embedding embedding2 = embeddingModel.embed("hello2").content();
@@ -219,13 +224,6 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         List<EmbeddingMatch<TextSegment>> matches = embeddingStore.search(request).matches();
         List<String> matchingIds = matches.stream().map(EmbeddingMatch::embeddingId).collect(Collectors.toList());
         assertThat(matchingIds).hasSize(3);
-    }
-
-    @Test
-    void remove_all_by_filter_null() {
-        assertThatThrownBy(() -> embeddingStore.removeAll((Filter) null))
-                .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage("filter cannot be null");
     }
 
     private static void awaitAssertion(ThrowingRunnable assertionRunnable) {
