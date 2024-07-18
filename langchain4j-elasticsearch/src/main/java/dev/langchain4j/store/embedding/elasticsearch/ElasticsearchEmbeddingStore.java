@@ -255,10 +255,10 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             results.forEach(em -> log.debug("doc [{}] scores [{}]", em.embeddingId(), em.score()));
             return new EmbeddingSearchResult<>(results);
         } catch (ElasticsearchException e) {
-            log.error("[ElasticSearch encounter exception] {}", e.response());
+            log.error("[Elasticsearch encounter exception] {}", e.response());
             throw new ElasticsearchRequestFailedException(e.response().toString(), e);
         } catch (IOException e) {
-            log.error("[ElasticSearch encounter I/O Exception]", e);
+            log.error("[Elasticsearch encounter I/O Exception]", e);
             throw new ElasticsearchRequestFailedException(e.getMessage());
         }
     }
@@ -288,10 +288,10 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
             if (e.status() == 404) {
                 log.debug("The index [{}] does not exist.", indexName);
             } else {
-                log.warn("Elasticsearch encounter ElasticsearchException", e);
+                log.error("[Elasticsearch encounter exception] {}", e.response());
             }
         } catch (IOException e) {
-            log.warn("Elasticsearch encounter I/O Exception", e);
+            log.error("[Elasticsearch encounter I/O exception] {}", e.getMessage());
         }
     }
 
