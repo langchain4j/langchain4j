@@ -1,5 +1,6 @@
 package dev.langchain4j.data.message;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.video.Video;
 
 import java.net.URI;
@@ -9,6 +10,7 @@ import static dev.langchain4j.data.message.ContentType.VIDEO;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+@Experimental
 public class VideoContent implements Content {
 
     private final Video video;

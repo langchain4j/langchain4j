@@ -1,5 +1,6 @@
 package dev.langchain4j.data.message;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.audio.Audio;
 
 import java.net.URI;
@@ -9,6 +10,7 @@ import static dev.langchain4j.data.message.ContentType.AUDIO;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+@Experimental
 public class AudioContent implements Content {
 
     private final Audio audio;

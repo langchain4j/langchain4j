@@ -1,5 +1,6 @@
 package dev.langchain4j.data.message;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.pdf.PdfFile;
 
 import java.net.URI;
@@ -9,6 +10,7 @@ import static dev.langchain4j.data.message.ContentType.PDF;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+@Experimental
 public class PdfFileContent implements Content {
     
     private final PdfFile pdfFile;
@@ -83,7 +85,7 @@ public class PdfFileContent implements Content {
     @Override
     public String toString() {
         return "PdfFileContent {" +
-            " PdfFile = " + pdfFile +
+            " pdfFile = " + pdfFile +
             " }";
     }
 

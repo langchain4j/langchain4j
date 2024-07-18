@@ -1,10 +1,13 @@
 package dev.langchain4j.data.video;
 
+import dev.langchain4j.Experimental;
+
 import java.net.URI;
 import java.util.Objects;
 
 import static dev.langchain4j.internal.Utils.quoted;
 
+@Experimental
 public class Video {
     private final URI url;
     private final String base64Data;
