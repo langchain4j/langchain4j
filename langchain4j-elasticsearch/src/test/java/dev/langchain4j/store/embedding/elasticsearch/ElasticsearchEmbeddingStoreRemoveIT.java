@@ -68,7 +68,19 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     }
 
     @Test
-    void remove_all() {
+    void remove_non_existing_datastore() throws IOException {
+        // given
+        // Nothing
+
+        // when
+        embeddingStore.removeAll();
+
+        // then
+        assertThat(elasticsearchClientHelper.client.indices().exists(er -> er.index(indexName)).value()).isFalse();
+    }
+
+    @Test
+    void remove_all() throws IOException {
         // given
         Embedding embedding = embeddingModel.embed("hello").content();
         Embedding embedding2 = embeddingModel.embed("hello2").content();
@@ -87,7 +99,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
         embeddingStore.removeAll();
 
         // then
-        awaitAssertion(() -> assertThat(embeddingStore.search(request).matches()).hasSize(0));
+        assertThat(elasticsearchClientHelper.client.indices().exists(er -> er.index(indexName)).value()).isFalse();
     }
 
     @Test

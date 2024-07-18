@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
+import co.elastic.clients.elasticsearch._types.ErrorResponse;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
@@ -27,6 +28,7 @@ import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.HttpResponseException;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.message.BasicHeader;
 import org.elasticsearch.client.RestClient;
@@ -276,11 +278,23 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         removeByQuery(query);
     }
 
+    /**
+     * The Elasticsearch implementation will simply drop the index instead
+     * of removing all documents one by one.
+     */
     @Override
     public void removeAll() {
-        // TODO Drop the index
-        Query query = Query.of(q -> q.matchAll(m -> m));
-        removeByQuery(query);
+        try {
+            deleteIndex();
+        } catch (ElasticsearchException e) {
+            if (e.status() == 404) {
+                log.debug("The index [{}] does not exist.", indexName);
+            } else {
+                log.warn("Elasticsearch encounter ElasticsearchException", e);
+            }
+        } catch (IOException e) {
+            log.warn("Elasticsearch encounter I/O Exception", e);
+        }
     }
 
     private void addInternal(String id, Embedding embedding, TextSegment embedded) {
@@ -379,6 +393,10 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
         handleBulkResponseErrors(response);
+    }
+
+    private void deleteIndex() throws IOException {
+        client.indices().delete(dir -> dir.index(indexName));
     }
 
     private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {
