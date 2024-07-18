@@ -223,7 +223,7 @@ public enum TicketPriority {
 
 interface TicketAnalyzer {
     
-    @UserMessage("Analyzing the issue to determine its priority: |||{{it}}|||")
+    @UserMessage("Analyze the priority of the following issue: {{it}}")
     TicketPriority analyzeIssue(String issueDescription);
 }
 
