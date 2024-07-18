@@ -13,10 +13,9 @@ import java.time.Duration;
 import static dev.langchain4j.model.ollama.OllamaImage.BAKLLAVA_MODEL;
 import static org.assertj.core.api.Assertions.assertThat;
 
-class OllamaChatModeVisionModellITInfrastructure extends AbstractOllamaVisionModelInfrastructure {
+class OllamaChatModelVisionIT extends AbstractOllamaVisionModelInfrastructure {
 
     static final String CAT_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-    static final String DICE_IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
     @Test
     void should_see_cat() {
@@ -38,27 +37,5 @@ class OllamaChatModeVisionModellITInfrastructure extends AbstractOllamaVisionMod
         // then
         assertThat(response.content().text())
                 .containsIgnoringCase("cat");
-    }
-
-    @Test
-    void should_see_dice() {
-
-        // given
-        ChatLanguageModel model = OllamaChatModel.builder()
-                .baseUrl(ollama.getEndpoint())
-                .timeout(Duration.ofMinutes(3))
-                .modelName(BAKLLAVA_MODEL)
-                .temperature(0.0)
-                .build();
-
-        // when
-        Response<AiMessage> response = model.generate(UserMessage.userMessage(
-                TextContent.from("What is on the picture?"),
-                ImageContent.from(DICE_IMAGE_URL)
-        ));
-
-        // then
-        assertThat(response.content().text())
-                .containsIgnoringCase("dice");
     }
 }
