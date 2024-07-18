@@ -10,8 +10,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
@@ -26,15 +24,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    private static final Logger log = LoggerFactory.getLogger(AbstractElasticsearchEmbeddingStoreIT.class);
-
     static ElasticsearchClientHelper elasticsearchClientHelper = new ElasticsearchClientHelper();
 
     private EmbeddingStore<TextSegment> embeddingStore;
     String indexName;
 
     @BeforeAll
-    static void startServices() {
+    static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
         assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();

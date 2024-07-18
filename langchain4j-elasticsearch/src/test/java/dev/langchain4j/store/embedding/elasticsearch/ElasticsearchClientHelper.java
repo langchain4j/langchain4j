@@ -21,6 +21,7 @@ import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
+import java.util.Properties;
 
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.store.embedding.elasticsearch.SSLUtils.createContextFromCaCert;
@@ -36,14 +37,11 @@ class ElasticsearchClientHelper {
 
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchClientHelper.class);
 
-    // TODO Read that value from the maven properties
-    private static final String VERSION = "8.14.3";
-
     RestClient restClient;
     ElasticsearchContainer elasticsearch;
     ElasticsearchClient client;
 
-    void startServices() {
+    void startServices() throws IOException {
         String cloudUrl = System.getenv("ELASTICSEARCH_CLOUD_URL");
         String cloudApiKey = System.getenv("ELASTICSEARCH_CLOUD_API_KEY");
         String localUrl = System.getenv("ELASTICSEARCH_LOCAL_URL");
@@ -58,11 +56,15 @@ class ElasticsearchClientHelper {
             log.info("Starting Elasticsearch tests on url [{}].", localUrl);
             restClient = getClient(localUrl, null, localPassword, null);
         } else {
+            Properties props = new Properties();
+            props.load(ElasticsearchClientHelper.class.getResourceAsStream("/version.properties"));
+            String version = props.getProperty("elastic.version");
+
             // Start the container. This step might take some time...
-            log.info("Starting testcontainers with Elasticsearch [{}].", VERSION);
+            log.info("Starting testcontainers with Elasticsearch [{}].", version);
             elasticsearch = new ElasticsearchContainer(
                     DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch")
-                            .withTag(VERSION))
+                            .withTag(version))
                     .withPassword(localPassword);
             elasticsearch.start();
             byte[] certAsBytes = elasticsearch.copyFileFromContainer(

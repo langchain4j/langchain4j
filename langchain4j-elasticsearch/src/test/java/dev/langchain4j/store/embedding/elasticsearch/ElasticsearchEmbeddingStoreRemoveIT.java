@@ -39,7 +39,7 @@ class ElasticsearchEmbeddingStoreRemoveIT {
     String indexName;
 
     @BeforeAll
-    static void startServices() {
+    static void startServices() throws IOException {
         elasticsearchClientHelper.startServices();
         assertThat(elasticsearchClientHelper.restClient).isNotNull();
         assertThat(elasticsearchClientHelper.client).isNotNull();
