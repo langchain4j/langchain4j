@@ -18,6 +18,16 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  */
 public class ApachePdfBoxDocumentParser implements DocumentParser {
 
+    private final boolean includeMetadata;
+
+    public ApachePdfBoxDocumentParser() {
+        this(false);
+    }
+
+    public ApachePdfBoxDocumentParser(boolean includeMetadata) {
+        this.includeMetadata = includeMetadata;
+    }
+
     @Override
     public Document parse(InputStream inputStream) {
         try (PDDocument pdfDocument = PDDocument.load(inputStream)) {
@@ -26,14 +36,16 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
             if (isNullOrBlank(text)) {
                 throw new BlankDocumentException();
             }
-            Metadata metadata = toMetadata(pdfDocument.getDocumentInformation());
-            return Document.from(text, metadata);
+            return includeMetadata
+                    ? Document.from(text, toMetadata(pdfDocument))
+                    : Document.from(text);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Metadata toMetadata(PDDocumentInformation documentInformation) {
+    private Metadata toMetadata(PDDocument pdDocument) {
+        PDDocumentInformation documentInformation = pdDocument.getDocumentInformation();
         Metadata metadata = new Metadata();
         for (String metadataKey : documentInformation.getMetadataKeys()) {
             String value = documentInformation.getCustomMetadataValue(metadataKey);
