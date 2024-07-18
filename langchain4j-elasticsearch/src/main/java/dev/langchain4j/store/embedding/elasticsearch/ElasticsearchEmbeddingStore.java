@@ -333,16 +333,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         }
 
         BulkResponse response = client.bulk(bulkBuilder.build());
-        if (response.errors()) {
-            log.warn("bulk done with [{}] errors", response.items().stream().filter(f -> f.error() != null).count());
-            for (BulkResponseItem item : response.items()) {
-                if (item.error() != null) {
-                    throw new ElasticsearchRequestFailedException("type: " + item.error().type() + ", reason: " + item.error().reason());
-                }
-            }
-        } else {
-            log.debug("bulk done with [0] errors");
-        }
+        handleBulkResponseErrors(response);
     }
 
     private void handleBulkResponseErrors(BulkResponse response) {
