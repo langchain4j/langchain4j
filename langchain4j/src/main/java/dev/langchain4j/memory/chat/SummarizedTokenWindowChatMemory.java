@@ -54,6 +54,7 @@ public class SummarizedTokenWindowChatMemory implements ChatMemory {
             Optional<SystemMessage> maybeSystemMessage = findSystemMessage(messages);
             if (maybeSystemMessage.isPresent()) {
                 // Not supporting overwriting system messages for now
+                log.trace("SummarizedTokenWindowChatMemory does not support overwriting system messages for now");
                 return;
             } else {
                 // Create a special summarized system message
@@ -67,8 +68,8 @@ public class SummarizedTokenWindowChatMemory implements ChatMemory {
 
     private static Optional<SystemMessage> findSystemMessage(List<ChatMessage> messages) {
         return messages.stream()
-                .filter(message -> message instanceof SystemMessage)
-                .map(message -> (SystemMessage) message)
+                .filter(SystemMessage.class::isInstance)
+                .map(SystemMessage.class::cast)
                 .findAny();
     }
 
@@ -96,8 +97,9 @@ public class SummarizedTokenWindowChatMemory implements ChatMemory {
                 break;
             }
 
-            evictedMessages.add(messages.get(messageToEvictIndex));
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
+            evictedMessages.add(evictedMessage);
+
             int tokenCountOfEvictedMessage = tokenizer.estimateTokenCountInMessage(evictedMessage);
             log.trace("Evicting the following message ({} tokens) to comply with the capacity requirement: {}",
                     tokenCountOfEvictedMessage, evictedMessage);
@@ -108,13 +110,13 @@ public class SummarizedTokenWindowChatMemory implements ChatMemory {
                         && messages.get(messageToEvictIndex) instanceof ToolExecutionResultMessage) {
                     evictedMessages.add(messages.get(messageToEvictIndex));
                     ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
-                    log.trace("Evicting orphan {}", orphanToolExecutionResultMessage);
                     currentTokenCount -= tokenizer.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
+                    log.trace("Evicting ({} token) orphan {}", currentTokenCount, orphanToolExecutionResultMessage);
                 }
             }
         }
 
-        if (evictedMessages.size() > 0) {
+        if (!evictedMessages.isEmpty()) {
             addEvictedMessagesToSummary(messages, evictedMessages);
         }
     }
