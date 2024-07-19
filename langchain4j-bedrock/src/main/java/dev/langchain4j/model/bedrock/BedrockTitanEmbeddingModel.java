@@ -40,11 +40,10 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     /**
      * 1024 is default size of output vector for Titan Embedding model V2.
      */
-    @Builder.Default
-    private final Integer dimensions = 1024;
+    private final Integer dimensions;
 
     /**
-     *  A flag indicating whether or not to normalize the output embeddings.
+     *  A flag indicating whether to normalize the output embeddings.
      *  It defaults to true, which is optimal for RAG use cases.
      */
     @Builder.Default
@@ -58,19 +57,16 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
                     .map(TextSegment::text)
                     .map(text -> of("inputText", text))
                     .collect(Collectors.toList());
-        } else if (MODEL_V2_ID.equals(this.model)) {
-            List<Map<String, Object>> result = new ArrayList<>();
-            for (TextSegment textSegment : textSegments) {
-                Map<String, Object> parameters = new HashMap<>();
-                parameters.put("inputText", textSegment.text());
-                parameters.put("dimensions", dimensions);
-                parameters.put("normalize", normalize);
-                result.add(parameters);
-            }
-            return result;
-        } else {
-            throw new IllegalArgumentException("Unsupported model: " + this.model);
         }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TextSegment textSegment : textSegments) {
+            Map<String, Object> parameters = new HashMap<>();
+            parameters.put("inputText", textSegment.text());
+            parameters.put("dimensions", dimensions);
+            parameters.put("normalize", normalize);
+            result.add(parameters);
+        }
+        return result;
     }
 
     @Override
