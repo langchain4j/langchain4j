@@ -37,8 +37,7 @@ public class ElasticsearchConfigurationKnn extends ElasticsearchConfiguration {
                                                    EmbeddingSearchRequest embeddingSearchRequest) throws ElasticsearchException, IOException {
         KnnQuery.Builder krb = new KnnQuery.Builder()
                 .field("vector")
-                .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList())
-                .numCandidates(embeddingSearchRequest.maxResults());
+                .queryVector(embeddingSearchRequest.queryEmbedding().vectorAsList());
 
         if (embeddingSearchRequest.filter() != null) {
             krb.filter(ElasticsearchMetadataFilterMapper.map(embeddingSearchRequest.filter()));
