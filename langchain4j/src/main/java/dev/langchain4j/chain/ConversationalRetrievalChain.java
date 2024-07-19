@@ -26,10 +26,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * Includes a default {@link ChatMemory} (a message window with maximum 10 messages), which can be overridden.
  * You can fully customize RAG behavior by providing an instance of a {@link RetrievalAugmentor},
  * such as {@link DefaultRetrievalAugmentor}, or your own custom implementation.
- *
- * @deprecated Please use {@link AiServices} instead.
+ * <br>
+ * Chains are not going to be developed further, it is recommended to use {@link AiServices} instead.
  */
-@Deprecated
 public class ConversationalRetrievalChain implements Chain<String, String> {
 
     private final ChatLanguageModel chatLanguageModel;

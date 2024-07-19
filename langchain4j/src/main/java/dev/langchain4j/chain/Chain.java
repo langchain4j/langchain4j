@@ -4,12 +4,12 @@ import dev.langchain4j.service.AiServices;
 
 /**
  * Represents a chain step that takes an input and produces an output.
+ * <br>
+ * Chains are not going to be developed further, it is recommended to use {@link AiServices} instead.
  *
  * @param <Input>  the input type
  * @param <Output> the output type
- * @deprecated Please use {@link AiServices} instead.
  */
-@Deprecated
 @FunctionalInterface
 public interface Chain<Input, Output> {
 
