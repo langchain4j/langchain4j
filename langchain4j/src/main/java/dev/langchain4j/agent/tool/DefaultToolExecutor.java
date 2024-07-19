@@ -2,17 +2,14 @@ package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.agent.tool.ToolExecutionRequestUtil.argumentsAsMap;
 import dev.langchain4j.internal.Json;
+import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -109,12 +106,79 @@ public class DefaultToolExecutor implements ToolExecutor {
             if (argumentsMap.containsKey(parameterName)) {
                 Object argument = argumentsMap.get(parameterName);
                 Class<?> parameterType = parameters[i].getType();
-
-                arguments[i] = coerceArgument(argument, parameterName, parameterType);
+                if( parameterType == List.class || parameterType == Set.class || parameterType == Map.class)  {
+                    ParameterizedType parameterizedType = (ParameterizedType) parameters[i].getParameterizedType();
+                    arguments[i] = coerceCollectionArgument(argument, parameterName, parameterType, parameterizedType);
+                } if(parameterType.isArray() && argument instanceof Collection) {
+                    arguments[i] = coerceCollectionArgument(argument, parameterName, parameterType, parameterType.getComponentType());
+                }else {
+                    arguments[i] = coerceArgument(argument, parameterName, parameterType);
+                }
             }
         }
 
         return arguments;
+    }
+
+    @SneakyThrows
+    static Object coerceCollectionArgument(
+            Object argument,
+            String parameterName,
+            Class<?> parameterType,
+            Object parameterizedType
+    )  {
+        String json = Json.toJson(argument);
+        if (parameterType == List.class) {
+            List objects = Json.fromJson(json , List.class);
+            Class<?> elementType  = Class.forName( ((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
+            List finalObject = new ArrayList();
+            if(objects!=null && !objects.isEmpty()) {
+                for(Object a : objects) {
+                    finalObject.add( coerceArgument(a, parameterName, elementType));
+                }
+            }
+            return finalObject;
+        }
+
+        if(parameterType == Set.class){
+            List objects = Json.fromJson(json , List.class);
+            Class<?> elementType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
+            Set finalObject = new HashSet();
+            if(objects!=null && !objects.isEmpty()) {
+                for(Object a : objects) {
+                    finalObject.add( coerceArgument(a, parameterName, elementType));
+                }
+            }
+            return finalObject;
+        }
+
+        if(parameterType == Map.class){
+            Map<String, Object> objects = Json.fromJson(json , Map.class);
+            Class<?> keyType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
+            Class valueType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[1].getTypeName());
+            Map finalObject = new HashMap();
+            if(objects!=null && !objects.isEmpty()) {
+                for(Map.Entry<String, Object> entry : objects.entrySet()) {
+                    finalObject.put(coerceArgument(entry.getKey(), parameterName, keyType), coerceArgument(entry.getValue(), parameterName, valueType));
+                }
+            }
+            return finalObject;
+        }
+
+        if(parameterType.isArray() && argument instanceof Collection) {
+            List objects = Json.fromJson(json , List.class);
+            Class<?> elementType  =(Class<?>) parameterizedType;
+            Object[] finalObjectArray = (Object[]) Array.newInstance(elementType, objects.size());
+            for (int i = 0; i < objects.size(); i++) {
+                finalObjectArray[i] = coerceArgument(objects.get(i), parameterName, elementType);
+            }
+            return finalObjectArray;
+        }
+
+
+        throw new IllegalArgumentException(String.format(
+                "Argument \"%s\" is not a valid collection type: <%s>",
+                parameterName, parameterType.getName()));
     }
 
     static Object coerceArgument(
@@ -185,15 +249,6 @@ public class DefaultToolExecutor implements ToolExecutor {
             return BigDecimal.valueOf(
                     getNonFractionalDoubleValue(argument, parameterName, parameterType)).toBigInteger();
         }
-
-        if (parameterType.isArray() && argument instanceof Collection) {
-            Class<?> type = parameterType.getComponentType();
-            if (type == String.class) {
-                return ((Collection<String>) argument).toArray(new String[0]);
-            }
-            // TODO: Consider full type coverage.
-        }
-
 
         String result  = Json.toJson(argument);
         return Json.fromJson(result, parameterType);

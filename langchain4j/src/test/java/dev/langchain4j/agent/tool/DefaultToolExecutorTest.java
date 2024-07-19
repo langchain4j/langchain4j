@@ -9,9 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 class DefaultToolExecutorTest implements WithAssertions {
     @Test
@@ -295,5 +293,89 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(NullPointerException.class)
                 .isThrownBy(() -> new DefaultToolExecutor(new TestTool(), (ToolExecutionRequest) null));
 
+    }
+
+    private static class PersonTool {
+
+        @Tool
+        public Person save( Person arg) {
+            assert arg != null;
+            return arg;
+        }
+
+        @Tool
+        public Person[] saveArray(Person[] arg) {
+            assert arg != null;
+            assert arg.length == 2;
+            return arg;
+        }
+
+        @Tool
+        public List<Person> saveList(List<Person> personList) {
+            assert personList != null;
+            assert personList.size() == 2;
+            assert personList.get(0) != null;
+            return personList;
+        }
+
+        @Tool
+        public Set<Person> saveSet(Set<Person> personSet) {
+            assert personSet != null;
+            assert personSet.size() == 2;
+            return personSet;
+        }
+
+        @Tool
+        public Map<String,Person> saveMap (Map<String,Person> idPersonMap) {
+            assert idPersonMap != null;
+            assert idPersonMap.size() == 2;
+            return idPersonMap;
+        }
+    }
+
+    @Test
+    public void should_execute_tool_with_collection() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("save")
+                .arguments("{ \"arg0\": {\"name\": \"Klaus\", \"age\": 42} }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(new PersonTool(), request);
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        ToolExecutionRequest request2 = ToolExecutionRequest.builder()
+                .id("2")
+                .name("saveList")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor2 = new DefaultToolExecutor(new PersonTool(), request2);
+        String result2 = toolExecutor2.execute(request2, "DEFAULT");
+
+        ToolExecutionRequest request3 = ToolExecutionRequest.builder()
+                .id("3")
+                .name("saveSet")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor3 = new DefaultToolExecutor(new PersonTool(), request3);
+        String result3 = toolExecutor3.execute(request3, "DEFAULT");
+
+
+        ToolExecutionRequest request4 = ToolExecutionRequest.builder()
+                .id("4")
+                .name("saveMap")
+                .arguments("{ \"arg0\": { \"p1\" : {\"name\": \"Klaus\", \"age\": 42}, \"p2\" : {\"name\": \"Peter\", \"age\": 43} } }")
+                .build();
+        DefaultToolExecutor toolExecutor4 = new DefaultToolExecutor(new PersonTool(), request4);
+        String result4 = toolExecutor4.execute(request4, "DEFAULT");
+
+        ToolExecutionRequest request5 = ToolExecutionRequest.builder()
+                .id("5")
+                .name("saveArray")
+                .arguments("{ \"arg0\": [ {\"name\": \"Klaus\", \"age\": 42}, {\"name\": \"Peter\", \"age\": 43} ] }")
+                .build();
+        DefaultToolExecutor toolExecutor5 = new DefaultToolExecutor(new PersonTool(), request5);
+        String result5 = toolExecutor5.execute(request5, "DEFAULT");
     }
 }
