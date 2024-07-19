@@ -7,9 +7,10 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
+@SuppressWarnings("rawtypes")
 class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
 
-    public EnumSetOutputParser(Class<? extends Enum> enumClass) {
+    EnumSetOutputParser(Class<? extends Enum> enumClass) {
         super(enumClass);
     }
 
@@ -20,6 +21,4 @@ class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
                 .map(enumOutputParser::parse)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
-
-
 }

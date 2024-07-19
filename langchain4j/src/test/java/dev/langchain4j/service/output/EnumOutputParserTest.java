@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EnumOutputParserTest {
 
-    private final EnumOutputParser sut = new EnumOutputParser(Weather.class);
+    EnumOutputParser sut = new EnumOutputParser(Weather.class);
 
     enum Weather {
         SUNNY,
@@ -55,6 +55,4 @@ class EnumOutputParserTest {
         // Then
         assertEquals(Weather.SUNNY, resultedEnum);
     }
-
-
 }

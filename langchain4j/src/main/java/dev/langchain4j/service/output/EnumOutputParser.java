@@ -6,13 +6,15 @@ import java.lang.reflect.Field;
 import java.util.Locale;
 import java.util.Optional;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 @SuppressWarnings("rawtypes")
 class EnumOutputParser implements OutputParser<Enum> {
 
     private final Class<? extends Enum> enumClass;
 
-    public EnumOutputParser(Class<? extends Enum> enumClass) {
-        this.enumClass = enumClass;
+    EnumOutputParser(Class<? extends Enum> enumClass) {
+        this.enumClass = ensureNotNull(enumClass, "enumClass");
     }
 
     @Override
@@ -59,7 +61,7 @@ class EnumOutputParser implements OutputParser<Enum> {
      * @param enumConstant for which description should be returned
      * @return description of the provided enum
      */
-    public static Optional<String> getEnumDescription(Class<? extends Enum> enumClass, Enum enumConstant) throws NoSuchFieldException {
+    static Optional<String> getEnumDescription(Class<? extends Enum> enumClass, Enum enumConstant) throws NoSuchFieldException {
         Field field = enumClass.getDeclaredField(enumConstant.name());
 
         if (field.isAnnotationPresent(Description.class)) {

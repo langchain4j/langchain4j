@@ -4,16 +4,17 @@ import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.output.EnumOutputParser.getEnumDescription;
 
+@SuppressWarnings("rawtypes")
 abstract class EnumCollectionOutputParser<T extends Enum> implements OutputParser<Collection<T>> {
 
     private final Class<? extends Enum> enumClass;
+    protected final EnumOutputParser enumOutputParser;
 
-    final EnumOutputParser enumOutputParser;
-
-    public EnumCollectionOutputParser(Class<? extends Enum> enumClass) {
-        this.enumClass = enumClass;
+    EnumCollectionOutputParser(Class<? extends Enum> enumClass) {
+        this.enumClass = ensureNotNull(enumClass, "enumClass");
         this.enumOutputParser = new EnumOutputParser(enumClass);
     }
 

@@ -5,9 +5,10 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
+@SuppressWarnings("rawtypes")
 class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
 
-    public EnumListOutputParser(Class<? extends Enum> enumClass) {
+    EnumListOutputParser(Class<? extends Enum> enumClass) {
         super(enumClass);
     }
 

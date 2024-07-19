@@ -9,14 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class EnumSetOutputParserTest {
 
+    EnumSetOutputParser sut = new EnumSetOutputParser(Weather.class);
+
     enum Weather {
         SUNNY,
         CLOUDY,
         RAINY,
         SNOWY
     }
-
-    private final EnumSetOutputParser sut = new EnumSetOutputParser(Weather.class);
 
     @Test()
     public void ensureThatOrderIsPreserved() {

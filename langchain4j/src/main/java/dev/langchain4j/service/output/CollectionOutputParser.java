@@ -2,7 +2,7 @@ package dev.langchain4j.service.output;
 
 import java.util.Collection;
 
-public abstract class CollectionOutputParser<T extends Collection<?>> implements OutputParser<T> {
+abstract class CollectionOutputParser<T extends Collection<?>> implements OutputParser<T> {
 
     @Override
     public String formatInstructions() {
