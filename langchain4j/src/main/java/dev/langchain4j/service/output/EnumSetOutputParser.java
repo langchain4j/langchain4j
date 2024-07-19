@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
-public class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
+class EnumSetOutputParser extends EnumCollectionOutputParser<Enum> {
 
     public EnumSetOutputParser(Class<? extends Enum> enumClass) {
         super(enumClass);

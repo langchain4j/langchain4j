@@ -1,11 +1,11 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static java.util.Arrays.asList;
 
-public class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
+class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
 
     public EnumListOutputParser(Class<? extends Enum> enumClass) {
         super(enumClass);
@@ -16,5 +16,4 @@ public class EnumListOutputParser extends EnumCollectionOutputParser<Enum> {
         List<String> stringsList = asList(text.split("\n"));
         return stringsList.stream().map(enumOutputParser::parse).collect(Collectors.toList());
     }
-
 }

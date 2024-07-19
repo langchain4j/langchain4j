@@ -53,7 +53,6 @@ class EnumOutputParser implements OutputParser<Enum> {
         }
     }
 
-
     /**
      * Returns Enum description (if present)
      *

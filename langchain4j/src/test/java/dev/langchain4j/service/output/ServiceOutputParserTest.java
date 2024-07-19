@@ -1,10 +1,9 @@
-package dev.langchain4j.service;
+package dev.langchain4j.service.output;
 
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.output.*;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
 
@@ -21,16 +20,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 class ServiceOutputParserTest {
 
-    private ServiceOutputParser sut;
-
-    @BeforeEach
-    public void beforeEach() {
-        sut = new ServiceOutputParser(new DefaultOutputParserFactory());
-    }
+    ServiceOutputParser sut = new ServiceOutputParser();
 
     @Test
     void makeSureThatCorrectOutputParserIsUsedForParsing() {
@@ -55,16 +50,20 @@ class ServiceOutputParserTest {
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("11:38:00"), LocalTime.class, LocalTimeOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("2024-07-02T11:38:00"), LocalDateTime.class, LocalDateTimeOutputParser.class);
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage(Weather.SUNNY.name()), Weather.class, EnumOutputParser.class);
-        Type listOfWeatherEnumTypes = new TypeToken<List<Weather>>() {}.getType();
+        Type listOfWeatherEnumTypes = new TypeToken<List<Weather>>() {
+        }.getType();
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfWeatherEnumTypes, EnumListOutputParser.class);
 
-        Type setOfWeatherEnumTypes = new TypeToken<Set<Weather>>() {}.getType();
+        Type setOfWeatherEnumTypes = new TypeToken<Set<Weather>>() {
+        }.getType();
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfWeatherEnumTypes, EnumSetOutputParser.class);
 
-        Type listOfStringsType = new TypeToken<List<String>>() {}.getType();
+        Type listOfStringsType = new TypeToken<List<String>>() {
+        }.getType();
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), listOfStringsType, StringListOutputParser.class);
 
-        Type setOfStringsType = new TypeToken<Set<String>>() {}.getType();
+        Type setOfStringsType = new TypeToken<Set<String>>() {
+        }.getType();
         testWhetherProperOutputParserWasCalled(AiMessage.aiMessage("SUNNY\nCLOUDY"), setOfStringsType, StringSetOutputParser.class);
     }
 
@@ -254,7 +253,7 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
+                        "\"address\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
@@ -278,7 +277,7 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
@@ -302,7 +301,7 @@ class ServiceOutputParserTest {
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
                         "\"birthDate\": (type: date string (2023-12-31)),\n" +
-                        "\"address\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$Address: {\n" +
+                        "\"address\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$Address: {\n" +
                         "\"streetNumber\": (type: integer),\n" +
                         "\"street\": (type: string),\n" +
                         "\"city\": (type: string)\n" +
@@ -348,10 +347,10 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents: {\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParents)\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParents)\n" +
                         "})\n" +
                         "}");
     }
@@ -374,10 +373,10 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray: {\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"parents\": (type: array of dev.langchain4j.service.ServiceOutputParserTest$PersonWithParentArray)\n" +
+                        "\"parents\": (type: array of dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithParentArray)\n" +
                         "})\n" +
                         "}");
     }
@@ -406,14 +405,13 @@ class ServiceOutputParserTest {
                 "\nYou must answer strictly in the following JSON format: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
+                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather: {\n" +
                         "\"firstName\": (type: string),\n" +
                         "\"lastName\": (type: string),\n" +
-                        "\"mother\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
-                        "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
+                        "\"mother\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather),\n" +
+                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}),\n" +
-                        "\"father\": (type: dev.langchain4j.service.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
+                        "\"father\": (type: dev.langchain4j.service.output.ServiceOutputParserTest$PersonWithMotherAndFather)\n" +
                         "}");
     }
-
 }

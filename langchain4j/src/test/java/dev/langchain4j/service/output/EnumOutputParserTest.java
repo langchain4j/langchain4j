@@ -1,10 +1,10 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class EnumOutputParserTest {
+class EnumOutputParserTest {
 
     private final EnumOutputParser sut = new EnumOutputParser(Weather.class);
 

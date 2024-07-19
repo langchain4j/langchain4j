@@ -1,12 +1,12 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
 
-import static dev.langchain4j.model.output.EnumOutputParser.getEnumDescription;
+import static dev.langchain4j.service.output.EnumOutputParser.getEnumDescription;
 
-abstract public class EnumCollectionOutputParser<T extends Enum> implements OutputParser<Collection<T>>  {
+abstract class EnumCollectionOutputParser<T extends Enum> implements OutputParser<Collection<T>> {
 
     private final Class<? extends Enum> enumClass;
 

@@ -1,14 +1,13 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import java.util.List;
 
 import static java.util.Arrays.asList;
 
-public class StringListOutputParser extends CollectionOutputParser<List<String>> {
+class StringListOutputParser extends CollectionOutputParser<List<String>> {
 
     @Override
     public List<String> parse(String text) {
         return asList(text.split("\n"));
     }
-
 }

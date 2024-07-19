@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import org.junit.jupiter.api.Test;
 
@@ -7,7 +7,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class EnumSetOutputParserTest {
+class EnumSetOutputParserTest {
 
     enum Weather {
         SUNNY,
@@ -15,7 +15,6 @@ public class EnumSetOutputParserTest {
         RAINY,
         SNOWY
     }
-
 
     private final EnumSetOutputParser sut = new EnumSetOutputParser(Weather.class);
 
@@ -31,6 +30,5 @@ public class EnumSetOutputParserTest {
         Iterator<Enum> enumIterator = parsed.iterator();
         assertEquals(Weather.SUNNY, enumIterator.next());
         assertEquals(Weather.RAINY, enumIterator.next());
-
     }
 }

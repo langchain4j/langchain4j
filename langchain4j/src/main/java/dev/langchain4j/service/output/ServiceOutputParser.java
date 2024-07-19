@@ -2,9 +2,9 @@ package dev.langchain4j.service.output;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.internal.Json;
-import dev.langchain4j.model.output.*;
+import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.structured.Description;
-import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.*;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -12,15 +12,20 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import static dev.langchain4j.exception.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.TypeUtils.*;
 import static java.lang.String.format;
 
 public class ServiceOutputParser {
 
-    OutputParserFactory outputParserFactory;
+    private final OutputParserFactory outputParserFactory;
 
-    public ServiceOutputParser(OutputParserFactory outputParserFactory) {
-        this.outputParserFactory = outputParserFactory;
+    public ServiceOutputParser() {
+        this(new DefaultOutputParserFactory());
+    }
+
+    ServiceOutputParser(OutputParserFactory outputParserFactory) {
+        this.outputParserFactory = ensureNotNull(outputParserFactory, "outputParserFactory");
     }
 
     public Object parse(Response<AiMessage> response, Type returnType) {
@@ -87,8 +92,8 @@ public class ServiceOutputParser {
             String formatInstructions = outputParser.get().formatInstructions();
 
             if (rawClass == List.class ||
-                rawClass == Set.class ||
-                rawClass.isEnum()) {
+                    rawClass == Set.class ||
+                    rawClass.isEnum()) {
                 // In these cases complete instruction is already
                 // constructed by concrete output parsers.
                 return formatInstructions;
@@ -115,7 +120,7 @@ public class ServiceOutputParser {
 
         int trailingCommaIndex = jsonSchema.lastIndexOf(",");
         if (trailingCommaIndex > 0) {
-            jsonSchema.delete(trailingCommaIndex, trailingCommaIndex +1);
+            jsonSchema.delete(trailingCommaIndex, trailingCommaIndex + 1);
         }
         jsonSchema.append("}");
         return jsonSchema.toString();

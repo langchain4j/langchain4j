@@ -1,4 +1,4 @@
-package dev.langchain4j.model.output;
+package dev.langchain4j.service.output;
 
 import org.junit.jupiter.api.Test;
 
@@ -7,9 +7,9 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class StringSetOutputParserTest {
+class StringSetOutputParserTest {
 
-    private final StringSetOutputParser sut = new StringSetOutputParser();
+    StringSetOutputParser sut = new StringSetOutputParser();
 
     @Test()
     public void ensureThatOrderIsPreserved() {
