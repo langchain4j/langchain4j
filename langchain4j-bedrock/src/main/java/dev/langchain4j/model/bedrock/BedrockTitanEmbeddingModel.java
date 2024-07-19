@@ -53,6 +53,9 @@ public class BedrockTitanEmbeddingModel extends AbstractBedrockEmbeddingModel<Be
     @Override
     protected List<Map<String, Object>> getRequestParameters(List<TextSegment> textSegments) {
         if (MODEL_V1_ID.equals(this.model)) {
+            if (this.dimensions != null || this.normalize != null) {
+                throw new IllegalArgumentException("Dimensions and normalize are not supported for Titan Embedding model V1");
+            }
             return textSegments.stream()
                     .map(TextSegment::text)
                     .map(text -> of("inputText", text))
