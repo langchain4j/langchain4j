@@ -38,11 +38,11 @@ public enum DistanceMetric {
     /**
      * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/hamming-similarity.html">
      * The hamming distance between two vectors
-     * </a>. No vector index will be created if {@link OracleEmbeddingStore} is configured with this option. In 23.4,
-     * Oracle Database only support
-     * having this distance metric are not
-     */
+     * </a>
     HAMMING,
+     TODO: Uncomment this if the embedding store adds support for INT8 or BINARY dimension types; It's not compatible
+        with FLOAT32 or FLOAT64.
+     */
 
     /**
      * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/manhattan-distance.html">
