@@ -153,12 +153,12 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if(parameterType == Map.class){
-            Map<String, Object> objects = Json.fromJson(json , Map.class);
+            Map<Object, Object> objects = Json.fromJson(json , Map.class);
             Class<?> keyType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[0].getTypeName());
             Class valueType  = Class.forName(((ParameterizedType)parameterizedType).getActualTypeArguments()[1].getTypeName());
             Map finalObject = new HashMap();
             if(objects!=null && !objects.isEmpty()) {
-                for(Map.Entry<String, Object> entry : objects.entrySet()) {
+                for(Map.Entry<Object, Object> entry : objects.entrySet()) {
                     finalObject.put(coerceArgument(entry.getKey(), parameterName, keyType), coerceArgument(entry.getValue(), parameterName, valueType));
                 }
             }
