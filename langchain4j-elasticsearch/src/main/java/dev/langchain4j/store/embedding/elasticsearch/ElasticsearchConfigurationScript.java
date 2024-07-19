@@ -25,10 +25,20 @@ import java.io.IOException;
  * @see <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-script-score-query.html#vector-functions-cosine">vector-functions-cosine</a>
  */
 public class ElasticsearchConfigurationScript implements ElasticsearchConfiguration {
-    private final ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ElasticsearchConfigurationScript() {
-        this.objectMapper = new ObjectMapper();
+    public static class Builder {
+        public ElasticsearchConfigurationScript build() {
+            return new ElasticsearchConfigurationScript();
+        }
+    }
+
+    public static ElasticsearchConfigurationScript.Builder builder() {
+        return new ElasticsearchConfigurationScript.Builder();
+    }
+
+    private ElasticsearchConfigurationScript() {
+
     }
 
     @Override

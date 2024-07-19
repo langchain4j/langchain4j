@@ -17,6 +17,20 @@ import java.io.IOException;
 public class ElasticsearchConfigurationKnn implements ElasticsearchConfiguration {
     private static final Logger log = LoggerFactory.getLogger(ElasticsearchConfigurationKnn.class);
 
+    public static class Builder {
+        public ElasticsearchConfigurationKnn build() {
+            return new ElasticsearchConfigurationKnn();
+        }
+    }
+
+    public static ElasticsearchConfigurationKnn.Builder builder() {
+        return new Builder();
+    }
+
+    private ElasticsearchConfigurationKnn() {
+
+    }
+
     @Override
     public SearchResponse<Document> internalSearch(ElasticsearchClient client,
                                                    String indexName,

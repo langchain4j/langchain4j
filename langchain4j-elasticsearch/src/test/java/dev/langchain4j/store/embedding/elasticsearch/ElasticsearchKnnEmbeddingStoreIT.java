@@ -5,18 +5,13 @@ import co.elastic.clients.transport.endpoints.BooleanResponse;
 import java.io.IOException;
 
 class ElasticsearchKnnEmbeddingStoreIT extends AbstractElasticsearchEmbeddingStoreIT {
-    ElasticsearchEmbeddingStore internalCreateEmbeddingStore(String indexName) throws IOException {
-        // Create the index with a fixed mapping
-        createIndexIfNotExist(indexName);
-        return ElasticsearchEmbeddingStore.builder()
-                // We force it although it's the default behavior
-                .configuration(new ElasticsearchConfigurationKnn())
-                .restClient(elasticsearchClientHelper.restClient)
-                .indexName(indexName)
-                .build();
+
+    @Override
+    ElasticsearchConfiguration withConfiguration() {
+        return ElasticsearchConfigurationKnn.builder().build();
     }
 
-    private void createIndexIfNotExist(String indexName) throws IOException {
+    void optionallyCreateIndex(String indexName) throws IOException {
         BooleanResponse response = elasticsearchClientHelper.client.indices().exists(c -> c.index(indexName));
         if (!response.value()) {
             elasticsearchClientHelper.client.indices().create(c -> c.index(indexName)

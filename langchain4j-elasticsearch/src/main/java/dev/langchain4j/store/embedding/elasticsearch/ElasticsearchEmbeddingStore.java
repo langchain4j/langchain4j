@@ -130,7 +130,7 @@ public class ElasticsearchEmbeddingStore implements EmbeddingStore<TextSegment> 
         private String password;
         private RestClient restClient;
         private String indexName = "default";
-        private ElasticsearchConfiguration configuration = new ElasticsearchConfigurationKnn();
+        private ElasticsearchConfiguration configuration = ElasticsearchConfigurationKnn.builder().build();
 
         /**
          * @param serverUrl Elasticsearch Server URL

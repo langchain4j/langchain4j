@@ -41,13 +41,20 @@ abstract class AbstractElasticsearchEmbeddingStoreIT extends EmbeddingStoreWithF
         elasticsearchClientHelper.stopServices();
     }
 
-    abstract EmbeddingStore<TextSegment> internalCreateEmbeddingStore(String indexName) throws IOException;
+    abstract ElasticsearchConfiguration withConfiguration();
+    void optionallyCreateIndex(String indexName) throws IOException {
+    }
 
     @BeforeEach
     void createEmbeddingStore() throws IOException {
         indexName = randomUUID();
         elasticsearchClientHelper.removeDataStore(indexName);
-        embeddingStore =  internalCreateEmbeddingStore(indexName);
+        optionallyCreateIndex(indexName);
+        embeddingStore = ElasticsearchEmbeddingStore.builder()
+                .configuration(withConfiguration())
+                .restClient(elasticsearchClientHelper.restClient)
+                .indexName(indexName)
+                .build();
     }
 
     @AfterEach
