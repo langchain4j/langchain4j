@@ -46,7 +46,12 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  * </p><p>
  * If it does not already exist, the named table will created when {@link Builder#build()} is called. The table columns
  * are listed below.
- * <table><tr>
+ * </p>
+ * <table>
+ *    <caption>
+ *    Database Columns
+ *    </caption>
+ *    <tr>
  *    <th>Name</th>
  *    <th>Type</th>
  *    <th>Description</th>
@@ -82,7 +87,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
  *         are called.
  *     </td>
  * </tr></table>
- * </p><p>
+ * <p>
  * An inverted flat file (IVF) vector index is created on the embedding column. The index is named
  * "{tableName}_embedding_index", where {tableName} is the name configured using the {@link Builder}.
  * </p><p>
@@ -109,6 +114,12 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final DistanceMetric distanceMetric;
 
     /**
+     * <code>true</code> if {@link #search(EmbeddingSearchRequest)} should use an exact search, or <code>false</code> if
+     * it should use approximate search.
+     */
+    private final boolean isExactSearch;
+
+    /**
      * Constructs embedding store configured by a builder.
      *
      * @param builder Builder that configures the emebedding store. Not null.
@@ -119,6 +130,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.dataSource = builder.dataSource;
         this.tableName = builder.tableName;
         this.distanceMetric = builder.distanceMetric;
+        this.isExactSearch = builder.isExactSearch;
 
         createSchema(builder);
     }
@@ -173,10 +185,14 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                     + " metadata JSON,"
                     + " PRIMARY KEY (id))");
 
-            statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + tableName + "_embedding_index" +
-                    " ON " +tableName + "(embedding)" +
-                    " ORGANIZATION NEIGHBOR PARTITIONS" +
-                    " WITH DISTANCE " + builder.distanceMetric.name());
+            // In 23.4, the database will only use a vector index for approximate search. This may change in a later
+            // release.
+            if (builder.isExactSearch) {
+                statement.addBatch("CREATE VECTOR INDEX IF NOT EXISTS " + tableName + "_embedding_index" +
+                        " ON " + tableName + "(embedding)" +
+                        " ORGANIZATION NEIGHBOR PARTITIONS" +
+                        " WITH DISTANCE " + builder.distanceMetric.name());
+            }
 
             statement.executeBatch();
         }
@@ -360,7 +376,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
                              " FROM " + tableName +
                              sqlFilter.asWhereClause() +
                              " ORDER BY distance" +
-                             " FETCH FIRST " + maxResults + " ROWS ONLY")
+                             " FETCH" + (isExactSearch ? "" : " APPROXIMATE") +
+                             " FIRST " + maxResults + " ROWS ONLY")
         ) {
             query.setObject(1, request.queryEmbedding().vector(), OracleTypes.VECTOR_FLOAT32);
             sqlFilter.setParameters(query, 2);
@@ -374,7 +391,7 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
             OracleStatement oracleStatement = query.unwrap(OracleStatement.class);
             oracleStatement.defineColumnType(1, OracleTypes.BINARY_DOUBLE);
             oracleStatement.defineColumnType(2, OracleTypes.VARCHAR);
-            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308);
+            oracleStatement.defineColumnType(3, OracleTypes.VECTOR_FLOAT32, 524308); // <-- Max vector size, in bytes
             oracleStatement.defineColumnType(4, OracleTypes.CLOB, Integer.MAX_VALUE);
             oracleStatement.defineColumnType(5, OracleTypes.JSON, Integer.MAX_VALUE);
 
@@ -567,7 +584,9 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
     }
 
     /**
-     * @return A builder which configures and creates instances of {@link OracleEmbeddingStore}. Not null.
+     * Returns a builder which configures and creates instances of {@link OracleEmbeddingStore}.
+     *
+     * @return A builder. Not null.
      */
     public static Builder builder() {
         return new Builder();
@@ -587,6 +606,8 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         private DistanceMetric distanceMetric = DistanceMetric.COSINE;
 
         private boolean isExactSearch = false;
+
+        private Builder() {}
 
         /**
          * Configures a data source that connects to an Oracle Database.
@@ -628,9 +649,19 @@ public final class OracleEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
-         * Configures
-         * @param isExactSearch
-         * @return
+         * Configures the embedding store to use
+         * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/perform-exact-similarity-search.html">
+         * exact
+         * </a> or
+         * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/understand-approximate-similarity-search-using-vector-indexes.html">
+         * approximate
+         * </a>
+         * similarity search. Approximate search is the default.
+         *
+         *
+         * @param isExactSearch <code>true</code> to configure exact search, or <code>false</code> for approximate.
+         *
+         * @return This builder. Not null.
          */
         public Builder exactSearch(boolean isExactSearch) {
             this.isExactSearch = isExactSearch;

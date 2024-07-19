@@ -8,7 +8,7 @@ package dev.langchain4j.store.embedding.oracle;
 public enum DistanceMetric {
 
     /**
-     * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/cosine-similarity.html>
+     * <a href="https://docs.oracle.com/en/database/oracle/oracle-database/23/vecse/cosine-similarity.html">
      * The cosine distance between two vectors
      * </a>. This is the default used by Oracle Database.
      */

@@ -14,21 +14,35 @@ import java.util.Random;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Test cases which configure {@link OracleEmbeddingStore} with all possible {@link DistanceMetric} options.
+ * Test cases which configure {@link OracleEmbeddingStore} with all possible {@link DistanceMetric} options and
+ * exact/approximate search options.
  */
 public class DistanceMetricTest {
 
     private static final String SEED_PROPERTY = DistanceMetric.class.getSimpleName() + ".SEED";
     private static final long SEED = Long.getLong(SEED_PROPERTY, System.currentTimeMillis());
 
+    /** Verifies all distance metrics with approximate search */
     @ParameterizedTest
     @EnumSource(DistanceMetric.class)
-    public void testDistanceMetric(DistanceMetric distanceMetric)  {
+    public void testDistanceMetricApproximate(DistanceMetric distanceMetric)  {
+        verifyDistanceMetric(distanceMetric, false);
+    }
+
+    /** Verifies all distance metrics with approximate search */
+    @ParameterizedTest
+    @EnumSource(DistanceMetric.class)
+    public void testDistanceMetricExact(DistanceMetric distanceMetric)  {
+        verifyDistanceMetric(distanceMetric, true);
+    }
+
+    private void verifyDistanceMetric(DistanceMetric distanceMetric, boolean isExactSearch)  {
 
         OracleEmbeddingStore oracleEmbeddingStore =
            OracleEmbeddingStore.builder()
                    .dataSource(CommonTestOperations.getDataSource())
                    .distanceMetric(distanceMetric)
+                   .exactSearch(isExactSearch)
                    .tableName(getClass().getSimpleName() + "_" + distanceMetric.name())
                    .build();
         try {
@@ -46,17 +60,19 @@ public class DistanceMetricTest {
             embeddings.add(Embedding.from(vector0));
             embeddings.add(Embedding.from(vector1));
 
+            // Add the two vectors
             List<String> ids = oracleEmbeddingStore.addAll(embeddings);
 
+            // Search for the first vector
             EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
                     .queryEmbedding(Embedding.from(vector1))
                     .build();
 
+            // Verify the first vector is matched
             EmbeddingMatch<TextSegment> match =
                 oracleEmbeddingStore.search(request)
                         .matches()
                         .get(0);
-
             assertEquals(ids.get(1), match.embeddingId());
             assertArrayEquals(vector1, match.embedding().vector());
         }
