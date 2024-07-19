@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.oracle;
 import dev.langchain4j.model.embedding.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import oracle.jdbc.datasource.OracleDataSource;
+import org.testcontainers.oracle.OracleContainer;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -18,15 +19,38 @@ final class CommonTestOperations {
      */
     private static final EmbeddingModel EMBEDDING_MODEL = new AllMiniLmL6V2QuantizedEmbeddingModel();
 
+    /**
+     * A lazily initialized docker container of Oracle Database. May be null if environment variables have configured
+     * tests to use an alternative database.
+     */
+    private static OracleContainer oracleContainer = null;
+
     private CommonTestOperations() {}
 
     private static final DataSource DATA_SOURCE;
     static {
         try {
             OracleDataSource oracleDataSource = new oracle.jdbc.datasource.impl.OracleDataSource();
-            oracleDataSource.setURL("jdbc:oracle:thin:@test");
-            oracleDataSource.setUser("test");
-            oracleDataSource.setPassword("test");
+            String urlFromEnv = System.getenv("ORACLE_JDBC_URL");
+
+            if (urlFromEnv == null) {
+                // The Ryuk component is relied upon to stop this container.
+                OracleContainer oracleContainer = new OracleContainer("gvenzl/oracle-free:23.4-slim-faststart")
+                    .withDatabaseName("pdb1")
+                    .withUsername("testuser")
+                    .withPassword("testpwd");
+                oracleContainer.start();
+
+                oracleDataSource.setURL(oracleContainer.getJdbcUrl());
+                oracleDataSource.setUser(oracleContainer.getUsername());
+                oracleDataSource.setPassword(oracleContainer.getPassword());
+            }
+            else {
+                oracleDataSource.setURL(urlFromEnv);
+                oracleDataSource.setUser(System.getenv("ORACLE_JDBC_USER"));
+                oracleDataSource.setPassword(System.getenv("ORACLE_JDBC_PASSWORD"));
+            }
+
             DATA_SOURCE = new TestDataSource(oracleDataSource);
         } catch (
                 SQLException sqlException) {
@@ -41,7 +65,5 @@ final class CommonTestOperations {
     static DataSource getDataSource() {
         return DATA_SOURCE;
     }
-
-
 
 }
